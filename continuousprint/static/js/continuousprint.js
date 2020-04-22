@@ -61,7 +61,7 @@ $(function() {
 					if (r.files.length > 0) {
 						for(var i = 0; i < r.files.length; i++) {
 							var file = r.files[i];
-							if (file.name.toLowerCase().indexOf(".gco") > -1 || file.name.toLowerCase().indexof(".gcode") > -1) {
+							if (file.name.toLowerCase().indexOf(".gco") > -1 || file.name.toLowerCase().indexOf(".gcode") > -1) {
 								var row = $("<div style='padding: 10px;border-bottom: 1px solid #000;'>"+file.name+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-plus text-success' data-name='"+file.name+"' data-path='"+file.path+"' data-sd='"+(file.origin=="local" ? false : true)+"'></i></div></div>");
 								row.find(".fa").click(function() {
 									self.addToQueue({
