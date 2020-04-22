@@ -1,17 +1,15 @@
 # continuousprint
 
-**TODO:** Describe what your plugin does.
+Octoprint plugin that allows users to generate a print queue, specify a print bed clearning script and run the queue which will print-clear-print until the end of the queue.
 
 ## Setup
 
-Install via the bundled [Plugin Manager](https://docs.octoprint.org/en/master/bundledplugins/pluginmanager.html)
-or manually using this URL:
+Install manually using this URL:
 
     https://github.com/nukeem/continuousprint/archive/master.zip
 
-**TODO:** Describe how to install your plugin, if more needs to be done than just installing it via pip or through
-the plugin manager.
+
 
 ## Configuration
 
-**TODO:** Describe your plugin's configuration options (if any).
+Make sure you have a method of clearning the bed automatically and have set the print bed clearing script or you'll end up messing the first print.
