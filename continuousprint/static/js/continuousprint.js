@@ -30,13 +30,17 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-					for(var i = 0; i < r.queue.length; i++) {
-						var file = r.queue[i];
-						var row = $("<div>"+file.name+"<div class='pull-right'><i class='fa fa-minus' data-index='"+i+"'></i></div></div>");
-						row.find(".fa").click(function() {
-							self.removeFromQueue($(this).data("index"));
-						});
-						$('#queue_list').append(row);
+					if (r.queue.length > 0) {
+						for(var i = 0; i < r.queue.length; i++) {
+							var file = r.queue[i];
+							var row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #c2fccf;" : "")+"'>"+file.name+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
+							row.find(".fa").click(function() {
+								self.removeFromQueue($(this).data("index"));
+							});
+							$('#queue_list').append(row);
+						}
+					} else {
+						$('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
 					}
 				}
 			});
@@ -54,18 +58,23 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-					
-					for(var i = 0; i < r.files.length; i++) {
-						var file = r.files[i];
-						var row = $("<div>"+file.name+"<div class='pull-right'><i class='fa fa-plus' data-name='"+file.name+"' data-path='"+file.path+"' data-sd='"+(file.origin=="local" ? false : true)+"'></i></div></div>");
-						row.find(".fa").click(function() {
-							self.addToQueue({
-								name: $(this).data("name"),
-								path: $(this).data("path"),
-								sd: $(this).data("sd")
-							});
-						});
-						$('#file_list').append(row);
+					if (r.files.length > 0) {
+						for(var i = 0; i < r.files.length; i++) {
+							var file = r.files[i];
+							if (file.name.toLowerCase().indexOf(".gco") > -1 || file.name.toLowerCase().indexof(".gcode") > -1) {
+								var row = $("<div style='padding: 10px;border-bottom: 1px solid #000;'>"+file.name+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-plus text-success' data-name='"+file.name+"' data-path='"+file.path+"' data-sd='"+(file.origin=="local" ? false : true)+"'></i></div></div>");
+								row.find(".fa").click(function() {
+									self.addToQueue({
+										name: $(this).data("name"),
+										path: $(this).data("path"),
+										sd: $(this).data("sd")
+									});
+								});
+								$('#file_list').append(row);
+							}
+						}
+					} else {
+						$('#file_list').html("<div style='text-align: center'>No files found</div>");
 					}
 				}
 			});

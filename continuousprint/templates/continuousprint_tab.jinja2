@@ -1,14 +1,16 @@
-<h2>Continuous Print Queue</h2>
+<button class="btn btn-primary pull-right" data-bind="click: startQueue, enable: printerState.isOperational() && loginState.isUser() && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
+	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
+</button>
+<h3>Continuous Print Queue</h3>
 <form class="form-horizontal">
-    
+    <p>Select files from the file list to include in the print queue, the print queue will print from top to bottom.</p>
     <div class="row-fluid">
-		<button class="btn btn-primary pull-right" data-bind="click: startQueue, enable: printerState.isOperational() && loginState.isUser() && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
-			<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
-		</button>
-		<h3>Queue</h3>
+		
+		<h4>Print Queue</h4>
 		<div id="queue_list"></div>
-		<h3>Files</h3>
-        <div id="file_list" style="max-height: 200px; overflow-y: scroll"></div>
+		<br /><br />
+		<h4>File List</h4>
+        <div id="file_list" style="max-height: 200px; overflow-y: scroll; overflow-x:hidden"></div>
 	</div>
     <br/>
     
