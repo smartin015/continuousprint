@@ -1,15 +1,8 @@
 <form class="form-horizontal">
-    <div class="control-group">
-        <label class="control-label">Enabled?</label>
-        <div class="controls">
-            <input type="checkbox" class="input-block-level" data-bind="checked: settings.plugins.continuousprint.cp_enabled">
-        </div>
-    </div>
-	
 	<div class="control-group">
-        <label class="control-label">Times to print (Ignore)</label>
+        <label class="control-label">Bed cleaning script</label>
         <div class="controls">
-            <input type="number" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_time">
+            <textarea class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_clearing_script"></textarea>
         </div>
     </div>
 </form>
