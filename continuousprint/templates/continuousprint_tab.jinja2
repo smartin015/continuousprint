@@ -2,18 +2,15 @@
 <form class="form-horizontal">
     
     <div class="row-fluid">
+		<button class="btn btn-primary pull-right" data-bind="click: startQueue, enable: printerState.isOperational() && loginState.isUser() && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
+			<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
+		</button>
 		<h3>Queue</h3>
 		<div id="queue_list"></div>
 		<h3>Files</h3>
-        <div id="file_list"></div>
+        <div id="file_list" style="max-height: 200px; overflow-y: scroll"></div>
 	</div>
     <br/>
-    <div class="row-fluid" data-bind="style: { display: loginState.isUser() ? 'block' : 'none' }">
-        <div class="span12">
-            <button class="btn btn-primary" data-bind="click: startQueue, enable: printerState.isOperational() && loginState.isUser() && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
-                <i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
-            </button>
-        </div>
-    </div>
+    
     <br/>
 </form>
