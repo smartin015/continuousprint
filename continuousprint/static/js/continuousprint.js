@@ -33,10 +33,35 @@ $(function() {
 					if (r.queue.length > 0) {
 						for(var i = 0; i < r.queue.length; i++) {
 							var file = r.queue[i];
-							var row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #c2fccf;" : "")+"'>"+file.name+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
-							row.find(".fa").click(function() {
-								self.removeFromQueue($(this).data("index"));
-							});
+							var row;
+							if (file["time"] == undefined) {
+								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
+								if (i == 0) other = "";
+								if (i == 1) other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";
+								row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>"+file.name+"<div class='pull-right'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
+								row.find(".fa-minus").click(function() {
+									self.removeFromQueue($(this).data("index"));
+								});
+								row.find(".fa-chevron-up").click(function() {
+									self.moveUp($(this).data("index"));
+								});
+								row.find(".fa-chevron-down").click(function() {
+									self.moveDown($(this).data("index"));
+								});
+							} else {
+								var time = file.time / 60;
+								var suffix = " mins";
+								if (time > 60) {
+									time = time / 60;
+									suffix = " hours";
+									if (time > 24) {
+										time = time / 24;
+										suffix = " days";
+									}
+								}
+								
+								row = $("<div style='padding: 10px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: "+ file.name+ " <div class='pull-right'>took: " + time.toFixed(0) + suffix + "</div></div>")
+							}
 							$('#queue_list').append(row);
 						}
 					} else {
@@ -98,6 +123,36 @@ $(function() {
 			});
 		}
 		
+		self.moveUp = function(data) {
+			$.ajax({
+				url: "plugin/continuousprint/queueup?index=" + data,
+				type: "GET",
+				dataType: "json",
+				headers: {"X-Api-Key":UI_API_KEY},
+				success: function(c) {
+					self.loadQueue();
+				},
+				error: function() {
+					self.loadQueue();
+				}
+			});
+		}
+		
+		self.moveDown = function(data) {
+			$.ajax({
+				url: "plugin/continuousprint/queuedown?index=" + data,
+				type: "GET",
+				dataType: "json",
+				headers: {"X-Api-Key":UI_API_KEY},
+				success: function(c) {
+					self.loadQueue();
+				},
+				error: function() {
+					self.loadQueue();
+				}
+			});
+		}
+		
 		self.removeFromQueue = function(data) {
 			$.ajax({
 				url: "plugin/continuousprint/removequeue?index=" + data,
@@ -130,48 +185,39 @@ $(function() {
 		self.onDataUpdaterPluginMessage = function(plugin, data) {
 			if (plugin != "continuousprint") return;
 
+			var theme = 'info';
 			switch(data["type"]) {
 				case "popup":
-					new PNotify({
-						title: 'Continuous Print',
-						text: data.msg,
-						type: 'info',
-						hide: true,
-						buttons: {
-							closer: true,
-							sticker: false
-						}
-					});
+					theme = "info";
+					break;
+				case "error":
+					theme = 'danger';
+					self.loadQueue();
 					break;
 				case "complete":
-					new PNotify({
-						title: 'Continuous Print',
-						text: data.msg,
-						type: 'success',
-						hide: true,
-						buttons: {
-							closer: true,
-							sticker: false
-						}
-					});
+					theme = 'success';
 					self.loadQueue();
 					break;
 				case "reload":
-					if (data.msg != "") {
-						new PNotify({
-							title: 'Continuous Print',
-							text: data.msg,
-							type: 'success',
-							hide: true,
-							buttons: {
-								closer: true,
-								sticker: false
-							}
-						});
-					}
+					theme = 'success'
 					self.loadQueue();
 					break;
 			}
+			
+			if (data.msg != "") {
+				new PNotify({
+					title: 'Continuous Print',
+					text: data.msg,
+					type: theme,
+					hide: true,
+					buttons: {
+						closer: true,
+						sticker: false
+					}
+				});
+			}
+			
+			
 		}
 	}
 

@@ -1,6 +1,10 @@
-<button class="btn btn-primary pull-right" data-bind="click: startQueue, enable: printerState.isOperational() && loginState.isUser() && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
+<button class="btn btn-primary pull-right" data-bind="click: startQueue, visible: printerState.isOperational() && loginState.isUser() && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
 	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
 </button>
+<button class="btn btn-primary pull-right" disabled data-bind="click: startQueue, visible: (printerState.isPrinting() || printerState.isPaused())" title="Running">
+	<i class="fa fa-spinner fa-spin"></i>&nbsp;&nbsp;{{ _('Running') }}
+</button>
+
 <h3>Continuous Print Queue</h3>
 <form class="form-horizontal">
     <p>Select files from the file list to include in the print queue, the print queue will print from top to bottom.</p>
