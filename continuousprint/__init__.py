@@ -13,16 +13,15 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 							octoprint.plugin.BlueprintPlugin,
 							octoprint.plugin.EventHandlerPlugin):
 
-	print_history = [];
-
+	print_history = []
+	enabled = False
 
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
 		return dict(
-			cp_enabled=False,
 			cp_queue="[]",
-			cp_bed_clearing_script="G4 P1600000\nM190 R25\nG90\nG1 X110 Y235\nG1 Z2\nG1 Y0\nG1 Y235\nG28"
+			cp_bed_clearing_script="M190 R25 ; wait for bed to go cold\nG90\nG1 X110 Y235\nG1 Z2\nG1 Y0\nG1 Y235\nG28"
 		)
 
 
@@ -30,8 +29,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 	##~~ StartupPlugin mixin
 	def on_after_startup(self):
-		self._settings.set(["cp_enabled"], False)
-		self._settings.save()
 		self._logger.info("Continuous Print Plugin started")
 	
 	
@@ -42,13 +39,12 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		from octoprint.events import Events
 		##  Print complete check it was the print in the bottom of the queue and not just any print
 		if event == Events.PRINT_DONE:
-			if self._settings.get_boolean(["cp_enabled"]) == True:
+			if self.enabled == True:
 				self.complete_print(payload)
 		
 		# On fail stop all prints
 		if event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
-			self._settings.set(["cp_enabled"], False) # Set enabled to false
-			self._settings.save()
+			self.enabled = False # Set enabled to false
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="error", msg="Print queue cancelled"))
 		
 		if event == Events.PRINTER_STATE_CHANGED:
@@ -83,8 +79,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# Tell the UI to reload
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
 		else:
-			self._settings.set(["cp_enabled"], False)
-			self._settings.save()
+			enabled = False
 
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
@@ -93,7 +88,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		self._printer.commands(bed_clearing_script.split("\n"))	
 
 	def start_next_print(self):
-		if self._settings.get_boolean(["cp_enabled"]) == True:
+		if self.enabled == True:
 			queue = json.loads(self._settings.get(["cp_queue"]))
 			if len(queue) > 0:
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="popup", msg="Automatically starting print: " + queue[0]["name"]))
@@ -111,8 +106,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				except InvalidFileType:
 					self._plugin_manager.send_plugin_message(self._identifier, dict(type="popup", msg="ERROR file not gcode"))
 			else:
-				self._settings.set(["cp_enabled"], False) # Set enabled to false
-				self._settings.save()
+				self.enabled = False # Set enabled to false
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="complete", msg="Print Queue Complete"))
 			
 			
@@ -178,8 +172,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def start_queue(self):
 		self.print_history = []
-		self._settings.set(["cp_enabled"], True) # Set enabled to true
-		self._settings.save()
+		self.enabled = True # Set enabled to true
 		self.start_next_print()
 		return flask.make_response("success", 200)
 	
@@ -187,7 +180,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	##~~  TemplatePlugin
 	def get_template_vars(self):
 		return dict(
-			cp_enabled=self._settings.get_boolean(["cp_enabled"]),
+			cp_enabled=self.enabled,
 			cp_bed_clearing_script=self._settings.get(["cp_bed_clearing_script"])
 		)
 	def get_template_configs(self):
