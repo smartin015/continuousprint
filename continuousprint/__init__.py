@@ -22,7 +22,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		return dict(
 			cp_enabled=False,
 			cp_queue="[]",
-			cp_bed_clearing_script=""
+			cp_bed_clearing_script="G4 P1600000\nM190 R25\nG90\nG1 X110 Y235\nG1 Z2\nG1 Y0\nG1 Y235\nG28"
 		)
 
 
