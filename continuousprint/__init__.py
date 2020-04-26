@@ -21,7 +21,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def get_settings_defaults(self):
 		return dict(
 			cp_queue="[]",
-			cp_bed_clearing_script="M190 R25 ; wait for bed to go cold\nG90\nG1 X110 Y235\nG1 Z2\nG1 Y0\nG1 Y235\nG28"
+			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home"
 		)
 
 
@@ -91,7 +91,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		if self.enabled == True:
 			queue = json.loads(self._settings.get(["cp_queue"]))
 			if len(queue) > 0:
-				self._plugin_manager.send_plugin_message(self._identifier, dict(type="popup", msg="Automatically starting print: " + queue[0]["name"]))
+				self._plugin_manager.send_plugin_message(self._identifier, dict(type="popup", msg="Starting print: " + queue[0]["name"]))
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
 				
 				sd = False

@@ -83,27 +83,57 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
+					var filelist = [];
 					if (r.files.length > 0) {
-						for(var i = 0; i < r.files.length; i++) {
-							var file = r.files[i];
-							if (file.name.toLowerCase().indexOf(".gco") > -1 || file.name.toLowerCase().indexOf(".gcode") > -1) {
-								var row = $("<div style='padding: 10px;border-bottom: 1px solid #000;'>"+file.name+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-plus text-success' data-name='"+file.name+"' data-path='"+file.path+"' data-sd='"+(file.origin=="local" ? false : true)+"'></i></div></div>");
-								row.find(".fa").click(function() {
-									self.addToQueue({
-										name: $(this).data("name"),
-										path: $(this).data("path"),
-										sd: $(this).data("sd")
-									});
+						filelist = self.recursiveGetFiles(r.files);
+					
+						for(var i = 0; i < filelist.length; i++) {
+							var file = filelist[i];
+							var row = $("<div data-name='"+file.name.toLowerCase()+"' style='padding: 10px;border-bottom: 1px solid #000;'>"+file.path+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-plus text-success' data-name='"+file.name+"' data-path='"+file.path+"' data-sd='"+(file.origin=="local" ? false : true)+"'></i></div></div>");
+							row.find(".fa").click(function() {
+								self.addToQueue({
+									name: $(this).data("name"),
+									path: $(this).data("path"),
+									sd: $(this).data("sd")
 								});
-								$('#file_list').append(row);
-							}
+							});
+							$('#file_list').append(row);
 						}
+						
 					} else {
 						$('#file_list').html("<div style='text-align: center'>No files found</div>");
 					}
 				}
 			});
+			
+			$("#gcode_search").keyup(function() {
+				var criteria = this.value.toLowerCase();
+				$("#file_list > div").each(function(){
+					if ($(this).data("name").indexOf(criteria) == -1) {
+						$(this).hide();
+					} else {
+						$(this).show();
+					}
+				})
+			});
+			
+			
 		});
+		
+		
+		self.recursiveGetFiles = function(files) {
+			var filelist = [];
+			for(var i = 0; i < files.length; i++) {
+				var file = files[i];
+				if (file.name.toLowerCase().indexOf(".gco") > -1 || file.name.toLowerCase().indexOf(".gcode") > -1) {
+					filelist.push(file);
+				} else if (file.children != undefined) {
+					console.log("Getting children", self.recursiveGetFiles(file.children))
+					filelist = filelist.concat(self.recursiveGetFiles(file.children));
+				}
+			}
+			return filelist;
+		}
 
 		self.addToQueue = function(data) {
 			$.ajax({
