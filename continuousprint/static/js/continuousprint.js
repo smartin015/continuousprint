@@ -14,11 +14,12 @@ $(function() {
 		self.loginState = parameters[1];
 		self.files = parameters[2];
 		self.settings = parameters[3];
-
-
+		self.is_paused = ko.observable();
 		self.onBeforeBinding = function() {
 			self.loadQueue();
+			self.is_paused(false);
 		}
+		
 		
 		self.loadQueue = function() {
 			$('#queue_list').html("");
@@ -201,8 +202,22 @@ $(function() {
 		}
 
 		self.startQueue = function() {
+			self.is_paused(false);
 			$.ajax({
 				url: "plugin/continuousprint/startqueue",
+				type: "GET",
+				dataType: "json",
+				headers: {
+					"X-Api-Key":UI_API_KEY,
+				},
+				data: {}
+			});
+		}
+		
+		self.resumeQueue = function() {
+			self.is_paused(false)
+			$.ajax({
+				url: "plugin/continuousprint/resumequeue",
 				type: "GET",
 				dataType: "json",
 				headers: {
@@ -232,6 +247,9 @@ $(function() {
 					theme = 'success'
 					self.loadQueue();
 					break;
+				case "paused":
+					self.is_paused(true);
+					break;
 			}
 			
 			if (data.msg != "") {
@@ -246,8 +264,6 @@ $(function() {
 					}
 				});
 			}
-			
-			
 		}
 	}
 

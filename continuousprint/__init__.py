@@ -15,13 +15,15 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 	print_history = []
 	enabled = False
+	paused = False
 
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
 		return dict(
 			cp_queue="[]",
-			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home"
+			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
+			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished"
 		)
 
 
@@ -81,14 +83,29 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		else:
 			enabled = False
 
+	def parse_gcode(self, input_script):
+		script = []
+		for x in input_script:
+			if x.find("[PAUSE]", 0) > -1:
+				self.paused = True
+				self._plugin_manager.send_plugin_message(self._identifier, dict(type="paused", msg="Queue paused"))
+			else:
+				script.append(x)
+		return script;
+
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
-		bed_clearing_script=self._settings.get(["cp_bed_clearing_script"])
-		self._logger.info(bed_clearing_script.split("\n"))
-		self._printer.commands(bed_clearing_script.split("\n"))	
+		bed_clearing_script=self._settings.get(["cp_bed_clearing_script"]).split("\n")	
+		self._printer.commands(self.parse_gcode(bed_clearing_script))
+		
+	def complete_queue(self):
+		self.enabled = False # Set enabled to false
+		self._plugin_manager.send_plugin_message(self._identifier, dict(type="complete", msg="Print Queue Complete"))
+		queue_finished_script = self._settings.get(["cp_queue_finished"]).split("\n")
+		self._printer.commands(self.parse_gcode(queue_finished_script))
 
 	def start_next_print(self):
-		if self.enabled == True:
+		if self.enabled == True and self.paused == False:
 			queue = json.loads(self._settings.get(["cp_queue"]))
 			if len(queue) > 0:
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="popup", msg="Starting print: " + queue[0]["name"]))
@@ -106,8 +123,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				except InvalidFileType:
 					self._plugin_manager.send_plugin_message(self._identifier, dict(type="popup", msg="ERROR file not gcode"))
 			else:
-				self.enabled = False # Set enabled to false
-				self._plugin_manager.send_plugin_message(self._identifier, dict(type="complete", msg="Print Queue Complete"))
+				self.complete_queue()
 			
 			
 	##~~ APIs
@@ -172,16 +188,25 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def start_queue(self):
 		self.print_history = []
+		self.paused = False
 		self.enabled = True # Set enabled to true
 		self.start_next_print()
 		return flask.make_response("success", 200)
 	
+	@octoprint.plugin.BlueprintPlugin.route("/resumequeue", methods=["GET"])
+	@restricted_access
+	def resume_queue(self):
+		self.paused = False
+		self.start_next_print()
+		return flask.make_response("success", 200)
 	
 	##~~  TemplatePlugin
 	def get_template_vars(self):
 		return dict(
 			cp_enabled=self.enabled,
-			cp_bed_clearing_script=self._settings.get(["cp_bed_clearing_script"])
+			cp_bed_clearing_script=self._settings.get(["cp_bed_clearing_script"]),
+			cp_queue_finished=self._settings.get(["cp_queue_finished"]),
+			cp_paused=self.paused
 		)
 	def get_template_configs(self):
 		return [
