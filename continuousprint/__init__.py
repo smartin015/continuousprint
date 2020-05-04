@@ -60,6 +60,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			self._logger.info("File selected")
 			bed_clearing_script=self._settings.get(["cp_bed_clearing_script"])
 
+		if event == Events.UPDATED_FILES:
+			self._plugin_manager.send_plugin_message(self._identifier, dict(type="updatefiles", msg=""))
 
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))

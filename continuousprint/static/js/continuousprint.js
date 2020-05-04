@@ -70,11 +70,9 @@ $(function() {
 					}
 				}
 			});
-		}
+		};
 			
-		
-
-		$(document).ready(function(){
+		self.getFileList = function() {
 			$('#file_list').html("");
 			$.ajax({
 				url: "/api/files?recursive=true",
@@ -106,6 +104,10 @@ $(function() {
 					}
 				}
 			});
+		}
+
+		$(document).ready(function(){
+			self.getFileList();
 			
 			$("#gcode_search").keyup(function() {
 				var criteria = this.value.toLowerCase();
@@ -249,6 +251,9 @@ $(function() {
 					break;
 				case "paused":
 					self.is_paused(true);
+					break;
+				case "updatefiles":
+					self.getFileList();
 					break;
 			}
 			
