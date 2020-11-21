@@ -96,7 +96,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="paused", msg="Queue paused"))
 			else:
 				script.append(x)
-		return script;
+		return script
 
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
