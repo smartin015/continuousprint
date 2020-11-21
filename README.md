@@ -6,7 +6,7 @@ Octoprint plugin that allows users to generate a print queue, specify a print be
 
 Install manually using this URL:
 
-    https://github.com/nukeem/continuousprint/archive/master.zip
+    https://github.com/ZincOS/continuousprint/archive/master.zip
 
 
 
