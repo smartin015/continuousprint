@@ -1,0 +1,33 @@
+<button class="btn btn-primary pull-right" data-bind="click: startQueue, visible: printerState.isOperational() && loginState.isUser() && !(is_paused()) && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
+	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
+</button>
+<button class="btn btn-primary pull-right" disabled data-bind="click: startQueue, visible: (printerState.isPrinting() || printerState.isPaused())" title="Running">
+	<i class="fa fa-spinner fa-spin"></i>&nbsp;&nbsp;{{ _('Already Printing') }}
+</button>
+<button class="btn btn-primary pull-right" data-bind="click: resumeQueue, visible: is_paused()" title="Resume Queue">
+	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Resume Queue') }}
+</button>
+
+
+<h3>Continuous Print Queue</h3>
+<button class="btn btn-primary pull-right" data-bind="click: loop, visible: !(is_looped())" title="Press this button to start looping the queue">
+	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('loop') }}
+</button>
+<button class="btn btn-primary pull-right" data-bind="click: unloop, visible: (is_looped())" title="Press this button to stop looping the queue">
+	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('unloop') }}
+</button>
+<form class="form-horizontal">
+    <p>Select files from the file list to include in the print queue, the print queue will print from top to bottom.</p>
+    <div class="row-fluid">
+		
+		<h4>Print Queue</h4>
+		<div id="queue_list"></div>
+		<br /><br />
+		<h4>File List</h4>
+		<input type="text" id="gcode_search" class="input-block-level" placeholder="Search" />
+        <div id="file_list" style="max-height: 200px; overflow-y: scroll; overflow-x:hidden"></div>
+	</div>
+    <br/>
+    
+    <br/>
+</form>
