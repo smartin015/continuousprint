@@ -53,8 +53,8 @@ $(function() {
 									self.moveDown($(this).data("index"));
 								});
                                 row.find(".fa-text").keyup(function() {
-                                    self.ncount= parseInt(this.value);
-                                    file.count=self.ncount;
+                                    var ncount= parseInt(this.value);
+                                    self.changecount($(this).data("index"),ncount);
                                 });
 							} else {
 								var time = file.time / 60;
@@ -178,6 +178,20 @@ $(function() {
 				}
 			});
 		}
+        self.changecount = function(data,ncount){
+            $.ajax({
+				url: "plugin/continuousprint/change?count=" + ncount+"?index="+data,
+				type: "GET",
+				dataType: "json",
+				headers: {"X-Api-Key":UI_API_KEY},
+				success: function(c) {
+					self.loadQueue();
+				},
+				error: function() {
+					self.loadQueue();
+				}
+			});
+        }
 		
 		self.moveDown = function(data) {
 			$.ajax({
