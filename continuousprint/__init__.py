@@ -167,6 +167,17 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		self._settings.set(["cp_queue"], json.dumps(queue))
 		self._settings.save()
 		return flask.jsonify(queue=queue)
+	
+	@octoprint.plugin.BlueprintPlugin.route("/change", methods=["GET"])
+	@restricted_access
+	def queue_up(self):
+		index = int(flask.request.args.get("index", 0))
+		count = int(flask.request.args.get("count", 0))
+		queue = json.loads(self._settings.get(["cp_queue"]))
+		queue[index]["count"]=count
+		self._settings.set(["cp_queue"], json.dumps(queue))
+		self._settings.save()
+		return flask.jsonify(queue=queue)
 		
 	@octoprint.plugin.BlueprintPlugin.route("/queuedown", methods=["GET"])
 	@restricted_access
