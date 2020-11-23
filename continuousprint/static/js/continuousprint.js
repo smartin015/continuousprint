@@ -180,7 +180,7 @@ $(function() {
 		}
         self.changecount = function(data,ncount){
             $.ajax({
-				url: "plugin/continuousprint/change?count=" + ncount+"?index="+data,
+				url: "plugin/continuousprint/change?count=" + ncount.toString()+"?index="+data,
 				type: "GET",
 				dataType: "json",
 				headers: {"X-Api-Key":UI_API_KEY},
