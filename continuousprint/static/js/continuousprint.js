@@ -53,8 +53,10 @@ $(function() {
 									self.moveDown($(this).data("index"));
 								});
                                 row.find(".fa-text").keyup(function() {
-                                    var ncount= parseInt(this.value);
-                                    self.changecount($(this).data("index"),ncount);
+                                    if (event.keyCode === 13){
+                                        var ncount= parseInt(this.value);
+                                        self.changecount($(this).data("index"),ncount);
+                                    }
                                 });
 							} else {
 								var time = file.time / 60;
