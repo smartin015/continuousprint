@@ -171,11 +171,10 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@octoprint.plugin.BlueprintPlugin.route("/change", methods=["GET"])
 	@restricted_access
 	def change(self):
-		index = int(flask.request.args.get("index"))
-		count = int(flask.request.args.get("count"))
+		index = int(flask.request.args.get("index"),0)
+		count = int(flask.request.args.get("count"),20)
 		queue = json.loads(self._settings.get(["cp_queue"]))
-		spot=queue[index]
-		spot["count"]=count
+		queue[index]["count"]=count
 		self._settings.set(["cp_queue"], json.dumps(queue))
 		self._settings.save()
 		return flask.jsonify(queue=queue)
