@@ -187,7 +187,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		queue.append(dict(
 			name=flask.request.form["name"],
 			path=flask.request.form["path"],
-			sd=flask.request.form["sd"]
+			sd=flask.request.form["sd"],
+			count=flask.request.form["count"]
 		))
 		self._settings.set(["cp_queue"], json.dumps(queue))
 		self._settings.save()
