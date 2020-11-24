@@ -61,7 +61,7 @@ $(function() {
                                 row.find(".fa-text").keyup(function() {
                                     if (blip){
                                         var ncount= parseInt(this.value);
-                                        self.changecount($(this).data("index"),ncount);
+                                        self.changecount(i,ncount);
                                     }
                                 });
 							} else {
