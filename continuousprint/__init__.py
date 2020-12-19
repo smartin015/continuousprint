@@ -66,12 +66,25 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
-		if payload["path"]==queue[0]["path"]:
-			# move the print to the end of the queue
-			self.temp = queue[0]
-			queue.pop(0)
-			if self.looped==True and self.temp!=None:
-				queue.append(self.temp)
+		item = queue[0]
+		if payload["path"]== item["path"] and item["count"] > 0:
+			
+			# check to see if loop count is set. If it is increment times run.
+				if "times_run" not in item:
+					item["times_run"] = 0
+
+				item["times_run"] += 1
+
+			# On complete_print, remove the item from the queue 
+			# if the item has run for loop count  or no loop count is specified and 
+			# if looped is True requeue the item.
+			if (item["times_run"] >= item["count"]):
+				self.temp = item
+				queue.pop(0)
+				item["times_run"] = 0
+				if self.looped==True and self.temp!=None:
+					queue.append(self.temp)
+			
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
 			# Add to the history
