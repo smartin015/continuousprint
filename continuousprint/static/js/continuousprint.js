@@ -35,6 +35,7 @@ $(function() {
 				},
 				success:function(r){
 					if (r.queue.length > 0) {
+						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
 							var file = r.queue[i];
 							var row;
