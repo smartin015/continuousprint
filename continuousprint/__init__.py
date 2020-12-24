@@ -78,7 +78,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
 			# if looped is True requeue the item.
-			if (item["times_run"] >= item["count"]):
+			if (self.item["times_run"] >= self.item["count"]):
 				queue.pop(0)
 				self.item["times_run"] = 0
 				if self.looped==True and self.item!=None:
