@@ -57,7 +57,9 @@ $(function() {
                                 row.find(".fa-text").keydown(function() {
                                     if (event.keyCode === 13){
                                         blip = true;
-                                    }else{blip = false}
+                                    }else{
+                                        blip = false;
+                                    }
                                 });
                                 row.find(".fa-text").keyup(function() {
                                     if (blip){
@@ -77,7 +79,7 @@ $(function() {
 									}
 								}
 								
-								row = $("<div style='padding: 10px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: "+ file.name+ " <div class='pull-right'>average time: " + time.toFixed(0) + suffix + "Times run:"+file.times_run "</div></div>")
+								row = $("<div style='padding: 10px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: " + file.name + " <div class='pull-right'>average time: " + time.toFixed(0) + suffix + "Times run:" + file.times_run + "</div></div>")
 							}
 							$('#queue_list').append(row);
 						}
