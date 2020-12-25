@@ -70,10 +70,10 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		if payload["path"] == self.item["path"] and self.item["count"] > 0:
 			
 			# check to see if loop count is set. If it is increment times run.
-				if "times_run" not in self.item:
-					self.item["times_run"] = 0
+			if "times_run" not in self.item:
+				self.item["times_run"] = 0
 
-				self.item["times_run"] += 1
+			self.item["times_run"] += 1
 
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
