@@ -16,7 +16,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False;
-	temp= None
+	item= None
 
 
 	##~~ SettingsPlugin mixin
@@ -66,12 +66,24 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
-		if payload["path"]==queue[0]["path"]:
-			# move the print to the end of the queue
-			self.temp = queue[0]
-			queue.pop(0)
-			if self.looped==True and self.temp!=None:
-				queue.append(self.temp)
+		self.item = queue[0]
+		if payload["path"] == self.item["path"] and self.item["count"] > 0:
+			
+			# check to see if loop count is set. If it is increment times run.
+			if "times_run" not in self.item:
+				self.item["times_run"] = 0
+
+			self.item["times_run"] += 1
+
+			# On complete_print, remove the item from the queue 
+			# if the item has run for loop count  or no loop count is specified and 
+			# if looped is True requeue the item.
+			if self.item["times_run"] >= self.item["count"]:
+				queue.pop(0)
+				self.item["times_run"] = 0
+				if self.looped==True and self.item!=None:
+					queue.append(self.item)
+			
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
 			# Add to the history
@@ -167,6 +179,17 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		self._settings.set(["cp_queue"], json.dumps(queue))
 		self._settings.save()
 		return flask.jsonify(queue=queue)
+	
+	@octoprint.plugin.BlueprintPlugin.route("/change", methods=["GET"])
+	@restricted_access
+	def change(self):
+		index = int(flask.request.args.get("index")) 
+		count = int(flask.request.args.get("count"))
+		queue = json.loads(self._settings.get(["cp_queue"]))
+		queue[index]["count"]=count
+		self._settings.set(["cp_queue"], json.dumps(queue))
+		self._settings.save()
+		return flask.jsonify(queue=queue)
 		
 	@octoprint.plugin.BlueprintPlugin.route("/queuedown", methods=["GET"])
 	@restricted_access
@@ -187,7 +210,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		queue.append(dict(
 			name=flask.request.form["name"],
 			path=flask.request.form["path"],
-			sd=flask.request.form["sd"]
+			sd=flask.request.form["sd"],
+			count=int(flask.request.form["count"])
 		))
 		self._settings.set(["cp_queue"], json.dumps(queue))
 		self._settings.save()

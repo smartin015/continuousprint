@@ -16,7 +16,7 @@ $(function() {
 		self.settings = parameters[3];
 		self.is_paused = ko.observable();
         self.is_looped = ko.observable();
-        
+        self.ncount=1;
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
@@ -35,14 +35,16 @@ $(function() {
 				},
 				success:function(r){
 					if (r.queue.length > 0) {
+						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
 							var file = r.queue[i];
 							var row;
+                            var blip = false;
 							if (file["time"] == undefined) {
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) other = "";
 								if (i == 1) other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";
-								row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>"+file.name+"<div class='pull-right'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
+								row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>"+file.name+"<input class='fa fa-text' type = 'text' data-index='"+i+"' value='"+file.count.toString()+"'/><div class='pull-right'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
 								row.find(".fa-minus").click(function() {
 									self.removeFromQueue($(this).data("index"));
 								});
@@ -52,6 +54,17 @@ $(function() {
 								row.find(".fa-chevron-down").click(function() {
 									self.moveDown($(this).data("index"));
 								});
+                                row.find(".fa-text").keydown(function() {
+                                    if (event.keyCode === 13){
+                                        blip = true;
+                                    }else{blip = false}
+                                });
+                                row.find(".fa-text").keyup(function() {
+                                    if (blip){
+                                        var ncount= parseInt(this.value);
+                                        self.changecount($(this).data("index"),ncount);
+                                    }
+                                });
 							} else {
 								var time = file.time / 60;
 								var suffix = " mins";
@@ -96,7 +109,8 @@ $(function() {
 								self.addToQueue({
 									name: $(this).data("name"),
 									path: $(this).data("path"),
-									sd: $(this).data("sd")
+									sd: $(this).data("sd"),
+                                    count: 1
 								});
 							});
 							$('#file_list').append(row);
@@ -173,6 +187,20 @@ $(function() {
 				}
 			});
 		}
+        self.changecount = function(data,ncount){
+            $.ajax({
+				url: "plugin/continuousprint/change?count=" + ncount+"&index="+data,
+				type: "GET",
+				dataType: "json",
+				headers: {"X-Api-Key":UI_API_KEY},
+				success: function(c) {
+					self.loadQueue();
+				},
+				error: function() {
+					self.loadQueue();
+				}
+			});
+        }
 		
 		self.moveDown = function(data) {
 			$.ajax({
