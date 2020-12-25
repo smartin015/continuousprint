@@ -18,4 +18,4 @@ Make sure you have a method of clearning the bed automatically and have set the 
 
 The number of times a gcode is to be printed can be specified in an input box.
 When the queue is looped, this number will be equal to the relative quantities of each print.
-When the queue is not looped, this number will be equal to the number of times the gcode is printed. 
+When the queue is not looped, this number will be equal to the number of times each gcode is printed. 
