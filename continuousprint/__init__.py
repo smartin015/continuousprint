@@ -16,7 +16,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False;
-	item= None
+	item = None # temporary variable for storing the current print 
+	time = 0 #temporary variable for storing average time for a group of prints
 
 
 	##~~ SettingsPlugin mixin
@@ -72,25 +73,28 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# check to see if loop count is set. If it is increment times run.
 			if "times_run" not in self.item:
 				self.item["times_run"] = 0
+			else:
+				self.print_history.pop()
 
 			self.item["times_run"] += 1
-
+			self.time=(self.time + payload["time"])/self.item["times_run"]
+			# Add to the history
+			self.print_history.append(dict(
+				name = payload["name"],
+				time = self.time,
+				times_run =  self.item["times_run"]
+			))
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
 			# if looped is True requeue the item.
 			if self.item["times_run"] >= self.item["count"]:
 				queue.pop(0)
-				self.item["times_run"] = 0
 				if self.looped==True and self.item!=None:
+					self.item["times_run"] = 0
 					queue.append(self.item)
 			
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
-			# Add to the history
-			self.print_history.append(dict(
-				name = payload["name"],
-				time = payload["time"]
-			))
 
 			# Clear down the bed
 			self.clear_bed()
