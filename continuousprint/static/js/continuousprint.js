@@ -41,6 +41,7 @@ $(function() {
 							var row;
                             var Enter = false;
 							if (file["time"] == undefined) {
+                                var boxLength = 0;
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) other = "";
 								if (i == 1) other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";
@@ -59,16 +60,17 @@ $(function() {
                                         Enter = true;
                                     }else{
                                         Enter = false;
-                                        $(this).prop('width', $(this).val().length)
+                                        $(this).prop('width', $(this).val().length.toString())
                                     }
                                      
                                 });
                                 row.find(".fa-text").keyup(function() {
+                                    
                                     if (Enter){
                                         var ncount= parseInt(this.value);
                                         self.changecount($(this).data("index"),ncount);
                                     }else{
-                                        $(this).prop('width', $(this).val().length)
+                                        $(this).prop('width', $(this).val().length.toString())
                                     }
                                 });
 							} else {
