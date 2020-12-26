@@ -15,7 +15,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	print_history = []
 	enabled = False
 	paused = False
-	looped = False;
+	looped = False
 	item = None # temporary variable for storing the current print 
 	time = 0 #temporary variable for storing average time for a group of prints
 
@@ -25,7 +25,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		return dict(
 			cp_queue="[]",
 			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
-			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished"
+			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished",
+			looped="false"
 		)
 
 
@@ -87,8 +88,12 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
 			# if looped is True requeue the item.
-			if self.item["times_run"] >= self.item["count"]:
+			if (self.item["times_run"] >= self.item["count"]):
 				queue.pop(0)
+				if self._settings.get(["cp_queue"])=="false":
+					self.looped=False
+				if self._settings.get(["cp_queue"])=="true":
+					self.looped=True
 				if self.looped==True and self.item!=None:
 					self.item["times_run"] = 0
 					queue.append(self.item)
@@ -155,12 +160,16 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def loop(self):
 		self.looped=True
+		self._settings.set(["cp_queue"], "true")
+
 		
 		
 	@octoprint.plugin.BlueprintPlugin.route("/unloop", methods=["GET"])
 	@restricted_access
 	def unloop(self):
 		self.looped=False
+		self._settings.set(["cp_queue"], "false")
+
 		
 	@octoprint.plugin.BlueprintPlugin.route("/queue", methods=["GET"])
 	@restricted_access
