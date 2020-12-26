@@ -39,7 +39,7 @@ $(function() {
 						for(var i = 0; i < r.queue.length; i++) {
 							var file = r.queue[i];
 							var row;
-                            var blip = false;
+                            var Enter = false;
 							if (file["time"] == undefined) {
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) other = "";
@@ -56,16 +56,18 @@ $(function() {
 								});
                                 row.find(".fa-text").keydown(function() {
                                     if (event.keyCode === 13){
-                                        blip = true;
+                                        Enter = true;
                                     }else{
-                                        blip = false;
+                                        Enter = false;
                                     }
+                                     $(this).attr('size', $(this).val().length)
                                 });
                                 row.find(".fa-text").keyup(function() {
-                                    if (blip){
+                                    if (Enter){
                                         var ncount= parseInt(this.value);
                                         self.changecount($(this).data("index"),ncount);
                                     }
+                                    $(this).attr('size', $(this).val().length)
                                 });
 							} else {
 								var time = file.time / 60;
