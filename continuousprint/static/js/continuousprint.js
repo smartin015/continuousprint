@@ -59,15 +59,17 @@ $(function() {
                                         Enter = true;
                                     }else{
                                         Enter = false;
+                                        $(this).prop('width', $(this).val().length)
                                     }
-                                     $(this).prop('width', $(this).val().length);
+                                     
                                 });
                                 row.find(".fa-text").keyup(function() {
                                     if (Enter){
                                         var ncount= parseInt(this.value);
                                         self.changecount($(this).data("index"),ncount);
+                                    }else{
+                                        $(this).prop('width', $(this).val().length)
                                     }
-                                    $(this).prop('width', $(this).val().length);
                                 });
 							} else {
 								var time = file.time / 60;
