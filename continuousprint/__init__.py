@@ -160,7 +160,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def loop(self):
 		self.looped=True
-		self._settings.set(["cp_queue"], "true")
+		self._settings.set(["looped"], "true")
 
 		
 		
@@ -168,7 +168,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def unloop(self):
 		self.looped=False
-		self._settings.set(["cp_queue"], "false")
+		self._settings.set(["looped"], "false")
 
 		
 	@octoprint.plugin.BlueprintPlugin.route("/queue", methods=["GET"])
