@@ -37,7 +37,7 @@ $(function() {
 						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
                             var boxWidth=300;
-                            var boxwidth2 = 25;
+                            var boxWidth2 = 25;
 							var file = r.queue[i];
 							var row;
                             var Enter = false;
