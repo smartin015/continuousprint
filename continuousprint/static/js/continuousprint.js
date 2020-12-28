@@ -36,8 +36,6 @@ $(function() {
 					if (r.queue.length > 0) {
 						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
-                            var boxWidth=400;
-                            var boxWidth2 = 25;
 							var file = r.queue[i];
 							var row;
                             var Enter = false;
@@ -45,7 +43,7 @@ $(function() {
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) other = "";
 								if (i == 1) other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";
-								row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>" +"<div style='display: inline-block;'><input class='fa fa-text' type = 'text' style='width: " + boxWidth2.toString() + "px; height: 12px;' data-index='"+i+"' value='"+file.count.toString()+"'/></div><div style='max-width: " + boxWidth.toString() + "px; overflow-x:scroll;display: inline-block;'> " + file.name + "</div><div class='pull-right'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
+								row = $("<div style='display: flex; flex-direction: row;justify-content: space-between;padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>" +"<input class='fa fa-text' type = 'text' style=' flex-grow: 2;'flex-shrink:2; data-index='"+i+"' value='"+file.count.toString()+"'/></div><p style='flex-grow: 4;flex-shrink: 2; overflow-x:scroll;'> " + file.name + "</p><div class='pull-right'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
 								row.find(".fa-minus").click(function() {
 									self.removeFromQueue($(this).data("index"));
 								});
@@ -81,7 +79,7 @@ $(function() {
 									}
 								}
 								
-								row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: <div class='pull-left' style='max-width:" + boxWidth.toString() + "px; overflow-x:scroll'>" + file.name + "</div> <div class='pull-right'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div></div>")
+								row = $("<div style='display: flex; flex-direction: row;mpadding: 15px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: <div class='pull-left' style='flex-grow: 4;flex-shrink: 2; overflow-x:scroll'>" + file.name + "</div> <div class='pull-right'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div></div>")
 							}
 							$('#queue_list').append(row);
 						}
