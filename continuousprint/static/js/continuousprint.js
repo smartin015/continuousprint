@@ -79,7 +79,7 @@ $(function() {
 									}
 								}
 								
-								row = $("<div style='display: flex; flex-direction: row;mpadding: 15px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: <div class='pull-left' style='flex-grow: 4;flex-shrink: 2; overflow-x:scroll'>" + file.name + "</div> <div class='pull-right'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div></div>")
+								row = $("<div style='display: flex; justify-content: space-between; flex-direction: row;flex-wrap: nowrap;padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: <div style='flex-grow: 4;flex-shrink: 10; overflow-x:scroll'>" + file.name + "</div> <div style:'flex-grow:2;'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div></div>")
 							}
 							$('#queue_list').append(row);
 						}
