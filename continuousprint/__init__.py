@@ -72,18 +72,30 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		if payload["path"] == self.item["path"] and self.item["count"] > 0:
 			
 			# check to see if loop count is set. If it is increment times run.
+			time=payload["time"]/60;
+			suffix="mins"
+			if time>60:
+				time = time/60
+				suffix = "hours"
+				if time>24:
+					time= time/24
+					suffix= "days"
 			if "times_run" not in self.item:
 				self.item["times_run"] = 0
+				TempTime="1. "+str(time)+" "+suffix
 			else:
 				self.print_history.pop()
+				TempTime+=str(item["times_run"]+1)+". "+str(time)+" "+suffix
 
 			self.item["times_run"] += 1
 			self.time=(self.time + payload["time"])/self.item["times_run"]
+			
 			# Add to the history
 			self.print_history.append(dict(
 				name = payload["name"],
 				time = self.time,
 				times_run =  self.item["times_run"]
+				title=TempTime
 			))
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
