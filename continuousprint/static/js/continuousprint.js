@@ -38,12 +38,13 @@ $(function() {
 						for(var i = 0; i < r.queue.length; i++) {
 							var file = r.queue[i];
 							var row;
+                            var textGrow=1;
                             var Enter = false;
 							if (file["time"] == undefined) {
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) other = "";
 								if (i == 1) other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";
-								row = $("<div style='display: flex; flex-direction: row; padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>" +"<input class='fa fa-text' type = 'text' style=' flex-grow: 1;'flex-shrink:2; data-index='"+i+"' value='"+file.count.toString()+"'/><p style='flex-grow: 1.1;flex-shrink: 3; overflow-x:scroll;'> " + file.name + "</p><div class='pull-right'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
+								row = $("<div style='display: flex; flex-direction: row; padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'>" +"<input class='fa fa-text' type = 'text' style=' flex-grow:"+textGrow";'flex-shrink:2; data-index='"+i+"' value='"+file.count.toString()+"'/><p style='flex-shrink: 4; overflow-x:scroll;'> " + file.name + "</p><div class='pull-right' style='flex-grow:2;'>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div>");
 								row.find(".fa-minus").click(function() {
 									self.removeFromQueue($(this).data("index"));
 								});
