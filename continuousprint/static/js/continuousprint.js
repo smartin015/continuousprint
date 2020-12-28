@@ -16,7 +16,6 @@ $(function() {
 		self.is_paused = ko.observable();
         self.is_looped = ko.observable();
         self.ncount=1;
-        self.textGrow=[];//moving this up here because I don't want it to be reset each time the queue is loaded.
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
@@ -41,13 +40,10 @@ $(function() {
 							var row;
                             var Enter = false;
 							if (file["time"] == undefined) {
-                                if(self.textGrow[i]==undefined){
-                                    self.textGrow[i]=1;
-                                }
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) {other = "";}
 								if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
-								row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'><div style='width:100%;display: flex; flex-wrap: nowrap; flex-direction: row; justify-content: flex-start; align-items: stretch;'><input class='fa fa-text' type = 'text' style=' flex-grow: "+self.textGrow[i]+";flex-shrink:1; width:10px; max-width:60px; max-height:8px;' data-index='"+i+"' value='" + file.count.toString() + "'/><p style='flex-shrink: 10; overflow-x:scroll;'> " + file.name + "</p><div style='justify-self: end'" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
+								row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'><div style='width:100%;display: flex; flex-wrap: nowrap; flex-direction: row; justify-content: space-between; align-items: stretch;'><input class='fa fa-text' type = 'text' style=' flex-grow:1; min-width:60px; max-height:8px;' data-index='"+i+"' value='" + file.count.toString() + "'/><p style='flex-shrink: 10; overflow-x:scroll;max-width=96%;'> " + file.name + "</p><div style='justify-self: end'" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
 								row.find(".fa-minus").click(function() {
 									self.removeFromQueue($(this).data("index"));
 								});
@@ -70,7 +66,6 @@ $(function() {
                                         var ncount= parseInt(this.value);
                                         self.changecount($(this).data("index"),ncount);
                                     }
-                                    self.textGrow[$(this).data("index")]=this.value.length;
                                 });
 							} else {
 								var time = file.time / 60;
