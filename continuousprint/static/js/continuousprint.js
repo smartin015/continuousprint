@@ -41,6 +41,10 @@ $(function() {
 							var row;
                             var Enter = false;
 							if (file["time"] == undefined) {
+                                if(self.textGrow[i]==undefined){
+                                    self.textGrow[i]=1;
+                                }
+                                   
 								var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
 								if (i == 0) other = "";
 								if (i == 1) other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";
