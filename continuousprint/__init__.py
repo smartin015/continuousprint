@@ -94,7 +94,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			self.print_history.append(dict(
 				name = payload["name"],
 				time = self.time,
-				times_run =  self.item["times_run"]
+				times_run =  self.item["times_run"],
 				title=TempTime
 			))
 			# On complete_print, remove the item from the queue 
