@@ -16,7 +16,7 @@ $(function() {
 		self.is_paused = ko.observable();
         self.is_looped = ko.observable();
         self.ncount=1;
-        self.textgrow=[];//moving this up here because I don't want it to be reset each time the queue is loaded.
+        self.textGrow=[];//moving this up here because I don't want it to be reset each time the queue is loaded.
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
