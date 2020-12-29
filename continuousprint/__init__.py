@@ -87,7 +87,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			#Add to the print History
 			for i in range(0,len(print_history)-1):
 				if item["path"]==print_history[i]["path"]:
-					sprint_history[i]=dict(
+					print_history[i]=dict(
 						path = payload["path"],
 						name = payload["name"],
 						time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
