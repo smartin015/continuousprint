@@ -19,25 +19,9 @@ $(function() {
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
-          
-            
+            self.checkLooped();            
 		}
-        self.onStartup = function() {
-            $.ajax({
-				url: "plugin/continuousprint/looped",
-				type: "GET",
-				dataType: "text",
-				headers: {"X-Api-Key":UI_API_KEY},
-				success: function(c) {
-					if(c.looped=="true"){
-                        self.is_looped(true);
-                    } else{
-                        self.is_looped(false);
-                    }
-				},
-			});
-        }
-
+       
 		
 		
 		self.loadQueue = function() {
@@ -106,7 +90,21 @@ $(function() {
 				}
 			});
 		};
-			
+	    self.checkLooped = function(){
+            $.ajax({
+				url: "plugin/continuousprint/looped",
+				type: "GET",
+				dataType: "text",
+				headers: {"X-Api-Key":UI_API_KEY},
+				success: function(c) {
+					if(c.looped=="true"){
+                        self.is_looped(true);
+                    } else{
+                        self.is_looped(false);
+                    }
+				},
+			});
+        }
 		self.getFileList = function() {
 			$('#file_list').html("");
 			$.ajax({
@@ -144,7 +142,7 @@ $(function() {
 
 		$(document).ready(function(){
 			self.getFileList();
-			
+			self.checkLooped();
 			$("#gcode_search").keyup(function() {
 				var criteria = this.value.toLowerCase();
 				$("#file_list > div").each(function(){
