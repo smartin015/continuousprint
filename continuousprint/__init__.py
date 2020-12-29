@@ -96,7 +96,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 							title = print_history[i]["title"]+" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
 						)
 						InPrintHistory=True
-			if !InPrintHistory:
+			if InPrintHistory != True:
 				print_history.append(dict(
 					path = payload["path"],
 					name = payload["name"],
