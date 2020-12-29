@@ -80,7 +80,7 @@ $(function() {
 									}
 								}
 								
-								row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div style= 'style='width:100%;display: flex; flex-wrap: nowrap;justify-content: space-between; flex-direction: row;flex-wrap: nowrap;><div style:'display:flex; flex-wrap: nowrap; justify-content:flex-start;max-width:60%; min-width:50px; flex-shrink:10;><p>Complete:</p> <div style='flex-shrink: 10; overflow-x:scroll;'>" + file.name + "</div></div> <div style:'flex-grow:2; flex-shrink:2'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div style: 'max-width:40%; flex-shrink:20; overflow-x:scroll;'>" + file.title + "</div></div></div>")
+								row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div style='width:100%;display: flex; flex-wrap: nowrap;justify-content: space-between; flex-direction: row;flex-wrap: nowrap;'><div style:'display:flex; flex-wrap: nowrap; justify-content:flex-start;max-width:60%; min-width:50px; flex-shrink:10;'><p>Complete:</p> <div style='flex-shrink: 10; overflow-x:scroll;'>" + file.name + "</div></div> <div style:'flex-grow:2; flex-shrink:2'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div style: 'max-width:40%; flex-shrink:20; overflow-x:scroll;'>" + file.title + "</div></div></div>")
 							}
 							$('#queue_list').append(row);
 						}
