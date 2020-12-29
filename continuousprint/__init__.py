@@ -87,7 +87,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			InPrintHistory=False
 			if len(print_history)>0:
 				for i in range(0,len(print_history)-1):
-					if item["path"]==print_history[i]["path"]:
+					if item["path"]==print_history[i]["path"] and InPrintHistory != True:
 						print_history[i]=dict(
 							path = payload["path"],
 							name = payload["name"],
