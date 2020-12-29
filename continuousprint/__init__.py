@@ -16,7 +16,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False
-	item = None # temporary variable for storing the current print 
 	time = 0 #temporary variable for storing average time for a group of prints
 
 
@@ -68,8 +67,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
-		self.item = queue[0]
-		if payload["path"] == self.item["path"] and self.item["count"] > 0:
+		item = queue[0]
+		if payload["path"] == item["path"] and item["count"] > 0:
 			
 			# check to see if loop count is set. If it is increment times run.
 			time=payload["time"]/60;
@@ -80,35 +79,36 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				if time>24:
 					time= time/24
 					suffix= "days"
-			if "times_run" not in self.item:
-				self.item["times_run"] = 0
+			if "times_run" not in item:
+				item["times_run"] = 0
 				TempTime=" 1. "+str(round(time))+" "+suffix
 			else:
-				self.print_history.pop()
+				if item["times_run"]>0:
+					self.print_history.pop()
 				TempTime+=" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
 
-			self.item["times_run"] += 1
-			self.time=(self.time + payload["time"])/self.item["times_run"]
+			item["times_run"] += 1
+			self.time=(self.time + payload["time"])/item["times_run"]
 			
 			# Add to the history
 			self.print_history.append(dict(
 				name = payload["name"],
 				time = self.time,
-				times_run =  self.item["times_run"],
+				times_run =  item["times_run"],
 				title=TempTime
 			))
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
 			# if looped is True requeue the item.
-			if (self.item["times_run"] >= self.item["count"]):
+			if (item["times_run"] >= item["count"]):
 				queue.pop(0)
 				if self._settings.get(["cp_queue"])=="false":
 					self.looped=False
 				if self._settings.get(["cp_queue"])=="true":
 					self.looped=True
-				if self.looped==True and self.item!=None:
-					self.item["times_run"] = 0
-					queue.append(self.item)
+				if self.looped==True and item!=None:
+					item["times_run"] = 0
+					queue.append(item)
 			
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
