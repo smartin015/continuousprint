@@ -93,7 +93,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 							name = payload["name"],
 							time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
 							times_run =  print_history[i]["times_run"]+1,
-							title = print_history[i]["title"]+" " + str(item["times_run"]+1)+".): "+str(int(time))+" "+suffix
+							title = time+suffix
 						)
 						InPrintHistory=True
 			if InPrintHistory != True:
@@ -102,7 +102,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					name = payload["name"],
 					time = payload["time"],
 					times_run =  item["times_run"],
-					title=" 1.): "+str(int(time))+" "+suffix
+					title=time+suffix
 				))
 							
 						
