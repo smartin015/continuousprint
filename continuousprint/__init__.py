@@ -82,10 +82,10 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					suffix= "days"
 			if "times_run" not in self.item:
 				self.item["times_run"] = 0
-				TempTime=" 1. "+str(time)+" "+suffix
+				TempTime=" 1. "+str(round(time))+" "+suffix
 			else:
 				self.print_history.pop()
-				TempTime+=" " + str(item["times_run"]+1)+". "+str(time)+" "+suffix
+				TempTime+=" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
 
 			self.item["times_run"] += 1
 			self.time=(self.time + payload["time"])/self.item["times_run"]
