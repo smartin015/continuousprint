@@ -25,7 +25,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			cp_queue="[]",
 			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
 			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished",
-			cp_looped="false"
+			cp_looped="false",
 			cp_print_history="[]"
 			
 		)
