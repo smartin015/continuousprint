@@ -24,7 +24,7 @@ $(function() {
 		}
         self.onStartup = function() {
             $.ajax({
-				url: "plugin/continuousprint/looped,
+				url: "plugin/continuousprint/looped",
 				type: "GET",
 				dataType: "text",
 				headers: {"X-Api-Key":UI_API_KEY},
