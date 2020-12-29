@@ -97,7 +97,7 @@ $(function() {
 				dataType: "text",
 				headers: {"X-Api-Key":UI_API_KEY},
 				success: function(c) {
-					if(c.looped=="true"){
+					if(c=="true"){
                         self.is_looped(true);
                     } else{
                         self.is_looped(false);
