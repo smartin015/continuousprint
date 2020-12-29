@@ -100,7 +100,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 						name = payload["name"],
 						time = self.time,
 						times_run =  item["times_run"],
-						title==" 1. "+str(round(time))+" "+suffix
+						title=" 1. "+str(round(time))+" "+suffix
 					))
 							
 						
