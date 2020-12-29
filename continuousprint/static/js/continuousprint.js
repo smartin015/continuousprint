@@ -19,10 +19,14 @@ $(function() {
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
+          
+            
+		}
+        self.onStartup = function() {
             $.ajax({
 				url: "plugin/continuousprint/looped,
 				type: "GET",
-				dataType: "string",
+				dataType: "text",
 				headers: {"X-Api-Key":UI_API_KEY},
 				success: function(c) {
 					if(c.looped=="true"){
@@ -32,8 +36,8 @@ $(function() {
                     }
 				},
 			});
-            
-		}
+        }
+
 		
 		
 		self.loadQueue = function() {
