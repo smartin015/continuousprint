@@ -168,6 +168,12 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			
 			
 	##~~ APIs
+	@octoprint.plugin.BlueprintPlugin.route("/looped", methods=["GET"])
+	@restricted_access
+	def looped(self):
+		loop2=self._settings.get(["looped"])
+		return loop2
+		
 	@octoprint.plugin.BlueprintPlugin.route("/loop", methods=["GET"])
 	@restricted_access
 	def loop(self):
