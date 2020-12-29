@@ -84,23 +84,26 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				item["times_run"] = 0
 			item["times_run"]+=1;
 			#Add to the print History
-			for i in range(0,len(print_history)-1):
-				if item["path"]==print_history[i]["path"]:
-					print_history[i]=dict(
-						path = payload["path"],
-						name = payload["name"],
-						time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
-						times_run =  print_history[i]["times_run"]+1,
-						title = print_history[i]["title"]+" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
-					)
-				else:
-					print_history.append(dict(
-						path = payload["path"],
-						name = payload["name"],
-						time = payload["time"],
-						times_run =  item["times_run"],
-						title=" 1. "+str(round(time))+" "+suffix
-					))
+			InPrintHistory=False
+			if len(print_history)>0:
+				for i in range(0,len(print_history)-1):
+					if item["path"]==print_history[i]["path"]:
+						print_history[i]=dict(
+							path = payload["path"],
+							name = payload["name"],
+							time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
+							times_run =  print_history[i]["times_run"]+1,
+							title = print_history[i]["title"]+" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
+						)
+						InPrintHistory=True
+			if !InPrintHistory:
+				print_history.append(dict(
+					path = payload["path"],
+					name = payload["name"],
+					time = payload["time"],
+					times_run =  item["times_run"],
+					title=" 1. "+str(round(time))+" "+suffix
+				))
 							
 						
 						
