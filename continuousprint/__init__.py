@@ -26,6 +26,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
 			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished",
 			looped="false"
+			#print_history="[]"
+			#print history will be added to the settings
 		)
 
 
@@ -81,17 +83,35 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					suffix= "days"
 			if "times_run" not in item:
 				item["times_run"] = 0
-				TempTime=" 1. "+str(round(time))+" "+suffix
-			else:
-				if item["times_run"]>0:
-					self.print_history.pop()
+			for i in range(0,len(self.print_history)-1):
+				if item["path"]==self.print_history[i]["path"]:
+					self.print_history[i]=dict(
+						path = payload["path"],
+						name = payload["name"],
+						time = (self.print_history[i]["time"]+payload["time"])/(self.print_history[i]["times_run"]+1),
+						times_run =  self.print_history[i]["times_run"]+1,
+						title = self.print_history[i]["title"]+" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
+					)
+				else:
+					self.print_history.append(dict(
+						path = payload["path"],
+						name = payload["name"],
+						time = self.time,
+						times_run =  item["times_run"],
+						title==" 1. "+str(round(time))+" "+suffix
+					))
+							
+						
+						
+						
 				TempTime+=" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
 
-			item["times_run"] += 1
+			
 			self.time=(self.time + payload["time"])/item["times_run"]
 			
 			# Add to the history
 			self.print_history.append(dict(
+				path = payload["path"],
 				name = payload["name"],
 				time = self.time,
 				times_run =  item["times_run"],
