@@ -16,8 +16,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False
-	time = 0 #temporary variable for storing average time for a group of prints
-
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
@@ -84,6 +82,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					suffix= "days"
 			if "times_run" not in item:
 				item["times_run"] = 0
+			item["times_run"]+=1;
 			#Add to the print History
 			for i in range(0,len(print_history)-1):
 				if item["path"]==print_history[i]["path"]:
@@ -98,7 +97,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					print_history.append(dict(
 						path = payload["path"],
 						name = payload["name"],
-						time = self.time,
+						time = payload["time"],
 						times_run =  item["times_run"],
 						title=" 1. "+str(round(time))+" "+suffix
 					))
@@ -106,11 +105,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 						
 						
 						
-				TempTime+=" " + str(item["times_run"]+1)+". "+str(round(time))+" "+suffix
-
-			
-			self.time=(self.time + payload["time"])/item["times_run"]
-			
+						
 			
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
