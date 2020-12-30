@@ -16,7 +16,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False
-	self.item=[]
+	item=[];
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
