@@ -34,6 +34,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	##~~ StartupPlugin mixin
 	def on_after_startup(self):
 		self._logger.info("Continuous Print Plugin started")
+		self._settings.set(["cp_print_history"], "[]")#Clear Print History
 	
 	
 	
@@ -154,7 +155,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		self._printer.commands(self.parse_gcode(bed_clearing_script))
 		
 	def complete_queue(self):
-		self._settings.set(["cp_print_history"], "[]")#Clear Print Hostory
 		self.enabled = False # Set enabled to false
 		self._plugin_manager.send_plugin_message(self._identifier, dict(type="complete", msg="Print Queue Complete"))
 		queue_finished_script = self._settings.get(["cp_queue_finished"]).split("\n")
