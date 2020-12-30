@@ -16,6 +16,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False
+	self.item=[]
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
@@ -69,8 +70,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
 		print_history = json.loads(self._settings.get(["cp_print_history"]))
-		item = queue[0]
-		if payload["path"] == item["path"] and item["count"] > 0:
+		self.item = queue[0]
+		if payload["path"] == self.item["path"] and self.item["count"] > 0:
 			
 			# check to see if loop count is set. If it is increment times run.
 			time=payload["time"]/60;
@@ -81,14 +82,14 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				if time>24:
 					time= time/24
 					suffix= "days"
-			if "times_run" not in item:
-				item["times_run"] = 0
-			item["times_run"]+=1;
+			if "times_run" not in self.item:
+				self.item["times_run"] = 0
+			self.item["times_run"]+=1
 			#Add to the print History
 			InPrintHistory=False
 			if len(print_history)>0:
 				for i in range(0,len(print_history)-1):
-					if item["path"]==print_history[i]["path"] and InPrintHistory != True:
+					if self.item["path"]==print_history[i]["path"] and InPrintHistory != True:
 						print_history[i]=dict(
 							path = payload["path"],
 							name = payload["name"],
@@ -102,7 +103,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					path = payload["path"],
 					name = payload["name"],
 					time = payload["time"],
-					times_run =  item["times_run"],
+					times_run =  self.item["times_run"],
 					title=time+suffix
 				))
 							
@@ -114,7 +115,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
 			# if looped is True requeue the item.
-			if (item["times_run"] >= item["count"]):
+			if (self.item["times_run"] >= self.item["count"]):
 				queue.pop(0)
 				LOOPED=self._settings.get(["cp_looped"])
 				if LOOPED=="false":
@@ -122,8 +123,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				if LOOPED=="true":
 					self.looped=True
 				if self.looped==True and item!=None:
-					item["times_run"] = 0
-					queue.append(item)
+					self.item["times_run"] = 0
+					queue.append(self.item)
 			#else:
 				#queue[0]=item
 					
