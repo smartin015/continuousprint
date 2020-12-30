@@ -122,7 +122,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					self.looped=False
 				if LOOPED=="true":
 					self.looped=True
-				if self.looped==True and item!=None:
+				if self.looped==True and self.item!=None:
 					self.item["times_run"] = 0
 					queue.append(self.item)
 			#else:
