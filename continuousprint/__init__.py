@@ -283,7 +283,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@octoprint.plugin.BlueprintPlugin.route("/startqueue", methods=["GET"])
 	@restricted_access
 	def start_queue(self):
-		self.print_history = []
+		self._settings.set(["cp_print_history"], "[]")#Clear Print History
 		self.paused = False
 		self.enabled = True # Set enabled to true
 		self.start_next_print()
