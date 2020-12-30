@@ -16,7 +16,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	enabled = False
 	paused = False
 	looped = False
-	item=[];
+	item = None;
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
@@ -36,6 +36,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def on_after_startup(self):
 		self._logger.info("Continuous Print Plugin started")
 		self._settings.set(["cp_print_history"], "[]")#Clear Print History
+		self._settings.save()
 	
 	
 	
@@ -130,6 +131,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 					
 			
 			self._settings.set(["cp_queue"], json.dumps(queue))
+			self._settings.save()
 			self._settings.set(["cp_print_history"], json.dumps(print_history))
 			self._settings.save()
 
@@ -284,6 +286,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def start_queue(self):
 		self._settings.set(["cp_print_history"], "[]")#Clear Print History
+		self._settings.save()
 		self.paused = False
 		self.enabled = True # Set enabled to true
 		self.start_next_print()
