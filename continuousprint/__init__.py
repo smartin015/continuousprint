@@ -116,9 +116,10 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# if looped is True requeue the item.
 			if (item["times_run"] >= item["count"]):
 				queue.pop(0)
-				if self._settings.get(["cp_looped"])=="false":
+				LOOPED=self._settings.get(["cp_looped"])
+				if LOOPED=="false":
 					self.looped=False
-				if self._settings.get(["cp_looped"])=="true":
+				if LOOPED=="true":
 					self.looped=True
 				if self.looped==True and item!=None:
 					item["times_run"] = 0
