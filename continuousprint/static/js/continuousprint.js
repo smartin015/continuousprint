@@ -94,7 +94,15 @@ $(function() {
             };    
                         
                         
-            self.reloadQueue = function(data,CMD) {        
+            self.reloadQueue = function(data,CMD) {
+                $.ajax({
+				url: "plugin/continuousprint/queue",
+				type: "GET",
+				dataType: "json",
+				headers: {
+					"X-Api-Key":UI_API_KEY,
+				},
+				success:function(r){
                 if(CMD=="ADD"){
                     var file = data;
                     var row;
@@ -129,6 +137,8 @@ $(function() {
 
                     });
                 $('#queue_list').append(row);
+                }
+            }
                 
                         
 
