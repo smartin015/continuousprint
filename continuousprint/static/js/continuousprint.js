@@ -24,7 +24,7 @@ $(function() {
        
 		
 		
-				self.loadQueue = function() {
+		self.loadQueue = function() {
             $('#queue_list').html("");
 			$.ajax({
 				url: "plugin/continuousprint/queue",
@@ -129,7 +129,7 @@ $(function() {
 
                     });
                 $('#queue_list').append(row);
-                }
+                
                         
 
             });
