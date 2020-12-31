@@ -16,6 +16,7 @@ $(function() {
 		self.is_paused = ko.observable();
         self.is_looped = ko.observable();
         self.ncount=1;
+        self.itemsInQueue=0;
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
@@ -25,7 +26,7 @@ $(function() {
 		
 		
 		self.loadQueue = function() {
-			$('#queue_list').html("");
+            $('#queue_list').html("");
 			$.ajax({
 				url: "plugin/continuousprint/queue",
 				type: "GET",
@@ -34,6 +35,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
+                    self.itemsInQueue=r.queue.length;
 					if (r.queue.length > 0) {
 						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
@@ -89,7 +91,49 @@ $(function() {
 					}
 				}
 			});
-		};
+		};    
+                        
+                        
+            self.reloadQueue = function(data,CMD) {
+                if(CMD=="ADD"){
+                    var file = data;
+                    var row;
+                    var Enter = false;
+                    var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+self.itemsInQueue+"'></i>&nbsp;";
+                    if (self.itemsInQueue == 0) {other = "";}
+                    if (self.itemsInQueue == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp;";}
+                    row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(self.itemsInQueue==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+self.itemsInQueue+"' value='" + file.count.toString() + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+self.itemsInQueue+"'></i></div></div></div>");
+                    row.find(".fa-minus").click(function() {
+                        self.removeFromQueue($(this).data("index"));
+                    });
+                    row.find(".fa-chevron-up").click(function() {
+                        self.moveUp($(this).data("index"));
+                    });
+                    row.find(".fa-chevron-down").click(function() {
+                        self.moveDown($(this).data("index"));
+                    });
+                    row.find(".fa-text").keydown(function() {
+                        if (event.keyCode === 13){
+                            Enter = true;
+                        }else{
+                            Enter = false;
+                        }
+                    });
+                    row.find(".fa-text").keyup(function() {
+                        if (Enter){
+                            var ncount = parseInt(this.value);
+                            self.changecount($(this).data("index"),ncount);
+                        }
+                    });
+                $('#queue_list').append(row);
+                    self.itemsInQueue +=1;//must be AFTER
+                }
+            };
+
+                
+                        
+
+                      
 	    self.checkLooped = function(){
             $.ajax({
 				url: "plugin/continuousprint/looped",
@@ -182,7 +226,7 @@ $(function() {
 				},
 				data: data,
 				success: function(c) {
-					self.loadQueue();
+					self.reloadQueue(data,"ADD");
 				},
 				error: function() {
 					self.loadQueue();
