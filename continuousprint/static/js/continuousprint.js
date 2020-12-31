@@ -36,7 +36,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-                    if(data==undefined){
+                    if(CMD!="ADD"){
                         if (r.queue.length > 0) {
                             $('#queue_list').html("");
                             for(var i = 0; i < r.queue.length; i++) {
@@ -48,7 +48,7 @@ $(function() {
                                     if (i == 0) {other = "";}
                                     if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
                                     row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+i+"' value='" + file.count.toString() + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
-                                    row.find(".fa-minus").click(function() {
+                                    row.find(".fa-minus").click(function() {r
                                         self.removeFromQueue($(this).data("index"));
                                     });
                                     row.find(".fa-chevron-up").click(function() {
