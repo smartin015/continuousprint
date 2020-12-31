@@ -100,9 +100,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			
 			#Add to the print History
 			self.add_to_print_history(payload,self.item)
-							
-			self._settings.set(["cp_print_history"], json.dumps(print_history))
-			self._settings.save()
 
 			# Clear down the bed
 			self.clear_bed()
@@ -123,6 +120,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		return script
 	
 	def add_to_print_history(payload,item):
+		print_history = json.loads(self._settings.get(["cp_print_history"]))
+		#calculate time
 		time=payload["time"]/60;
 		suffix="mins"
 		if time>60:
@@ -131,7 +130,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			if time>24:
 				time= time/24
 				suffix= "days"
-		print_history = json.loads(self._settings.get(["cp_print_history"]))
 		#Add to the print History
 		InPrintHistory=False
 		if len(print_history)>0:
