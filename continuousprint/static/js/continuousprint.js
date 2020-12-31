@@ -25,9 +25,6 @@ $(function() {
 		
 		
 		self.loadQueue = function(data,CMD) {
-            if(CMD != "ADD"){
-			$('#queue_list').html("");
-            }
 			$.ajax({
 				url: "plugin/continuousprint/queue",
 				type: "GET",
@@ -36,7 +33,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-                    if(CMD!="ADD"){
+                    if(data==undefined){
                         if (r.queue.length > 0) {
                             $('#queue_list').html("");
                             for(var i = 0; i < r.queue.length; i++) {
