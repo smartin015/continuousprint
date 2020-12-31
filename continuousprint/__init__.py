@@ -35,7 +35,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	##~~ StartupPlugin mixin
 	def on_after_startup(self):
 		self._logger.info("Continuous Print Plugin started")
-		self._settings.set(["cp_print_history"], "[]")#Clear Print History
 		self._settings.save()
 	
 	
