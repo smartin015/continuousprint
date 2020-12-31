@@ -16,6 +16,7 @@ $(function() {
 		self.is_paused = ko.observable();
         self.is_looped = ko.observable();
         self.ncount=1;
+        self.itemsInQueue=0;
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
@@ -34,7 +35,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-
+                    self.itemsInQueue=r.queue.length;
 					if (r.queue.length > 0) {
 						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
@@ -95,22 +96,17 @@ $(function() {
                         
             self.reloadQueue = function(data,CMD) {
 
-                $.ajax({
-				url: "plugin/continuousprint/queue",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
+                
 				success:function(r){
                 if(CMD=="ADD"){
+                    self.itemsInQueue +=1;
                     var file = data;
                     var row;
                     var Enter = false;
-                    var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+r.queue.length+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+r.queue.length+"'></i>&nbsp;";
-                    if (r.queue.length == 0) {other = "";}
-                    if (r.queue.length == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+r.queue.length+"'></i>&nbsp;";}
-                    row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(r.queue.length==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+r.queue.length+"' value='" + file.count.toString() + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+r.queue.length+"'></i></div></div></div>");
+                    var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+self.itemsInQueue+"'></i>&nbsp;";
+                    if (self.itemsInQueue == 1) {other = "";}
+                    if (self.itemsInQueue == 2) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp;";}
+                    row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(self.itemsInQueue==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+self.itemsInQueue+"' value='" + file.count.toString() + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+self.itemsInQueue+"'></i></div></div></div>");
                     row.find(".fa-minus").click(function() {
                         self.removeFromQueue($(this).data("index"));
                     });
@@ -139,11 +135,6 @@ $(function() {
                 $('#queue_list').append(row);
                 }
             }
-
-
-
-
-            });
             };
 
                 
