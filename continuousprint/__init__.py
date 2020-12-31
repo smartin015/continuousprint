@@ -104,8 +104,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			# Clear down the bed
 			self.clear_bed()
 
-			# Tell the UI to reload
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
 		else:
 			enabled = False
 
@@ -143,7 +141,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 						title = str(time)+suffix
 					)
 					InPrintHistory=True
-		if InPrintHistory != True:
+		if InPrintHistory == False:
 			print_history.append(dict(
 				path = payload["path"],
 				name = payload["name"],
@@ -151,9 +149,13 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				times_run =  item["times_run"],
 				title=str(time)+suffix
 			))
-
+			
+		#save print history
 		self._settings.set(["cp_print_history"], json.dumps(print_history))
 		self._settings.save()
+		
+		# Tell the UI to reload
+		self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
 
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
