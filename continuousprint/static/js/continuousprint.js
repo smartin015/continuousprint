@@ -95,9 +95,6 @@ $(function() {
                         
                         
             self.reloadQueue = function(data,CMD) {
-
-                
-				success:function(r){
                 if(CMD=="ADD"){
                     self.itemsInQueue +=1;
                     var file = data;
@@ -122,19 +119,15 @@ $(function() {
                         }else{
                             Enter = false;
                         }
-
                     });
                     row.find(".fa-text").keyup(function() {
                         if (Enter){
                             var ncount = parseInt(this.value);
                             self.changecount($(this).data("index"),ncount);
                         }
-
-
                     });
                 $('#queue_list').append(row);
                 }
-            }
             };
 
                 
