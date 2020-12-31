@@ -71,7 +71,6 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
 		LOOPED=self._settings.get(["cp_looped"])
-		print_history = json.loads(self._settings.get(["cp_print_history"]))
 		self.item = queue[0]
 		if payload["path"] == self.item["path"] and self.item["count"] > 0:
 			
@@ -98,41 +97,12 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
 			
-			time=payload["time"]/60;
-			suffix="mins"
-			if time>60:
-				time = time/60
-				suffix = "hours"
-				if time>24:
-					time= time/24
-					suffix= "days"
 			
 			#Add to the print History
-			InPrintHistory=False
-			if len(print_history)>0:
-				for i in range(0,len(print_history)-1):
-					if self.item["path"]==print_history[i]["path"] and InPrintHistory != True:
-						print_history[i]=dict(
-							path = payload["path"],
-							name = payload["name"],
-							time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
-							times_run =  print_history[i]["times_run"]+1,
-							title = str(time)+suffix
-						)
-						InPrintHistory=True
-			if InPrintHistory != True:
-				print_history.append(dict(
-					path = payload["path"],
-					name = payload["name"],
-					time = payload["time"],
-					times_run =  self.item["times_run"],
-					title=str(time)+suffix
-				))
+			self.add_to_print_history(payload,self.item)
 							
 			self._settings.set(["cp_print_history"], json.dumps(print_history))
 			self._settings.save()
-			
-			
 
 			# Clear down the bed
 			self.clear_bed()
@@ -151,6 +121,41 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			else:
 				script.append(x)
 		return script
+	
+	def add_to_print_history(payload,item):
+		time=payload["time"]/60;
+		suffix="mins"
+		if time>60:
+			time = time/60
+			suffix = "hours"
+			if time>24:
+				time= time/24
+				suffix= "days"
+		print_history = json.loads(self._settings.get(["cp_print_history"]))
+		#Add to the print History
+		InPrintHistory=False
+		if len(print_history)>0:
+			for i in range(0,len(print_history)-1):
+				if item["path"]==print_history[i]["path"] and InPrintHistory != True:
+					print_history[i]=dict(
+						path = payload["path"],
+						name = payload["name"],
+						time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
+						times_run =  print_history[i]["times_run"]+1,
+						title = str(time)+suffix
+					)
+					InPrintHistory=True
+		if InPrintHistory != True:
+			print_history.append(dict(
+				path = payload["path"],
+				name = payload["name"],
+				time = payload["time"],
+				times_run =  item["times_run"],
+				title=str(time)+suffix
+			))
+
+		self._settings.set(["cp_print_history"], json.dumps(print_history))
+		self._settings.save()
 
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
