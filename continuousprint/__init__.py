@@ -316,6 +316,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def get_assets(self):
 		return dict(
 			js=["js/continuousprint.js"]
+			css=["css/continuousprint.css"]
 		)
 
 
