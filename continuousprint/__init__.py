@@ -69,8 +69,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="updatefiles", msg=""))
 
 	def complete_print(self, payload):
-		self.item = queue[0]
 		queue = json.loads(self._settings.get(["cp_queue"]))
+		self.item = queue[0]
 		if payload["path"] == self.item["path"] and self.item["count"] > 0:
 			print_history = json.loads(self._settings.get(["cp_print_history"]))
 			
