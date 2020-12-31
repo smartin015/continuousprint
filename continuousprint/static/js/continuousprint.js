@@ -25,7 +25,7 @@ $(function() {
 		
 		
 		self.loadQueue = function() {
-			$('#queue_list').html("");
+            $('#queue_list').html("");
 			$.ajax({
 				url: "plugin/continuousprint/queue",
 				type: "GET",
@@ -34,6 +34,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
+
 					if (r.queue.length > 0) {
 						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
@@ -91,6 +92,69 @@ $(function() {
 			});
 		};
         self.reloadQueue = function(data,CMD) {
+
+                        if (r.queue.length > 0) {
+                            $('#queue_list').html("");
+                            for(var i = 0; i < r.queue.length; i++) {
+                                var file = r.queue[i];
+                                var row;
+                                var Enter = false;
+                                if (file["time"] == undefined) {
+                                    var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
+                                    if (i == 0) {other = "";}
+                                    if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
+                                    row = $("<div style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+i+"' value='" + file.count.toString() + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
+                                    row.find(".fa-minus").click(function() {r
+                                        self.removeFromQueue($(this).data("index"));
+                                    });
+                                    row.find(".fa-chevron-up").click(function() {
+                                        self.moveUp($(this).data("index"));
+                                    });
+                                    row.find(".fa-chevron-down").click(function() {
+                                        self.moveDown($(this).data("index"));
+                                    });
+                                    row.find(".fa-text").keydown(function() {
+                                        if (event.keyCode === 13){
+                                            Enter = true;
+                                        }else{
+                                            Enter = false;
+                                        }
+
+                                    });
+                                    row.find(".fa-text").keyup(function() {
+                                        if (Enter){
+                                            var ncount= parseInt(this.value);
+                                            self.changecount($(this).data("index"),ncount);
+                                        }
+                                    });
+                                } else {
+                                    var time = file.time / 60;
+                                    var suffix = " mins";
+                                    if (time > 60) {
+                                        time = time / 60;
+                                        suffix = " hours";
+                                        if (time > 24) {
+                                            time = time / 24;
+                                            suffix = " days";
+                                        }
+                                    
+
+                                    row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class=file-done-container' >Complete: <div class='file-done-name>" + file.name + "</div></div> <div class='time-data'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div class='previous-prints'>" + file.title + "</div></div>");
+                                }
+                                $('#queue_list').append(row);
+                            
+                            }
+                            }
+                        } else {
+                            $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
+                        }
+                    }
+                    });
+            };    
+                        
+                        
+            self.reloadQueue = function(data,CMD) {
+
                 $.ajax({
 				url: "plugin/continuousprint/queue",
 				type: "GET",
@@ -138,8 +202,15 @@ $(function() {
 
 
 
+
             });
             };
+
+                
+                        
+
+            });
+            };           
 	    self.checkLooped = function(){
             $.ajax({
 				url: "plugin/continuousprint/looped",
@@ -232,7 +303,7 @@ $(function() {
 				},
 				data: data,
 				success: function(c) {
-					self.loadQueue();
+					self.reloadQueue(data,"ADD");
 				},
 				error: function() {
 					self.loadQueue();
