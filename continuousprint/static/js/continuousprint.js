@@ -25,7 +25,7 @@ $(function() {
 		
 		
 		self.loadQueue = function(data,CMD) {
-            if(data==undefined){
+            if(CMD != "ADD"){
 			$('#queue_list').html("");
             }
 			$.ajax({
