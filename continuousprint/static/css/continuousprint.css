@@ -1,1 +1,57 @@
-
+#tab_plugin_continuousprint .queue-row-container {
+  width:100%;
+  display: flex; 
+  flex-wrap: nowrap; 
+  flex-direction: row; 
+  justify-content: space-between; 
+  align-items: stretch;
+  
+}
+#tab_plugin_continuousprint .queue-inner-row-container {
+  display: flex; 
+  flex-wrap: nowrap; 
+  flex-direction: row; 
+  justify-content: flex-start; 
+  align-items: stretch; 
+  flex-shrink:2;
+  max-width:90%;
+  
+}
+#tab_plugin_continuousprint .count-box{
+  dmin-width:30px;
+  max-width: 30px; 
+  max-height:8px;
+  
+}
+#tab_plugin_continuousprint .file-name{
+  flex-shrink: 10; 
+  overflow-x:scroll;
+  max-width=96%;
+  
+}
+#tab_plugin_continuousprint .file-done-container{
+  display:flex; 
+  flex-wrap: nowrap; 
+  justify-content:flex-start;
+  max-width:60%; 
+  min-width:50px; 
+  flex-shrink:10;
+  
+}
+#tab_plugin_continuousprint .file-done-name{
+  flex-shrink: 10;
+  overflow-x:scroll;
+  
+}
+#tab_plugin_continuousprint .time-data{
+  flex-grow:2; 
+  flex-shrink:2; 
+  overflow-x: scroll;
+  
+}
+#tab_plugin_continuousprint .previous-prints{
+  max-width:40%; 
+  flex-shrink:20; 
+  overflow-x:scroll;
+  
+}
