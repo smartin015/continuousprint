@@ -106,9 +106,9 @@ $(function() {
                         
             self.btwnLoadImage = function(data,CMD){
                 if(CMD=="ADD"){
-                    if(self.itemsInQueue==0)$('#queue_list').appendChild(image1);
-                    if(self.itemsInQueue==1)$('#queue_list').appendChild(image2);
-                    if(self.itemsInQueue>1)$('#queue_list').appendChild(image3);
+                    if(self.itemsInQueue==0)$('#queue_list').append(image1);
+                    if(self.itemsInQueue==1)$('#queue_list').append(image2);
+                    if(self.itemsInQueue>1)$('#queue_list').append(image3);
                 }
                 self.reloadQueue(data,CMD);
             }
