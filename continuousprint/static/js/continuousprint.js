@@ -148,7 +148,7 @@ $(function() {
                        $(this).replaceWith(div);
                        $('#foo').fadeIn("slow");
                     });
-                n="img"+self.itemsInQueue;
+                var n="img"+self.itemsInQueue;
                 $('#'+n).fadeOut("slow", function(){
                    var div = $("<div id='foo'>test2</div>").hide();
                    $(this).replaceWith(div);
