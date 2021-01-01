@@ -132,8 +132,7 @@ $(function() {
                             self.changecount($(this).data("index"),ncount);
                         }
                     });
-                    n="#img"+self.itemsInQueue
-                $(n).html(row);
+                $('#queue_list').append(row);
                     self.itemsInQueue +=1;//must be AFTER
                 }
             }
