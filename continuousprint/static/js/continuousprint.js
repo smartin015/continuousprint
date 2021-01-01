@@ -233,7 +233,7 @@ $(function() {
 				},
 				data: data,
 				success: function(c) {
-					self.loadQueue();
+					self.btwnLoadImage(data,"ADD");
 				},
 				error: function() {
 					self.loadQueue();
@@ -294,7 +294,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success: function(c) {
-					self.reloadQueue(data,"SUB");
+					self.LoadQueue();
 				},
 				error: function() {
 					self.loadQueue();
