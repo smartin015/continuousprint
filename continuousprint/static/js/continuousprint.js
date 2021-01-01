@@ -95,9 +95,9 @@ $(function() {
                         
             self.btwnLoadImage = function(data,CMD){
                 if(CMD=="ADD"){
-                    if(self.ItemsInQueue==0)$('#queue_list').append("<img id='img" + self.itemsInQueue+ "' src='/plugin/continuousprint/static/img/1.png'>");
-                    if(self.ItemsInQueue==1)$('#queue_list').append("<img id='img" + self.itemsInQueue+ "' src='/plugin/continuousprint/static/img/2.png'>");
-                    if(self.ItemsInQueue>1)$('#queue_list').append("<img id='img" + self.itemsInQueue+ "' src='/plugin/continuousprint/static/img/3.png'>");
+                    if(self.ItemsInQueue==0)$('#queue_list').append("<img id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/1.png'>");
+                    if(self.ItemsInQueue==1)$('#queue_list').append("<img id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/2.png'>");
+                    if(self.ItemsInQueue>1)$('#queue_list').append("<img id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/3.png'>");
                 }
                 self.reloadQueue(data,CMD);
             }
