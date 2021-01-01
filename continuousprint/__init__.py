@@ -129,7 +129,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				suffix= "days"
 		#Add to the print History
 		InPrintHistory=False
-		if len(print_history)>1:
+		if len(print_history)>0:
 			for i in range(0,len(print_history)-1):
 				if item["path"]==print_history[i]["path"] and InPrintHistory != True:
 					print_history[i]=dict(
@@ -137,17 +137,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 						name = payload["name"],
 						time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
 						times_run =  print_history[i]["times_run"]+1,
-						title = str(time)+suffix
-					)
-					InPrintHistory=True
-		elif len(print_history)==1:
-			if item["path"]==print_history[0]["path"] and InPrintHistory != True:
-					print_history[0]=dict(
-						path = payload["path"],
-						name = payload["name"],
-						time = (print_history[0]["time"]+payload["time"])/(print_history[0]["times_run"]+1),
-						times_run =  print_history[0]["times_run"]+1,
-						title = str(time)+suffix
+						title = print_history[i]["title"]+" 2. " + str(time)+suffix
 					)
 					InPrintHistory=True
 		if InPrintHistory == False:
@@ -156,7 +146,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				name = payload["name"],
 				time = payload["time"],
 				times_run =  item["times_run"],
-				title=str(time)+suffix
+				title="Print Times: 1. "+str(int(time))+suffix
 			))
 			
 		#save print history
