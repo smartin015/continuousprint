@@ -17,11 +17,22 @@ $(function() {
         self.is_looped = ko.observable();
         self.ncount=1;
         self.itemsInQueue=0;
+        
 		self.onBeforeBinding = function() {
 			self.loadQueue();
 			self.is_paused(false);
-            self.checkLooped();            
+            self.checkLooped();
+            self.preloadImages();
 		}
+        
+        self.preloadImages(){
+            var image1 = new Image();
+            var image1.src = 'http://octopi.local/plugin/continuousprint/static/img/1.png';
+            var image2 = new Image();
+            var image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
+            var image3 = new Image();
+            var image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
+        }
        
 		
 		
@@ -95,9 +106,9 @@ $(function() {
                         
             self.btwnLoadImage = function(data,CMD){
                 if(CMD=="ADD"){
-                    if(self.itemsInQueue==0)$('#queue_list').append("<p><img style='width:100%;height:auto;'id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/1.png'>");
-                    if(self.itemsInQueue==1)$('#queue_list').append("<p><img style='width:100%;height:auto;'id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/2.png'>");
-                    if(self.itemsInQueue>1)$('#queue_list').append("<p><img style='width:100%;height:auto;'id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/3.png'>");
+                    if(self.itemsInQueue==0)$('#queue_list').appendChild(image1);
+                    if(self.itemsInQueue==1)$('#queue_list').appendChild(image2);
+                    if(self.itemsInQueue>1)$('#queue_list').appendChild(image3);
                 }
                 self.reloadQueue(data,CMD);
             }
@@ -132,9 +143,17 @@ $(function() {
                             self.changecount($(this).data("index"),ncount);
                         }
                     });
-                $('#queue_list').append(row);
-                    self.itemsInQueue +=1;//must be AFTER
-                }
+                    $('#img').fadeOut("slow", function(){
+                       var div = $(row).hide();
+                       $(this).replaceWith(div);
+                       $('#foo').fadeIn("slow");
+                    });
+                n="img"+self.itemsInQueue;
+                $('#'+n).fadeOut("slow", function(){
+                   var div = $("<div id='foo'>test2</div>").hide();
+                   $(this).replaceWith(div);
+                   $('#'+n).fadeIn(row);
+                });
             }
 
                 
