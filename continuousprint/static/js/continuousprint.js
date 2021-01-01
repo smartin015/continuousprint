@@ -95,9 +95,9 @@ $(function() {
                         
             self.btwnLoadImage = function(data,CMD){
                 if(CMD=="ADD"){
-                    if(self.itemsInQueue==0)$('#queue_list').append("<p><img id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/1.png'>");
-                    if(self.itemsInQueue==1)$('#queue_list').append("<p><img id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/2.png'>");
-                    if(self.itemsInQueue>1)$('#queue_list').append("<p><img id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/3.png'>");
+                    if(self.itemsInQueue==0)$('#queue_list').append("<p><img style='width:100%;height:auto;'id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/1.png'>");
+                    if(self.itemsInQueue==1)$('#queue_list').append("<p><img style='width:100%;height:auto;'id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/2.png'>");
+                    if(self.itemsInQueue>1)$('#queue_list').append("<p><img style='width:100%;height:auto;'id='img" + self.itemsInQueue+ "' src='http://octopi.local/plugin/continuousprint/static/img/3.png'>");
                 }
                 self.reloadQueue(data,CMD);
             }
@@ -132,7 +132,8 @@ $(function() {
                             self.changecount($(this).data("index"),ncount);
                         }
                     });
-                $('#img'+self.itemsInQueue).html(row);
+                    n="#img"+self.itemsInQueue
+                $(n)..html(row);
                     self.itemsInQueue +=1;//must be AFTER
                 }
             }
