@@ -82,7 +82,7 @@ $(function() {
 									}
 								}
 								
-								row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class=file-done-container' >Complete: <div class='file-done-name>" + file.name + "</div></div> <div class='time-data'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div class='previous-prints'>" + file.title + "</div></div>")
+								row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class=file-done-container' ><p>Complete:</p> <div class='file-done-name>" + file.name + "</div></div> <div class='time-data'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div class='previous-prints'>" + file.title + "</div></div></div>")
 							}
 							$('#queue_list').append(row);
 						}
