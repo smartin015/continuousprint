@@ -132,7 +132,7 @@ $(function() {
                             self.changecount($(this).data("index"),ncount);
                         }
                     });
-                $('#queue_list').getElementsByID("Img"+self.itemsInQueue).html(row);
+                $('#queue_list').getElementsByID("img"+self.itemsInQueue).html(row);
                     self.itemsInQueue +=1;//must be AFTER
                 }
             }
