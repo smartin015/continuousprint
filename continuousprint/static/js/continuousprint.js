@@ -133,7 +133,7 @@ $(function() {
                         }
                     });
                     n="#img"+self.itemsInQueue
-                $(n)..html(row);
+                $(n).html(row);
                     self.itemsInQueue +=1;//must be AFTER
                 }
             }
