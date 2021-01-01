@@ -116,7 +116,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				script.append(x)
 		return script
 	
-	def add_to_print_history(payload,item):
+	def add_to_print_history(self,payload,item):
 		print_history = json.loads(self._settings.get(["cp_print_history"]))
 		#calculate time
 		time=payload["time"]/60;
