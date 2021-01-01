@@ -128,13 +128,6 @@ $(function() {
                 $('#queue_list').append(row);
                     self.itemsInQueue +=1;//must be AFTER
                 }
-                else if(CMD="SUB"){
-                    $('#queue_list').getElementsByClassName(data).html("");
-                    for(var i=parseInt(data)+1;i<=self.ItemsInQueue;i++){
-                        $('#queue_list').getElementsByClassName(i.toString()).className=i;
-                    }
-                       
-                }
             };
 
                 
@@ -233,7 +226,7 @@ $(function() {
 				},
 				data: data,
 				success: function(c) {
-					self.reloadQueue(data,"ADD");
+					self.loadQueue();
 				},
 				error: function() {
 					self.loadQueue();
