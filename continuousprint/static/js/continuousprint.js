@@ -25,11 +25,11 @@ $(function() {
 		}
         
        
-        self.image1 = new Image(0,0);
+        self.image1 = new Image(10,100);
         self.image1.src = 'http://octopi.local/plugin/continuousprint/static/img/1.png';
-        self.image2 = new Image(0,0);
+        self.image2 = new Image(10,100);
         self.image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
-        self.image3 = new Image(0,0);
+        self.image3 = new Image(10,100);
         self.image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
         
        
@@ -149,7 +149,7 @@ $(function() {
                     });
                 var n="img"+self.itemsInQueue;
                 $('#'+n).fadeOut("slow", function(){
-                   var div = $("<div id='foo'>test2</div>").hide();
+                   var div = $('#'+n).hide();
                    $(this).replaceWith(div);
                    $('#'+n).fadeIn(row);
                 });
