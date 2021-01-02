@@ -22,17 +22,16 @@ $(function() {
 			self.loadQueue();
 			self.is_paused(false);
             self.checkLooped();
-            self.preloadImages();
 		}
         
-        self.preloadImages(){
-            var image1 = new Image();
-            var image1.src = 'http://octopi.local/plugin/continuousprint/static/img/1.png';
-            var image2 = new Image();
-            var image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
-            var image3 = new Image();
-            var image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
-        }
+       
+        self.image1 = new Image(0,0);
+        self.image1.src = 'http://octopi.local/plugin/continuousprint/static/img/1.png';
+        self.image2 = new Image(0,0);
+        self.image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
+        self.image3 = new Image(0,0);
+        self.image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
+        
        
 		
 		
@@ -106,9 +105,9 @@ $(function() {
                         
             self.btwnLoadImage = function(data,CMD){
                 if(CMD=="ADD"){
-                    if(self.itemsInQueue==0)$('#queue_list').append(image1);
-                    if(self.itemsInQueue==1)$('#queue_list').append(image2);
-                    if(self.itemsInQueue>1)$('#queue_list').append(image3);
+                    if(self.itemsInQueue==0)$('#queue_list').append(self.image1);
+                    if(self.itemsInQueue==1)$('#queue_list').append(self.image2);
+                    if(self.itemsInQueue>1)$('#queue_list').append(self.image3);
                 }
                 self.reloadQueue(data,CMD);
             }
