@@ -31,11 +31,11 @@ $(function() {
         self.image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
         self.image3 = document.createElement("img")
         self.image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
-        self.image1.setAttribute('width', '100%');
+        self.image1.setAttribute('width', '105%');
         self.image1.setAttribute('height', 'auto');
-        self.image2.setAttribute('width', '100%');
+        self.image2.setAttribute('width', '105%');
         self.image2.setAttribute('height', 'auto');
-        self.image3.setAttribute('width', '100%');
+        self.image3.setAttribute('width', '105%');
         self.image3.setAttribute('height', 'auto');
         
         
@@ -154,12 +154,15 @@ $(function() {
                        $(this).replaceWith(div);
                        $('#foo').fadeIn("slow");
                     });
-                var n="img"+self.itemsInQueue;
+                /*var n="img"+self.itemsInQueue;
                 $('#'+n).fadeOut("slow", function(){
                    var div = $('#'+n).hide();
                    $(this).replaceWith(div);
                    $('#'+n).fadeIn(row);
                 });
+                */
+                $('#queue_list').append(row);
+                
             }
         }
 
@@ -250,6 +253,7 @@ $(function() {
 		}
 
 		self.addToQueue = function(data) {
+            self.reloadQueue(data,"ADD");
 			$.ajax({
 				url: "plugin/continuousprint/addqueue",
 				type: "POST",
@@ -259,7 +263,7 @@ $(function() {
 				},
 				data: data,
 				success: function(c) {
-					self.btwnLoadImage(data,"ADD");
+					
 				},
 				error: function() {
 					self.loadQueue();
