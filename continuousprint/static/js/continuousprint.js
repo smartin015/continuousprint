@@ -40,11 +40,11 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-                    self.itemsInQueue=r.queue.length;
-					if (r.queue.length > 0) {
+                    self.itemsInQueue=r.length;
+					if (r.length > 0) {
 						$('#queue_list').html("");
 						for(var i = 0; i < r.queue.length; i++) {
-							var file = r.queue[i];
+							var file = r[i];
 							var row;
                             var Enter = false;
 
@@ -98,11 +98,13 @@ $(function() {
 				headers: {
 					"X-Api-Key":UI_API_KEY,
 				},
-				success:function(r){
-                    self.itemsInQueue=r.queue.length;
+				success:function(s){
+                    self.itemsInQueue=s.length;
 					if (r.queue.length > 0) {
 						$('#print_history').html("");
-						for(var i = 0; i < r.queue.length; i++) {
+						for(var i = 0; i < s.length; i++) {
+                            var file = s[i];
+                            var row;
                             var time = file.time / 60;
                             var suffix = " mins";
                             if (time > 60) {
