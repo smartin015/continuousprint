@@ -89,7 +89,7 @@ $(function() {
                 
 		};    
                         
-            self.loadPrintHistory = function(Items){
+            self.loadPrintHistory = function(items){
                 $('#print_history').html("");
                 $.ajax({
 				url: "plugin/continuousprint/print_history",
@@ -119,7 +119,7 @@ $(function() {
                             $('#print_history').append(row);
                         }
                     
-                                } else if(Items=="empty"){
+                                } else if(items=="empty"){
                                     $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
                                 }
                        }
