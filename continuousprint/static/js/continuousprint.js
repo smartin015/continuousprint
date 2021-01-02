@@ -43,11 +43,10 @@ $(function() {
                     self.itemsInQueue=r.length;
 					if (r.length > 0) {
 						$('#queue_list').html("");
-						for(var i = 0; i < r.queue.length; i++) {
+						for(var i = 0; i < r.length; i++) {
 							var file = r[i];
 							var row;
                             var Enter = false;
-
                             var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
                             if (i == 0) {other = "";}
                             if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
@@ -100,7 +99,7 @@ $(function() {
 				},
 				success:function(s){
                     self.itemsInQueue=s.length;
-					if (r.queue.length > 0) {
+					if (s.length > 0) {
 						$('#print_history').html("");
 						for(var i = 0; i < s.length; i++) {
                             var file = s[i];
