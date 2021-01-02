@@ -220,13 +220,13 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def get_queue(self):
 		
-		return queue = json.loads(self._settings.get(["cp_queue"]))
+		return json.loads(self._settings.get(["cp_queue"]))
 	
 	@octoprint.plugin.BlueprintPlugin.route("/print_history", methods=["GET"])
 	@restricted_access
 	def get_print_history(self):
 		
-		return queue = self._settings.get(["print_history"])
+		return self._settings.get(["print_history"])
 	
 	@octoprint.plugin.BlueprintPlugin.route("/queueup", methods=["GET"])
 	@restricted_access
