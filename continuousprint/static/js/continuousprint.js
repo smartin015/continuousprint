@@ -104,20 +104,21 @@ $(function() {
 						$('#print_history').html("");
 						for(var i = 0; i < r.queue.length; i++) {
                             var time = file.time / 60;
-                                            var suffix = " mins";
-                                            if (time > 60) {
-                                                time = time / 60;
-                                                suffix = " hours";
-                                                if (time > 24) {
-                                                    time = time / 24;
-                                                    suffix = " days";
-                                                }
-                                            }
+                            var suffix = " mins";
+                            if (time > 60) {
+                                time = time / 60;
+                                suffix = " hours";
+                                if (time > 24) {
+                                    time = time / 24;
+                                    suffix = " days";
+                                }
+                            }
 
-                                            row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class=file-done-container' ><p>Complete:</p> <div class='file-done-name>" + file.name + "</div></div> <div class='time-data'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div class='previous-prints'>" + file.title + "</div></div></div>")
-                                        }
-                                        $('#print_history').append(row);
-                                    }
+                            row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class=file-done-container' ><p>Complete:</p> <div class='file-done-name>" + file.name + "</div></div> <div class='time-data'>average time: " + time.toFixed(0) + suffix + " Times run:" + file.times_run + "</div><div class='previous-prints'>" + file.title + "</div></div></div>")
+                       
+                            $('#print_history').append(row);
+                        }
+                    
                                 } else if(Items=="empty"){
                                     $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
                                 }
