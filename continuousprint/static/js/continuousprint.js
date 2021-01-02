@@ -313,7 +313,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success: function(c) {
-					self.LoadQueue();
+					self.loadQueue();
 				},
 				error: function() {
 					self.loadQueue();
