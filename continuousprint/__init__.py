@@ -220,12 +220,14 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@restricted_access
 	def get_queue(self):
 		queue = json.loads(self._settings.get(["cp_queue"]))
-		print_history = json.loads(self._settings.get(["cp_print_history"]))
-		for x in print_history:
-			queue.append(x)
-		
 		return flask.jsonify(queue=queue)
-		
+	
+	@octoprint.plugin.BlueprintPlugin.route("/queue", methods=["GET"])
+	@restricted_access
+	def get_queue(self):
+		print_history = json.loads(self._settings.get(["cp_queue"]))
+		return flask.jsonify(print_history=print_history)
+	
 	@octoprint.plugin.BlueprintPlugin.route("/queueup", methods=["GET"])
 	@restricted_access
 	def queue_up(self):
