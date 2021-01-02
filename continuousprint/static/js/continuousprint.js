@@ -24,19 +24,7 @@ $(function() {
             self.checkLooped();
 		}
         
-       //Preload
-        self.image1 = document.createElement("img")
-        self.image1.src = 'http://octopi.local/plugin/continuousprint/static/img/1.png';
-        self.image2 = document.createElement("img")
-        self.image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
-        self.image3 = document.createElement("img")
-        self.image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
-        self.image1.setAttribute('width', '105%');
-        self.image1.setAttribute('height', 'auto');
-        self.image2.setAttribute('width', '105%');
-        self.image2.setAttribute('height', 'auto');
-        self.image3.setAttribute('width', '105%');
-        self.image3.setAttribute('height', 'auto');
+       
         
         
        
@@ -110,14 +98,7 @@ $(function() {
 			});
 		};    
                         
-            self.btwnLoadImage = function(data,CMD){
-                if(CMD=="ADD"){
-                    if(self.itemsInQueue==0)$('#queue_list').append(self.image1);
-                    if(self.itemsInQueue==1)$('#queue_list').append(self.image2);
-                    if(self.itemsInQueue>1)$('#queue_list').append(self.image3);
-                }
-                self.reloadQueue(data,CMD);
-            }
+            
             self.reloadQueue = function(data,CMD) {
                 if(CMD=="ADD"){
                     var file = data;
@@ -154,16 +135,19 @@ $(function() {
                        $(this).replaceWith(div);
                        $('#foo').fadeIn("slow");
                     });
-                /*var n="img"+self.itemsInQueue;
-                $('#'+n).fadeOut("slow", function(){
-                   var div = $('#'+n).hide();
-                   $(this).replaceWith(div);
-                   $('#'+n).fadeIn(row);
-                });
-                */
+                
                 $('#queue_list').append(row);
+                    self.itemsInQueue+=1;
                 
             }
+            if(CMD=="SUB"){
+                $("#queue_list").children("."+data).remove();
+                for(var i=data+1;i<self.itemsInQUeue;i++){
+                    $("#queue_list").children("."+i).class=(i=1).toString()
+                }
+                self.itemsInQueue-=1;
+            }
+             
         }
 
                 
@@ -316,6 +300,7 @@ $(function() {
 		}
 		
 		self.removeFromQueue = function(data) {
+            self.reloadQueue(data,"SUB");
 			$.ajax({
 				url: "plugin/continuousprint/removequeue?index=" + data,
 				type: "DELETE",
@@ -324,7 +309,7 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success: function(c) {
-					self.loadQueue();
+					//self.loadQueue();
 				},
 				error: function() {
 					self.loadQueue();
