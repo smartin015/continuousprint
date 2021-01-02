@@ -41,10 +41,10 @@ $(function() {
 				},
 				success:function(r){
                     self.itemsInQueue=r.length;
-					if (r.length > 0) {
+					if (r.queue.length > 0) {
 						$('#queue_list').html("");
-						for(var i = 0; i < r.length; i++) {
-							var file = r[i];
+						for(var i = 0; i < r.queue.length; i++) {
+							var file = r.queue[i];
 							var row;
                             var Enter = false;
                             var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
@@ -98,11 +98,11 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(s){
-                    self.itemsInQueue=s.length;
-					if (s.length > 0) {
+                    self.itemsInQueue=s.queue.length;
+					if (s.queue.length > 0) {
 						$('#print_history').html("");
-						for(var i = 0; i < s.length; i++) {
-                            var file = s[i];
+						for(var i = 0; i < s.queue.length; i++) {
+                            var file = s.queue[i];
                             var row;
                             var time = file.time / 60;
                             var suffix = " mins";
