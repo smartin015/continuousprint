@@ -24,13 +24,20 @@ $(function() {
             self.checkLooped();
 		}
         
-       
-        self.image1 = new Image(10,100);
+       //Preload
+        self.image1 = document.createElement("img")
         self.image1.src = 'http://octopi.local/plugin/continuousprint/static/img/1.png';
-        self.image2 = new Image(10,100);
+        self.image2 = document.createElement("img")
         self.image2.src = 'http://octopi.local/plugin/continuousprint/static/img/2.png';
-        self.image3 = new Image(10,100);
+        self.image3 = document.createElement("img")
         self.image3.src = 'http://octopi.local/plugin/continuousprint/static/img/3.png';
+        self.image1.setAttribute('width', '100%');
+        self.image1.setAttribute('height', 'auto');
+        self.image2.setAttribute('width', '100%');
+        self.image2.setAttribute('height', 'auto');
+        self.image3.setAttribute('width', '100%');
+        self.image3.setAttribute('height', 'auto');
+        
         
        
 		
