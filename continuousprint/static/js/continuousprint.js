@@ -100,14 +100,13 @@ $(function() {
 					"X-Api-Key":UI_API_KEY,
 				},
 				success:function(r){
-                    self.itemsInQueue=r.queue.length;
 					if (r.queue.length > 0) {
 						$('#print_history').html("");
 						for(var i = 0; i < r.queue.length; i++) {
-                            var time = file.time / 60;
-                            var suffix = " mins";
                             var file=r.queue[i];
                             var row;
+                            var time = file.time / 60;
+                            var suffix = " mins";
                             if (time > 60) {
                                 time = time / 60;
                                 suffix = " hours";
