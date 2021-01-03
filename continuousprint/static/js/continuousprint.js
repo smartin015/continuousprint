@@ -183,6 +183,9 @@ $(function() {
                     $("#queue_list").children("."+i).removeClass(i.toString());
                 }
                 self.itemsInQueue-=1;
+                if(self.itemsInQueue==0){
+                    $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
+                }
             }
              
         }
