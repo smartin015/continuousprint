@@ -172,10 +172,16 @@ $(function() {
             if(CMD=="SUB"){
                 $("#queue_list").children("."+data).remove();
                 for(var i=data+1;i<self.itemsInQUeue;i++){
-                    $("#queue_list").children("."+i).addClass((i-1).toString());
-                    $("#queue_list").children("."+i).removeClass(i.toString());
                     $("#queue_list").children("."+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").data("index",(i-1).toString());
                     $("#queue_list").children("."+i).children(".queue-row-container").children(".fa-minus").data("index",(i-1).toString());
+                    if(i>1){
+                        $("#queue_list").children("."+i).children(".queue-row-container").children(".fa-chevron-down").data("index",(i-1).toString());
+                        if(i>2){
+                            $("#queue_list").children("."+i).children(".queue-row-container").children(".fa-chevron-up").data("index",(i-1).toString());
+                        }
+                    }
+                    $("#queue_list").children("."+i).addClass((i-1).toString());
+                    $("#queue_list").children("."+i).removeClass(i.toString());
                 }
                 self.itemsInQueue-=1;
             }
