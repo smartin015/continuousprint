@@ -75,8 +75,9 @@ $(function() {
                                     self.changecount($(this).data("index"),ncount);
                                 }
                             });
+                             $('#queue_list').append(row);
                         }
-                    
+                       
                         self.loadPrintHistory("full");
                     }else{
                         self.loadPrintHistory("empty");
