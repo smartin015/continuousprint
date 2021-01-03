@@ -168,17 +168,17 @@ $(function() {
                     $("#queue_list").children(".n"+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").data("index",(i-1).toString());
                     $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-minus").data("index",(i-1).toString());
                     if(i>1){
-                        $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-down").data("index",(i-1).toString());
+                        $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").data("index",(i-1).toString());
                         if(i==2){
-                            $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-up").remove();
+                            $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").remove();
                         }
                         if(i>2){
-                            $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-up").data("index",(i-1).toString());
+                            $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").data("index",(i-1).toString());
                         }
                     }
                     if(i==1){
                         $("#queue_list").children(".n"+i).css("background","#f9f4c0")
-                        $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-down").remove();
+                        $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").remove();
                     }
                     $("#queue_list").children(".n"+i).addClass("n"+(i-1).toString());
                     $("#queue_list").children(".n"+i).removeClass("n"+i.toString());
