@@ -226,7 +226,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@octoprint.plugin.BlueprintPlugin.route("/print_history", methods=["GET"])
 	@restricted_access
 	def get_print_history(self):
-		return flask.jsonify(queue=json.loads(self._settings.get(["cp_queue"])))
+		return flask.jsonify(queue=json.loads(self._settings.get(["cp_print_history"])))
 		#return'{"queue":' + self._settings.get(["cp_print_history"]) + "}"
 	
 	@octoprint.plugin.BlueprintPlugin.route("/queueup", methods=["GET"])
