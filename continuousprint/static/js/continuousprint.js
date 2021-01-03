@@ -47,6 +47,7 @@ $(function() {
 							var file = r.queue[i];
 							var row;
                             var Enter = false;
+
                             var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
                             if (i == 0) {other = "";}
                             if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
@@ -97,13 +98,11 @@ $(function() {
 				headers: {
 					"X-Api-Key":UI_API_KEY,
 				},
-				success:function(s){
-                    self.itemsInQueue=s.queue.length;
-					if (s.queue.length > 0) {
+				success:function(r){
+                    self.itemsInQueue=r.queue.length;
+					if (r.queue.length > 0) {
 						$('#print_history').html("");
-						for(var i = 0; i < s.queue.length; i++) {
-                            var file = s.queue[i];
-                            var row;
+						for(var i = 0; i < r.queue.length; i++) {
                             var time = file.time / 60;
                             var suffix = " mins";
                             if (time > 60) {
