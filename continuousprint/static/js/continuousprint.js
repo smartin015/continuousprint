@@ -106,6 +106,7 @@ $(function() {
                             var time = file.time / 60;
                             var suffix = " mins";
                             var file=r.queue[i];
+                            var row;
                             if (time > 60) {
                                 time = time / 60;
                                 suffix = " hours";
