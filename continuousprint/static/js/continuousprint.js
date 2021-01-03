@@ -23,13 +23,7 @@ $(function() {
 			self.is_paused(false);
             self.checkLooped();
 		}
-        
-       
-        
-        
-       
-		
-		
+
 		self.loadQueue = function() {
             $('#queue_list').html("");
 			$.ajax({
@@ -51,7 +45,7 @@ $(function() {
                             var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
                             if (i == 0) {other = "";}
                             if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
-                            row = $("<div class='container n"+i+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+i+"' value='" + file.count + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
+                            row = $("<div class='"+i+"'style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+i+"' value='" + file.count + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
                             row.find(".fa-minus").click(function() {
                                 self.removeFromQueue($(this).data("index"));
                             });
@@ -135,7 +129,7 @@ $(function() {
                     var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+self.itemsInQueue+"'></i>&nbsp;";
                     if (self.itemsInQueue == 0) {other = "";$('#queue_list').html("");}
                     if (self.itemsInQueue == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp;";}
-                    row = $("<div class='container n" + self.itemsInQueue + "'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+self.itemsInQueue+"' value='" + file.count + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+self.itemsInQueue+"'></i></div></div></div>");
+                    row = $("<div class='" + self.itemsInQueue + "' style='padding: 10px;border-bottom: 1px solid #000;"+(self.itemsInQueue==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'text' data-index='"+self.itemsInQueue+"' value='" + file.count + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+self.itemsInQueue+"'></i></div></div></div>");
                     row.find(".fa-minus").click(function() {
                         self.removeFromQueue($(this).data("index"));
                     });
@@ -171,16 +165,16 @@ $(function() {
             if(CMD=="SUB"){
                 $("#queue_list").children("."+data).remove();
                 for(var i=data+1;i<self.itemsInQUeue;i++){
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").data("index",(i-1).toString());
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-minus").data("index",(i-1).toString());
+                    $("#queue_list").children("."+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").data("index",(i-1).toString());
+                    $("#queue_list").children("."+i).children(".queue-row-container").children(".fa-minus").data("index",(i-1).toString());
                     if(i>1){
-                        $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-down").data("index",(i-1).toString());
+                        $("#queue_list").children("."+i).children(".queue-row-container").children(".fa-chevron-down").data("index",(i-1).toString());
                         if(i>2){
-                            $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-up").data("index",(i-1).toString());
+                            $("#queue_list").children("."+i).children(".queue-row-container").children(".fa-chevron-up").data("index",(i-1).toString());
                         }
                     }
-                    $("#queue_list").children(".n"+i).addClass((i-1).toString());
-                    $("#queue_list").children(".n"+i).removeClass(i.toString());
+                    $("#queue_list").children("."+i).addClass((i-1).toString());
+                    $("#queue_list").children("."+i).removeClass(i.toString());
                 }
                 self.itemsInQueue-=1;
                 if(self.itemsInQueue==0){
