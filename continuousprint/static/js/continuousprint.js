@@ -177,11 +177,11 @@ $(function() {
                         }
                     }
                     if(i==1){
-                        $("#queue_list").children("."+i).css("background","#f9f4c0")
+                        $("#queue_list").children(".n"+i).css("background","#f9f4c0")
                         $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-chevron-down").remove();
                     }
-                    $("#queue_list").children(".n"+i).addClass((i-1).toString());
-                    $("#queue_list").children(".n"+i).removeClass(i.toString());
+                    $("#queue_list").children(".n"+i).addClass("n"+(i-1).toString());
+                    $("#queue_list").children(".n"+i).removeClass("n"+i.toString());
                 }
                 self.itemsInQueue-=1;
                 if(self.itemsInQueue==0){
