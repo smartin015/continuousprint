@@ -166,7 +166,7 @@ $(function() {
                 $("#queue_list").children(".n"+data).remove();
                 for(var i=data+1;i<self.itemsInQueue;i++){
                     $("#queue_list").children(".n"+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").data("index",(i-1).toString());
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").children(".fa-minus").data("index",(i-1).toString());
+                    $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-minus").data("index",(i-1).toString());
                     if(i>1){
                         $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").data("index",(i-1).toString());
                         if(i==2){
