@@ -67,7 +67,7 @@ $(function() {
                                 if (Enter){
                                     var ncount= parseInt(this.value);
                                     self.changecount($(this).data("index"),ncount);
-                                    $(this).val(ncount);
+                                    $(this).attr("value",ncount);
                                 }
                             });
                              $('#queue_list').append(row);
@@ -150,7 +150,7 @@ $(function() {
                         if (Enter){
                             var ncount = parseInt(this.value);
                             self.changecount($(this).data("index"),ncount);
-                                                                $(this).val(ncount);
+                            $(this).attr("value",ncount);
 
                         }
                     });
