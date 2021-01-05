@@ -165,15 +165,15 @@ $(function() {
             if(CMD=="SUB"){
                 $("#queue_list").children(".n"+data).remove();
                 for(var i=data+1;i<self.itemsInQueue;i++){
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").children(".queue-innner-row-container").find(".count-box").data("index",(i-1).toString());
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-minus").data("index",(i-1).toString());
+                    $("#queue_list").children(".n"+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").attr("data-index",(i-1).toString());
+                    $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-minus").attr("data-index",(i-1).toString());
                     if(i>1){
-                        $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").data("index",(i-1).toString());
+                        $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").attr("data-index",(i-1).toString());
                         if(i==2){
                             $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").remove();
                         }
                         if(i>2){
-                            $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").data("index",(i-1).toString());
+                            $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").attr("data-index",(i-1).toString());
                         }
                     }
                     if(i==1){
@@ -194,8 +194,8 @@ $(function() {
                 //then, we copy the html of the count boxes and the html(nothing else) to a temporary variable of the row to be moved
                 //We then change the html of the count-box and file name of that row to the file name and count-box of that above it,
                 //and change the html of the count-box and file name of to the temporary variable
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data-1);
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data);
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data-1);
+                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data);
                 var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
                 var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html();
                 $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
@@ -204,8 +204,8 @@ $(function() {
                 
             }
             if(CMD=="DOWN"){
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data+1);
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data);
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data+1);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data);
                 var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
                 var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html();
                 $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
