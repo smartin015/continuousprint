@@ -67,6 +67,7 @@ $(function() {
                                 if (Enter){
                                     var ncount= parseInt(this.value);
                                     self.changecount($(this).data("index"),ncount);
+                                    $(this).value=ncount;
                                 }
                             });
                              $('#queue_list').append(row);
