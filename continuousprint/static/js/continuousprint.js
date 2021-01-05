@@ -186,28 +186,28 @@ $(function() {
                 }
             }
             if(CMD=="UP"){
-                //simple
-                //first, we switch the data-indexes of the count-boxes of the rows to be switched
-                //then, we copy the html of the count boxes and the html(nothing else) to a temporary variable of the row to be moved
-                //We then change the html of the count-box and file name of that row to the file name and count-box of that above it,
-                //and change the html of the count-box and file name of to the temporary variable
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data-1);
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data);
-                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
-                var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
-
+                //8 scratchy lines
+               var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").innerHTM();
+                var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").innerHTML();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").innerHTML(temp2);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").inneHTML(temp);
+                var temp3=$("#queue_list").children(".n"+(data)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                var temp4=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                $("#queue_list").children(".n"+(data)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp4);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp3);
                 
             }
             if(CMD=="DOWN"){
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data+1);
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data);
-                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
-                var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
-                
+                //8 scratchy lines
+                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").innerHTM();
+                var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").innerHTML();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").innerHTML(temp2);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").inneHTML(temp);
+                var temp3=$("#queue_list").children(".n"+(data)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                var temp4=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                $("#queue_list").children(".n"+(data)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp4);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp3);
+
             }
              
         }
