@@ -188,18 +188,25 @@ $(function() {
                 }
             }
             if(CMD=="UP"){
-                //seems simple enough. Nothing complicated here!!!
-                var temp=$("#queue_list").children(".n"+data).html();
-                $("#queue_list").children(".n"+data).html($("#queue_list").children(".n"+data-1).html());
-                $("#queue_list").children(".n"+data-1).html(temp);
+                //simple
+                //first, we switch the data-indexes of the count-boxes of the rows to be switched
+                //then, we copy the html of the count boxes and the html(nothing else) to a temporary variable of the row to be moved
+                //We then change the html of the count-box and file name of that row to the file name and count-box of that above it,
+                //and change the html of the count-box and file name of to the temporary variable
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data-1);
+                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data);
+                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html($("#queue_list").children(".n"+)(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html());
+                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
 
                 
             }
             if(CMD=="DOWN"){
-                //seems simple enough. Nothing complicated here!!!
-                var temp=$("#queue_list").children(".n"+data).html();
-                $("#queue_list").children(".n"+data).html($("#queue_list").children(".n"+data-1).html());
-                $("#queue_list").children(".n"+data+1).html(temp);
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data+1);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data);
+                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html($("#queue_list").children(".n"+)(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html());
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
                 
             }
              
@@ -311,7 +318,7 @@ $(function() {
 		}
 		
 		self.moveUp = function(data) {
-            self.reloadQueue("UP");
+            self.reloadQueue(data,"UP");
 			$.ajax({
 				url: "plugin/continuousprint/queueup?index=" + data,
 				type: "GET",
@@ -340,7 +347,7 @@ $(function() {
         }
 		
 		self.moveDown = function(data) {
-            self.reloadQueue("DOWN");
+            self.reloadQueue(data,"DOWN");
 			$.ajax({
 				url: "plugin/continuousprint/queuedown?index=" + data,
 				type: "GET",
