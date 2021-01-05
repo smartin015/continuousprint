@@ -67,7 +67,7 @@ $(function() {
                                 if (Enter){
                                     var ncount= parseInt(this.value);
                                     self.changecount($(this).data("index"),ncount);
-                                    $(this).value=ncount;
+                                    $(this).val(ncount);
                                 }
                             });
                              $('#queue_list').append(row);
@@ -150,12 +150,9 @@ $(function() {
                         if (Enter){
                             var ncount = parseInt(this.value);
                             self.changecount($(this).data("index"),ncount);
+                                                                $(this).val(ncount);
+
                         }
-                    });
-                    $('#img').fadeOut("slow", function(){
-                       var div = $(row).hide();
-                       $(this).replaceWith(div);
-                       $('#foo').fadeIn("slow");
                     });
                 
                 $('#queue_list').append(row);
