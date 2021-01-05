@@ -110,7 +110,7 @@ $(function() {
                                     suffix = " days";
                                 }
                             }
-                            row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class='queue-inner-row-container'><p class='file-name' > Complete:" + file.name +"Print Times:" + file.title + "</p></div>Times run:"+file.times_run+"Average Time:"+time.toFixed+suffix+"</div></div></div");
+                            row = $("<div style='padding: 15px; border-bottom: 1px solid #000;background:#c2fccf'><div class='queue-row-container'><div class='queue-inner-row-container'><p class='file-name' > Complete: " + file.name +" " + file.title + "</p></div>Times run:"+file.times_run+"Average Time:"+time.toFixed()+suffix+"</div></div></div");
                        
                             $('#print_history').append(row);
                         }
