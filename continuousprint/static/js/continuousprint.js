@@ -188,6 +188,21 @@ $(function() {
                     $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
                 }
             }
+            if(CMD=="UP"){
+                //seems simple enough. Nothing complicated here!!!
+                var temp=$("#queue_list").children(".n"+data).html();
+                $("#queue_list").children(".n"+data).html($("#queue_list").children(".n"+data-1).html());
+                $("#queue_list").children(".n"+data-1).html(temp);
+
+                
+            }
+            if(CMD=="DOWN"){
+                //seems simple enough. Nothing complicated here!!!
+                var temp=$("#queue_list").children(".n"+data).html();
+                $("#queue_list").children(".n"+data).html($("#queue_list").children(".n"+data-1).html());
+                $("#queue_list").children(".n"+data+1).html(temp);
+                
+            }
              
         }
 
@@ -297,13 +312,13 @@ $(function() {
 		}
 		
 		self.moveUp = function(data) {
+            self.reloadQueue("UP");
 			$.ajax({
 				url: "plugin/continuousprint/queueup?index=" + data,
 				type: "GET",
 				dataType: "json",
 				headers: {"X-Api-Key":UI_API_KEY},
 				success: function(c) {
-					self.loadQueue();
 				},
 				error: function() {
 					self.loadQueue();
@@ -326,13 +341,13 @@ $(function() {
         }
 		
 		self.moveDown = function(data) {
+            self.reloadQueue("DOWN");
 			$.ajax({
 				url: "plugin/continuousprint/queuedown?index=" + data,
 				type: "GET",
 				dataType: "json",
 				headers: {"X-Api-Key":UI_API_KEY},
 				success: function(c) {
-					self.loadQueue();
 				},
 				error: function() {
 					self.loadQueue();
