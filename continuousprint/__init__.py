@@ -133,9 +133,9 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			print_history[0]=dict(
 				path = payload["path"],
 				name = payload["name"],
-				time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
-				times_run =  print_history[i]["times_run"]+1,
-				title = print_history[i]["title"]+" 2. " + str(int(time))+suffix
+				time = (print_history[0]["time"]+payload["time"])/(print_history[0]["times_run"]+1),
+				times_run =  print_history[0]["times_run"]+1,
+				title = print_history[0]["title"]+" 2. " + str(int(time))+suffix
 			)
 			inPrintHistory=True
 		if len(print_history)>1:
