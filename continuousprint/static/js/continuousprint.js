@@ -176,7 +176,7 @@ $(function() {
                         }
                     }
                     if(i==1){
-                        $("#queue_list").children(".n"+i).css("background","#f9f4c0")
+                        $("#queue_list").children(".n"+i).css("background","#f9f4c0");
                         $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").remove();
                     }
                     $("#queue_list").children(".n"+i).addClass("n"+(i-1).toString());
@@ -196,7 +196,8 @@ $(function() {
                 $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data-1);
                 $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data);
                 var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html($("#queue_list").children(".n"+)(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html());
+                var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
                 $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
 
                 
@@ -205,7 +206,8 @@ $(function() {
                 $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data+1);
                 $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").data("index",data);
                 var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html($("#queue_list").children(".n"+)(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html());
+                var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
                 $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
                 
             }
