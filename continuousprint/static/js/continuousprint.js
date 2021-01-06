@@ -194,7 +194,7 @@ $(function() {
                 var temp3=$("#queue_list").children(".n"+(data)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
                 var temp4=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
                 $("#queue_list").children(".n"+(data)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp4);
-                $("#queue_list").children(".n"+(data+-)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp3);
+                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("value",temp3);
                 
             }
             if(CMD=="DOWN"){
