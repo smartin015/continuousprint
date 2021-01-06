@@ -66,9 +66,7 @@ $(function() {
                             row.find(".fa-text").keyup(function() {
                                 if (Enter){
                                     var ncount= parseInt(this.value);
-                                    self.changecount($(this).data("index"),ncount);
-                                    $(this).html("<input class='fa fa-text count-box' type = 'text' data-index='"+temp+"' value='" + ncount + "'/>"
-                                }
+                                    self.changecount($(this).data("index"),ncount);                                }
                             });
                              $('#queue_list').append(row);
                         }
@@ -151,8 +149,6 @@ $(function() {
                             var ncount = parseInt(this.value);
                             self.changecount($(this).data("index"),ncount);
                             var temp = $(this).data();
-                            $(this).html("<input class='fa fa-text count-box' type = 'text' data-index='"+temp+"' value='" + ncount + "'/>"
-
                         }
                     });
                 
