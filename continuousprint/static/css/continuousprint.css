@@ -30,30 +30,10 @@
   white-space: nowrap;
   
 }
-#tab_plugin_continuousprint .file-done-container{
-  display:flex; 
-  flex-wrap: nowrap; 
-  justify-content:flex-start;
-  max-width:60%; 
-  min-width:50px; 
-  /*flex-shrink:10;*/
-  
-}
-#tab_plugin_continuousprint .file-done-name{
-  flex-shrink: 10;
+#tab_plugin_continuousprint .end-bundle{
   overflow-x:scroll;
-  
-}
-#tab_plugin_continuousprint .time-data{
-  flex-grow:2; 
-  flex-shrink:2; 
-  overflow-x: scroll;
-  
-}
-#tab_plugin_continuousprint .previous-prints{
-  max-width:40%; 
-  flex-shrink:20; 
-  overflow-x:scroll;
+  max-width:68%;
+  white-space: nowrap;
   
 }
 
