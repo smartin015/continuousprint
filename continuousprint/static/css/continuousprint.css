@@ -14,7 +14,7 @@
   justify-content: flex-start; 
   align-items: stretch; 
   flex-shrink:2;
-  max-width:90%;
+  /*max-width:90%;*/
   
 }
 #tab_plugin_continuousprint .count-box{
