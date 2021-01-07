@@ -56,7 +56,7 @@ $(function() {
                             });
                             row.find(".fa-text").focusout(function() {
                                     var ncount= parseInt(this.value);
-                                    self.changecount($(this).data("index"),ncount);                                }
+                                    self.changecount($(this).data("index"),ncount);                                
                             });
                              $('#queue_list').append(row);
                         }
