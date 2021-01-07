@@ -25,6 +25,8 @@
 }
 #tab_plugin_continuousprint .file-name{
   flex-shrink: 10; 
+  /*flex-grow:2;
+  width:50%;*/
   overflow-x:scroll;
   max-width:96%;
   white-space: nowrap;
@@ -33,7 +35,6 @@
 #tab_plugin_continuousprint .end-bundle{
   flex-grow:2;
   overflow-x:scroll;
-  max-width:68%;
   white-space: nowrap;
   
   
