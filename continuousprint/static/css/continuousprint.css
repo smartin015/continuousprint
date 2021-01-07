@@ -13,8 +13,8 @@
   flex-direction: row; 
   justify-content: flex-start; 
   align-items: stretch; 
-  max-width:90%;
-  flex-shrink:2;
+  width:50%;
+  flex-grow:2;
 
   
 }
