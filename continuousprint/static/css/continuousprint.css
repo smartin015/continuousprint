@@ -13,8 +13,9 @@
   flex-direction: row; 
   justify-content: flex-start; 
   align-items: stretch; 
+  width:100%;
   flex-shrink:2;
-  /*max-width:90%;*/
+
   
 }
 #tab_plugin_continuousprint .count-box{
@@ -25,11 +26,9 @@
 }
 #tab_plugin_continuousprint .file-name{
   flex-shrink: 10; 
-  /*flex-grow:2;
-  width:50%;*/
   overflow-x:scroll;
-  /*max-width:99%;*/
   white-space: nowrap;
+  width:100%;
   
 }
 #tab_plugin_continuousprint .end-bundle{
