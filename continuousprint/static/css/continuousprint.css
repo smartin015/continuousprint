@@ -31,9 +31,11 @@
   
 }
 #tab_plugin_continuousprint .end-bundle{
+  flex-grow:2;
   overflow-x:scroll;
   max-width:68%;
   white-space: nowrap;
+  
   
 }
 
