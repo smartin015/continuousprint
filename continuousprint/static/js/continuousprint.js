@@ -188,23 +188,25 @@ $(function() {
                 //then, we copy the html of the count boxes and the html(nothing else) to a temporary variable of the row to be moved
                 //We then change the html of the count-box and file name of that row to the file name and count-box of that above it,
                 //and change the html of the count-box and file name of to the temporary variable
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data-1);
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data);
-                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
-                var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
-
-                
+                var temp3 = $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                var temp4 = $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
+                var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp2);
+                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp);
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp4));
+                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp3));
+  
             }
             if(CMD=="DOWN"){
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data+1);
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").attr("data-index",data);
-                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html();
-                var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").html(temp2);
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").html(temp);
-                
+                var temp3 = $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                var temp4 = $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
+                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
+                var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp2);
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp); 
+                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp4));
+                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp3));
             }
              
              

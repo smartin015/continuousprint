@@ -27,6 +27,7 @@
   flex-shrink: 10; 
   overflow-x:scroll;
   max-width:96%;
+  white-space: nowrap;
   
 }
 #tab_plugin_continuousprint .file-done-container{
