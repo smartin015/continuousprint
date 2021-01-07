@@ -40,7 +40,6 @@ $(function() {
 						for(var i = 0; i < r.queue.length; i++) {
 							var file = r.queue[i];
 							var row;
-                            var Enter = false;
 
                             var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
                             if (i == 0) {other = "";}
@@ -55,16 +54,7 @@ $(function() {
                             row.find(".fa-chevron-down").click(function() {
                                 self.moveDown($(this).data("index"));
                             });
-                            row.find(".fa-text").keydown(function() {
-                                if (event.keyCode === 13){
-                                    Enter = true;
-                                }else{
-                                    Enter = false;
-                                }
-
-                            });
-                            row.find(".fa-text").keyup(function() {
-                                if (Enter){
+                            row.find(".fa-text").focusout(function() {
                                     var ncount= parseInt(this.value);
                                     self.changecount($(this).data("index"),ncount);                                }
                             });
@@ -123,7 +113,6 @@ $(function() {
                 if(CMD=="ADD"){
                     var file = data;
                     var row;
-                    var Enter = false;
                     var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+self.itemsInQueue+"'></i>&nbsp;";
                     if (self.itemsInQueue == 0) {other = "";$('#queue_list').html("");}
                     if (self.itemsInQueue == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp;";}
@@ -137,19 +126,9 @@ $(function() {
                     row.find(".fa-chevron-down").click(function() {
                         self.moveDown($(this).data("index"));
                     });
-                    row.find(".fa-text").keydown(function() {
-                        if (event.keyCode === 13){
-                            Enter = true;
-                        }else{
-                            Enter = false;
-                        }
-                    });
-                    row.find(".fa-text").keyup(function() {
-                        if (Enter){
+                    row.find(".fa-text").focusout(function() {
                             var ncount = parseInt(this.value);
                             self.changecount($(this).data("index"),ncount);
-                            var temp = $(this).data();
-                        }
                     });
                 
                 $('#queue_list').append(row);
