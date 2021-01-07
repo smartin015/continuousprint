@@ -13,7 +13,7 @@
   flex-direction: row; 
   justify-content: flex-start; 
   align-items: stretch; 
-  width:100%;
+  max-width:90%;
   flex-shrink:2;
 
   
@@ -28,13 +28,14 @@
   flex-shrink: 10; 
   overflow-x:scroll;
   white-space: nowrap;
-  width:100%;
+  max-width:96%;
   
 }
 #tab_plugin_continuousprint .end-bundle{
   flex-grow:2;
   overflow-x:scroll;
   white-space: nowrap;
+  align-self:end;
   
   
 }
