@@ -35,7 +35,7 @@
   flex-grow:2;
   overflow-x:scroll;
   white-space: nowrap;
-  align-self:end;
+  align-self:left;
   
   
 }
