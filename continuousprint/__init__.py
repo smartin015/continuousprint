@@ -285,8 +285,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				prerelease_branches=[
 				    dict(
 					name="Release Candidate",
-					branch="dev-rc",
-					comittish=["dev-rc", "master"],
+					branch="rc",
+					comittish=["rc", "master"],
 				    )
 				],
 				# update method: pip
