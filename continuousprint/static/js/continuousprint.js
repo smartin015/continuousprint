@@ -58,6 +58,17 @@ $(function() {
                                     var ncount= parseInt(this.value);
                                     self.changecount($(this).data("index"),ncount);                                
                             });
+                            row.find(".fa-text").keydown(function() {
+                                    if (event.keyCode === 13){
+                                        blip = true;
+                                    }else{blip = false}
+                                });
+                            row.find(".fa-text").keyup(function() {
+                                if (blip){
+                                    var ncount= parseInt(this.value);
+                                    self.changecount($(this).data("index"),ncount);
+                                }
+                            });
                              $('#queue_list').append(row);
                         }
                        
@@ -130,7 +141,18 @@ $(function() {
                             var ncount = parseInt(this.value);
                             self.changecount($(this).data("index"),ncount);
                     });
-                
+                    row.find(".fa-text").keydown(function() {
+                                    if (event.keyCode === 13){
+                                        blip = true;
+                                    }else{blip = false}
+                                });
+                    row.find(".fa-text").keyup(function() {
+                        if (blip){
+                            var ncount= parseInt(this.value);
+                            self.changecount($(this).data("index"),ncount);
+                        }
+                    });
+
                 $('#queue_list').append(row);
                     self.itemsInQueue+=1;
                 
