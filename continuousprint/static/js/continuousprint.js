@@ -22,8 +22,24 @@ $(function() {
 			self.loadQueue();
 			self.is_paused(false);
             self.checkLooped();
+            
 		}
-
+        self.files.addtoqueue = function(data) {
+            var sd="true";
+            if(data.origin="local"){
+                sd="false";
+            }
+            data.sd=sd;
+            self.addToQueue({
+                name:data.name,
+                path:data.path,
+                sd:sd,
+                count:1
+                
+            });
+                
+			
+		}
 		self.loadQueue = function() {
             $('#queue_list').html("");
 			$.ajax({
@@ -472,7 +488,23 @@ $(function() {
 				});
 			}
 		}
+	
+    /*
+    #Adapted from OctoPrint-PrusaSlicerThumbnails
+    #https://github.com/jneilliii/OctoPrint-PrusaSlicerThumbnails/blob/master/octoprint_prusaslicerthumbnails/static/js/prusaslicerthumbnails.js
+    */
+    $(document).ready(function(){
+			let regex = /<div class="btn-group action-buttons">([\s\S]*)<.div>/mi;
+			let template = '<div class="btn btn-mini" data-bind="click: function() { if ($root.loginState.isUser()) { $root.addtoqueue($data) } else { return; } }" title="Add To Queue" ><i class="bold"></i>Q</div>';
+
+			$("#files_template_machinecode").text(function () {
+				var return_value = $(this).text();
+				return_value = return_value.replace(regex, '<div class="btn-group action-buttons">$1	' + template + '></div>');
+				return return_value
+			});
+		});
 	}
+    /**/
 
 	// This is how our plugin registers itself with the application, by adding some configuration
 	// information to the global variable OCTOPRINT_VIEWMODELS
