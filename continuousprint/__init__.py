@@ -15,16 +15,18 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	print_history = []
 	enabled = False
 	paused = False
-	looped = False;
-	item= None
-
+	looped = False
+	item = None;
 
 	##~~ SettingsPlugin mixin
 	def get_settings_defaults(self):
 		return dict(
 			cp_queue="[]",
 			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
-			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished"
+			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished",
+			cp_looped="false",
+			cp_print_history="[]"
+			
 		)
 
 
@@ -33,6 +35,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	##~~ StartupPlugin mixin
 	def on_after_startup(self):
 		self._logger.info("Continuous Print Plugin started")
+		self._settings.save()
 	
 	
 	
@@ -66,37 +69,42 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
+		LOOPED=self._settings.get(["cp_looped"])
 		self.item = queue[0]
 		if payload["path"] == self.item["path"] and self.item["count"] > 0:
 			
 			# check to see if loop count is set. If it is increment times run.
+			
 			if "times_run" not in self.item:
 				self.item["times_run"] = 0
-
+				
 			self.item["times_run"] += 1
-
+			
+			#Add to the print History
+			self.add_to_print_history(payload,self.item)
+			
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
 			# if looped is True requeue the item.
 			if self.item["times_run"] >= self.item["count"]:
-				queue.pop(0)
 				self.item["times_run"] = 0
+				queue.pop(0)
+				if LOOPED=="false":
+					self.looped=False
+				if LOOPED=="true":
+					self.looped=True
 				if self.looped==True and self.item!=None:
 					queue.append(self.item)
-			
+					
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
-			# Add to the history
-			self.print_history.append(dict(
-				name = payload["name"],
-				time = payload["time"]
-			))
+			
+			
+			
 
 			# Clear down the bed
 			self.clear_bed()
 
-			# Tell the UI to reload
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
 		else:
 			enabled = False
 
@@ -109,6 +117,60 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			else:
 				script.append(x)
 		return script
+	
+	def add_to_print_history(self,payload,item):
+		print_history = json.loads(self._settings.get(["cp_print_history"]))
+	#	#calculate time
+	#	time=payload["time"]/60;
+	#	suffix="mins"
+	#	if time>60:
+	#		time = time/60
+	#		suffix = "hours"
+	#		if time>24:
+	#			time= time/24
+	#			suffix= "days"
+	#	#Add to the print History
+	#	inPrintHistory=False
+	#	if len(print_history)==1 and item["path"]==print_history[0]["path"]:
+	#		print_history[0]=dict(
+	#			path = payload["path"],
+	#			name = payload["name"],
+	#			time = (print_history[0]["time"]+payload["time"])/(print_history[0]["times_run"]+1),
+	#			times_run =  print_history[0]["times_run"]+1,
+	#			title = print_history[0]["title"]+" "+print_history[i]["times_run"]+". " + str(int(time))+suffix
+	#		)
+	#		inPrintHistory=True
+	#	if len(print_history)>1:
+	#		for i in range(0,len(print_history)-1):
+	#			if item["path"]==print_history[i]["path"] and InPrintHistory != True:
+	#				print_history[i]=dict(
+	#					path = payload["path"],
+	#					name = payload["name"],
+	#					time = (print_history[i]["time"]+payload["time"])/(print_history[i]["times_run"]+1),
+	#					times_run =  print_history[i]["times_run"]+1,
+	#					title = print_history[i]["title"]+" "+print_history[i]["times_run"]+". " + str(int(time))+suffix
+	#				)
+	#				inPrintHistory=True
+	#	if inPrintHistory == False:
+	#		print_history.append(dict(
+	#			path = payload["path"],
+	#			name = payload["name"],
+	#			time = payload["time"],
+	#			times_run =  item["times_run"],
+	#			title="Print Times: 1. "+str(int(time))+suffix
+	#		))
+	#		
+		print_history.append(dict(
+				name = payload["name"],
+				time = payload["time"]
+			))	
+		#save print history
+		self._settings.set(["cp_print_history"], json.dumps(print_history))
+		self._settings.save()
+		
+		# Tell the UI to reload
+		self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
+	
 
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
@@ -119,7 +181,9 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		self.enabled = False # Set enabled to false
 		self._plugin_manager.send_plugin_message(self._identifier, dict(type="complete", msg="Print Queue Complete"))
 		queue_finished_script = self._settings.get(["cp_queue_finished"]).split("\n")
-		self._printer.commands(self.parse_gcode(queue_finished_script))
+		self._printer.commands(self.parse_gcode(queue_finished_script))#send queue finished script to the printer
+		
+		
 
 	def start_next_print(self):
 		if self.enabled == True and self.paused == False:
@@ -147,27 +211,40 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			
 			
 	##~~ APIs
+	@octoprint.plugin.BlueprintPlugin.route("/looped", methods=["GET"])
+	@restricted_access
+	def looped(self):
+		loop2=self._settings.get(["cp_looped"])
+		return loop2
+		
 	@octoprint.plugin.BlueprintPlugin.route("/loop", methods=["GET"])
 	@restricted_access
 	def loop(self):
 		self.looped=True
+		self._settings.set(["cp_looped"], "true")
+
 		
 		
 	@octoprint.plugin.BlueprintPlugin.route("/unloop", methods=["GET"])
 	@restricted_access
 	def unloop(self):
 		self.looped=False
+		self._settings.set(["cp_looped"], "false")
+
 		
 	@octoprint.plugin.BlueprintPlugin.route("/queue", methods=["GET"])
 	@restricted_access
 	def get_queue(self):
-		queue = json.loads(self._settings.get(["cp_queue"]))
-		
-		for x in self.print_history:
-			queue.append(x)
-		
-		return flask.jsonify(queue=queue)
-		
+		#this is getting to be quite redundant. Turning an array of jsons into a dictionary just so flask can turn it into a json of an array of jsons.
+		#return flask.jsonify(queue=json.loads(self._settings.get(["cp_queue"])))
+		return '{"queue":' + self._settings.get(["cp_queue"]) + "}"
+	
+	@octoprint.plugin.BlueprintPlugin.route("/print_history", methods=["GET"])
+	@restricted_access
+	def get_print_history(self):
+		#return flask.jsonify(queue=json.loads(self._settings.get(["cp_print_history"])))
+		return'{"queue":' + self._settings.get(["cp_print_history"]) + "}"
+	
 	@octoprint.plugin.BlueprintPlugin.route("/queueup", methods=["GET"])
 	@restricted_access
 	def queue_up(self):
@@ -230,7 +307,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	@octoprint.plugin.BlueprintPlugin.route("/startqueue", methods=["GET"])
 	@restricted_access
 	def start_queue(self):
-		self.print_history = []
+		self._settings.set(["cp_print_history"], "[]")#Clear Print History
+		self._settings.save()
 		self.paused = False
 		self.enabled = True # Set enabled to true
 		self.start_next_print()
@@ -260,11 +338,11 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	##~~ AssetPlugin
 	def get_assets(self):
 		return dict(
-			js=["js/continuousprint.js"]
+			js=["js/continuousprint.js"],
+			css=["css/continuousprint.css"]
 		)
 
 
-	##~~ Softwareupdate hook
 	def get_update_information(self):
 		# Define the configuration for your plugin to use with the Software Update
 		# Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
