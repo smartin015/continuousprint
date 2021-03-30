@@ -22,7 +22,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def get_settings_defaults(self):
 		return dict(
 			cp_queue="[]",
-			cp_bed_clearing_script="M17 ;enable steppers\nM91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
+			cp_bed_clearing_script="M17 ;enable steppers\nG91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
 			cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished",
 			cp_looped="false",
 			cp_print_history="[]"
@@ -42,30 +42,34 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	
 	##~~ Event hook
 	def on_event(self, event, payload):
-		from octoprint.events import Events
-		##  Print complete check it was the print in the bottom of the queue and not just any print
-		if event == Events.PRINT_DONE:
-			if self.enabled == True:
-				self.complete_print(payload)
-		
-		# On fail stop all prints
-		if event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
-			self.enabled = False # Set enabled to false
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="error", msg="Print queue cancelled"))
-		
-		if event == Events.PRINTER_STATE_CHANGED:
-				# If the printer is operational and the last print succeeded then we start next print
-				state = self._printer.get_state_id()
-				if state  == "OPERATIONAL":
-					self.start_next_print()
-			
-		if event == Events.FILE_SELECTED:
-			# Add some code to clear the print at the bottom
-			self._logger.info("File selected")
-			bed_clearing_script=self._settings.get(["cp_bed_clearing_script"])
+		try:
+			##  Print complete check it was the print in the bottom of the queue and not just any print
+			if event == Events.PRINT_DONE:
+				if self.enabled == True:
+					self.complete_print(payload)
 
-		if event == Events.UPDATED_FILES:
-			self._plugin_manager.send_plugin_message(self._identifier, dict(type="updatefiles", msg=""))
+			# On fail stop all prints
+			if event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
+				self.enabled = False # Set enabled to false
+				self._plugin_manager.send_plugin_message(self._identifier, dict(type="error", msg="Print queue cancelled"))
+
+			if event == Events.PRINTER_STATE_CHANGED:
+					# If the printer is operational and the last print succeeded then we start next print
+					state = self._printer.get_state_id()
+					if state  == "OPERATIONAL":
+						if self.enabled == True and self.paused == False:
+							self.start_next_print()
+
+			if event == Events.FILE_SELECTED:
+				# Add some code to clear the print at the bottom
+				self._logger.info("File selected")
+				bed_clearing_script=self._settings.get(["cp_bed_clearing_script"])
+
+			if event == Events.UPDATED_FILES:
+				self._plugin_manager.send_plugin_message(self._identifier, dict(type="updatefiles", msg=""))
+		except Exception as error:
+			raise error
+			self._logger.exception("Exception when handling event.")
 
 	def complete_print(self, payload):
 		queue = json.loads(self._settings.get(["cp_queue"]))
@@ -80,8 +84,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				
 			self.item["times_run"] += 1
 			
-			#Add to the print History
-			self.add_to_print_history(payload,self.item)
+			
 			
 			# On complete_print, remove the item from the queue 
 			# if the item has run for loop count  or no loop count is specified and 
@@ -99,12 +102,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			self._settings.set(["cp_queue"], json.dumps(queue))
 			self._settings.save()
 			
-			
-			
-
-			# Clear down the bed
-			self.clear_bed()
-
+			#Add to the print History
+			self.add_to_print_history(payload,self.item)
 		else:
 			enabled = False
 
@@ -164,9 +163,13 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				name = payload["name"],
 				time = payload["time"]
 			))	
+		
 		#save print history
 		self._settings.set(["cp_print_history"], json.dumps(print_history))
 		self._settings.save()
+		
+		# Clear down the bed
+		self.clear_bed()
 		
 		# Tell the UI to reload
 		self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
