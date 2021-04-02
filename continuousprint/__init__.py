@@ -178,7 +178,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 	def clear_bed(self):
 		self._logger.info("Clearing bed")
 		bed_clearing_script=self._settings.get(["cp_bed_clearing_script"]).split("\n")	
-		self._printer.commands(self.parse_gcode(bed_clearing_script))
+		self._printer.commands(self.parse_gcode(bed_clearing_script),force=True)
 		
 	def complete_queue(self):
 		self.enabled = False # Set enabled to false
