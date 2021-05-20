@@ -184,7 +184,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 		self.enabled = False # Set enabled to false
 		self._plugin_manager.send_plugin_message(self._identifier, dict(type="complete", msg="Print Queue Complete"))
 		queue_finished_script = self._settings.get(["cp_queue_finished"]).split("\n")
-		self._printer.commands(self.parse_gcode(queue_finished_script))#send queue finished script to the printer
+		self._printer.commands(self.parse_gcode(queue_finished_script,force=True))#send queue finished script to the printer
 		
 		
 
