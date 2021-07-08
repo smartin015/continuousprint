@@ -26,7 +26,7 @@ $(function() {
 		}
         self.files.addtoqueue = function(data) {
             var sd="true";
-            if(data.origin="local"){
+            if(data.origin=="local"){
                 sd="false";
             }
             data.sd=sd;
