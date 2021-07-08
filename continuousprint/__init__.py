@@ -154,8 +154,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				self._settings.save()
 
 				# Clear down the bed
-
-				self.clear_bed()
+				if len(queue)>0:
+					self.clear_bed()
 
 				# Tell the UI to reload
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
