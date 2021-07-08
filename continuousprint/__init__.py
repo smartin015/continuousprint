@@ -161,8 +161,7 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 
 			# Tell the UI to reload
 			self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
-			else:
-				enabled = False
+			
 
 	def parse_gcode(self, input_script):
 		script = []
