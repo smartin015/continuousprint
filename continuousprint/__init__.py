@@ -103,6 +103,8 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			self._settings.save()
 			
 			#Add to the print History
+		else:
+			enabled = False
 			print_history = json.loads(self._settings.get(["cp_print_history"]))
 			#	#calculate time
 			#	time=payload["time"]/60;
@@ -144,23 +146,23 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 			#			title="Print Times: 1. "+str(int(time))+suffix
 			#		))
 			#		
-				print_history.append(dict(
-						name = payload["name"],
-						time = payload["time"]
-					))	
+			print_history.append(dict(
+					name = payload["name"],
+					time = payload["time"]
+				))	
 
-				#save print history
-				self._settings.set(["cp_print_history"], json.dumps(print_history))
-				self._settings.save()
+			#save print history
+			self._settings.set(["cp_print_history"], json.dumps(print_history))
+			self._settings.save()
 
-				# Clear down the bed
-				if len(queue)>0:
-					self.clear_bed()
+			# Clear down the bed
+			if len(queue)>0:
+				self.clear_bed()
 
-				# Tell the UI to reload
-				self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
-				else:
-					enabled = False
+			# Tell the UI to reload
+			self._plugin_manager.send_plugin_message(self._identifier, dict(type="reload", msg=""))
+			else:
+				enabled = False
 
 	def parse_gcode(self, input_script):
 		script = []
