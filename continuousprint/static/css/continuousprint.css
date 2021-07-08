@@ -21,15 +21,15 @@
 #tab_plugin_continuousprint .count-box{
   min-width:30px;
   max-width: 30px; 
-  max-height:16px;
+  max-height:15px;
   
 }
-#tab_plugin_continuousprint .file-name{
-  flex-shrink: 10; 
-  overflow-x:scroll;
-  white-space: nowrap;
-  max-width:96%;
-  
+#tab_plugin_continuousprint .file-name {
+    flex-shrink: 10;
+    overflow-x: scroll;
+    white-space: nowrap;
+    max-width: 96%;
+    padding-top: 1px;
 }
 #tab_plugin_continuousprint .end-bundle{
   flex-grow:2;
