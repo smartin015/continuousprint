@@ -6,6 +6,7 @@ import flask, json
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import eventManager, Events
 
+from print_queue import PrintQueue
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -15,26 +16,59 @@ class ContinuousprintPlugin(
     octoprint.plugin.BlueprintPlugin,
     octoprint.plugin.EventHandlerPlugin,
 ):
+    QUEUE_KEY = "cp_queue"
+    LOOPED_KEY = "cp_looped"
+    HISTORY_KEY = "cp_print_history"
+    CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
+    FINISHED_SCRIPT_KEY = "cp_queue_finished"
+
     print_history = []
     enabled = False
     paused = False
-    looped = False
     item = None
 
     ##~~ SettingsPlugin mixin
     def get_settings_defaults(self):
-        return dict(
-            cp_queue="[]",
-            cp_bed_clearing_script="M17 ;enable steppers\nG91 ; Set relative for lift\nG0 Z10 ; lift z by 10\nG90 ;back to absolute positioning\nM190 R25 ; set bed to 25 for cooldown\nG4 S90 ; wait for temp stabalisation\nM190 R30 ;verify temp below threshold\nG0 X200 Y235 ;move to back corner\nG0 X110 Y235 ;move to mid bed aft\nG0 Z1v ;come down to 1MM from bed\nG0 Y0 ;wipe forward\nG0 Y235 ;wipe aft\nG28 ; home",
-            cp_queue_finished="M18 ; disable steppers\nM104 T0 S0 ; extruder heater off\nM140 S0 ; heated bed heater off\nM300 S880 P300 ; beep to show its finished",
-            cp_looped="false",
-            cp_print_history="[]",
-        )
+        d = {}
+        d[QUEUE_KEY] = "[]"
+        d[CLEARING_SCRIPT_KEY] = (
+                "M17 ;enable steppers\n"
+                "G91 ; Set relative for lift\n"
+                "G0 Z10 ; lift z by 10\n"
+                "G90 ;back to absolute positioning\n"
+                "M190 R25 ; set bed to 25 for cooldown\n"
+                "G4 S90 ; wait for temp stabalisation\n"
+                "M190 R30 ;verify temp below threshold\n"
+                "G0 X200 Y235 ;move to back corner\n"
+                "G0 X110 Y235 ;move to mid bed aft\n"
+                "G0 Z1v ;come down to 1MM from bed\n"
+                "G0 Y0 ;wipe forward\n"
+                "G0 Y235 ;wipe aft\n"
+                "G28 ; home"
+                )
+        d[FINISHED_SCRIPT_KEY] = (
+                "M18 ; disable steppers\n"
+                "M104 T0 S0 ; extruder heater off\n"
+                "M140 S0 ; heated bed heater off\n"
+                "M300 S880 P300 ; beep to show its finished"
+                )
+        d[LOOPED_KEY] = "false"
+        d[HISTORY_KEY] = "[]"
+        return d
 
     ##~~ StartupPlugin mixin
     def on_after_startup(self):
-        self._logger.info("Continuous Print Plugin started")
         self._settings.save()
+        self.q = PrintQueue(self._settings, self.QUEUE_KEY)
+        self._logger.info("Continuous Print Plugin started")
+
+
+    def _msg(self, msg="", type="popup"):
+        self._plugin_manager.send_plugin_message(
+            self._identifier, dict(type=type, msg=msg)
+        )
+
+
 
     ##~~ Event hook
     def on_event(self, event, payload):
@@ -47,9 +81,7 @@ class ContinuousprintPlugin(
             # On fail stop all prints
             if event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
                 self.enabled = False  # Set enabled to false
-                self._plugin_manager.send_plugin_message(
-                    self._identifier, dict(type="error", msg="Print queue cancelled")
-                )
+                self._msg("Print queue cancelled", type="error")
 
             if event == Events.PRINTER_STATE_CHANGED:
                 # If the printer is operational and the last print succeeded then we start next print
@@ -64,44 +96,33 @@ class ContinuousprintPlugin(
                 bed_clearing_script = self._settings.get(["cp_bed_clearing_script"])
 
             if event == Events.UPDATED_FILES:
-                self._plugin_manager.send_plugin_message(
-                    self._identifier, dict(type="updatefiles", msg="")
-                )
+                self._msg(type="updatefiles")
         except Exception as error:
             raise error
             self._logger.exception("Exception when handling event.")
 
     def complete_print(self, payload):
-        queue = json.loads(self._settings.get(["cp_queue"]))
-        LOOPED = self._settings.get(["cp_looped"])
-        self.item = queue[0]
-        if payload["path"] == self.item["path"] and self.item["count"] > 0:
+        item = self.q.pop()
+        if payload["path"] == item["path"] and item["count"] > 0:
 
             # check to see if loop count is set. If it is increment times run.
+            if "times_run" not in item:
+                item["times_run"] = 0
 
-            if "times_run" not in self.item:
-                self.item["times_run"] = 0
-
-            self.item["times_run"] += 1
+            item["times_run"] += 1
 
             # On complete_print, remove the item from the queue
             # if the item has run for loop count  or no loop count is specified and
             # if looped is True requeue the item.
-            if self.item["times_run"] >= self.item["count"]:
-                self.item["times_run"] = 0
+            if item["times_run"] >= item["count"]:
+                item["times_run"] = 0
                 queue.pop(0)
-                if LOOPED == "false":
-                    self.looped = False
-                if LOOPED == "true":
-                    self.looped = True
-                if self.looped == True and self.item != None:
-                    queue.append(self.item)
+                self.looped = looped
+                if bool(self._settings.get([LOOPED_KEY])) and item != None:
+                    self.q.add(item)
 
-            self._settings.set(["cp_queue"], json.dumps(queue))
-            self._settings.save()
 
             # Add to the print History
-
             print_history = json.loads(self._settings.get(["cp_print_history"]))
             # 	#calculate time
             # 	time=payload["time"]/60;
@@ -146,17 +167,15 @@ class ContinuousprintPlugin(
             print_history.append(dict(name=payload["name"], time=payload["time"]))
 
             # save print history
-            self._settings.set(["cp_print_history"], json.dumps(print_history))
+            self._settings.set([HISTORY_KEY], json.dumps(print_history))
             self._settings.save()
 
             # Clear down the bed
-            if len(queue) > 0:
+            if len(self.q) > 0:
                 self.clear_bed()
 
             # Tell the UI to reload
-            self._plugin_manager.send_plugin_message(
-                self._identifier, dict(type="reload", msg="")
-            )
+            self._msg(type="reload")
         else:
             enabled = False
 
@@ -165,84 +184,66 @@ class ContinuousprintPlugin(
         for x in input_script:
             if x.find("[PAUSE]", 0) > -1:
                 self.paused = True
-                self._plugin_manager.send_plugin_message(
-                    self._identifier, dict(type="paused", msg="Queue paused")
-                )
+                self._msg("Queue paused", type="paused")
             else:
                 script.append(x)
         return script
 
     def clear_bed(self):
         self._logger.info("Clearing bed")
-        bed_clearing_script = self._settings.get(["cp_bed_clearing_script"]).split("\n")
+        bed_clearing_script = self._settings.get([CLEARING_SCRIPT_KEY]).split("\n")
         self._printer.commands(self.parse_gcode(bed_clearing_script), force=True)
 
     def complete_queue(self):
         self.enabled = False  # Set enabled to false
-        self._plugin_manager.send_plugin_message(
-            self._identifier, dict(type="complete", msg="Print Queue Complete")
-        )
-        queue_finished_script = self._settings.get(["cp_queue_finished"]).split("\n")
+        self._msg("Print Queue Complete", type="complete")
+        queue_finished_script = self._settings.get([FINISHED_SCRIPT_KEY]).split("\n")
         self._printer.commands(
             self.parse_gcode(queue_finished_script, force=True)
         )  # send queue finished script to the printer
 
     def start_next_print(self):
-        if self.enabled == True and self.paused == False:
-            queue = json.loads(self._settings.get(["cp_queue"]))
+        if self.paused or not self.enabled:
+            return
 
-            if len(queue) > 0:
-                self._plugin_manager.send_plugin_message(
-                    self._identifier,
-                    dict(type="popup", msg="Starting print: " + queue[0]["name"]),
-                )
-                self._plugin_manager.send_plugin_message(
-                    self._identifier, dict(type="reload", msg="")
-                )
+        if len(self.q) == 0:
+            self.complete_queue()
+            return
 
-                sd = False
-                if queue[0]["sd"] == "true":
-                    sd = True
-                try:
-                    self._printer.select_file(queue[0]["path"], sd)
-                    self._logger.info(queue[0]["path"])
-                    self._printer.start_print()
-                except InvalidFileLocation:
-                    self._plugin_manager.send_plugin_message(
-                        self._identifier, dict(type="popup", msg="ERROR file not found")
-                    )
-                except InvalidFileType:
-                    self._plugin_manager.send_plugin_message(
-                        self._identifier, dict(type="popup", msg="ERROR file not gcode")
-                    )
-            else:
-                self.complete_queue()
+        item = self.q.peek()
+        self._msg("Starting print: " + item["name"])
+        self._msg(type="reload")
+
+        sd = (item["sd"] == "true")
+        try:
+            self._printer.select_file(item["path"], sd)
+            self._logger.info(item["path"])
+            self._printer.start_print()
+        except InvalidFileLocation:
+            self._msg("File not found: " + item["path"], type="error")
+        except InvalidFileType:
+            self._msg("File not gcode: " + item["path"], type="error")
 
     ##~~ APIs
     @octoprint.plugin.BlueprintPlugin.route("/looped", methods=["GET"])
     @restricted_access
     def looped(self):
-        loop2 = self._settings.get(["cp_looped"])
-        return loop2
+        return self._settings.get(["cp_looped"])
 
     @octoprint.plugin.BlueprintPlugin.route("/loop", methods=["GET"])
     @restricted_access
     def loop(self):
-        self.looped = True
         self._settings.set(["cp_looped"], "true")
 
     @octoprint.plugin.BlueprintPlugin.route("/unloop", methods=["GET"])
     @restricted_access
     def unloop(self):
-        self.looped = False
         self._settings.set(["cp_looped"], "false")
 
     @octoprint.plugin.BlueprintPlugin.route("/queue", methods=["GET"])
     @restricted_access
     def get_queue(self):
-        # this is getting to be quite redundant. Turning an array of jsons into a dictionary just so flask can turn it into a json of an array of jsons.
-        # return flask.jsonify(queue=json.loads(self._settings.get(["cp_queue"])))
-        return '{"queue":' + self._settings.get(["cp_queue"]) + "}"
+        return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/print_history", methods=["GET"])
     @restricted_access
@@ -254,61 +255,42 @@ class ContinuousprintPlugin(
     @restricted_access
     def queue_up(self):
         index = int(flask.request.args.get("index", 0))
-        queue = json.loads(self._settings.get(["cp_queue"]))
-        orig = queue[index]
-        queue[index] = queue[index - 1]
-        queue[index - 1] = orig
-        self._settings.set(["cp_queue"], json.dumps(queue))
-        self._settings.save()
-        return flask.jsonify(queue=queue)
+        self.q.move(i, i-1)
+        return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/change", methods=["GET"])
     @restricted_access
     def change(self):
-        index = int(flask.request.args.get("index"))
-        count = int(flask.request.args.get("count"))
-        queue = json.loads(self._settings.get(["cp_queue"]))
-        queue[index]["count"] = count
-        self._settings.set(["cp_queue"], json.dumps(queue))
-        self._settings.save()
-        return flask.jsonify(queue=queue)
+        self.q.setCount(
+                int(flask.request.args.get("index")),
+                int(flask.request.args.get("count")))
+        return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/queuedown", methods=["GET"])
     @restricted_access
     def queue_down(self):
-        index = int(flask.request.args.get("index", 0))
-        queue = json.loads(self._settings.get(["cp_queue"]))
-        orig = queue[index]
-        queue[index] = queue[index + 1]
-        queue[index + 1] = orig
-        self._settings.set(["cp_queue"], json.dumps(queue))
-        self._settings.save()
-        return flask.jsonify(queue=queue)
+        i = int(flask.request.args.get("index", 0))
+        self.q.move(i, i+1)
+        return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/addqueue", methods=["POST"])
     @restricted_access
     def add_queue(self):
-        queue = json.loads(self._settings.get(["cp_queue"]))
-        queue.append(
+        self.q.add(
             dict(
                 name=flask.request.form["name"],
                 path=flask.request.form["path"],
                 sd=flask.request.form["sd"],
                 count=int(flask.request.form["count"]),
+                times_run=0,
             )
         )
-        self._settings.set(["cp_queue"], json.dumps(queue))
-        self._settings.save()
         return flask.make_response("success", 200)
 
     @octoprint.plugin.BlueprintPlugin.route("/removequeue", methods=["DELETE"])
     @restricted_access
     def remove_queue(self):
-        queue = json.loads(self._settings.get(["cp_queue"]))
-        self._logger.info(flask.request.args.get("index", 0))
-        queue.pop(int(flask.request.args.get("index", 0)))
-        self._settings.set(["cp_queue"], json.dumps(queue))
-        self._settings.save()
+        self.q.pop(int(flask.request.args.get("index", 0)))
         return flask.make_response("success", 200)
 
     @octoprint.plugin.BlueprintPlugin.route("/startqueue", methods=["GET"])
