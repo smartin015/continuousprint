@@ -6,7 +6,15 @@ import flask, json
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import eventManager, Events
 
-from print_queue import PrintQueue
+from .print_queue import PrintQueue
+
+
+QUEUE_KEY = "cp_queue"
+LOOPED_KEY = "cp_looped"
+HISTORY_KEY = "cp_print_history"
+CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
+FINISHED_SCRIPT_KEY = "cp_queue_finished"
+
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -16,11 +24,6 @@ class ContinuousprintPlugin(
     octoprint.plugin.BlueprintPlugin,
     octoprint.plugin.EventHandlerPlugin,
 ):
-    QUEUE_KEY = "cp_queue"
-    LOOPED_KEY = "cp_looped"
-    HISTORY_KEY = "cp_print_history"
-    CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
-    FINISHED_SCRIPT_KEY = "cp_queue_finished"
 
     print_history = []
     enabled = False
@@ -32,26 +35,26 @@ class ContinuousprintPlugin(
         d = {}
         d[QUEUE_KEY] = "[]"
         d[CLEARING_SCRIPT_KEY] = (
-                "M17 ;enable steppers\n"
-                "G91 ; Set relative for lift\n"
-                "G0 Z10 ; lift z by 10\n"
-                "G90 ;back to absolute positioning\n"
-                "M190 R25 ; set bed to 25 for cooldown\n"
-                "G4 S90 ; wait for temp stabalisation\n"
-                "M190 R30 ;verify temp below threshold\n"
-                "G0 X200 Y235 ;move to back corner\n"
-                "G0 X110 Y235 ;move to mid bed aft\n"
-                "G0 Z1v ;come down to 1MM from bed\n"
-                "G0 Y0 ;wipe forward\n"
-                "G0 Y235 ;wipe aft\n"
-                "G28 ; home"
-                )
+            "M17 ;enable steppers\n"
+            "G91 ; Set relative for lift\n"
+            "G0 Z10 ; lift z by 10\n"
+            "G90 ;back to absolute positioning\n"
+            "M190 R25 ; set bed to 25 for cooldown\n"
+            "G4 S90 ; wait for temp stabalisation\n"
+            "M190 R30 ;verify temp below threshold\n"
+            "G0 X200 Y235 ;move to back corner\n"
+            "G0 X110 Y235 ;move to mid bed aft\n"
+            "G0 Z1v ;come down to 1MM from bed\n"
+            "G0 Y0 ;wipe forward\n"
+            "G0 Y235 ;wipe aft\n"
+            "G28 ; home"
+        )
         d[FINISHED_SCRIPT_KEY] = (
-                "M18 ; disable steppers\n"
-                "M104 T0 S0 ; extruder heater off\n"
-                "M140 S0 ; heated bed heater off\n"
-                "M300 S880 P300 ; beep to show its finished"
-                )
+            "M18 ; disable steppers\n"
+            "M104 T0 S0 ; extruder heater off\n"
+            "M140 S0 ; heated bed heater off\n"
+            "M300 S880 P300 ; beep to show its finished"
+        )
         d[LOOPED_KEY] = "false"
         d[HISTORY_KEY] = "[]"
         return d
@@ -59,16 +62,13 @@ class ContinuousprintPlugin(
     ##~~ StartupPlugin mixin
     def on_after_startup(self):
         self._settings.save()
-        self.q = PrintQueue(self._settings, self.QUEUE_KEY)
+        self.q = PrintQueue(self._settings, QUEUE_KEY)
         self._logger.info("Continuous Print Plugin started")
-
 
     def _msg(self, msg="", type="popup"):
         self._plugin_manager.send_plugin_message(
             self._identifier, dict(type=type, msg=msg)
         )
-
-
 
     ##~~ Event hook
     def on_event(self, event, payload):
@@ -120,7 +120,6 @@ class ContinuousprintPlugin(
                 self.looped = looped
                 if bool(self._settings.get([LOOPED_KEY])) and item != None:
                     self.q.add(item)
-
 
             # Add to the print History
             print_history = json.loads(self._settings.get(["cp_print_history"]))
@@ -214,7 +213,7 @@ class ContinuousprintPlugin(
         self._msg("Starting print: " + item["name"])
         self._msg(type="reload")
 
-        sd = (item["sd"] == "true")
+        sd = item["sd"] == "true"
         try:
             self._printer.select_file(item["path"], sd)
             self._logger.info(item["path"])
@@ -254,23 +253,23 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/queueup", methods=["GET"])
     @restricted_access
     def queue_up(self):
-        index = int(flask.request.args.get("index", 0))
-        self.q.move(i, i-1)
+        i = int(flask.request.args.get("index", 0))
+        self.q.move(i, i - 1)
         return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/change", methods=["GET"])
     @restricted_access
     def change(self):
         self.q.setCount(
-                int(flask.request.args.get("index")),
-                int(flask.request.args.get("count")))
+            int(flask.request.args.get("index")), int(flask.request.args.get("count"))
+        )
         return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/queuedown", methods=["GET"])
     @restricted_access
     def queue_down(self):
         i = int(flask.request.args.get("index", 0))
-        self.q.move(i, i+1)
+        self.q.move(i, i + 1)
         return self.q.json()
 
     @octoprint.plugin.BlueprintPlugin.route("/addqueue", methods=["POST"])
@@ -290,7 +289,7 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/removequeue", methods=["DELETE"])
     @restricted_access
     def remove_queue(self):
-        self.q.pop(int(flask.request.args.get("index", 0)))
+        del self.q[int(flask.request.args.get("index", 0))]
         return flask.make_response("success", 200)
 
     @octoprint.plugin.BlueprintPlugin.route("/startqueue", methods=["GET"])
@@ -314,8 +313,8 @@ class ContinuousprintPlugin(
     def get_template_vars(self):
         return dict(
             cp_enabled=self.enabled,
-            cp_bed_clearing_script=self._settings.get(["cp_bed_clearing_script"]),
-            cp_queue_finished=self._settings.get(["cp_queue_finished"]),
+            cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
+            cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
             cp_paused=self.paused,
         )
 

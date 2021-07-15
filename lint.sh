@@ -1,2 +1,2 @@
 #!/bin/bash
-black continuousprint/__init__.py
+black continuousprint/*.py

@@ -3,7 +3,7 @@ import json
 # This is a simple print queue that tracks the order of items
 # and persists state to Octoprint settings
 class PrintQueue:
-    VALID_ITEM_KEYS = ["count", "name", "path", "sd", "times_run"] # Must be sorted
+    VALID_ITEM_KEYS = ["count", "name", "path", "sd", "times_run"]  # Must be sorted
 
     def __init__(self, settings, key):
         self.key = key
@@ -22,7 +22,9 @@ class PrintQueue:
         ik = list(item.keys())
         ik.sort()
         if ik != self.VALID_ITEM_KEYS:
-            raise ValueError(f"PrintQueue item must have keys {self.VALID_ITEM_KEYS}; received item with {ik}")
+            raise ValueError(
+                f"PrintQueue item must have keys {self.VALID_ITEM_KEYS}; received item with {ik}"
+            )
 
     def __len__(self):
         self._load()
@@ -44,7 +46,7 @@ class PrintQueue:
         self._save()
 
     def json(self):
-        return '{"queue":' + self._settings.get(self.key) + "}"
+        return '{"queue":' + self._settings.get([self.key]) + "}"
 
     def add(self, item):
         self._validate(item)

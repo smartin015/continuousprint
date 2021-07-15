@@ -1,12 +1,15 @@
 import unittest
 from print_queue import PrintQueue
 
+
 class MockSettings:
     def __init__(self, k):
         self.k = k
         self.s = "[]"
+
     def save(self):
         pass
+
     def get(self, a):
         if a[0] != self.k:
             raise Exception(f"Unexpected settings key {a[0]}")
@@ -17,14 +20,16 @@ class MockSettings:
             raise Exception(f"Unexpected settings key {ak[0]}")
         self.s = v
 
+
 test_items = [
-        {"sd": "false", "name": "foo", "path": "/foo.gcode", "count": 1, "times_run": 0},
-        {"sd": "true", "name": "bar", "path": "/bar.gcode", "count": 2, "times_run": 1},
-        ]
+    {"sd": "false", "name": "foo", "path": "/foo.gcode", "count": 1, "times_run": 0},
+    {"sd": "true", "name": "bar", "path": "/bar.gcode", "count": 2, "times_run": 1},
+]
 
 test_bad_items = [
-        {"sd": "false", "path": "", "count": 0},
-        ]
+    {"sd": "false", "path": "", "count": 0},
+]
+
 
 class TestPrintQueue(unittest.TestCase):
     def setUp(self):
@@ -83,6 +88,7 @@ class TestPrintQueue(unittest.TestCase):
         self.q.add(test_items[0])
         self.q.setCount(0, 5)
         self.assertEqual(self.q[0]["count"], 5)
+
 
 if __name__ == "__main__":
     unittest.main()
