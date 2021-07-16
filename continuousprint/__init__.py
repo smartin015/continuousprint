@@ -54,11 +54,11 @@ class ContinuousprintPlugin(octoprint.plugin.SettingsPlugin,
 				self._plugin_manager.send_plugin_message(self._identifier, dict(type="error", msg="Print queue cancelled"))
 
 			if event == Events.PRINTER_STATE_CHANGED:
-					# If the printer is operational and the last print succeeded then we start next print
-					state = self._printer.get_state_id()
-					if state  == "OPERATIONAL":
-						if self.enabled == True and self.paused == False:
-							self.start_next_print()
+				# If the printer is operational and the last print succeeded then we start next print
+				state = self._printer.get_state_id()
+				if state  == "OPERATIONAL":
+					if self.enabled == True and self.paused == False:
+						self.start_next_print()
 
 			if event == Events.FILE_SELECTED:
 				# Add some code to clear the print at the bottom
