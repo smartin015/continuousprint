@@ -1,36 +1,73 @@
-<button class="btn btn-primary pull-right" data-bind="click: startQueue, visible: printerState.isOperational() && loginState.isUser() && !(is_paused()) && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
+<button class="btn btn-primary pull-right" data-bind="click: startQueue(true), visible: printerState.isOperational() && loginState.isUser() && !(is_paused()) && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
 	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
 </button>
-<button class="btn btn-primary pull-right" disabled data-bind="click: startQueue, visible: (printerState.isPrinting() || printerState.isPaused())" title="Running">
+<button class="btn btn-primary pull-right" disabled data-bind="visible: (printerState.isPrinting() || printerState.isPaused())" title="Running">
 	<i class="fa fa-spinner fa-spin"></i>&nbsp;&nbsp;{{ _('Already Printing') }}
 </button>
-<button class="btn btn-primary pull-right" data-bind="click: resumeQueue, visible: is_paused()" title="Resume Queue">
+<button class="btn btn-primary pull-right" data-bind="click: startQueue(false), visible: is_paused()" title="Resume Queue">
 	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Resume Queue') }}
 </button>
 
-
 <h3>Continuous Print Queue</h3>
-<button class="btn btn-primary pull-right" data-bind="click: loop, visible: !(is_looped())" title="Press this button to start looping the queue">
+<button class="btn btn-primary pull-right" data-bind="click: setLoop(true), visible: !(is_looped())" title="Press this button to start looping the queue">
 	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('loop') }}
 </button>
-<button class="btn btn-primary pull-right" data-bind="click: unloop, visible: (is_looped())" title="Press this button to stop looping the queue">
+<button class="btn btn-primary pull-right" data-bind="click: setLoop(false), visible: (is_looped())" title="Press this button to stop looping the queue">
 	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('unloop') }}
 </button>
 <form class="form-horizontal">
     <p>Select files from the file list to include in the print queue, the print queue will print from top to bottom.</p>
     <div class="row-fluid">
-		
-		<h4>Print Queue</h4>
-		<div style="max-height:600px; overflow-y:scroll">
-		<div id="queue_list"></div>
-		<div id="print_history"></div>
-		</div>
-		<br /><br />
-		<h4>File List</h4>
-		<input type="text" id="gcode_search" class="input-block-level" placeholder="Search" />
-        <div id="file_list" style="max-height: 200px; overflow-y: scroll; overflow-x:hidden"></div>
-	</div>
+      <h4>Print Queue</h4>
+      <div style="height:40vh; overflow-y:scroll">
+        <div id="queue_list">
+          {% if queue.length + history.length == 0 %}
+            <div style='text-align: center'>Queue is empty</div>'</div>
+          {% endif %}
+          {% for file in queue %}
+            <div style='padding: 10px;border-bottom: 1px solid #000;'>
+              <div class='queue-row-container'>
+                <div class='queue-inner-row-container'>
+                  <input class='fa fa-text count-box' type='number' value='{{file.count}}' data-bind="enter,focusout: changeCount"/>
+                  <p class='file-name'>{{file.name}}</p>
+                </div>
+                <div>
+                  <i style='cursor: pointer' class='fa fa-chevron-down' data-bind="click: move"></i>&nbsp;
+                  <i style='cursor: pointer' class='fa fa-chevron-up' data-bind="click: move"></i>&nbsp;
+                  <i style='cursor: pointer' class='fa fa-minus text-error' data-bind="click:remove"></i>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div id="print_history">
+          {% for file in history() %}
+            <div style='padding: 10px; border-bottom: 1px solid #000;background:#c2fccf'>
+              Complete: {{file.name}}
+              <div class='pull-right'>took: TODO</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <br /><br />
+      <h4>File List</h4>
+      <input type="text" id="file_search" class="input-block-level" placeholder="Search"/>
+      <div id="file_list" style="max-height: 30vh; overflow-y: scroll; overflow-x:hidden">
+        {% if filelist.length == 0 %}
+        <div style='text-align: center'>No files found</div>");
+        {% endif %}
+
+        {% for file in filelist() %}
+          <!-- TODO jinja-based filter option -->
+          <div data-name='{{file.name.toLowerCase()}}' style='padding: 10px;border-bottom: 1px solid #000;' data-bind="visible: true">
+            {{file.path}}
+            <div class='pull-right'>
+              <i style='cursor: pointer' class='fa fa-plus text-success' data-name='{{file.name}} data-path='{{file.path}} data-origin='{{file.origin}}' data-bind="click: add"></i>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+	  </div>
     <br/>
-    
     <br/>
 </form>

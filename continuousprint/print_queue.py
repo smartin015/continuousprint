@@ -46,7 +46,7 @@ class PrintQueue:
         self._save()
 
     def json(self):
-        return '{"queue":' + self._settings.get([self.key]) + "}"
+        return self._settings.get([self.key])
 
     def add(self, item):
         self._validate(item)

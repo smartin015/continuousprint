@@ -16,6 +16,11 @@ CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished"
 
 
+STATE_UNKNOWN = 0
+STATE_DISABLED = 1
+STATE_ENABLED = 2
+STATE_PAUSED = 3
+
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
     octoprint.plugin.TemplatePlugin,
@@ -26,8 +31,7 @@ class ContinuousprintPlugin(
 ):
 
     print_history = []
-    enabled = False
-    paused = False
+    state = STATE_UNKNOWN
     item = None
 
     ##~~ SettingsPlugin mixin
@@ -73,35 +77,29 @@ class ContinuousprintPlugin(
     ##~~ Event hook
     def on_event(self, event, payload):
         try:
-            ##  Print complete check it was the print in the bottom of the queue and not just any print
             if event == Events.PRINT_DONE:
-                if self.enabled == True:
-                    self.complete_print(payload)
-
-            # On fail stop all prints
-            if event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
-                self.enabled = False  # Set enabled to false
-                self._msg("Print queue cancelled", type="error")
-
-            if event == Events.PRINTER_STATE_CHANGED:
-                # If the printer is operational and the last print succeeded then we start next print
-                state = self._printer.get_state_id()
-                if state == "OPERATIONAL":
-                    if self.enabled == True and self.paused == False:
-                        self.start_next_print()
-
-            if event == Events.FILE_SELECTED:
+                self.complete_print(payload)
+            elif event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
+                self.complete_queue(run_finish_script=False)
+            elif event == Events.PRINTER_STATE_CHANGED:
+                if self._printer.get_state_id() == "OPERATIONAL": # "operational" implies proor print success
+                    self.start_next_print()
+            elif event == Events.FILE_SELECTED:
                 # Add some code to clear the print at the bottom
+                # TODO is this still relevant?
                 self._logger.info("File selected")
                 bed_clearing_script = self._settings.get(["cp_bed_clearing_script"])
-
-            if event == Events.UPDATED_FILES:
+            elif event == Events.UPDATED_FILES:
                 self._msg(type="updatefiles")
         except Exception as error:
             raise error
             self._logger.exception("Exception when handling event.")
 
     def complete_print(self, payload):
+        ##  Print complete check it was the print in the bottom of the queue and not just any print
+        if self.state != STATE_ENABLED:
+            return
+
         item = self.q.pop()
         if payload["path"] == item["path"] and item["count"] > 0:
 
@@ -182,7 +180,7 @@ class ContinuousprintPlugin(
         script = []
         for x in input_script:
             if x.find("[PAUSE]", 0) > -1:
-                self.paused = True
+                self.state = STATE_PAUSED
                 self._msg("Queue paused", type="paused")
             else:
                 script.append(x)
@@ -193,16 +191,17 @@ class ContinuousprintPlugin(
         bed_clearing_script = self._settings.get([CLEARING_SCRIPT_KEY]).split("\n")
         self._printer.commands(self.parse_gcode(bed_clearing_script), force=True)
 
-    def complete_queue(self):
-        self.enabled = False  # Set enabled to false
+    def complete_queue(self, run_finish_script=True):
+        self.state = STATE_DISABLED
         self._msg("Print Queue Complete", type="complete")
-        queue_finished_script = self._settings.get([FINISHED_SCRIPT_KEY]).split("\n")
-        self._printer.commands(
-            self.parse_gcode(queue_finished_script, force=True)
-        )  # send queue finished script to the printer
+        if run_finish_script:
+            queue_finished_script = self._settings.get([FINISHED_SCRIPT_KEY]).split("\n")
+            self._printer.commands(
+                self.parse_gcode(queue_finished_script, force=True)
+            )  # send queue finished script to the printer
 
     def start_next_print(self):
-        if self.paused or not self.enabled:
+        if self.state != STATE_ENABLED:
             return
 
         if len(self.q) == 0:
@@ -223,56 +222,41 @@ class ContinuousprintPlugin(
         except InvalidFileType:
             self._msg("File not gcode: " + item["path"], type="error")
 
+    def state_json(self):
+        return ('{"looped": %s, "queue": %s, "history": %s}' % 
+            self._settings.get([LOOPED_KEY, QUEUE_KEY, HISTORY_KEY]))
+
     ##~~ APIs
-    @octoprint.plugin.BlueprintPlugin.route("/looped", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
     @restricted_access
-    def looped(self):
-        return self._settings.get(["cp_looped"])
+    def state(self):
+        return self.state_json()
 
-    @octoprint.plugin.BlueprintPlugin.route("/loop", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/set_loop", methods=["GET"])
     @restricted_access
-    def loop(self):
-        self._settings.set(["cp_looped"], "true")
+    def set_loop(self):
+        self._settings.set(["cp_looped"], (flask.request.args.get("looped") == "true") ? "true" : "false")
+        return flask.make_response("success", 200)
 
-    @octoprint.plugin.BlueprintPlugin.route("/unloop", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/move", methods=["GET"])
     @restricted_access
-    def unloop(self):
-        self._settings.set(["cp_looped"], "false")
-
-    @octoprint.plugin.BlueprintPlugin.route("/queue", methods=["GET"])
-    @restricted_access
-    def get_queue(self):
-        return self.q.json()
-
-    @octoprint.plugin.BlueprintPlugin.route("/print_history", methods=["GET"])
-    @restricted_access
-    def get_print_history(self):
-        # return flask.jsonify(queue=json.loads(self._settings.get(["cp_print_history"])))
-        return '{"queue":' + self._settings.get(["cp_print_history"]) + "}"
-
-    @octoprint.plugin.BlueprintPlugin.route("/queueup", methods=["GET"])
-    @restricted_access
-    def queue_up(self):
-        i = int(flask.request.args.get("index", 0))
-        self.q.move(i, i - 1)
-        return self.q.json()
+    def move(self):
+        self.q.move(
+            int(flask.request.args.get("src", 0)), 
+            int(flask.request.args.get("dest", 0))
+        )
+        return self.state_json()
 
     @octoprint.plugin.BlueprintPlugin.route("/change", methods=["GET"])
     @restricted_access
     def change(self):
         self.q.setCount(
-            int(flask.request.args.get("index")), int(flask.request.args.get("count"))
+            int(flask.request.args.get("index")), 
+            int(flask.request.args.get("count"))
         )
-        return self.q.json()
+        return self.state_json()
 
-    @octoprint.plugin.BlueprintPlugin.route("/queuedown", methods=["GET"])
-    @restricted_access
-    def queue_down(self):
-        i = int(flask.request.args.get("index", 0))
-        self.q.move(i, i + 1)
-        return self.q.json()
-
-    @octoprint.plugin.BlueprintPlugin.route("/addqueue", methods=["POST"])
+    @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
     def add_queue(self):
         self.q.add(
@@ -284,38 +268,32 @@ class ContinuousprintPlugin(
                 times_run=0,
             )
         )
-        return flask.make_response("success", 200)
+        return self.state_json()
 
-    @octoprint.plugin.BlueprintPlugin.route("/removequeue", methods=["DELETE"])
+    @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["DELETE"])
     @restricted_access
     def remove_queue(self):
         del self.q[int(flask.request.args.get("index", 0))]
-        return flask.make_response("success", 200)
+        return self.state_json()
 
-    @octoprint.plugin.BlueprintPlugin.route("/startqueue", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/start", methods=["GET"])
     @restricted_access
     def start_queue(self):
-        self._settings.set(["cp_print_history"], "[]")  # Clear Print History
-        self._settings.save()
-        self.paused = False
-        self.enabled = True  # Set enabled to true
-        self.start_next_print()
-        return flask.make_response("success", 200)
-
-    @octoprint.plugin.BlueprintPlugin.route("/resumequeue", methods=["GET"])
-    @restricted_access
-    def resume_queue(self):
-        self.paused = False
+        if flask.request.args.get("clear_history", False):
+            self._settings.set(["cp_print_history"], "[]")
+            self._settings.save()
+        self.state = STATE_ENABLED
         self.start_next_print()
         return flask.make_response("success", 200)
 
     ##~~  TemplatePlugin
     def get_template_vars(self):
+        # TODO pass state instead of specific enabled/paused vars
         return dict(
-            cp_enabled=self.enabled,
+            cp_enabled=(self.state == STATE_ENABLED),
+            cp_paused=(self.state == STATE_PAUSED),
             cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
             cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
-            cp_paused=self.paused,
         )
 
     def get_template_configs(self):
@@ -332,7 +310,10 @@ class ContinuousprintPlugin(
 
     ##~~ AssetPlugin
     def get_assets(self):
-        return dict(js=["js/continuousprint.js"], css=["css/continuousprint.css"])
+        return dict(js=[
+            "js/continuousprint_api.js",
+            "js/continuousprint.js",
+            ], css=["css/continuousprint.css"])
 
     def get_update_information(self):
         # Define the configuration for your plugin to use with the Software Update
@@ -364,7 +345,7 @@ class ContinuousprintPlugin(
 
 
 __plugin_name__ = "Continuous Print"
-__plugin_pythoncompat__ = ">=2.7,<4"  # python 2 and 3
+__plugin_pythoncompat__ = ">=3.6,<4"
 
 
 def __plugin_load__():
