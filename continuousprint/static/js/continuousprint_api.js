@@ -3,13 +3,15 @@
 class CPrintAPI {
   BASE = "plugin/continuousprint/"
 
-  _simple_get(url, cb, type) {
+  _simple_get(url, cb, type, data) {
     $.ajax({
         url: url,
-        type: "GET",
-        dataType: type || "json",
+        type: type || "GET",
+        dataType: "json",
+        data: data,
         headers: {"X-Api-Key":UI_API_KEY},
         success: cb,
+        error: (e) => {throw new Error(e);},
     });
   }
 
@@ -21,39 +23,18 @@ class CPrintAPI {
     this._simple_get("/api/files?recursive=true", cb);
   }
 
-  add(data, cb, err) {
-    $.ajax({
-        url: this.BASE + "add",
-        type: "POST",
-        dataType: "text",
-        headers: {
-            "X-Api-Key":UI_API_KEY,
-        },
-        data: data,
-        success: cb,
-        error: err,
-    });
+  add(items, idx, cb) {
+    this._simple_get(this.BASE + "add", cb, "POST", {items: JSON.stringify(items), idx});
   }
 
-  move(src, dest, cb) {
-    this._simple_get(this.BASE + "move?src=" + src + "&dest=" + dest, cb);
+  remove(idx, count, cb) {
+    console.log("remove idx", idx, "count", count);
+    this._simple_get(this.BASE + "remove", cb, "POST", {idx, count});
   }
 
-  changeCount(idx, count, cb) {
-    this._simple_get(this.BASE + "change?index=" + idx + "&count=" + count, cb);
-  }
-
-  remove(idx, cb) {
-    $.ajax({
-        url: this.BASE + "removequeue?index=" + idx,
-        type: "DELETE",
-        dataType: "text",
-        headers: {
-            "X-Api-Key":UI_API_KEY,
-        },
-        success: cb,
-        error: cb, 
-    });
+  move(idx, count, offs, cb) {
+    console.log("move idx", idx, "count", count, "offs", offs);
+    this._simple_get(this.BASE + "move", cb, "POST", {idx, count, offs});
   }
 
   start(cb, clearHistory) {

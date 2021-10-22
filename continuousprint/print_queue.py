@@ -1,10 +1,29 @@
 import json
+import time
+
+# See QueueItem in continuousprint.js for matching JS object
+class QueueItem:
+    def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None):
+        self.name = name
+        self.path = path
+        if type(sd) != bool:
+            raise Exception("SD must be bool, got %s" % (type(sd)))
+        self.sd = sd
+        self.start_ts = start_ts
+        self.end_ts = end_ts
+        self.result = result
+
+    def __eq__(self, other):
+        return  (
+            self.name == other.name 
+            and self.path == other.path 
+            and self.sd == other.sd
+        )
+
 
 # This is a simple print queue that tracks the order of items
 # and persists state to Octoprint settings
 class PrintQueue:
-    VALID_ITEM_KEYS = ["count", "name", "path", "sd", "times_run"]  # Must be sorted
-
     def __init__(self, settings, key):
         self.key = key
         self._settings = settings
@@ -12,19 +31,22 @@ class PrintQueue:
         self._load()
 
     def _save(self):
-        self._settings.set([self.key], json.dumps(self.q))
+        self._settings.set([self.key], json.dumps([i.__dict__ for i in self.q]))
         self._settings.save()
 
     def _load(self):
-        self.q = json.loads(self._settings.get([self.key]))
+        self.assign([
+            QueueItem(**v) for v in json.loads(self._settings.get([self.key]))
+        ])
 
     def _validate(self, item):
-        ik = list(item.keys())
-        ik.sort()
-        if ik != self.VALID_ITEM_KEYS:
-            raise ValueError(
-                f"PrintQueue item must have keys {self.VALID_ITEM_KEYS}; received item with {ik}"
-            )
+        if not isinstance(item, QueueItem):
+            raise Exception("Invalid queue item: %s" % item)
+
+    def assign(self, items):
+        for v in items:
+            self._validate(v)
+        self.q = list(items)
 
     def __len__(self):
         self._load()
@@ -48,16 +70,25 @@ class PrintQueue:
     def json(self):
         return self._settings.get([self.key])
 
-    def add(self, item):
-        self._validate(item)
+    def add(self, items, idx=None):
+        for v in items:
+            self._validate(v)
+        if idx is None:
+            idx = len(self.q)
         self._load()
-        self.q.append(item)
+        self.q[idx:idx] = items
         self._save()
 
-    def move(self, fromidx, toidx):
+    def remove(self, idx, num=0):
         self._load()
-        v = self.q.pop(fromidx)
-        self.q.insert(toidx, v)
+        del self.q[idx:idx+num] 
+        self._save()
+
+    def move(self, fromidx, num, offs):
+        self._load()
+        slc = self.q[fromidx:fromidx+num]
+        self.q = self.q[0:fromidx] + self.q[fromidx+num:]
+        self.q = self.q[0:fromidx+offs] + slc + self.q[fromidx+offs:]
         self._save()
 
     def pop(self):
@@ -70,7 +101,16 @@ class PrintQueue:
         self._load()
         return self.q[0] if len(self.q) > 0 else None
 
-    def setCount(self, i, n):
+    def available(self):
         self._load()
-        self.q[i]["count"] = n
-        self._save()
+        return list(filter(lambda i: i.end_ts is None, self.q))
+
+    def complete(self, path, result):
+        self._load()
+        for item in self.q:
+            if item.end_ts is None and item.path == path:
+                item.end_ts = int(time.time())
+                item.result = result
+                self._save()
+                return
+        raise Exception("Completed item with path %s not found in queue" % path)
