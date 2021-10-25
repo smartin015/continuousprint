@@ -17,42 +17,69 @@
     <p>Select files from the file list to include in the print queue, the print queue will print from top to bottom.</p>
     <div class="row-fluid">
 
+      <h4 data-bind="click: toggleFileList" style="cursor:pointer">
+          <i class="fa" data-bind="css: {'fa-caret-right': !$root.showFileList(), 'fa-caret-down': $root.showFileList()}"></i>
+          File List
+      </h4>
+      <div data-bind="visible: $root.showFileList()">
+        <input type="text" id="file_search" class="input-block-level" placeholder="Search" data-bind="value: $root.searchtext, valueUpdate: 'afterkeydown'"/>
+        <div id="file_list" style="max-height: 30vh; overflow-y: scroll; overflow-x:hidden">
+          <div data-bind="visible: filelist().length === 0" style='text-align: center'>No files found</div>
+          <div data-bind='foreach: filelist'>
+            <div style='padding: 10px;border-bottom: 1px solid #000;' data-bind="visible: path.toLowerCase().indexOf($root.searchtext().toLowerCase()) !== -1">
+              <span data-bind="text: path"></span>
+              <div class="pull-right">
+                <i style="cursor: pointer" class="fa fa-plus text-success" data-bind="click: $root.add"></i>
+              </div>
+            </div>
+          </div>
+        </div>  
+      </div>
+
       <h4>Print Queue</h4>
-      <div style="height:40vh; overflow-y:scroll">
+      <div style="height:80vh; overflow-y:scroll">
         <div id="queue_list">
+          <div style="text-align: center">- show 5 completed items -</div>
           <div style='text-align: center' data-bind='visible: queuesets().length === 0'>Queue is empty</div>
-          <div data-bind='foreach: queuesets'>
-            <div style='padding: 10px;border-bottom: 1px solid #000;'>
+          <div data-bind='foreach: queuesets' class="queuesets">
+            <div>
               <div class="queue-row-container">
-                <div class='queue-inner-row-container'>
-                  <p class='file-name' data-bind='text: name'/>
-                </div>
-                <div>
-                  <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>&nbsp;
-                  <i style="cursor: pointer" class="fa fa-chevron-up" data-bind="click: function(i) {$root.move(i,-1);}"></i>&nbsp;
-                  <i style="cursor: pointer" class="fa fa-chevron-down" data-bind="click: function(i) {$root.move(i,1);}"></i>&nbsp;
+                  <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
+                  <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }" style="align-self: flex-start"/>
+                  <div class="progress" style="width: 30%" data-bind="css: { 'progress-striped active': $root.activeQueueSet() == idx }">
+                    <div class="bar" data-bind="style: { width: progress }"></div>
+                  </div>
+                  <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>
+                  <i style="cursor: pointer" class="fa fa-chevron-up" data-bind="click: function(i) {$root.move(i,-1);}"></i>
+                  <i style="cursor: pointer" class="fa fa-chevron-down" data-bind="click: function(i) {$root.move(i,1);}"></i>
                   <i style="cursor: pointer" class="fa fa-minus text-error" data-bind="click: $root.remove"></i>
-                </div>
+              </div>
+              <div class="queue-row-details well" data-bind="visible: $root.selected() === idx">
+                <div data-bind="text: description"></div>
+                <table class="queue-set-list">
+                  <thead>
+                    <th>Name</th>
+                    <th>SD</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Result</th>
+                  </thead>
+                  <tbody data-bind="foreach: items">
+                    <tr data-bind="style: { 'font-weight': $root.activeIdx() == idx ? 'bold' : null }">
+                      <td data-bind="text:name"/>
+                      <td data-bind="text: (sd) ? 'Y' : 'N'"/>
+                      <td data-bind="text:start_ts"/>
+                      <td data-bind="text:end_ts"/>
+                      <td data-bind="text:result"/>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
       </div>
       <br /><br />
-
-      <h4>File List</h4>
-      <input type="text" id="file_search" class="input-block-level" placeholder="Search" data-bind="value: $root.searchtext, valueUpdate: 'afterkeydown'"/>
-      <div id="file_list" style="max-height: 30vh; overflow-y: scroll; overflow-x:hidden">
-        <div data-bind="visible: filelist().length === 0" style='text-align: center'>No files found</div>
-        <div data-bind='foreach: filelist'>
-          <div style='padding: 10px;border-bottom: 1px solid #000;' data-bind="visible: path.toLowerCase().indexOf($root.searchtext().toLowerCase()) !== -1">
-            <span data-bind="text: path"></span>
-            <div class="pull-right">
-              <i style="cursor: pointer" class="fa fa-plus text-success" data-bind="click: $root.add"></i>
-            </div>
-          </div>
-        </div>
-      </div>
 
 	  </div>
     <br/>

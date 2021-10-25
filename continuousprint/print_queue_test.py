@@ -1,25 +1,6 @@
 import unittest
 from print_queue import PrintQueue, QueueItem
-
-
-class MockSettings:
-    def __init__(self, k):
-        self.k = k
-        self.s = "[]"
-
-    def save(self):
-        pass
-
-    def get(self, a):
-        if a[0] != self.k:
-            raise Exception(f"Unexpected settings key {a[0]}")
-        return self.s
-
-    def set(self, ak, v):
-        if ak[0] != self.k:
-            raise Exception(f"Unexpected settings key {ak[0]}")
-        self.s = v
-
+from mock_settings import MockSettings
 
 test_items = [
     QueueItem("foo", "/foo.gcode", False, end_ts=123),

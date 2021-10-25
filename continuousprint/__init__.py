@@ -14,12 +14,6 @@ LOOPED_KEY = "cp_looped"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished"
 
-
-STATE_UNKNOWN = 0
-STATE_DISABLED = 1
-STATE_ENABLED = 2
-STATE_PAUSED = 3
-
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
     octoprint.plugin.TemplatePlugin,
@@ -29,9 +23,12 @@ class ContinuousprintPlugin(
     octoprint.plugin.EventHandlerPlugin,
 ):
 
-    state = STATE_UNKNOWN
+    def _msg(self, msg="", type="popup"):
+        self._plugin_manager.send_plugin_message(
+            self._identifier, dict(type=type, msg=msg)
+        )
 
-    ##~~ SettingsPlugin mixin
+    ##~~ SettingsPlugin
     def get_settings_defaults(self):
         d = {}
         d[QUEUE_KEY] = "[]"
@@ -59,87 +56,56 @@ class ContinuousprintPlugin(
         d[LOOPED_KEY] = "false"
         return d
 
-    ##~~ StartupPlugin mixin
+    ##~~ StartupPlugin
     def on_after_startup(self):
         self._settings.save()
         self.q = PrintQueue(self._settings, QUEUE_KEY)
+        self.d = ContinuousPrintDriver(
+                    queue = self.q,
+                    bed_clear_script_fn = self.run_bed_clear_script,
+                    finish_script_fn = self.run_finish_script,
+                    start_print_fn = self.start_print,
+                    cancel_print_fn = self.cancel_print,
+                    logger = self._logger,
+                )
         self._logger.info("Continuous Print Plugin started")
 
-    def _msg(self, msg="", type="popup"):
-        self._plugin_manager.send_plugin_message(
-            self._identifier, dict(type=type, msg=msg)
-        )
-
-    ##~~ Event hook
+    ##~~ EventHandlerPlugin
     def on_event(self, event, payload):
-        try:
-            if event == Events.PRINT_DONE:
-                self.complete_print(payload)
-            elif event == Events.PRINT_FAILED or event == Events.PRINT_CANCELLED:
-                self.complete_queue(run_finish_script=False)
-            elif event == Events.PRINTER_STATE_CHANGED:
-                if self._printer.get_state_id() == "OPERATIONAL": # "operational" implies proor print success
-                    self.start_next_print()
-            elif event == Events.FILE_SELECTED:
-                # Add some code to clear the print at the bottom
-                # TODO is this still relevant?
-                self._logger.info("File selected")
-                bed_clearing_script = self._settings.get(["cp_bed_clearing_script"])
-            elif event == Events.UPDATED_FILES:
-                self._msg(type="updatefiles")
-        except Exception as error:
-            raise error
-            self._logger.exception("Exception when handling event.")
+        # TODO reload UI should be triggered in some way
+        # self._msg(type="reload") # reload UI
+        if event == Events.PRINT_DONE:
+            self.d.on_print_success()
+        elif event == Events.PRINT_FAILED:
+            self.d.on_print_failed()
+        elif event == Events.PRINT_CANCELLED:
+            self.d.on_print_cancelled()
+        elif event == Events.PRINT_PAUSED:
+            self.d.on_print_paused()
+        # elif event == Events.PRINTER_STATE_CHANGED:
+        #     if self._printer.get_state_id() == "OPERATIONAL": # "operational" implies proor print success
+        #         self.start_next_print()
+        elif event == Events.UPDATED_FILES: # TODO necessary?
+            self._msg(type="updatefiles")
 
-    def complete_print(self, payload):
-        if self.state != STATE_ENABLED:
-            return
-
-        self.q.complete(payload['path'], 'success')
-
-        if self.q.available() > 0:
-            self.clear_bed()
-            self._msg(type="reload") # reload UI
-        else:
-            # TODO handle looping, i.e. with bool(self._settings.get([LOOPED_KEY]))
-            enabled = False
-
-    def parse_gcode(self, input_script):
-        script = []
-        for x in input_script:
-            if x.find("[PAUSE]", 0) > -1:
-                self.state = STATE_PAUSED
-                self._msg("Queue paused", type="paused")
-            else:
-                script.append(x)
-        return script
-
-    def clear_bed(self):
+    def run_bed_clear_script(self):
         self._logger.info("Clearing bed")
         bed_clearing_script = self._settings.get([CLEARING_SCRIPT_KEY]).split("\n")
-        self._printer.commands(self.parse_gcode(bed_clearing_script), force=True)
+        self._printer.commands(bed_clearing_script, force=True)
 
-    def complete_queue(self, run_finish_script=True):
-        self.state = STATE_DISABLED
+    def run_finish_script(self, run_finish_script=True):
         self._msg("Print Queue Complete", type="complete")
         if run_finish_script:
             queue_finished_script = self._settings.get([FINISHED_SCRIPT_KEY]).split("\n")
-            self._printer.commands(
-                self.parse_gcode(queue_finished_script, force=True)
-            )  # send queue finished script to the printer
+            self._printer.commands(queue_finished_script, force=True)
 
-    def start_next_print(self):
-        if self.state != STATE_ENABLED:
-            return
+    def cancel_print(self):
+        self._msg("Print cancelled", type="error")
+        self._printer.cancel_print()
 
-        if len(self.q) == 0:
-            self.complete_queue()
-            return
-
-        item = self.q.peek()
+    def start_print(self, item):
         self._msg("Starting print: " + item.name)
         self._msg(type="reload")
-
         try:
             self._printer.select_file(item.path, item.sd)
             self._logger.info(item.path)
@@ -208,16 +174,14 @@ class ContinuousprintPlugin(
         if flask.request.args.get("clear_history", False):
             while self.q.peek().end_ts is not None:
                 self.q.pop()
-        self.state = STATE_ENABLED
-        self.start_next_print()
+
+        self.d.set_active(active=True, printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
         return flask.make_response("success", 200)
 
     ##~~  TemplatePlugin
     def get_template_vars(self):
-        # TODO pass state instead of specific enabled/paused vars
         return dict(
-            cp_enabled=(self.state == STATE_ENABLED),
-            cp_paused=(self.state == STATE_PAUSED),
+            cp_enabled=(self.d.active),
             cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
             cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
         )

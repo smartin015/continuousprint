@@ -47,6 +47,7 @@ class PrintQueue:
         for v in items:
             self._validate(v)
         self.q = list(items)
+        self._save()
 
     def __len__(self):
         self._load()

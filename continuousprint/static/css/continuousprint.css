@@ -3,21 +3,37 @@
   display: flex; 
   flex-wrap: nowrap; 
   flex-direction: row; 
-  justify-content: space-between; 
-  align-items: stretch;
+  justify-content: right;
   
 }
-#tab_plugin_continuousprint .queue-inner-row-container {
-  display: flex; 
-  flex-wrap: nowrap; 
-  flex-direction: row; 
-  justify-content: flex-start; 
-  align-items: stretch; 
-  width:50%;
-  flex-grow:2;
+#tab_plugin_continuousprint .queue-row-container > * {
+  margin-left: 10px;
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+#tab_plugin_continuousprint .queue-row-details {
+  margin-top: 10px;
+}
+#tab_plugin_continuousprint .queuesets > div {
+  border-bottom: 1px black solid;
+  padding: 10px;
+}
+#tab_plugin_continuousprint .queuesets > :first-child {
+  border-top: 1px black solid;
+}
+#tab_plugin_continuousprint .queue-set-list {
+  table-layout:auto;
+  width: 100%;
+  border-collapse: collapse;
+}
+#tab_plugin_continuousprint .queue-set-list th {
+  text-align: left;
+  border-bottom: 1px gray solid;
+}
+#tab_plugin_continuousprint .queue-set-list tr :first-child {
+  border-right: 1px gray solid;
+}
 
-  
-}
 #tab_plugin_continuousprint .count-box{
   min-width:30px;
   max-width: 30px; 
@@ -25,6 +41,7 @@
   
 }
 #tab_plugin_continuousprint .file-name {
+    flex: 1;
     flex-shrink: 10;
     overflow-x: scroll;
     white-space: nowrap;
