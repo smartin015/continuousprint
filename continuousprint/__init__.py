@@ -236,7 +236,7 @@ class ContinuousprintPlugin(
 
 
 __plugin_name__ = "Continuous Print"
-__plugin_pythoncompat__ = ">=3.8.3,<4"
+__plugin_pythoncompat__ = ">=3.6,<4"
 
 
 def __plugin_load__():
