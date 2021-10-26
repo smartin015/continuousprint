@@ -33,7 +33,9 @@
 #tab_plugin_continuousprint .queue-set-list tr :first-child {
   border-right: 1px gray solid;
 }
-
+#tab_plugin_continuousprint .well {
+  background-color: transparent;
+}
 #tab_plugin_continuousprint .count-box{
   min-width:30px;
   max-width: 30px; 
