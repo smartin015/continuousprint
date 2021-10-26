@@ -14,23 +14,28 @@ $(function() {
       
     }
 
+    // Inspired by answers at
 		// https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
-		function timeAgo(previous, current = new Date()) {
-				var msPerHour = 60 * 60 * 1000;
-				var msPerDay = msPerHour * 24;
-				var msPerMonth = msPerDay * 30;
+		function timeAgo(previous, current=null) {
+        var sPerMinute = 60;
+				var sPerHour = sPerMinute * 60;
+				var sPerDay = sPerHour * 24;
+				var sPerMonth = sPerDay * 30;
+        if (current === null) {
+          current = (new Date()).getTime()/1000;
+        }
 				var elapsed = current - previous;
-				if (elapsed < msPerHour) {
-						 return Math.round(elapsed/msPerMinute) + ' minutes';   
+				if (elapsed < sPerHour) {
+						 return Math.round(elapsed/sPerMinute) + ' minutes';   
 				}
-				else if (elapsed < msPerDay ) {
-						 return Math.round(elapsed/msPerHour) + ' hours';   
+				else if (elapsed < sPerDay ) {
+						 return Math.round(elapsed/sPerHour) + ' hours';   
 				}
-				else if (elapsed < msPerMonth) {
-						return Math.round(elapsed/msPerDay) + ' days';   
+				else if (elapsed < sPerMonth) {
+						return Math.round(elapsed/sPerDay) + ' days';   
 				}
 				else {
-						return Math.round(elapsed/msPerMonth) + ' months';   
+						return Math.round(elapsed/sPerMonth) + ' months';   
 				}
 		}
 
@@ -43,7 +48,25 @@ $(function() {
       self.sd = data.sd;
       self.start_ts = ko.observable(data.start_ts);
       self.end_ts = ko.observable(data.end_ts);
-      self.result = ko.observable(data.result);
+      self.result = ko.computed(function() {
+        if (data.result !== null) {
+          return data.result;
+        }
+        if (self.start_ts() === null) {
+          return "Pending";
+        }
+        if (self.start_ts() !== null && self.end_ts() === null) {
+          return "Running";
+        }
+      });
+      self.duration = ko.computed(function() {
+        let start = self.start_ts();
+        let end = self.end_ts();
+        if (start === null || end === null) {
+          return null;
+        }
+        return timeAgo(start, end);
+      });
     }
 
     function QueueSetItem(items, idx) {
@@ -78,17 +101,24 @@ $(function() {
         return i;
       });
       self.progress = ko.computed(function() {
-				return (self.num_completed() / self.length()).toFixed(0) + "%";
+        return (100 * self.num_completed() / self.length()).toFixed(0) + "%";
+      });
+      self.active = ko.computed(function() {
+        for (let item of self.items()) {
+          if (item.start_ts === null && item.end_ts !== null) {
+            return true;
+          }
+        }
       });
       self.description = ko.computed(function() {
         if (self.start_ts() === null) {
           return "Pending";
         } else if (self.active()) {
-          return `Started ${timeAgo(self.start_ts)} ago`;
-        } else if (self.end_ts !== null) {
-					return `${self.result} (${timeAgo(self.end_ts)} ago; took ${timeAgo(self.end_ts - self.start_ts)})`;
+          return `First item started ${timeAgo(self.start_ts)} ago`;
+        } else if (self.end_ts() !== null) {
+					return `${self.result()} (${timeAgo(self.end_ts())} ago; took ${timeAgo(self.start_ts(), self.end_ts())})`;
 				} else {
-					return self.result;
+					return self.result();
 				}
       });
     }
@@ -99,10 +129,9 @@ $(function() {
 
         // These are used in the jinja template (TODO CONFIRM)
         self.printerState = parameters[0];
-				console.log(self.printerState);
         self.loginState = parameters[1];
-        self.is_paused = ko.observable(false);
-        self.is_looped = ko.observable();
+        self.active = ko.observable(false);
+        self.status = ko.observable("Initializing...");
         self.searchtext = ko.observable("");
         self.queue = ko.observableArray([]);
         self.selected = ko.observable(0);
@@ -129,7 +158,6 @@ $(function() {
           if (cur.length) {
             result.push(new QueueSetItem(cur, qidx));
           }
-          console.log(result);
           return result;
         });
         self.filelist = ko.observableArray([]);
@@ -144,18 +172,15 @@ $(function() {
 							return i;
 						}
 					}
-          console.log("No valid idx found");
           return null;
 				});
         self.activeQueueSet = ko.computed(function() {
           let idx = self.activeIdx();
-          console.log("Active idx ", idx);
           if (idx === null) {
             return null;
           }
           for (let qss of self.queuesets()) {
             if (idx >= qss.idx && idx < qss.idx + qss.length()) {
-              console.log("Matches QSS");
               return qss.idx;
             }
           }
@@ -176,13 +201,16 @@ $(function() {
                 path: data.path,
                 sd: (data.origin !== "local"),
               }], undefined, (state) => {
-                new PNotify({
-                    title: 'Continuous Print',
-                    text: "Added " + data.name,
-                    type: "success",
-                    hide: true,
-                    buttons: {closer: true, sticker: false}
-                });
+                // Notify of additions when we aren't able to see the result
+                if (window.location.hash.indexOf("continuousprint") === -1) {
+                  new PNotify({
+                      title: 'Continuous Print',
+                      text: "Added " + data.name,
+                      type: "success",
+                      hide: true,
+                      buttons: {closer: true, sticker: false}
+                  });
+                }
                 self._setState(state);
               });
         };
@@ -194,7 +222,8 @@ $(function() {
             self.queue($.map(state.queue, function(q, i) {
               return new QueueItem(q, i);
             }));
-            self.is_looped(state.looped);
+            self.active(state.active);
+            self.status(state.status);
         }
                         
         self._getFileList = function() {
@@ -217,16 +246,11 @@ $(function() {
         }
 
         // *** ko template methods ***
-        self.startQueue = function(clearHistory) {
-          console.log("starting queue");
-            self.api.start(clearHistory, () => {
-                self.is_paused(false);
-            });
+        self.setActive = function(active) {
+            self.api.setActive(active, self._setState);
         }
-        self.setLoop = function(loop) {
-            self.api.setLoop((r) => {
-              self.is_looped(r === "true");
-            });
+        self.clearCompleted = function() {
+            self.api.clearCompleted(self._setState);
         }
         self.setSelected = function(sel) {
             self.selected((sel.idx === self.selected()) ? null : sel.idx);
@@ -234,16 +258,12 @@ $(function() {
         self.toggleFileList = function() {
             self.showFileList(!self.showFileList());
         }
-
-        self.countKeypress = function(cnt, key) {
-
-          if (key.keyCode == 13) {
-            self.changeCount(cnt);
-          }
-        }
         self.setCount = function(cnt, e) {
-          console.log("TODO validate change");
-          let diff =  parseInt(e.target.value, 10) - cnt.length();
+          const v = parseInt(e.target.value, 10);
+          if (isNaN(v) || v < 1) {
+            return;
+          }
+          let diff = v - cnt.length();
           if (diff > 0) {
             let items = [];
             for (let i = 0; i < diff; i++) {

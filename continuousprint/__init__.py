@@ -7,10 +7,10 @@ from octoprint.server.util.flask import restricted_access
 from octoprint.events import eventManager, Events
 
 from .print_queue import PrintQueue, QueueItem
+from .driver import ContinuousPrintDriver
 
 
 QUEUE_KEY = "cp_queue"
-LOOPED_KEY = "cp_looped"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished"
 
@@ -37,12 +37,10 @@ class ContinuousprintPlugin(
             "G91 ; Set relative for lift\n"
             "G0 Z10 ; lift z by 10\n"
             "G90 ;back to absolute positioning\n"
-            "M190 R25 ; set bed to 25 for cooldown\n"
-            "G4 S90 ; wait for temp stabalisation\n"
-            "M190 R30 ;verify temp below threshold\n"
+            "M190 R25 ; set bed to 25 and wait for cooldown\n"
             "G0 X200 Y235 ;move to back corner\n"
             "G0 X110 Y235 ;move to mid bed aft\n"
-            "G0 Z1v ;come down to 1MM from bed\n"
+            "G0 Z1 ;come down to 1MM from bed\n"
             "G0 Y0 ;wipe forward\n"
             "G0 Y235 ;wipe aft\n"
             "G28 ; home"
@@ -53,7 +51,6 @@ class ContinuousprintPlugin(
             "M140 S0 ; heated bed heater off\n"
             "M300 S880 P300 ; beep to show its finished"
         )
-        d[LOOPED_KEY] = "false"
         return d
 
     ##~~ StartupPlugin
@@ -62,7 +59,6 @@ class ContinuousprintPlugin(
         self.q = PrintQueue(self._settings, QUEUE_KEY)
         self.d = ContinuousPrintDriver(
                     queue = self.q,
-                    bed_clear_script_fn = self.run_bed_clear_script,
                     finish_script_fn = self.run_finish_script,
                     start_print_fn = self.start_print,
                     cancel_print_fn = self.cancel_print,
@@ -72,26 +68,28 @@ class ContinuousprintPlugin(
 
     ##~~ EventHandlerPlugin
     def on_event(self, event, payload):
+        if not hasattr(self, "d"): # Sometimes message arrive pre-init
+            return
+
         # TODO reload UI should be triggered in some way
-        # self._msg(type="reload") # reload UI
         if event == Events.PRINT_DONE:
             self.d.on_print_success()
+            self._msg(type="reload") # reload UI
         elif event == Events.PRINT_FAILED:
             self.d.on_print_failed()
+            self._msg(type="reload") # reload UI
         elif event == Events.PRINT_CANCELLED:
             self.d.on_print_cancelled()
+            self._msg(type="reload") # reload UI
         elif event == Events.PRINT_PAUSED:
             self.d.on_print_paused()
-        # elif event == Events.PRINTER_STATE_CHANGED:
-        #     if self._printer.get_state_id() == "OPERATIONAL": # "operational" implies proor print success
-        #         self.start_next_print()
+            self._msg(type="reload") # reload UI
+        elif event == Events.PRINTER_STATE_CHANGED and self._printer.get_state_id() == "OPERATIONAL":
+            while self._printer.get_state_id() == "OPERATIONAL" and self.d.pending_actions() > 0:
+                self.d.on_printer_ready()
+            self._msg(type="reload") # reload UI
         elif event == Events.UPDATED_FILES: # TODO necessary?
             self._msg(type="updatefiles")
-
-    def run_bed_clear_script(self):
-        self._logger.info("Clearing bed")
-        bed_clearing_script = self._settings.get([CLEARING_SCRIPT_KEY]).split("\n")
-        self._printer.commands(bed_clearing_script, force=True)
 
     def run_finish_script(self, run_finish_script=True):
         self._msg("Print Queue Complete", type="complete")
@@ -103,7 +101,12 @@ class ContinuousprintPlugin(
         self._msg("Print cancelled", type="error")
         self._printer.cancel_print()
 
-    def start_print(self, item):
+    def start_print(self, item, clear_bed=True):
+        if clear_bed:
+            self._logger.info("Clearing bed")
+            bed_clearing_script = self._settings.get([CLEARING_SCRIPT_KEY]).split("\n")
+            self._printer.commands(bed_clearing_script, force=True)
+
         self._msg("Starting print: " + item.name)
         self._msg(type="reload")
         try:
@@ -117,11 +120,11 @@ class ContinuousprintPlugin(
 
     def state_json(self):
         # Values are stored serialized, so we need to create a json string and inject them
-        resp = ('{"looped": %s, "queue": %s}' % (
-                self._settings.get([LOOPED_KEY]),
+        resp = ('{"active": %s, "status": "%s", "queue": %s}' % (
+                "true" if self.d.active else "false",
+                self.d.status,
                 self._settings.get([QUEUE_KEY]),
             ))
-        print(resp)
         return resp
             
 
@@ -130,12 +133,6 @@ class ContinuousprintPlugin(
     @restricted_access
     def state(self):
         return self.state_json()
-
-    @octoprint.plugin.BlueprintPlugin.route("/set_loop", methods=["GET"])
-    @restricted_access
-    def set_loop(self):
-        self._settings.set(["cp_looped"], "true" if flask.request.args.get("looped") == "true" else "false")
-        return flask.make_response("success", 200)
 
     @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
     @restricted_access
@@ -168,20 +165,24 @@ class ContinuousprintPlugin(
         return self.state_json()
 
 
-    @octoprint.plugin.BlueprintPlugin.route("/start", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
     @restricted_access
-    def start(self):
-        if flask.request.args.get("clear_history", False):
-            while self.q.peek().end_ts is not None:
-                self.q.pop()
+    def set_active(self):
+        self.d.set_active(flask.request.form["active"] == "true", printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
+        return self.state_json()
 
-        self.d.set_active(active=True, printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
-        return flask.make_response("success", 200)
+    @octoprint.plugin.BlueprintPlugin.route("/clear_completed", methods=["POST"])
+    @restricted_access
+    def clear_completed(self):
+        while len(self.q) > 0 and self.q.peek().end_ts is not None:
+            self.q.pop()
+        return self.state_json()
+
 
     ##~~  TemplatePlugin
     def get_template_vars(self):
         return dict(
-            cp_enabled=(self.d.active),
+            cp_enabled=(self.d.active if hasattr(self, "d") else False),
             cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
             cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
         )

@@ -1,87 +1,82 @@
-<button class="btn btn-primary pull-right" data-bind="click: startQueue, visible: printerState.isOperational() && loginState.isUser() && !(is_paused()) && !(printerState.isPrinting() || printerState.isPaused())" title="Start printing">
-	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Start Queue') }}
+<button class="btn btn-secondary pull-right" data-bind="visible: active(), click: function() {setActive(false);}">
+  <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
 </button>
-<button class="btn btn-primary pull-right" disabled data-bind="visible: (printerState.isPrinting() || printerState.isPaused())" title="Running">
-	<i class="fa fa-spinner fa-spin"></i>&nbsp;&nbsp;{{ _('Already Printing') }}
-</button>
-<button class="btn btn-primary pull-right" data-bind="click: startQueue, visible: is_paused()" title="Resume Queue">
-	<i class="fa fa-play"></i>&nbsp;&nbsp;{{ _('Resume Queue') }}
+<button class="btn btn-primary pull-right" data-bind="enable: !active(), click: function() {setActive(true);}">
+	<span data-bind="visible: !active()"><i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing</span>
+	<span data-bind="visible:  active()"><i class="fa fa-spinner fa-spin" data-bind="visible: active()"></i>&nbsp;&nbsp;{{ _('Active') }}</span>
 </button>
 
 <h3>Continuous Print Queue</h3>
-<label class="checkbox">
-  <input type="checkbox" data-bind="value: is_looped"></input>
-  {{ _('Loop') }}
-</label>
-<form class="form-horizontal">
-    <p>Select files from the file list to include in the print queue, the print queue will print from top to bottom.</p>
-    <div class="row-fluid">
+<strong data-bind="text: status"></strong>
+<hr/>
 
-      <h4 data-bind="click: toggleFileList" style="cursor:pointer">
-          <i class="fa" data-bind="css: {'fa-caret-right': !$root.showFileList(), 'fa-caret-down': $root.showFileList()}"></i>
-          File List
-      </h4>
-      <div data-bind="visible: $root.showFileList()">
-        <input type="text" id="file_search" class="input-block-level" placeholder="Search" data-bind="value: $root.searchtext, valueUpdate: 'afterkeydown'"/>
-        <div id="file_list" style="max-height: 30vh; overflow-y: scroll; overflow-x:hidden">
-          <div data-bind="visible: filelist().length === 0" style='text-align: center'>No files found</div>
-          <div data-bind='foreach: filelist'>
-            <div style='padding: 10px;border-bottom: 1px solid #000;' data-bind="visible: path.toLowerCase().indexOf($root.searchtext().toLowerCase()) !== -1">
-              <span data-bind="text: path"></span>
-              <div class="pull-right">
-                <i style="cursor: pointer" class="fa fa-plus text-success" data-bind="click: $root.add"></i>
-              </div>
-            </div>
-          </div>
-        </div>  
-      </div>
-
-      <h4>Print Queue</h4>
-      <div style="height:80vh; overflow-y:scroll">
-        <div id="queue_list">
-          <div style="text-align: center">- show 5 completed items -</div>
-          <div style='text-align: center' data-bind='visible: queuesets().length === 0'>Queue is empty</div>
-          <div data-bind='foreach: queuesets' class="queuesets">
-            <div>
-              <div class="queue-row-container">
-                  <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
-                  <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }" style="align-self: flex-start"/>
-                  <div class="progress" style="width: 30%" data-bind="css: { 'progress-striped active': $root.activeQueueSet() == idx }">
-                    <div class="bar" data-bind="style: { width: progress }"></div>
-                  </div>
-                  <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>
-                  <i style="cursor: pointer" class="fa fa-chevron-up" data-bind="click: function(i) {$root.move(i,-1);}"></i>
-                  <i style="cursor: pointer" class="fa fa-chevron-down" data-bind="click: function(i) {$root.move(i,1);}"></i>
-                  <i style="cursor: pointer" class="fa fa-minus text-error" data-bind="click: $root.remove"></i>
-              </div>
-              <div class="queue-row-details well" data-bind="visible: $root.selected() === idx">
-                <div data-bind="text: description"></div>
-                <table class="queue-set-list">
-                  <thead>
-                    <th>Name</th>
-                    <th>SD</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Result</th>
-                  </thead>
-                  <tbody data-bind="foreach: items">
-                    <tr data-bind="style: { 'font-weight': $root.activeIdx() == idx ? 'bold' : null }">
-                      <td data-bind="text:name"/>
-                      <td data-bind="text: (sd) ? 'Y' : 'N'"/>
-                      <td data-bind="text:start_ts"/>
-                      <td data-bind="text:end_ts"/>
-                      <td data-bind="text:result"/>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+<div class="row-fluid">
+  <h4 data-bind="click: toggleFileList" style="cursor:pointer">
+      <i class="fa" data-bind="css: {'fa-caret-right': !$root.showFileList(), 'fa-caret-down': $root.showFileList()}"></i>
+      File List
+  </h4>
+  <div data-bind="visible: $root.showFileList()">
+    <input type="text" id="file_search" class="input-block-level" placeholder="Search" data-bind="value: $root.searchtext, valueUpdate: 'afterkeydown'"/>
+    <div id="file_list" style="max-height: 30vh; overflow-y: scroll; overflow-x:hidden">
+      <div data-bind="visible: filelist().length === 0" style='text-align: center'>No files found</div>
+      <div data-bind='foreach: filelist'>
+        <div style='padding: 10px;border-bottom: 1px solid #000;' data-bind="visible: path.toLowerCase().indexOf($root.searchtext().toLowerCase()) !== -1">
+          <span data-bind="text: path"></span>
+          <div class="pull-right">
+            <i style="cursor: pointer" class="fa fa-plus text-success" data-bind="click: $root.add"></i>
           </div>
         </div>
       </div>
-      <br /><br />
+    </div>  
+  </div>
 
-	  </div>
-    <br/>
-    <br/>
-</form>
+  <br/>
+
+  <button class="btn btn-secondary pull-right" data-bind="click: clearCompleted" title="Clear Completed">
+    <i class="fa fa-recycle"></i>&nbsp;&nbsp;Clear Completed
+  </button>
+  <h4>Print Queue</h4>
+  <div style="height:80vh; overflow-y:scroll">
+    <div id="queue_list">
+      <div style='text-align: center' data-bind='visible: queuesets().length === 0'>Queue is empty</div>
+      <div data-bind='foreach: queuesets' class="queuesets">
+        <div>
+          <div class="queue-row-container">
+              <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
+              <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }" style="align-self: flex-start"/>
+              <div class="progress" style="width: 30%" data-bind="css: { 'progress-striped active': $root.activeQueueSet() == idx }">
+                <div class="bar" data-bind="style: { width: progress }"></div>
+              </div>
+              <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>
+              <i style="cursor: pointer" class="fa fa-chevron-up" data-bind="click: function(i) {$root.move(i,-1);}"></i>
+              <i style="cursor: pointer" class="fa fa-chevron-down" data-bind="click: function(i) {$root.move(i,1);}"></i>
+              <i style="cursor: pointer" class="fa fa-minus text-error" data-bind="click: $root.remove"></i>
+          </div>
+          <div class="queue-row-details well" data-bind="visible: $root.selected() === idx">
+            <div data-bind="text: description"></div>
+            <table class="queue-set-list">
+              <thead>
+                <th>Name</th>
+                <th>SD</th>
+                <th>Status</th>
+                <th>Duration</th>
+              </thead>
+              <tbody data-bind="foreach: items">
+                <tr data-bind="style: { 'font-weight': $root.activeIdx() == idx ? 'bold' : null }">
+                  <td data-bind="text:name"/>
+                  <td data-bind="text: (sd) ? 'Y' : 'N'"/>
+                  <td data-bind="text:result, style: { color: result === 'failure' ? 'red' : null }"/>
+                  <td data-bind="text:duration"/>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br /><br />
+
+</div>
+<br/>
+<br/>

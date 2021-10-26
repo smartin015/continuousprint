@@ -4,7 +4,7 @@ from print_queue import PrintQueue, QueueItem
 from driver import ContinuousPrintDriver
 from mock_settings import MockSettings
 import logging
-logging.basicConfig()
+logging.basicConfig(level=logging.DEBUG)
 
 def setupTestQueueAndDriver(self, num_complete):
     self.s = MockSettings("q")
@@ -81,8 +81,19 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.reset_mock()
 
         self.d.on_print_success()
+        self.d.on_printer_ready()
         self.d.bed_clear_script_fn.assert_called_once_with()
         self.d.start_print_fn.assert_called_once_with(self.q[2])
+
+    def test_success_after_queue_prepend_starts_prepended(self):
+        self.d.set_active()
+        self.d.start_print_fn.reset_mock()
+        self.q.add([QueueItem("new", "/new.gco", True)], idx=0)
+
+        self.d.on_print_success()
+        self.d.on_printer_ready()
+        self.d.start_print_fn.assert_called_once_with(self.q[0])
+
 
     def test_paused_early_triggers_cancel(self):
         self.d.set_active()
@@ -96,9 +107,15 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.reset_mock()
 
         self.d.on_print_cancelled()
+        self.d.on_printer_ready()
         self.d.bed_clear_script_fn.assert_called_once_with()
         self.d.start_print_fn.assert_called_once_with(self.q[1])
         self.assertEqual(self.d.retries, 1)
+
+    def test_set_active_clears_retries(self):
+        self.d.retries = self.d.MAX_RETRIES-1
+        self.d.set_active()
+        self.assertEqual(self.d.retries, 0)
 
     def test_cancelled_with_max_retries_sets_inactive(self):
         self.d.set_active()
@@ -107,6 +124,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.retries = self.d.MAX_RETRIES
 
         self.d.on_print_cancelled()
+        self.d.on_printer_ready()
         self.d.start_print_fn.assert_not_called()
         self.assertEqual(self.d.active, False)
 
@@ -125,6 +143,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.reset_mock()
 
         self.d.on_print_failed()
+        self.d.on_printer_ready()
         self.d.start_print_fn.assert_not_called()
         self.assertEqual(self.d.active, False)
 
@@ -139,6 +158,7 @@ class TestQueueManagerOnLastPrint(unittest.TestCase):
         self.d.start_print_fn.reset_mock()
 
         self.d.on_print_success()
+        self.d.on_printer_ready()
         self.d.finish_script_fn.assert_called_once_with()
         self.assertEqual(self.d.active, False)
 
