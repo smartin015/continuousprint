@@ -40,7 +40,7 @@ class CPrintAPI {
     this._call(this.BASE + "set_active", cb, "POST", {active});
   }
 
-  clearCompleted(cb) {
-    this._call(this.BASE + "clear_completed", cb, "POST");
+  clear(cb, keep_failures, keep_non_ended) {
+    this._call(this.BASE + "clear", cb, "POST", {keep_failures, keep_non_ended});
   }
 }

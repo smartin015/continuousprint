@@ -171,11 +171,22 @@ class ContinuousprintPlugin(
         self.d.set_active(flask.request.form["active"] == "true", printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
         return self.state_json()
 
-    @octoprint.plugin.BlueprintPlugin.route("/clear_completed", methods=["POST"])
+    @octoprint.plugin.BlueprintPlugin.route("/clear", methods=["POST"])
     @restricted_access
-    def clear_completed(self):
-        while len(self.q) > 0 and self.q.peek().end_ts is not None:
-            self.q.pop()
+    def clear(self):
+        i = 0
+        keep_failures = (flask.request.form["keep_failures"] == "true")
+        keep_non_ended = (flask.request.form["keep_non_ended"] == "true")
+        self._logger.info(f"Clearing queue (keep_failures={keep_failures}, keep_non_ended={keep_non_ended})")
+        while i < len(self.q):
+            v = self.q[i]
+            self._logger.info(f"{v.name} -- end_ts {v.end_ts} result {v.result}")
+            if v.end_ts is None and keep_non_ended:
+                i = i + 1
+            elif v.result == "failure" and keep_failures:
+                i = i + 1
+            else:
+                del self.q[i]
         return self.state_json()
 
 

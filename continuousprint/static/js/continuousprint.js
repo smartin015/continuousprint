@@ -46,6 +46,7 @@ $(function() {
       self.name = data.name;
       self.path = data.path;
       self.sd = data.sd;
+      self.retries= ko.observable((data.start_ts !== null) ? data.retries : null);
       self.start_ts = ko.observable(data.start_ts);
       self.end_ts = ko.observable(data.end_ts);
       self.result = ko.computed(function() {
@@ -53,10 +54,10 @@ $(function() {
           return data.result;
         }
         if (self.start_ts() === null) {
-          return "Pending";
+          return "pending";
         }
         if (self.start_ts() !== null && self.end_ts() === null) {
-          return "Running";
+          return "started";
         }
       });
       self.duration = ko.computed(function() {
@@ -101,7 +102,26 @@ $(function() {
         return i;
       });
       self.progress = ko.computed(function() {
-        return (100 * self.num_completed() / self.length()).toFixed(0) + "%";
+        let progress = [];
+        let curNum = 0;
+        let curResult = self.items()[0].result();
+        for (let item of self.items()) {
+          let res = item.result();
+          if (res !== curResult) {
+            progress.push({
+              pct: (100 * curNum / self._len).toFixed(0) + "%",
+              result: curResult,
+            });
+            curNum = 0;
+            curResult = res;
+          }
+          curNum++;
+        }
+        progress.push({
+          pct: (100 * curNum / self._len).toFixed(0) + "%",
+          result: curResult,
+        });
+        return progress;
       });
       self.active = ko.computed(function() {
         for (let item of self.items()) {
@@ -250,7 +270,10 @@ $(function() {
             self.api.setActive(active, self._setState);
         }
         self.clearCompleted = function() {
-            self.api.clearCompleted(self._setState);
+            self.api.clear(self._setState, false, true);
+        }
+        self.clearSuccessful = function() {
+            self.api.clear(self._setState, true, true);
         }
         self.setSelected = function(sel) {
             self.selected((sel.idx === self.selected()) ? null : sel.idx);

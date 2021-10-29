@@ -32,9 +32,17 @@
 
   <br/>
 
-  <button class="btn btn-secondary pull-right" data-bind="click: clearCompleted" title="Clear Completed">
-    <i class="fa fa-recycle"></i>&nbsp;&nbsp;Clear Completed
-  </button>
+
+  <div class="btn-group pull-right">
+    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+      <i class="fas fa-ellipsis-v"></i>
+    </a>
+    <ul class="dropdown-menu">
+      <li><a tabindex="-1" href="#" data-bind="click: clearSuccessful">Clear successful items</a></li>
+      <li class="divider"></li>
+      <li><a tabindex="-1" href="#" data-bind="click: clearCompleted">Clear all completed items</a></li>
+    </ul>
+  </div>
   <h4>Print Queue</h4>
   <div style="height:80vh; overflow-y:scroll">
     <div id="queue_list">
@@ -44,8 +52,8 @@
           <div class="queue-row-container">
               <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
               <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }" style="align-self: flex-start"/>
-              <div class="progress" style="width: 30%" data-bind="css: { 'progress-striped active': $root.activeQueueSet() == idx }">
-                <div class="bar" data-bind="style: { width: progress }"></div>
+              <div class="progress" style="width: 30%" data-bind="foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
+                <div data-bind="style: { width: pct }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result == 'failure'}"></div>
               </div>
               <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>
               <i style="cursor: pointer" class="fa fa-chevron-up" data-bind="click: function(i) {$root.move(i,-1);}"></i>
@@ -53,20 +61,22 @@
               <i style="cursor: pointer" class="fa fa-minus text-error" data-bind="click: $root.remove"></i>
           </div>
           <div class="queue-row-details well" data-bind="visible: $root.selected() === idx">
-            <div data-bind="text: description"></div>
+            <h5 data-bind="text: description"></h5>
             <table class="queue-set-list">
               <thead>
                 <th>Name</th>
                 <th>SD</th>
                 <th>Status</th>
                 <th>Duration</th>
+                <th>retries</th>
               </thead>
               <tbody data-bind="foreach: items">
                 <tr data-bind="style: { 'font-weight': $root.activeIdx() == idx ? 'bold' : null }">
                   <td data-bind="text:name"/>
                   <td data-bind="text: (sd) ? 'Y' : 'N'"/>
-                  <td data-bind="text:result, style: { color: result === 'failure' ? 'red' : null }"/>
+                  <td data-bind="text:result, style: { color: result() === 'failure' ? 'red' : null }"/>
                   <td data-bind="text:duration"/>
+                  <td data-bind="text:retries"/>
                 </tr>
               </tbody>
             </table>

@@ -3,7 +3,7 @@ import time
 
 # See QueueItem in continuousprint.js for matching JS object
 class QueueItem:
-    def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None):
+    def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None, retries=0):
         self.name = name
         self.path = path
         if type(sd) != bool:
@@ -12,6 +12,7 @@ class QueueItem:
         self.start_ts = start_ts
         self.end_ts = end_ts
         self.result = result
+        self.retries = retries
 
     def __eq__(self, other):
         return  (

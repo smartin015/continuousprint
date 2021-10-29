@@ -60,6 +60,7 @@ class ContinuousPrintDriver:
             p = self.q[idx]
             p.start_ts = int(time.time())
             p.end_ts = None
+            p.retries = self.retries
             self.q[idx] = p
 
             if self.retries > 0:
@@ -130,11 +131,14 @@ class ContinuousPrintDriver:
         elapsed = elapsed or (time.time() - self.q[self._cur_idx()].start_ts)
         if elapsed < self.RETRY_THRESHOLD_SECONDS:
             self._set_status("Cancelling print (paused early, likely adhesion failure)")
-            self.actions.append(cancel_print_fn)
+            self.actions.append(self.cancel_print_fn)
         else:
             # TODO humanize
-            self._set_status("Print paused {elapsed}s into print (over auto-restart threshold of {self.RETRY_THRESHOLD_SECONDS}s); awaiting user input")
+            self._set_status(f"Print paused {elapsed}s into print (over auto-restart threshold of {self.RETRY_THRESHOLD_SECONDS}s); awaiting user input")
 
     def on_print_resumed(self):
-        pass # TODO this could happen after pause & manual resume
-
+        # This happens after pause & manual resume
+        idx = self._cur_idx()
+        if idx is not None:
+            self._set_status(f"Printing {self.q[idx].name}")
+        
