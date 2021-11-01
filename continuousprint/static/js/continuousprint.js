@@ -346,11 +346,8 @@ $(function() {
                     theme = 'success'
                     self._loadState();
                     break;
-                case "paused":
-                    self.is_paused(true);
-                    break;
                 case "updatefiles":
-                    self.getFileList();
+                    self._getFileList();
                     break;
                 default:
                     theme = "info";
