@@ -1,7 +1,7 @@
 class MockSettings:
-    def __init__(self, k):
+    def __init__(self, k, s = "[]"):
         self.k = k
-        self.s = "[]"
+        self.s = s
 
     def save(self):
         pass

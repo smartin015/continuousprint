@@ -46,6 +46,7 @@ $(function() {
       self.name = data.name;
       self.path = data.path;
       self.sd = data.sd;
+      self.changed = ko.observable(data.changed || false);
       self.retries= ko.observable((data.start_ts !== null) ? data.retries : null);
       self.start_ts = ko.observable(data.start_ts);
       self.end_ts = ko.observable(data.end_ts);
@@ -76,6 +77,14 @@ $(function() {
       self._n = items[0].name; // Used for easier inspection in console
       self._len = items.length;
       self.items = ko.observableArray(items);
+      self.changed = ko.computed(function() {
+        for (let item of self.items()) {
+          if (item.changed()) {
+            return true;
+          }
+        }
+        return false;
+      });
       self.length = ko.computed(function() {return self.items().length;});
       self.name = ko.computed(function() {return self.items()[0].name;});
       self.path = ko.computed(function() {return self.items()[0].path;});
@@ -281,6 +290,14 @@ $(function() {
         self.toggleFileList = function() {
             self.showFileList(!self.showFileList());
         }
+        /*
+        self.addPause = function(item) {
+          console.log("TODO addPause", item);
+        } 
+        self.resetFailed = function(item) {
+          console.log("TODO reset failed", item);
+        }
+        */
         self.setCount = function(cnt, e) {
           const v = parseInt(e.target.value, 10);
           if (isNaN(v) || v < 1) {

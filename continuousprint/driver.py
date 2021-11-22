@@ -1,5 +1,17 @@
 import time
 
+
+# Inspired by answers at
+# https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
+def timeAgo(elapsed):
+    if elapsed < 60*60:
+        return str(round(elapsed/(60))) + ' minutes'
+    elif elapsed < 60*60*24:
+        return str(round(elapsed/(60*60))) + ' hours'
+    else:
+        return str(round(elapsed/(60*60*24))) + ' days'
+
+
 class ContinuousPrintDriver:
 
     def __init__(self, queue, finish_script_fn, start_print_fn, cancel_print_fn, logger):
@@ -7,10 +19,9 @@ class ContinuousPrintDriver:
         self.active = False
         self.retries = 0
         self._logger = logger
-
-        # TODO make configurable
-        self.MAX_RETRIES = 3
-        self.RETRY_THRESHOLD_SECONDS = 60*60
+        self.retry_on_pause = False
+        self.max_retries = 0
+        self.retry_threshold_seconds = 0
 
         self.actions = []
 
@@ -22,6 +33,12 @@ class ContinuousPrintDriver:
     def _set_status(self, status):
         self.status = status
         self._logger.info(status)
+
+    def set_retry_on_pause(self, enabled, max_retries=3, retry_threshold_seconds=60*60):
+        self.retry_on_pause = enabled
+        self.max_retries = max_retries
+        self.retry_threshold_seconds = retry_threshold_seconds
+        self._logger.info(f"Retry on pause: {enabled} (max_retries {max_retries}, threshold {retry_threshold_seconds}s)")
 
     def set_active(self, active=True, printer_ready=True):
         if active and not self.active:
@@ -64,7 +81,7 @@ class ContinuousPrintDriver:
             self.q[idx] = p
 
             if self.retries > 0:
-                self._set_status(f"Printing {p.name} (attempt {self.retries+1}/{self.MAX_RETRIES})")
+                self._set_status(f"Printing {p.name} (attempt {self.retries+1}/{self.max_retries})")
             else: 
                 self._set_status(f"Printing {p.name}")
             self.actions.append(lambda: self.start_print_fn(p, clear_bed=True))
@@ -116,25 +133,26 @@ class ContinuousPrintDriver:
             return
         idx = self._cur_idx()
         item = self.q[idx]    
-        if self.retries < self.MAX_RETRIES:
+        if self.retries+1 < self.max_retries:
             self.retries += 1
             self.actions.append(self._begin_next_available_print) # same print, not finished
         else:
-            self._complete_item(idx, "aborted (max retries)")
+            self._complete_item(idx, "failure (max retries)")
             self.active = False
             self._set_status("Inactive (print cancelled with too many retries)")
 
     def on_print_paused(self, elapsed = None):
-        if not self.active:
+        if not self.active or not self.retry_on_pause:
+            self._set_status("Print paused")
             return
 
         elapsed = elapsed or (time.time() - self.q[self._cur_idx()].start_ts)
-        if elapsed < self.RETRY_THRESHOLD_SECONDS:
+        if elapsed < self.retry_threshold_seconds:
             self._set_status("Cancelling print (paused early, likely adhesion failure)")
-            self.actions.append(self.cancel_print_fn)
+            self.cancel_print_fn()
+            # self.actions.append(self.cancel_print_fn)
         else:
-            # TODO humanize
-            self._set_status(f"Print paused {elapsed}s into print (over auto-restart threshold of {self.RETRY_THRESHOLD_SECONDS}s); awaiting user input")
+            self._set_status(f"Print paused {timeAgo(elapsed)} into print (over auto-restart threshold of {timeAgo(self.retry_threshold_seconds)}); awaiting user input")
 
     def on_print_resumed(self):
         # This happens after pause & manual resume

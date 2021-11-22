@@ -64,6 +64,17 @@
   
 }
 
+/* https://kamranahmed.info/blog/2016/01/30/yellow-fade-technique-in-css/ */
+@keyframes yellowfade {
+    from { background: yellow; }
+    to { background: transparent; }
+}
+.updated-item {
+    animation-name: yellowfade;
+    animation-duration: 1.5s;
+}
+
+
 /* ==== This section is for compatibility with the Themeify plugin - overrides progress bars so that success/failure colors can still be seen ==== */
 #tab_plugin_continuousprint .progress .bar.bar-success {
   background-color: #62c462;

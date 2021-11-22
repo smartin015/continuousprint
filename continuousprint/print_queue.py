@@ -25,8 +25,9 @@ class QueueItem:
 # This is a simple print queue that tracks the order of items
 # and persists state to Octoprint settings
 class PrintQueue:
-    def __init__(self, settings, key):
+    def __init__(self, settings, key, logger=None):
         self.key = key
+        self._logger = logger
         self._settings = settings
         self.q = []
         self._load()
@@ -36,9 +37,23 @@ class PrintQueue:
         self._settings.save()
 
     def _load(self):
-        self.assign([
-            QueueItem(**v) for v in json.loads(self._settings.get([self.key]))
-        ])
+        items = []
+        for v in json.loads(self._settings.get([self.key])):
+            if v.get("path") is None:
+                if self._logger is not None:
+                    self._logger.error(f"Invalid queue item {str(v)}, ignoring")
+                continue
+            items.append(
+            QueueItem(
+                name = v.get("name", v["path"]), # Use path if name not given (old plugin version data may do this)
+                path = v["path"],
+                sd = v.get("sd", False),
+                start_ts = v.get("start_ts"),
+                end_ts = v.get("end_ts"),
+                result = v.get("result"),
+                retries = v.get("retries", 0),
+                ))
+        self.assign(items)
 
     def _validate(self, item):
         if not isinstance(item, QueueItem):

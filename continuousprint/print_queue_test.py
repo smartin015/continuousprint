@@ -1,4 +1,5 @@
 import unittest
+import json
 from print_queue import PrintQueue, QueueItem
 from mock_settings import MockSettings
 
@@ -83,6 +84,43 @@ class TestPrintQueue(unittest.TestCase):
         self.q.add(test_items)
         self.q.complete("/baz.gco", "done")
         self.assertTrue(self.q[2].end_ts is not None)
+
+# Ensure we're at least somewhat compatible with old queue style
+class TestPrintQueueCompat(unittest.TestCase):
+    def test_default_queue_valid(self):
+        self.s = MockSettings("q", "[]")
+        self.q = PrintQueue(self.s, "q")
+
+        self.q.add([test_items[0]])
+        self.assertEqual(len(self.q), 1)
+        self.assertEqual(self.q[0], test_items[0])
+
+    def test_queue_with_legacy_item_valid(self):
+        self.s = MockSettings("q", json.dumps([{
+            "path": "/foo/bar",
+            "count": 3,
+            "times_run": 0,
+            }]))
+        self.q = PrintQueue(self.s, "q")
+
+        self.assertEqual(self.q[0].path, "/foo/bar")
+        self.assertEqual(self.q[0].name, "/foo/bar")
+        self.assertEqual(self.q[0].sd, False)
+
+        self.q.add([test_items[0]])
+        self.assertEqual(len(self.q), 2)
+
+    def test_queue_with_no_path_skipped(self):
+        # On the off chance, just ignore entries without any path information
+        self.s = MockSettings("q", json.dumps([{
+            # path not set
+            "name": "/foo/bar",
+            "count": 3,
+            "times_run": 0,
+            }]))
+        self.q = PrintQueue(self.s, "q")
+        self.assertEqual(len(self.q), 0)
+
 
 
 if __name__ == "__main__":

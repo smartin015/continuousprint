@@ -49,16 +49,27 @@
       <div style='text-align: center' data-bind='visible: queuesets().length === 0'>Queue is empty</div>
       <div data-bind='foreach: queuesets' class="queuesets">
         <div>
-          <div class="queue-row-container">
+          <div class="queue-row-container" data-bind="css: { 'updated-item': changed() && $root.selected() != idx }">
               <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
               <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }" style="align-self: flex-start"/>
               <div class="progress" style="width: 30%" data-bind="foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
-                <div data-bind="style: { width: pct }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result == 'failure'}"></div>
+                <div data-bind="style: { width: pct }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
               </div>
               <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>
-              <i style="cursor: pointer" class="fa fa-chevron-up" data-bind="click: function(i) {$root.move(i,-1);}"></i>
-              <i style="cursor: pointer" class="fa fa-chevron-down" data-bind="click: function(i) {$root.move(i,1);}"></i>
-              <i style="cursor: pointer" class="fa fa-minus text-error" data-bind="click: $root.remove"></i>
+              <div class="btn-group pull-right">
+                <button class="btn" data-bind="click: function(i) {$root.move(i,-1);}"><i style="cursor: pointer" class="fa fa-chevron-up"></i></button>
+                <button class="btn" data-bind="click: function(i) {$root.move(i,1);}"><i style="cursor: pointer" class="fa fa-chevron-down"></i></button>
+                <button class="btn" data-bind="click: $root.remove"><i style="cursor: pointer" class="fa fa-minus text-error"></i></button>
+                <!--
+                <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+                  <i class="fas fa-ellipsis-v"></i>
+                </a>
+                <ul class="dropdown-menu">
+                  <li><a href="#" data-bind="click: $root.addPause">Add pause below</a></li>
+                  <li><a href="#" data-bind="click: $root.resetFailed">Reset failed items</a></li>
+                </ul>
+                -->
+              </div>
           </div>
           <div class="queue-row-details well" data-bind="visible: $root.selected() === idx">
             <h5 data-bind="text: description"></h5>
@@ -71,10 +82,10 @@
                 <th>retries</th>
               </thead>
               <tbody data-bind="foreach: items">
-                <tr data-bind="style: { 'font-weight': $root.activeIdx() == idx ? 'bold' : null }">
+                <tr data-bind="style: { 'font-weight': $root.activeIdx() == idx ? 'bold' : null }, css: { 'updated-item': changed() }">
                   <td data-bind="text:name"/>
                   <td data-bind="text: (sd) ? 'Y' : 'N'"/>
-                  <td data-bind="text:result, style: { color: result() === 'failure' ? 'red' : null }"/>
+                  <td data-bind="text:result, style: { color: result().startsWith('failure') ? 'red' : null }"/>
                   <td data-bind="text:duration"/>
                   <td data-bind="text:retries"/>
                 </tr>

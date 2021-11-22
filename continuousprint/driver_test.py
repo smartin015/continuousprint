@@ -20,6 +20,7 @@ def setupTestQueueAndDriver(self, num_complete):
             start_print_fn = MagicMock(),
             cancel_print_fn = MagicMock(),
             logger = logging.getLogger())
+    self.d.set_retry_on_pause(True)
 
 def flush(d):
     while d.pending_actions() > 0:
@@ -102,7 +103,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
     def test_paused_early_triggers_cancel(self):
         self.d.set_active()
 
-        self.d.on_print_paused(self.d.RETRY_THRESHOLD_SECONDS - 1)
+        self.d.on_print_paused(self.d.retry_threshold_seconds - 1)
         flush(self.d)
         self.d.cancel_print_fn.assert_called_once_with()
 
@@ -117,14 +118,14 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.assertEqual(self.d.retries, 1)
 
     def test_set_active_clears_retries(self):
-        self.d.retries = self.d.MAX_RETRIES-1
+        self.d.retries = self.d.max_retries-1
         self.d.set_active()
         self.assertEqual(self.d.retries, 0)
 
     def test_cancelled_with_max_retries_sets_inactive(self):
         self.d.set_active()
         self.d.start_print_fn.reset_mock()
-        self.d.retries = self.d.MAX_RETRIES
+        self.d.retries = self.d.max_retries
 
         self.d.on_print_cancelled()
         flush(self.d)
@@ -135,7 +136,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.set_active()
         self.d.start_print_fn.reset_mock()
 
-        self.d.on_print_paused(self.d.RETRY_THRESHOLD_SECONDS + 1)
+        self.d.on_print_paused(self.d.retry_threshold_seconds + 1)
         self.d.start_print_fn.assert_not_called()
 
     def test_failure_sets_inactive(self):

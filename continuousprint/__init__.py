@@ -13,6 +13,9 @@ from .driver import ContinuousPrintDriver
 QUEUE_KEY = "cp_queue"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished"
+RESTART_MAX_RETRIES_KEY = "cp_restart_on_pause_max_restarts"
+RESTART_ON_PAUSE_KEY = "cp_restart_on_pause_enabled"
+RESTART_MAX_TIME_KEY = "cp_restart_on_pause_max_seconds"
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -26,6 +29,14 @@ class ContinuousprintPlugin(
     def _msg(self, msg="", type="popup"):
         self._plugin_manager.send_plugin_message(
             self._identifier, dict(type=type, msg=msg)
+        )
+
+
+    def _update_driver_settings(self):
+        self.d.set_retry_on_pause(
+            self._settings.get([RESTART_ON_PAUSE_KEY]),
+            self._settings.get([RESTART_MAX_RETRIES_KEY]),
+            self._settings.get([RESTART_MAX_TIME_KEY]),
         )
 
     ##~~ SettingsPlugin
@@ -51,6 +62,9 @@ class ContinuousprintPlugin(
             "M140 S0 ; heated bed heater off\n"
             "M300 S880 P300 ; beep to show its finished"
         )
+        d[RESTART_MAX_RETRIES_KEY] = 3
+        d[RESTART_ON_PAUSE_KEY] = False
+        d[RESTART_MAX_TIME_KEY] = 60*60
         return d
 
     ##~~ StartupPlugin
@@ -64,6 +78,7 @@ class ContinuousprintPlugin(
                     cancel_print_fn = self.cancel_print,
                     logger = self._logger,
                 )
+        self._update_driver_settings()
         self._logger.info("Continuous Print Plugin started")
 
     ##~~ EventHandlerPlugin
@@ -71,11 +86,10 @@ class ContinuousprintPlugin(
         if not hasattr(self, "d"): # Sometimes message arrive pre-init
             return
 
-        # TODO reload UI should be triggered in some way
         if event == Events.PRINT_DONE:
             self.d.on_print_success()
             self._msg(type="reload") # reload UI
-        elif event == Events.PRINT_FAILED:
+        elif event == Events.PRINT_FAILED and payload["reason"] != "cancelled":
             self.d.on_print_failed()
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_CANCELLED:
@@ -85,11 +99,15 @@ class ContinuousprintPlugin(
             self.d.on_print_paused()
             self._msg(type="reload") # reload UI
         elif event == Events.PRINTER_STATE_CHANGED and self._printer.get_state_id() == "OPERATIONAL":
-            while self._printer.get_state_id() == "OPERATIONAL" and self.d.pending_actions() > 0:
-                self.d.on_printer_ready()
             self._msg(type="reload") # reload UI
-        elif event == Events.UPDATED_FILES: # TODO necessary?
+        elif event == Events.UPDATED_FILES:
             self._msg(type="updatefiles")
+        elif event == Events.SETTINGS_UPDATED:
+            self._update_driver_settings()
+
+        # Play out actions until printer no longer in a state where we can run commands
+        while self._printer.get_state_id() in ["OPERATIONAL", "PAUSED"] and self.d.pending_actions() > 0:
+            self.d.on_printer_ready()
 
     def run_finish_script(self, run_finish_script=True):
         self._msg("Print Queue Complete", type="complete")
@@ -118,12 +136,19 @@ class ContinuousprintPlugin(
         except InvalidFileType:
             self._msg("File not gcode: " + item.path, type="error")
 
-    def state_json(self):
+    def state_json(self, changed=None):
         # Values are stored serialized, so we need to create a json string and inject them
+        q = self._settings.get([QUEUE_KEY])
+        if changed is not None:
+            q = json.loads(q)
+            for i in changed:
+                q[i]["changed"] = True
+            q = json.dumps(q)
+    
         resp = ('{"active": %s, "status": "%s", "queue": %s}' % (
                 "true" if self.d.active else "false",
                 self.d.status,
-                self._settings.get([QUEUE_KEY]),
+                q
             ))
         return resp
             
@@ -137,32 +162,35 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
     @restricted_access
     def move(self):
-        self.q.move(
-                int(flask.request.form["idx"]),
-                int(flask.request.form["count"]),
-                int(flask.request.form["offs"]),
-                )
-        return self.state_json()
+        idx = int(flask.request.form["idx"])
+        count = int(flask.request.form["count"])
+        offs = int(flask.request.form["offs"])
+        self.q.move(idx, count, offs)
+        return self.state_json(changed=range(idx+offs, idx+offs+count))
 
     @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
     def add(self):
         idx = flask.request.form.get("idx")
+        if idx is None:
+            idx = len(self.q)
+        else:
+            idx = int(idx)
+        items = json.loads(flask.request.form["items"])
         self.q.add([QueueItem(
                 name=i["name"],
                 path=i["path"],
                 sd=i["sd"],
-            ) for i in json.loads(flask.request.form["items"])], int(idx) if idx is not None else None)
-        return self.state_json()
+            ) for i in items], idx)
+        return self.state_json(changed=range(idx, idx+len(items)))
 
     @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
     @restricted_access
     def remove(self):
-        self.q.remove(
-                int(flask.request.form["idx"]),
-                int(flask.request.form["count"]),
-                )
-        return self.state_json()
+        idx = int(flask.request.form["idx"])
+        count = int(flask.request.form["count"])
+        self.q.remove(idx, count)
+        return self.state_json(changed=[idx])
 
 
     @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
@@ -178,6 +206,7 @@ class ContinuousprintPlugin(
         keep_failures = (flask.request.form["keep_failures"] == "true")
         keep_non_ended = (flask.request.form["keep_non_ended"] == "true")
         self._logger.info(f"Clearing queue (keep_failures={keep_failures}, keep_non_ended={keep_non_ended})")
+        changed = []
         while i < len(self.q):
             v = self.q[i]
             self._logger.info(f"{v.name} -- end_ts {v.end_ts} result {v.result}")
@@ -187,8 +216,19 @@ class ContinuousprintPlugin(
                 i = i + 1
             else:
                 del self.q[i]
-        return self.state_json()
+                changed.append(i)
+        return self.state_json(changed=changed)
 
+    @octoprint.plugin.BlueprintPlugin.route("/reset", methods=["POST"])
+    @restricted_access
+    def reset(self):
+        idxs = json.loads(flask.request.form["idxs"])
+        for idx in idxs:
+            i = self.q[idx]
+            i.start_ts = None
+            i.end_ts = None
+        self.q.remove(idx, count)
+        return self.state_json(changed=[idx])
 
     ##~~  TemplatePlugin
     def get_template_vars(self):
@@ -196,6 +236,9 @@ class ContinuousprintPlugin(
             cp_enabled=(self.d.active if hasattr(self, "d") else False),
             cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
             cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
+            cp_restart_on_pause_enabled=self._settings.get_boolean([RESTART_ON_PAUSE_KEY]),
+            cp_restart_on_pause_max_seconds=self._settings.get_int([RESTART_MAX_TIME_KEY]),
+            cp_restart_on_pause_max_restarts=self._settings.get_int([RESTART_MAX_RETRIES_KEY]),
         )
 
     def get_template_configs(self):
