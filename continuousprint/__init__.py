@@ -162,6 +162,8 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
     @restricted_access
     def move(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         offs = int(flask.request.form["offs"])
@@ -171,6 +173,8 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
     def add(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
         idx = flask.request.form.get("idx")
         if idx is None:
             idx = len(self.q)
@@ -187,15 +191,21 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
     @restricted_access
     def remove(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_RMQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         self.q.remove(idx, count)
         return self.state_json(changed=[idx])
+        
+            
 
 
     @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
     @restricted_access
     def set_active(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
         self.d.set_active(flask.request.form["active"] == "true", printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
         return self.state_json()
 
@@ -287,7 +297,33 @@ class ContinuousprintPlugin(
                 pip="https://github.com/Zinc-OS/continuousprint/archive/{target_version}.zip",
             )
         )
-
+	def add_permissions(*args, **kwargs):
+	    return [
+            dict(key="STARTQUEUE",
+                 name="Start Queue",
+                 description="Allows for starting queue",
+                 roles=["admin","continuousprint"],
+                 dangerous=False,
+                 default_groups=[ADMIN_GROUP]),
+            dict(key="ADDQUEUE",
+                 name="Add to Queue",
+                 description="Allows for adding prints to the queue",
+                 roles=["admin","continuousprint"],
+                 dangerous=False,
+                 default_groups=[USER_GROUP]),
+            dict(key="RMQUEUE",
+                 name="Remove Print from Queue ",
+                 description="Allows for removing prints from the queue",
+                 roles=["admin","continuousprint"],
+                 dangerous=False,
+                 default_groups=[USER_GROUP]),
+            dict(key="CHQUEUE",
+                 name="Move items in Queue ",
+                 description="Allows for moving items in the queue",
+                 roles=["admin","continuousprint"],
+                 dangerous=False,
+                 default_groups=[USER_GROUP]),
+        ]
 
 __plugin_name__ = "Continuous Print"
 __plugin_pythoncompat__ = ">=3.6,<4"
@@ -299,5 +335,7 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
-        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
+        "octoprint.access.permissions": __plugin_implementation__.add_permissions
+    
     }
