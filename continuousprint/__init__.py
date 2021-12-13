@@ -152,6 +152,13 @@ class ContinuousprintPlugin(
             ))
         return resp
             
+    # Listen for resume from printer ("M118 //action:queuego"), only act if actually paused. #from @grtrenchman
+    def resume_action_handler(self, comm, line, action, *args, **kwargs):
+        if not action == "queuego":
+            return
+        if self.d.get_status("paused"):
+            self.d.set_active()
+
 
     ##~~ APIs
     @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
@@ -297,32 +304,36 @@ class ContinuousprintPlugin(
                 pip="https://github.com/Zinc-OS/continuousprint/archive/{target_version}.zip",
             )
         )
-	def add_permissions(*args, **kwargs):
-	    return [
+    def add_permissions(*args, **kwargs):
+        return [
             dict(key="STARTQUEUE",
-                 name="Start Queue",
-                 description="Allows for starting queue",
-                 roles=["admin","continuousprint"],
-                 dangerous=False,
-                 default_groups=[ADMIN_GROUP]),
+                name="Start Queue",
+                description="Allows for starting queue",
+                roles=["admin","continuousprint"],
+                dangerous=False,
+                default_groups=[ADMIN_GROUP]
+            ),
             dict(key="ADDQUEUE",
-                 name="Add to Queue",
-                 description="Allows for adding prints to the queue",
-                 roles=["admin","continuousprint"],
-                 dangerous=False,
-                 default_groups=[USER_GROUP]),
+                name="Add to Queue",
+                description="Allows for adding prints to the queue",
+                roles=["admin","continuousprint"],
+                dangerous=False,
+                default_groups=[USER_GROUP]
+            ),
             dict(key="RMQUEUE",
-                 name="Remove Print from Queue ",
-                 description="Allows for removing prints from the queue",
-                 roles=["admin","continuousprint"],
-                 dangerous=False,
-                 default_groups=[USER_GROUP]),
+                name="Remove Print from Queue ",
+                description="Allows for removing prints from the queue",
+                roles=["admin","continuousprint"],
+                dangerous=False,
+                default_groups=[USER_GROUP]
+            ),
             dict(key="CHQUEUE",
-                 name="Move items in Queue ",
-                 description="Allows for moving items in the queue",
-                 roles=["admin","continuousprint"],
-                 dangerous=False,
-                 default_groups=[USER_GROUP]),
+                name="Move items in Queue ",
+                description="Allows for moving items in the queue",
+                roles=["admin","continuousprint"],
+                dangerous=False,
+                default_groups=[USER_GROUP]
+            ),
         ]
 
 __plugin_name__ = "Continuous Print"
@@ -336,6 +347,6 @@ def __plugin_load__():
     global __plugin_hooks__
     __plugin_hooks__ = {
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
-        "octoprint.access.permissions": __plugin_implementation__.add_permissions
-    
+        "octoprint.access.permissions": __plugin_implementation__.add_permissions,
+        "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler # register to listen for "M118 //action:" commands
     }
