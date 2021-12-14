@@ -160,8 +160,7 @@ class ContinuousprintPlugin(
             return
         if self.d.get_status("paused"):
             self.d.set_active()
-
-
+        
     ##~~ APIs
     @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
     @restricted_access
@@ -312,29 +311,29 @@ class ContinuousprintPlugin(
             dict(key="STARTQUEUE",
                 name="Start Queue",
                 description="Allows for starting queue",
-                roles=["admin","continuousprint"],
-                dangerous=False,
+                roles=["admin","continuousprint-start"],
+                dangerous=True,
                 default_groups=[ADMIN_GROUP]
             ),
             dict(key="ADDQUEUE",
                 name="Add to Queue",
                 description="Allows for adding prints to the queue",
-                roles=["admin","continuousprint"],
-                dangerous=False,
+                roles=["admin","continuousprint-add"],
+                dangerous=True,
                 default_groups=[ADMIN_GROUP]
             ),
             dict(key="RMQUEUE",
                 name="Remove Print from Queue ",
                 description="Allows for removing prints from the queue",
-                roles=["admin","continuousprint"],
-                dangerous=False,
+                roles=["admin","continuousprint-remove"],
+                dangerous=True,
                 default_groups=[ADMIN_GROUP]
             ),
             dict(key="CHQUEUE",
                 name="Move items in Queue ",
                 description="Allows for moving items in the queue",
-                roles=["admin","continuousprint"],
-                dangerous=False,
+                roles=["admin","continuousprint-move"],
+                dangerous=True,
                 default_groups=[ADMIN_GROUP]
             ),
         ]
