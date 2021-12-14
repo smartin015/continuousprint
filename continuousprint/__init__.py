@@ -143,7 +143,8 @@ class ContinuousprintPlugin(
         if changed is not None:
             q = json.loads(q)
             for i in changed:
-                q[i]["changed"] = True
+                if i<len(q):# no deletion of last item
+                    q[i]["changed"] = True
             q = json.dumps(q)
     
         resp = ('{"active": %s, "status": "%s", "queue": %s}' % (
@@ -172,6 +173,7 @@ class ContinuousprintPlugin(
     def move(self):
         if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         offs = int(flask.request.form["offs"])
@@ -183,6 +185,7 @@ class ContinuousprintPlugin(
     def add(self):
         if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
         idx = flask.request.form.get("idx")
         if idx is None:
             idx = len(self.q)
@@ -201,19 +204,18 @@ class ContinuousprintPlugin(
     def remove(self):
         if not Permissions.PLUGIN_CONTINUOUSPRINT_RMQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         self.q.remove(idx, count)
         return self.state_json(changed=[idx])
         
-            
-
-
     @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
     @restricted_access
     def set_active(self):
         if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
+            self._logger.info(f"attempt failed due to insufficient permissions.")
         self.d.set_active(flask.request.form["active"] == "true", printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
         return self.state_json()
 
@@ -319,21 +321,21 @@ class ContinuousprintPlugin(
                 description="Allows for adding prints to the queue",
                 roles=["admin","continuousprint"],
                 dangerous=False,
-                default_groups=[USER_GROUP]
+                default_groups=[ADMIN_GROUP]
             ),
             dict(key="RMQUEUE",
                 name="Remove Print from Queue ",
                 description="Allows for removing prints from the queue",
                 roles=["admin","continuousprint"],
                 dangerous=False,
-                default_groups=[USER_GROUP]
+                default_groups=[ADMIN_GROUP]
             ),
             dict(key="CHQUEUE",
                 name="Move items in Queue ",
                 description="Allows for moving items in the queue",
                 roles=["admin","continuousprint"],
                 dangerous=False,
-                default_groups=[USER_GROUP]
+                default_groups=[ADMIN_GROUP]
             ),
         ]
 
