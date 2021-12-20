@@ -33,9 +33,6 @@ class ContinuousPrintDriver:
     def _set_status(self, status):
         self.status = status
         self._logger.info(status)
-        
-    def get_status(self,status):
-        return self.status==status
 
     def set_retry_on_pause(self, enabled, max_retries=3, retry_threshold_seconds=60*60):
         self.retry_on_pause = enabled

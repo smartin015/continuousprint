@@ -86,18 +86,22 @@ class ContinuousprintPlugin(
     def on_event(self, event, payload):
         if not hasattr(self, "d"): # Sometimes message arrive pre-init
             return
-
+        
         if event == Events.PRINT_DONE:
             self.d.on_print_success()
+            self.paused = False
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_FAILED and payload["reason"] != "cancelled":
             self.d.on_print_failed()
+            self.paused = False
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_CANCELLED:
             self.d.on_print_cancelled()
+            self.paused = False
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_PAUSED:
             self.d.on_print_paused()
+            self.paused = True
             self._msg(type="reload") # reload UI
         elif event == Events.PRINTER_STATE_CHANGED and self._printer.get_state_id() == "OPERATIONAL":
             self._msg(type="reload") # reload UI
@@ -105,7 +109,6 @@ class ContinuousprintPlugin(
             self._msg(type="updatefiles")
         elif event == Events.SETTINGS_UPDATED:
             self._update_driver_settings()
-
         # Play out actions until printer no longer in a state where we can run commands
         while self._printer.get_state_id() in ["OPERATIONAL", "PAUSED"] and self.d.pending_actions() > 0:
             self.d.on_printer_ready()
@@ -158,7 +161,7 @@ class ContinuousprintPlugin(
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
         if not action == "queuego":
             return
-        if self.d.get_status("paused"):
+        if self.paused:
             self.d.set_active()
         
     ##~~ APIs
