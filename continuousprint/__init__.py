@@ -68,6 +68,7 @@ class ContinuousprintPlugin(
         d[RESTART_MAX_TIME_KEY] = 60*60
         return d
 
+
     ##~~ StartupPlugin
     def on_after_startup(self):
         self._settings.save()
