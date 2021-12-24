@@ -3,20 +3,38 @@
   display: flex; 
   flex-wrap: nowrap; 
   flex-direction: row; 
-  justify-content: space-between; 
-  align-items: stretch;
+  justify-content: right;
   
 }
-#tab_plugin_continuousprint .queue-inner-row-container {
-  display: flex; 
-  flex-wrap: nowrap; 
-  flex-direction: row; 
-  justify-content: flex-start; 
-  align-items: stretch; 
-  width:50%;
-  flex-grow:2;
-
-  
+#tab_plugin_continuousprint .queue-row-container > * {
+  margin-left: 10px;
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+#tab_plugin_continuousprint .queue-row-details {
+  margin-top: 10px;
+}
+#tab_plugin_continuousprint .queuesets > div {
+  border-bottom: 1px black solid;
+  padding: 10px;
+}
+#tab_plugin_continuousprint .queuesets > :first-child {
+  border-top: 1px black solid;
+}
+#tab_plugin_continuousprint .queue-set-list {
+  table-layout:auto;
+  width: 100%;
+  border-collapse: collapse;
+}
+#tab_plugin_continuousprint .queue-set-list th {
+  text-align: left;
+  border-bottom: 1px gray solid;
+}
+#tab_plugin_continuousprint .queue-set-list tr :first-child {
+  border-right: 1px gray solid;
+}
+#tab_plugin_continuousprint .well {
+  background-color: transparent;
 }
 #tab_plugin_continuousprint .count-box{
   min-width:30px;
@@ -25,6 +43,7 @@
   
 }
 #tab_plugin_continuousprint .file-name {
+    flex: 1;
     flex-shrink: 10;
     overflow-x: scroll;
     white-space: nowrap;
@@ -45,7 +64,42 @@
   
 }
 
+/* https://kamranahmed.info/blog/2016/01/30/yellow-fade-technique-in-css/ */
+@keyframes yellowfade {
+    from { background: yellow; }
+    to { background: transparent; }
+}
+.updated-item {
+    animation-name: yellowfade;
+    animation-duration: 1.5s;
+}
 
 
-
+/* ==== This section is for compatibility with the Themeify plugin - overrides progress bars so that success/failure colors can still be seen ==== */
+#tab_plugin_continuousprint .progress .bar.bar-success {
+  background-color: #62c462;
+}
+#tab_plugin_continuousprint .progress .bar.bar-danger {
+  background-color: #ee5f5b;
+}
+#tab_plugin_continuousprint .progress-striped .bar {
+    background-color: #149bdf;
+    background-image: -webkit-gradient(linear,0 100%,100% 0,color-stop(0.25,rgba(255,255,255,0.15)),color-stop(0.25,transparent),color-stop(0.5,transparent),color-stop(0.5,rgba(255,255,255,0.15)),color-stop(0.75,rgba(255,255,255,0.15)),color-stop(0.75,transparent),to(transparent));
+    background-image: -webkit-linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
+    background-image: -moz-linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
+    background-image: -o-linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
+    background-image: linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
+    -webkit-background-size: 40px 40px;
+    -moz-background-size: 40px 40px;
+    -o-background-size: 40px 40px;
+    background-size: 40px 40px;
+}
+#tab_plugin_continuousprint .progress.active .bar {
+    -webkit-animation: progress-bar-stripes 2s linear infinite;
+    -moz-animation: progress-bar-stripes 2s linear infinite;
+    -ms-animation: progress-bar-stripes 2s linear infinite;
+    -o-animation: progress-bar-stripes 2s linear infinite;
+    animation: progress-bar-stripes 2s linear infinite;
+}
+/* ======== */
 

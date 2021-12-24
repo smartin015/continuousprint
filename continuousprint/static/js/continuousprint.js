@@ -1,523 +1,420 @@
 /*
  * View model for OctoPrint-Print-Queue
  *
- * Author: Michael New
+ * Contributors: Michael New, Scott Martin
  * License: AGPLv3
  */
 
 $(function() {
-	function ContinuousPrintViewModel(parameters) {
-		var self = this;
-		self.params = parameters;
-		self.printerState = parameters[0];
-		self.loginState = parameters[1];
-		self.files = parameters[2];
-		self.settings = parameters[3];
-		self.is_paused = ko.observable();
-        self.is_looped = ko.observable();
-        self.ncount=1;
-        self.itemsInQueue=0;
-        
-		self.onBeforeBinding = function() {
-			self.loadQueue();
-			self.is_paused(false);
-            self.checkLooped();
-            
+
+    const QueueState = {
+      UNKNOWN: null,
+      QUEUED: "queued",
+      PRINTING: "printing",
+      
+    }
+
+    // Inspired by answers at
+		// https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
+		function timeAgo(previous, current=null) {
+        var sPerMinute = 60;
+				var sPerHour = sPerMinute * 60;
+				var sPerDay = sPerHour * 24;
+				var sPerMonth = sPerDay * 30;
+        if (current === null) {
+          current = (new Date()).getTime()/1000;
+        }
+				var elapsed = current - previous;
+				if (elapsed < sPerHour) {
+						 return Math.round(elapsed/sPerMinute) + ' minutes';   
+				}
+				else if (elapsed < sPerDay ) {
+						 return Math.round(elapsed/sPerHour) + ' hours';   
+				}
+				else if (elapsed < sPerMonth) {
+						return Math.round(elapsed/sPerDay) + ' days';   
+				}
+				else {
+						return Math.round(elapsed/sPerMonth) + ' months';   
+				}
 		}
-        self.files.addtoqueue = function(data) {
-            var sd="true";
-            if(data.origin=="local"){
-                sd="false";
+
+    // see QueueItem in print_queue.py for matching python object
+    function QueueItem(data, idx) {
+      var self = this;
+      self.idx = idx;
+      self.name = data.name;
+      self.path = data.path;
+      self.sd = data.sd;
+      self.changed = ko.observable(data.changed || false);
+      self.retries= ko.observable((data.start_ts !== null) ? data.retries : null);
+      self.start_ts = ko.observable(data.start_ts);
+      self.end_ts = ko.observable(data.end_ts);
+      self.result = ko.computed(function() {
+        if (data.result !== null) {
+          return data.result;
+        }
+        if (self.start_ts() === null) {
+          return "pending";
+        }
+        if (self.start_ts() !== null && self.end_ts() === null) {
+          return "started";
+        }
+      });
+      self.duration = ko.computed(function() {
+        let start = self.start_ts();
+        let end = self.end_ts();
+        if (start === null || end === null) {
+          return null;
+        }
+        return timeAgo(start, end);
+      });
+    }
+
+    function QueueSetItem(items, idx) {
+      var self = this;
+      self.idx = idx;
+      self._n = items[0].name; // Used for easier inspection in console
+      self._len = items.length;
+      self.items = ko.observableArray(items);
+      self.changed = ko.computed(function() {
+        for (let item of self.items()) {
+          if (item.changed()) {
+            return true;
+          }
+        }
+        return false;
+      });
+      self.length = ko.computed(function() {return self.items().length;});
+      self.name = ko.computed(function() {return self.items()[0].name;});
+      self.path = ko.computed(function() {return self.items()[0].path;});
+      self.sd = ko.computed(function() {return self.items()[0].sd;});
+      self.start_ts = ko.computed(function() {return self.items()[0].start_ts();});
+      self.end_ts = ko.computed(function() {
+        for (let item of self.items()) {
+          if (item.end_ts !== null) {
+            return item.end_ts();
+          }
+        }
+        return null;
+      });
+      self.result = ko.computed(function() {
+        return self.items()[self.items().length-1].result();
+      })
+      self.num_completed = ko.computed(function() {
+        let i = 0;
+        for (let item of self.items()) {
+          if (item.end_ts() !== null) {
+            i++;
+          }
+        }
+        return i;
+      });
+      self.progress = ko.computed(function() {
+        let progress = [];
+        let curNum = 0;
+        let curResult = self.items()[0].result();
+        for (let item of self.items()) {
+          let res = item.result();
+          if (res !== curResult) {
+            progress.push({
+              pct: (100 * curNum / self._len).toFixed(0) + "%",
+              result: curResult,
+            });
+            curNum = 0;
+            curResult = res;
+          }
+          curNum++;
+        }
+        progress.push({
+          pct: (100 * curNum / self._len).toFixed(0) + "%",
+          result: curResult,
+        });
+        return progress;
+      });
+      self.active = ko.computed(function() {
+        for (let item of self.items()) {
+          if (item.start_ts === null && item.end_ts !== null) {
+            return true;
+          }
+        }
+      });
+      self.description = ko.computed(function() {
+        if (self.start_ts() === null) {
+          return "Pending";
+        } else if (self.active()) {
+          return `First item started ${timeAgo(self.start_ts)} ago`;
+        } else if (self.end_ts() !== null) {
+					return `${self.result()} (${timeAgo(self.end_ts())} ago; took ${timeAgo(self.start_ts(), self.end_ts())})`;
+				} else {
+					return self.result();
+				}
+      });
+    }
+
+    function ContinuousPrintViewModel(parameters) {
+        var self = this;
+        self.api = new CPrintAPI();
+
+        // These are used in the jinja template (TODO CONFIRM)
+        self.printerState = parameters[0];
+        self.loginState = parameters[1];
+        self.active = ko.observable(false);
+        self.status = ko.observable("Initializing...");
+        self.searchtext = ko.observable("");
+        self.queue = ko.observableArray([]);
+        self.selected = ko.observable(0);
+        self.showFileList = ko.observable(false);
+        self.queuesets = ko.computed(function() {
+          let result = [];
+          let cur = [];
+          let curName = null;
+          let q = self.queue();
+          let i = 0;
+          let qidx = 0;
+          for (; i < q.length; i++) {
+            let item = q[i];
+            if (curName !== item.name) {
+              if (curName !== null) {
+                result.push(new QueueSetItem(cur, qidx));
+              }
+              qidx = i;
+              cur = [];
+              curName = item.name;
             }
-            data.sd=sd;
-            self.addToQueue({
+            cur.push(item);
+          }
+          if (cur.length) {
+            result.push(new QueueSetItem(cur, qidx));
+          }
+          return result;
+        });
+        self.filelist = ko.observableArray([]);
+      	self.activeIdx = ko.computed(function() {
+					if (!self.printerState.isPrinting() && !self.printerState.isPaused()) {
+						return null;
+					}
+					let q = self.queue(); 
+					let printname = self.printerState.filename();
+					for (let i = 0; i < q.length; i++) {
+						if (q[i].end_ts() === null && q[i].name === printname) {
+							return i;
+						}
+					}
+          return null;
+				});
+        self.activeQueueSet = ko.computed(function() {
+          let idx = self.activeIdx();
+          if (idx === null) {
+            return null;
+          }
+          for (let qss of self.queuesets()) {
+            if (idx >= qss.idx && idx < qss.idx + qss.length()) {
+              return qss.idx;
+            }
+          }
+          return null;
+        });
+
+        
+        self.onBeforeBinding = function() {
+            self._loadState();
+            self._getFileList();
+        }
+  
+        // Patch the files panel to allow for adding to queue
+        self.files = parameters[2];
+        self.files.add = function(data) {
+            self.api.add([{
+                name: data.name,
+                path: data.path,
+                sd: (data.origin !== "local"),
+              }], undefined, (state) => {
+                // Notify of additions when we aren't able to see the result
+                if (window.location.hash.indexOf("continuousprint") === -1) {
+                  new PNotify({
+                      title: 'Continuous Print',
+                      text: "Added " + data.name,
+                      type: "success",
+                      hide: true,
+                      buttons: {closer: true, sticker: false}
+                  });
+                }
+                self._setState(state);
+              });
+        };
+
+        self._loadState = function(state) {
+            self.api.getState(self._setState);
+        };    
+        self._setState = function(state) {
+            self.queue($.map(state.queue, function(q, i) {
+              return new QueueItem(q, i);
+            }));
+            self.active(state.active);
+            self.status(state.status);
+        }
+                        
+        self._getFileList = function() {
+            self.api.getFileList(function(r){
+                self.filelist(self._unrollFilesRecursive(r.files));
+            });
+        }
+        self._unrollFilesRecursive = function(files) {
+            var result = [];
+            for(var i = 0; i < files.length; i++) {
+                var file = files[i];
+                // Matches *.gco, *.gcode
+                if (file.name.toLowerCase().indexOf(".gco") > -1) {
+                    result.push(file);
+                } else if (file.children !== undefined) {
+                    result = result.concat(self._unrollFilesRecursive(file.children));
+                }
+            }
+            return result;
+        }
+
+        // *** ko template methods ***
+        self.setActive = function(active) {
+            self.api.setActive(active, self._setState);
+        }
+        self.clearCompleted = function() {
+            self.api.clear(self._setState, false, true);
+        }
+        self.clearSuccessful = function() {
+            self.api.clear(self._setState, true, true);
+        }
+        self.setSelected = function(sel) {
+            self.selected((sel.idx === self.selected()) ? null : sel.idx);
+        }
+        self.toggleFileList = function() {
+            self.showFileList(!self.showFileList());
+        }
+        /*
+        self.addPause = function(item) {
+          console.log("TODO addPause", item);
+        } 
+        self.resetFailed = function(item) {
+          console.log("TODO reset failed", item);
+        }
+        */
+        self.setCount = function(cnt, e) {
+          const v = parseInt(e.target.value, 10);
+          if (isNaN(v) || v < 1) {
+            return;
+          }
+          let diff = v - cnt.length();
+          if (diff > 0) {
+            let items = [];
+            for (let i = 0; i < diff; i++) {
+              items.push(new QueueItem({"name": cnt.name(), "path": cnt.path(), "sd": cnt.sd()}));
+            }
+            self.api.add(items, cnt.idx + cnt.length(), self._setState);
+          } else if (diff < 0) {
+            self.api.remove(cnt.idx + (cnt.length() + diff - 1), -diff, self._setState);
+          } 
+          // Do nothing if equal
+        }
+
+        self.move = function(queueset, queueset_offs) {
+            let qss = self.queuesets();
+            let src = qss.indexOf(queueset);
+            if (src === -1) {
+              throw Error("Unknown queueset item: " + item); 
+            }
+            if (queueset_offs != 1 && queueset_offs != -1) {
+              throw Error("Only single digit shifts allowed");
+            }
+            // Compute absolute offset (flattening all queue sets)
+            let t_idx = qss[src+queueset_offs].idx;
+            let s_idx = queueset.idx;
+            let abs_offs = (t_idx < s_idx) ? t_idx - s_idx : qss[src+queueset_offs].length();
+            self.api.move(queueset.idx, queueset.length(), abs_offs, self._setState);
+        }
+        self.remove = function(queueset) {
+            self.api.remove(queueset.idx, queueset.length(), self._setState);
+        }
+        self.add = function(data) {
+            let item = {
                 name:data.name,
                 path:data.path,
-                sd:sd,
-                count:1
-                
-            });
-                
-			
-		}
-		self.loadQueue = function() {
-            $('#queue_list').html("");
-			$.ajax({
-				url: "plugin/continuousprint/queue",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				success:function(r){
-                    self.itemsInQueue=r.queue.length;
-					if (r.queue.length > 0) {
-						$('#queue_list').html("");
-						for(var i = 0; i < r.queue.length; i++) {
-							var file = r.queue[i];
-							var row;
-
-                            var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+i+"'></i>&nbsp;";
-                            if (i == 0) {other = "";}
-                            if (i == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+i+"'></i>&nbsp;";}
-                            row = $("<div class='n"+i+"'style='padding: 10px;border-bottom: 1px solid #000;"+(i==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'number' data-index='"+i+"' value='" + file.count + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+i+"'></i></div></div></div>");
-                            row.find(".fa-minus").click(function() {
-                                self.removeFromQueue($(this).data("index"));
-                            });
-                            row.find(".fa-chevron-up").click(function() {
-                                self.moveUp($(this).data("index"));
-                            });
-                            row.find(".fa-chevron-down").click(function() {
-                                self.moveDown($(this).data("index"));
-                            });
-                            row.find(".fa-text").focusout(function() {
-                                    var ncount= parseInt(this.value);
-                                    self.changecount($(this).data("index"),ncount);                                
-                            });
-                            row.find(".fa-text").keydown(function() {
-                                    if (event.keyCode === 13){
-                                        blip = true;
-                                    }else{blip = false}
-                                });
-                            row.find(".fa-text").keyup(function() {
-                                if (blip){
-                                    var ncount= parseInt(this.value);
-                                    self.changecount($(this).data("index"),ncount);
-                                }
-                            });
-                             $('#queue_list').append(row);
-                        }
-                       
-                        self.loadPrintHistory("full");
-                    }else{
-                        self.loadPrintHistory("empty");
-                    }
-                }
-							 
-								
-				
-			});
-                
-		};    
-                        
-            self.loadPrintHistory = function(items){
-                $('#print_history').html("");
-                $.ajax({
-				url: "plugin/continuousprint/print_history",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				success:function(r){
-					if (r.queue.length > 0) {
-						$('#print_history').html("");
-						for(var i = 0; i < r.queue.length; i++) {
-                            var file=r.queue[i];
-                            var row;
-                            var time = file.time / 60;
-                            var suffix = " mins";
-                            if (time > 60) {
-                                time = time / 60;
-                                suffix = " hours";
-                                if (time > 24) {
-                                    time = time / 24;
-                                    suffix = " days";
-                                }
-                            }
-						    row = $("<div style='padding: 10px; border-bottom: 1px solid #000;background:#c2fccf'>Complete: "+ file.name+ " <div class='pull-right'>took: " + time.toFixed(0) + suffix + "</div></div>")
-                       
-                            $('#print_history').append(row);
-                        }
-                    
-                                } else if(items=="empty"){
-                                    $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
-                                }
-                       }
-                   });
-            }
-            self.reloadQueue = function(data,CMD) {
-                if(CMD=="ADD"){
-                    var file = data;
-                    var row;
-                    var other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp; <i style='cursor: pointer' class='fa fa-chevron-up' data-index='"+self.itemsInQueue+"'></i>&nbsp;";
-                    if (self.itemsInQueue == 0) {other = "";$('#queue_list').html("");}
-                    if (self.itemsInQueue == 1) {other = "<i style='cursor: pointer' class='fa fa-chevron-down' data-index='"+self.itemsInQueue+"'></i>&nbsp;";}
-                    row = $("<div class='n" + self.itemsInQueue + "' style='padding: 10px;border-bottom: 1px solid #000;"+(self.itemsInQueue==0 ? "background: #f9f4c0;" : "")+"'><div class='queue-row-container'><div class='queue-inner-row-container'><input class='fa fa-text count-box' type = 'number' data-index='"+self.itemsInQueue+"' value='" + 1 + "'/><p class='file-name' > " + file.name + "</p></div><div>" + other + "<i style='cursor: pointer' class='fa fa-minus text-error' data-index='"+self.itemsInQueue+"'></i></div></div></div>");
-                    row.find(".fa-minus").click(function() {
-                        self.removeFromQueue($(this).data("index"));
-                    });
-                    row.find(".fa-chevron-up").click(function() {
-                        self.moveUp($(this).data("index"));
-                    });
-                    row.find(".fa-chevron-down").click(function() {
-                        self.moveDown($(this).data("index"));
-                    });
-                    row.find(".fa-text").focusout(function() {
-                            var ncount = parseInt(this.value);
-                            self.changecount($(this).data("index"),ncount);
-                    });
-                    row.find(".fa-text").keydown(function() {
-                                    if (event.keyCode === 13){
-                                        blip = true;
-                                    }else{blip = false}
-                                });
-                    row.find(".fa-text").keyup(function() {
-                        if (blip){
-                            var ncount= parseInt(this.value);
-                            self.changecount($(this).data("index"),ncount);
-                        }
-                    });
-
-                $('#queue_list').append(row);
-                    self.itemsInQueue+=1;
-                
-            }
-            if(CMD=="SUB"){
-                $("#queue_list").children(".n"+data).remove();
-                for(var i=data+1;i<self.itemsInQueue;i++){
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").children(".queue-innner-row-container").children(".count-box").attr("data-index",(i-1).toString());
-                    $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-minus").attr("data-index",(i-1).toString());
-                    if(i>1){
-                        $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").attr("data-index",(i-1).toString());
-                        if(i==2){
-                            $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").remove();
-                        }
-                        if(i>2){
-                            $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-up").attr("data-index",(i-1).toString());
-                        }
-                    }
-                    if(i==1){
-                        $("#queue_list").children(".n"+i).css("background","#f9f4c0");
-                        $("#queue_list").children(".n"+i).children(".queue-row-container").find(".fa-chevron-down").remove();
-                    }
-                    $("#queue_list").children(".n"+i).addClass("n"+(i-1).toString());
-                    $("#queue_list").children(".n"+i).removeClass("n"+i.toString());
-                }
-                self.itemsInQueue-=1;
-                if(self.itemsInQueue==0){
-                    $('#queue_list').html("<div style='text-align: center'>Queue is empty</div>");
-                }
-            }
-            if(CMD=="UP"){
-                //simple
-                //first, we switch the data-indexes of the count-boxes of the rows to be switched
-                //then, we copy the html of the count boxes and the html(nothing else) to a temporary variable of the row to be moved
-                //We then change the html of the count-box and file name of that row to the file name and count-box of that above it,
-                //and change the html of the count-box and file name of to the temporary variable
-                var temp3 = $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
-                var temp4 = $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
-                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
-                var temp2=$("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp2);
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp);
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp4));
-                $("#queue_list").children(".n"+(data-1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp3));
-  
-            }
-            if(CMD=="DOWN"){
-                var temp3 = $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
-                var temp4 = $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val();
-                var temp=$("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
-                var temp2=$("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text();
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp2);
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".file-name").text(temp); 
-                $("#queue_list").children(".n"+data).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp4));
-                $("#queue_list").children(".n"+(data+1)).children(".queue-row-container").children(".queue-inner-row-container").children(".count-box").val(parseInt(temp3));
-            }
-             
-             
+                sd: (data.origin !== "local"),
+            };
+            self.api.add([item], undefined, self._setState);
         }
+        // ***
 
-                
-                        
-
-                      
-	    self.checkLooped = function(){
-            $.ajax({
-				url: "plugin/continuousprint/looped",
-				type: "GET",
-				dataType: "text",
-				headers: {"X-Api-Key":UI_API_KEY},
-				success: function(c) {
-					if(c=="true"){
-                        self.is_looped(true);
-                    } else{
-                        self.is_looped(false);
-                    }
-				},
-			});
+        self.onDataUpdaterPluginMessage = function(plugin, data) {
+            if (plugin != "continuousprint") return;
+            var theme;
+            switch(data["type"]) {
+                case "popup":
+                    theme = "info";
+                    break;
+                case "error":
+                    theme = 'danger';
+                    self._loadState();
+                    break;
+                case "complete":
+                    theme = 'success';
+                    self._loadState();
+                    break;
+                case "reload":
+                    theme = 'success'
+                    self._loadState();
+                    break;
+                case "updatefiles":
+                    self._getFileList();
+                    break;
+                default:
+                    theme = "info";
+                    break;
+            }
+            
+            if (data.msg != "") {
+                new PNotify({
+                    title: 'Continuous Print',
+                    text: data.msg,
+                    type: theme,
+                    hide: true,
+                    buttons: {closer: true, sticker: false}
+                });
+            }
         }
-		self.getFileList = function() {
-			$('#file_list').html("");
-			$.ajax({
-				url: "/api/files?recursive=true",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				success:function(r){
-					var filelist = [];
-					if (r.files.length > 0) {
-						filelist = self.recursiveGetFiles(r.files);
-					
-						for(var i = 0; i < filelist.length; i++) {
-							var file = filelist[i];
-							var row = $("<div data-name='"+file.name.toLowerCase()+"' style='padding: 10px;border-bottom: 1px solid #000;'>"+file.path+"<div class='pull-right'><i style='cursor: pointer' class='fa fa-plus text-success' data-name='"+file.name+"' data-path='"+file.path+"' data-sd='"+(file.origin=="local" ? false : true)+"'></i></div></div>");
-							row.find(".fa").click(function() {
-								self.addToQueue({
-									name: $(this).data("name"),
-									path: $(this).data("path"),
-									sd: $(this).data("sd"),
-                                    count: 1
-								});
-							});
-							$('#file_list').append(row);
-						}
-						
-					} else {
-						$('#file_list').html("<div style='text-align: center'>No files found</div>");
-					}
-				}
-			});
-		}
-
-		$(document).ready(function(){
-			self.getFileList();
-			self.checkLooped();
-			$("#gcode_search").keyup(function() {
-				var criteria = this.value.toLowerCase();
-				$("#file_list > div").each(function(){
-					if ($(this).data("name").indexOf(criteria) == -1) {
-						$(this).hide();
-					} else {
-						$(this).show();
-					}
-				})
-			});
-			
-			
-		});
-		
-		
-		self.recursiveGetFiles = function(files) {
-			var filelist = [];
-			for(var i = 0; i < files.length; i++) {
-				var file = files[i];
-				if (file.name.toLowerCase().indexOf(".gco") > -1 || file.name.toLowerCase().indexOf(".gcode") > -1) {
-					filelist.push(file);
-				} else if (file.children != undefined) {
-					console.log("Getting children", self.recursiveGetFiles(file.children))
-					filelist = filelist.concat(self.recursiveGetFiles(file.children));
-				}
-			}
-			return filelist;
-		}
-
-		self.addToQueue = function(data) {
-            self.reloadQueue(data,"ADD");
-			$.ajax({
-				url: "plugin/continuousprint/addqueue",
-				type: "POST",
-				dataType: "text",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				data: data,
-				success: function(c) {
-					
-				},
-				error: function() {
-					self.loadQueue();
-				}
-			});
-		}
-		
-		self.moveUp = function(data) {
-            self.reloadQueue(data,"UP");
-			$.ajax({
-				url: "plugin/continuousprint/queueup?index=" + data,
-				type: "GET",
-				dataType: "json",
-				headers: {"X-Api-Key":UI_API_KEY},
-				success: function(c) {
-				},
-				error: function() {
-					self.loadQueue();
-				}
-			});
-		}
-        self.changecount = function(data,ncount){
-            $.ajax({
-				url: "plugin/continuousprint/change?count=" + ncount+"&index="+data,
-				type: "GET",
-				dataType: "json",
-				headers: {"X-Api-Key":UI_API_KEY},
-				success: function(c) {
-					//self.loadQueue();
-				},
-				error: function() {
-					self.loadQueue();
-				}
-			});
-        }
-		
-		self.moveDown = function(data) {
-            self.reloadQueue(data,"DOWN");
-			$.ajax({
-				url: "plugin/continuousprint/queuedown?index=" + data,
-				type: "GET",
-				dataType: "json",
-				headers: {"X-Api-Key":UI_API_KEY},
-				success: function(c) {
-				},
-				error: function() {
-					self.loadQueue();
-				}
-			});
-		}
-		
-		self.removeFromQueue = function(data) {
-            self.reloadQueue(data,"SUB");
-			$.ajax({
-				url: "plugin/continuousprint/removequeue?index=" + data,
-				type: "DELETE",
-				dataType: "text",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				success: function(c) {
-					//self.loadQueue();
-				},
-				error: function() {
-					self.loadQueue();
-				}
-			});
-		}
-
-		self.startQueue = function() {
-			self.is_paused(false);
-			$.ajax({
-				url: "plugin/continuousprint/startqueue",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				data: {}
-			});
-		}
-        
-        self.loop = function() {
-            self.is_looped(true);
-			$.ajax({
-				url: "plugin/continuousprint/loop",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				data: {}
-			});
-		}
-        self.unloop = function() {
-            self.is_looped(false);
-			$.ajax({
-				url: "plugin/continuousprint/unloop",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				data: {}
-			});
-		}
-		
-		self.resumeQueue = function() {
-			self.is_paused(false)
-			$.ajax({
-				url: "plugin/continuousprint/resumequeue",
-				type: "GET",
-				dataType: "json",
-				headers: {
-					"X-Api-Key":UI_API_KEY,
-				},
-				data: {}
-			});
-		}
-
-		self.onDataUpdaterPluginMessage = function(plugin, data) {
-			if (plugin != "continuousprint") return;
-
-			var theme = 'info';
-			switch(data["type"]) {
-				case "popup":
-					theme = "info";
-					break;
-				case "error":
-					theme = 'danger';
-					self.loadQueue();
-					break;
-				case "complete":
-					theme = 'success';
-					self.loadQueue();
-					break;
-				case "reload":
-					theme = 'success'
-					self.loadQueue();
-					break;
-				case "paused":
-					self.is_paused(true);
-					break;
-				case "updatefiles":
-					self.getFileList();
-					break;
-			}
-			
-			if (data.msg != "") {
-				new PNotify({
-					title: 'Continuous Print',
-					text: data.msg,
-					type: theme,
-					hide: true,
-					buttons: {
-						closer: true,
-						sticker: false
-					}
-				});
-			}
-		}
-	
-    /*
-    #Adapted from OctoPrint-PrusaSlicerThumbnails
-    #https://github.com/jneilliii/OctoPrint-PrusaSlicerThumbnails/blob/master/octoprint_prusaslicerthumbnails/static/js/prusaslicerthumbnails.js
-    */
-    $(document).ready(function(){
-			let regex = /<div class="btn-group action-buttons">([\s\S]*)<.div>/mi;
-			let template = '<div class="btn btn-mini bold" data-bind="click: function() { if ($root.loginState.isUser()) { $root.addtoqueue($data) } else { return; } }" title="Add To Queue" ><i></i>Q</div>';
-
-			$("#files_template_machinecode").text(function () {
-				var return_value = $(this).text();
-				return_value = return_value.replace(regex, '<div class="btn-group action-buttons">$1	' + template + '></div>');
-				return return_value
-			});
-		});
-	}
+    }
     /**/
 
-	// This is how our plugin registers itself with the application, by adding some configuration
-	// information to the global variable OCTOPRINT_VIEWMODELS
-	OCTOPRINT_VIEWMODELS.push([
-		// This is the constructor to call for instantiating the plugin
-		ContinuousPrintViewModel,
+    $(document).ready(function(){
+        /*
+         * This adds a "Q" button to the left file panel for quick access
+         * Adapted from OctoPrint-PrusaSlicerThumbnails
+         * https://github.com/jneilliii/OctoPrint-PrusaSlicerThumbnails/blob/master/octoprint_prusaslicerthumbnails/static/js/prusaslicerthumbnails.js
+         */
+        let regex = /<div class="btn-group action-buttons">([\s\S]*)<.div>/mi;
+        let template = '<div class="btn btn-mini bold" data-bind="click: function() { if ($root.loginState.isUser()) { $root.add($data) } else { return; } }" title="Add To Queue" ><i></i>Q</div>';
 
-		// This is a list of dependencies to inject into the plugin, the order which you request
-		// here is the order in which the dependencies will be injected into your view model upon
-		// instantiation via the parameters argument
-		["printerStateViewModel", "loginStateViewModel", "filesViewModel", "settingsViewModel"],
+        $("#files_template_machinecode").text(function () {
+            var return_value = $(this).text();
+            return_value = return_value.replace(regex, '<div class="btn-group action-buttons">$1    ' + template + '></div>');
+            return return_value
+        });
+    });
 
-		// Finally, this is the list of selectors for all elements we want this view model to be bound to.
-		["#tab_plugin_continuousprint"]
-	]);
+
+    // Add config info to the global var to register our plugin
+    OCTOPRINT_VIEWMODELS.push([
+        // This is the constructor to call for instantiating the plugin
+        ContinuousPrintViewModel,
+
+        // Dependencies (injected in-order)
+        [
+          "printerStateViewModel", 
+          "loginStateViewModel",
+          "filesViewModel", 
+          "settingsViewModel"
+        ],
+
+        // Selectors for all elements binding to this view model
+        ["#tab_plugin_continuousprint"]
+    ]);
 });
