@@ -5,6 +5,7 @@ import octoprint.plugin
 import flask, json
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import eventManager, Events
+from octoprint.access.permissions import Permissions,ADMIN_GROUP,USER_GROUP
 
 from .print_queue import PrintQueue, QueueItem
 from .driver import ContinuousPrintDriver
@@ -67,6 +68,7 @@ class ContinuousprintPlugin(
         d[RESTART_MAX_TIME_KEY] = 60*60
         return d
 
+
     ##~~ StartupPlugin
     def on_after_startup(self):
         self._settings.save()
@@ -85,18 +87,22 @@ class ContinuousprintPlugin(
     def on_event(self, event, payload):
         if not hasattr(self, "d"): # Sometimes message arrive pre-init
             return
-
+        
         if event == Events.PRINT_DONE:
             self.d.on_print_success()
+            self.paused = False
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_FAILED and payload["reason"] != "cancelled":
             self.d.on_print_failed()
+            self.paused = False
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_CANCELLED:
             self.d.on_print_cancelled()
+            self.paused = False
             self._msg(type="reload") # reload UI
         elif event == Events.PRINT_PAUSED:
             self.d.on_print_paused()
+            self.paused = True
             self._msg(type="reload") # reload UI
         elif event == Events.PRINTER_STATE_CHANGED and self._printer.get_state_id() == "OPERATIONAL":
             self._msg(type="reload") # reload UI
@@ -104,7 +110,6 @@ class ContinuousprintPlugin(
             self._msg(type="updatefiles")
         elif event == Events.SETTINGS_UPDATED:
             self._update_driver_settings()
-
         # Play out actions until printer no longer in a state where we can run commands
         while self._printer.get_state_id() in ["OPERATIONAL", "PAUSED"] and self.d.pending_actions() > 0:
             self.d.on_printer_ready()
@@ -142,7 +147,8 @@ class ContinuousprintPlugin(
         if changed is not None:
             q = json.loads(q)
             for i in changed:
-                q[i]["changed"] = True
+                if i<len(q):# no deletion of last item
+                    q[i]["changed"] = True
             q = json.dumps(q)
     
         resp = ('{"active": %s, "status": "%s", "queue": %s}' % (
@@ -152,7 +158,13 @@ class ContinuousprintPlugin(
             ))
         return resp
             
-
+    # Listen for resume from printer ("M118 //action:queuego"), only act if actually paused. #from @grtrenchman
+    def resume_action_handler(self, comm, line, action, *args, **kwargs):
+        if not action == "queuego":
+            return
+        if self.paused:
+            self.d.set_active()
+        
     ##~~ APIs
     @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
     @restricted_access
@@ -162,6 +174,9 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
     @restricted_access
     def move(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         offs = int(flask.request.form["offs"])
@@ -171,6 +186,9 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
     def add(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
         idx = flask.request.form.get("idx")
         if idx is None:
             idx = len(self.q)
@@ -187,15 +205,20 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
     @restricted_access
     def remove(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_RMQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         self.q.remove(idx, count)
         return self.state_json(changed=[idx])
-
-
+        
     @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
     @restricted_access
     def set_active(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
+            self._logger.info(f"attempt failed due to insufficient permissions.")
         self.d.set_active(flask.request.form["active"] == "true", printer_ready=(self._printer.get_state_id() == "OPERATIONAL"))
         return self.state_json()
 
@@ -287,7 +310,37 @@ class ContinuousprintPlugin(
                 pip="https://github.com/Zinc-OS/continuousprint/archive/{target_version}.zip",
             )
         )
-
+    def add_permissions(*args, **kwargs):
+        return [
+            dict(key="STARTQUEUE",
+                name="Start Queue",
+                description="Allows for starting queue",
+                roles=["admin","continuousprint-start"],
+                dangerous=True,
+                default_groups=[ADMIN_GROUP]
+            ),
+            dict(key="ADDQUEUE",
+                name="Add to Queue",
+                description="Allows for adding prints to the queue",
+                roles=["admin","continuousprint-add"],
+                dangerous=True,
+                default_groups=[ADMIN_GROUP]
+            ),
+            dict(key="RMQUEUE",
+                name="Remove Print from Queue ",
+                description="Allows for removing prints from the queue",
+                roles=["admin","continuousprint-remove"],
+                dangerous=True,
+                default_groups=[ADMIN_GROUP]
+            ),
+            dict(key="CHQUEUE",
+                name="Move items in Queue ",
+                description="Allows for moving items in the queue",
+                roles=["admin","continuousprint-move"],
+                dangerous=True,
+                default_groups=[ADMIN_GROUP]
+            ),
+        ]
 
 __plugin_name__ = "Continuous Print"
 __plugin_pythoncompat__ = ">=3.6,<4"
@@ -299,5 +352,7 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
-        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
+        "octoprint.access.permissions": __plugin_implementation__.add_permissions,
+        "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler # register to listen for "M118 //action:" commands
     }
