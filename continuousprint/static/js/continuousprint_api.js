@@ -10,7 +10,7 @@ class CPrintAPI {
         dataType: "json",
         data: data,
         headers: {"X-Api-Key":UI_API_KEY},
-        success: cb,
+        success:cb
     });
   }
 
