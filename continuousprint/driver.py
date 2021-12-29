@@ -86,7 +86,6 @@ class ContinuousPrintDriver:
                 self._set_status(f"Printing {p.name}")
             P=not self.first_print
             self.actions.append(lambda: self.start_print_fn(p, clear_bed=P))
-            print("$$$$",self.first_print)
             self.first_print = False
         else:
             self.active = False
