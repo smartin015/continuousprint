@@ -70,9 +70,10 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
 
         self.d.on_print_success()
         flush(self.d)
-
+        self.assertEqual(self.d.first_print,False)
         self.d.start_print_fn.assert_called_once()
         self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[1])
+        
 
 
 class TestQueueManagerPartiallyComplete(unittest.TestCase):

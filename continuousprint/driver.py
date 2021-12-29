@@ -22,7 +22,7 @@ class ContinuousPrintDriver:
         self.retry_on_pause = False
         self.max_retries = 0
         self.retry_threshold_seconds = 0
-
+        self.first_print = True
         self.actions = []
 
         self.finish_script_fn = finish_script_fn
@@ -84,11 +84,15 @@ class ContinuousPrintDriver:
                 self._set_status(f"Printing {p.name} (attempt {self.retries+1}/{self.max_retries})")
             else: 
                 self._set_status(f"Printing {p.name}")
-            self.actions.append(lambda: self.start_print_fn(p, clear_bed=True))
+            P=not self.first_print
+            self.actions.append(lambda: self.start_print_fn(p, clear_bed=P))
+            print("$$$$",self.first_print)
+            self.first_print = False
         else:
             self.active = False
             self._set_status("Inactive (no new work available)")
             self.actions.append(self.finish_script_fn)
+            self.first_print = True
 
 
     def _complete_item(self, idx, result):
@@ -127,8 +131,10 @@ class ContinuousPrintDriver:
         self._complete_item(self._cur_idx(), "failure")
         self.active = False
         self._set_status("Inactive (print failed)")
+        self.first_print = True
 
     def on_print_cancelled(self):
+        self.first_print = True
         if not self.active:
             return
         idx = self._cur_idx()
