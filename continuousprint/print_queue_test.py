@@ -8,7 +8,7 @@ test_items = [
     QueueItem("bar", "/bar.gco", True, end_ts=456),
     QueueItem("baz", "/baz.gco", True),
     QueueItem("boz", "/boz.gco", True),
-    QueueItem("foz", "/foz.gco", True),
+    QueueItem("foz", "/foz.gco", "True"), # Older versions of the plugin may have string bool values
 ]
 
 class TestPrintQueue(unittest.TestCase):

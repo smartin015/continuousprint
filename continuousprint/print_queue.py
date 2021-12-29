@@ -6,6 +6,8 @@ class QueueItem:
     def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None, retries=0):
         self.name = name
         self.path = path
+        if type(sd) == str:
+            sd = (sd.lower() == "true")
         if type(sd) != bool:
             raise Exception("SD must be bool, got %s" % (type(sd)))
         self.sd = sd
