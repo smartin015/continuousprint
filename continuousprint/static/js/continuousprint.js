@@ -6,6 +6,7 @@
  */
 
 $(function() {
+    const SELF_TAB_ID = "#tab_plugin_continuousprint";
 
     const QueueState = {
       UNKNOWN: null,
@@ -159,12 +160,12 @@ $(function() {
         // These are used in the jinja template (TODO CONFIRM)
         self.printerState = parameters[0];
         self.loginState = parameters[1];
+        self.loading = ko.observable(true);
         self.active = ko.observable(false);
         self.status = ko.observable("Initializing...");
         self.searchtext = ko.observable("");
         self.queue = ko.observableArray([]);
         self.selected = ko.observable(0);
-        self.showFileList = ko.observable(false);
         self.queuesets = ko.computed(function() {
           let result = [];
           let cur = [];
@@ -189,7 +190,6 @@ $(function() {
           }
           return result;
         });
-        self.filelist = ko.observableArray([]);
       	self.activeIdx = ko.computed(function() {
 					if (!self.printerState.isPrinting() && !self.printerState.isPaused()) {
 						return null;
@@ -219,7 +219,6 @@ $(function() {
         
         self.onBeforeBinding = function() {
             self._loadState();
-            self._getFileList();
         }
   
         // Patch the files panel to allow for adding to queue
@@ -245,6 +244,7 @@ $(function() {
         };
 
         self._loadState = function(state) {
+            self.loading(true);
             self.api.getState(self._setState);
         };    
         self._setState = function(state) {
@@ -253,70 +253,57 @@ $(function() {
             }));
             self.active(state.active);
             self.status(state.status);
+            self.loading(false);
         }
                         
-        self._getFileList = function() {
-            self.api.getFileList(function(r){
-                self.filelist(self._unrollFilesRecursive(r.files));
-            });
-        }
-        self._unrollFilesRecursive = function(files) {
-            var result = [];
-            for(var i = 0; i < files.length; i++) {
-                var file = files[i];
-                // Matches *.gco, *.gcode
-                if (file.name.toLowerCase().indexOf(".gco") > -1) {
-                    result.push(file);
-                } else if (file.children !== undefined) {
-                    result = result.concat(self._unrollFilesRecursive(file.children));
-                }
-            }
-            return result;
-        }
-
         // *** ko template methods ***
         self.setActive = function(active) {
             self.api.setActive(active, self._setState);
         }
         self.clearCompleted = function() {
+            if (self.loading()) return;
+            self.loading(true);
             self.api.clear(self._setState, false, true);
         }
         self.clearSuccessful = function() {
+            if (self.loading()) return;
+            self.loading(true);
             self.api.clear(self._setState, true, true);
         }
+        self.clearAll = function() {
+            if (self.loading()) return;
+            self.loading(true);
+            self.api.clear(self._setState, false, false);
+        }
         self.setSelected = function(sel) {
+            if (self.loading()) return;
             self.selected((sel.idx === self.selected()) ? null : sel.idx);
         }
-        self.toggleFileList = function() {
-            self.showFileList(!self.showFileList());
+        self.refreshQueue = function() {
+            if (self.loading()) return;
+            self._loadState();
         }
-        /*
-        self.addPause = function(item) {
-          console.log("TODO addPause", item);
-        } 
-        self.resetFailed = function(item) {
-          console.log("TODO reset failed", item);
-        }
-        */
         self.setCount = function(cnt, e) {
-          const v = parseInt(e.target.value, 10);
-          if (isNaN(v) || v < 1) {
-            return;
-          }
-          let diff = v - cnt.length();
-          if (diff > 0) {
-            let items = [];
-            for (let i = 0; i < diff; i++) {
-              items.push(new QueueItem({"name": cnt.name(), "path": cnt.path(), "sd": cnt.sd()}));
+            if (self.loading()) return;
+            const v = parseInt(e.target.value, 10);
+            if (isNaN(v) || v < 1) {
+              return;
             }
-            self.api.add(items, cnt.idx + cnt.length(), self._setState);
-          } else if (diff < 0) {
-            self.api.remove(cnt.idx + (cnt.length() + diff - 1), -diff, self._setState);
-          } 
-          // Do nothing if equal
+            let diff = v - cnt.length();
+            if (diff > 0) {
+              let items = [];
+              for (let i = 0; i < diff; i++) {
+                items.push(new QueueItem({"name": cnt.name(), "path": cnt.path(), "sd": cnt.sd()}));
+              }
+              self.api.add(items, cnt.idx + cnt.length(), self._setState);
+            } else if (diff < 0) {
+              self.api.remove(cnt.idx + (cnt.length() + diff - 1), -diff, self._setState);
+            } 
+            // Do nothing if equal
         }
 
         self.move = function(queueset, queueset_offs) {
+            if (self.loading()) return;
             let qss = self.queuesets();
             let src = qss.indexOf(queueset);
             if (src === -1) {
@@ -332,9 +319,11 @@ $(function() {
             self.api.move(queueset.idx, queueset.length(), abs_offs, self._setState);
         }
         self.remove = function(queueset) {
+            if (self.loading()) return;
             self.api.remove(queueset.idx, queueset.length(), self._setState);
         }
         self.add = function(data) {
+            if (self.loading()) return;
             let item = {
                 name:data.name,
                 path:data.path,
@@ -343,6 +332,26 @@ $(function() {
             self.api.add([item], undefined, self._setState);
         }
         // ***
+
+
+        // Reload state if we go back to this window from somewhere else
+        window.addEventListener('focus', function() {
+          self._loadState();
+        });
+
+        self.onTabChange = function(next, current) {
+          if (current === SELF_TAB_ID && next !== SELF_TAB_ID) {
+            // Navigating away - clear hellow highlights
+            for (let i = 0; i < self.queue.length; i++) {
+              if (self.queue[i].changed()) {
+                self.queue[i].changed(false);
+              }
+            }
+          } else if (current !== SELF_TAB_ID && next === SELF_TAB_ID) {
+            // Reload in case other things added
+            self._loadState();
+          }
+        }
 
         self.onDataUpdaterPluginMessage = function(plugin, data) {
             if (plugin != "continuousprint") return;
@@ -362,9 +371,6 @@ $(function() {
                 case "reload":
                     theme = 'success'
                     self._loadState();
-                    break;
-                case "updatefiles":
-                    self._getFileList();
                     break;
                 default:
                     theme = "info";
@@ -391,7 +397,7 @@ $(function() {
          * https://github.com/jneilliii/OctoPrint-PrusaSlicerThumbnails/blob/master/octoprint_prusaslicerthumbnails/static/js/prusaslicerthumbnails.js
          */
         let regex = /<div class="btn-group action-buttons">([\s\S]*)<.div>/mi;
-        let template = '<div class="btn btn-mini bold" data-bind="click: function() { if ($root.loginState.isUser()) { $root.add($data) } else { return; } }" title="Add To Queue" ><i></i>Q</div>';
+        let template = '<div class="btn btn-mini bold" data-bind="click: function() { if ($root.loginState.isUser()) { $root.add($data) } else { return; } }" title="Add To Continuous Print Queue" ><i class="fas fa-plus"></i></div>';
 
         $("#files_template_machinecode").text(function () {
             var return_value = $(this).text();
@@ -415,6 +421,6 @@ $(function() {
         ],
 
         // Selectors for all elements binding to this view model
-        ["#tab_plugin_continuousprint"]
+        [SELF_TAB_ID]
     ]);
 });

@@ -1,65 +1,45 @@
 <button class="btn btn-secondary pull-right" data-bind="visible: active(), click: function() {setActive(false);}">
   <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
 </button>
-<button class="btn btn-primary pull-right" data-bind="enable: !active(), click: function() {setActive(true);}">
-	<span data-bind="visible: !active()"><i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing</span>
-	<span data-bind="visible:  active()"><i class="fa fa-spinner fa-spin" data-bind="visible: active()"></i>&nbsp;&nbsp;{{ _('Active') }}</span>
-</button>
+<div class="btn-group pull-right">
+  <button class="btn btn-primary" data-bind="enable: !active(), click: function() {setActive(true);}">
+    <span data-bind="visible: !active()"><i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing</span>
+    <span data-bind="visible:  active()"><i class="fa fa-spinner fa-spin" data-bind="visible: active()"></i>&nbsp;&nbsp;{{ _('Active') }}</span>
+  </button>
+  <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+    <i class="fas fa-ellipsis-v"></i>
+  </a>
+  <ul class="dropdown-menu">
+    <li><a tabindex="-1" href="#" data-bind="click: clearSuccessful">Clear successful (green) items only</a></li>
+    <li><a tabindex="-1" href="#" data-bind="click: clearCompleted">Clear all completed items</a></li>
+    <li><a tabindex="-1" href="#" data-bind="click: clearAll">Clear everything</a></li>
+    <li class="divider"></li>
+    <li><a tabindex="-1" href="#" data-bind="click: refreshQueue">Refresh</a></li>
+    <li><a href="https://github.com/Zinc-OS/continuousprint" target="_blank">Help</a></li>
+  </ul>
+</div>
 
 <h3>Continuous Print Queue</h3>
 <strong data-bind="text: status"></strong>
 <hr/>
 
-<div class="row-fluid">
-  <h4 data-bind="click: toggleFileList" style="cursor:pointer">
-      <i class="fa" data-bind="css: {'fa-caret-right': !$root.showFileList(), 'fa-caret-down': $root.showFileList()}"></i>
-      File List
-  </h4>
-  <div data-bind="visible: $root.showFileList()">
-    <input type="text" id="file_search" class="input-block-level" placeholder="Search" data-bind="value: $root.searchtext, valueUpdate: 'afterkeydown'"/>
-    <div id="file_list" style="max-height: 30vh; overflow-y: scroll; overflow-x:hidden">
-      <div data-bind="visible: filelist().length === 0" style='text-align: center'>No files found</div>
-      <div data-bind='foreach: filelist'>
-        <div style='padding: 10px;border-bottom: 1px solid #000;' data-bind="visible: path.toLowerCase().indexOf($root.searchtext().toLowerCase()) !== -1">
-          <span data-bind="text: path"></span>
-          <div class="pull-right">
-            <i style="cursor: pointer" class="fa fa-plus text-success" data-bind="click: $root.add"></i>
-          </div>
-        </div>
-      </div>
-    </div>  
-  </div>
-
-  <br/>
-
-
-  <div class="btn-group pull-right">
-    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-      <i class="fas fa-ellipsis-v"></i>
-    </a>
-    <ul class="dropdown-menu">
-      <li><a tabindex="-1" href="#" data-bind="click: clearSuccessful">Clear successful items</a></li>
-      <li class="divider"></li>
-      <li><a tabindex="-1" href="#" data-bind="click: clearCompleted">Clear all completed items</a></li>
-    </ul>
-  </div>
-  <h4>Print Queue</h4>
-  <div style="height:80vh; overflow-y:scroll">
+<div class="row-fluid" data-bind="css: { 'loading': $root.loading() }">
+  <div style="height:80vh; overflow-y:auto">
     <div id="queue_list">
       <div style='text-align: center' data-bind='visible: queuesets().length === 0'>Queue is empty</div>
       <div data-bind='foreach: queuesets' class="queuesets">
         <div>
           <div class="queue-row-container" data-bind="css: { 'updated-item': changed() && $root.selected() != idx }">
               <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
-              <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }" style="align-self: flex-start"/>
+              <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }"/>
               <div class="progress" style="width: 30%" data-bind="foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
                 <div data-bind="style: { width: pct }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
               </div>
-              <input class="fa fa-text count-box" type="text" data-bind="textInput: length, event: { change: $root.setCount }"></input>
+              <input class="fa fa-text count-box" type="number" data-bind="textInput: length, event: { change: $root.setCount }"></input>
               <div class="btn-group pull-right">
                 <button class="btn" data-bind="click: function(i) {$root.move(i,-1);}"><i style="cursor: pointer" class="fa fa-chevron-up"></i></button>
                 <button class="btn" data-bind="click: function(i) {$root.move(i,1);}"><i style="cursor: pointer" class="fa fa-chevron-down"></i></button>
-                <button class="btn" data-bind="click: $root.remove"><i style="cursor: pointer" class="fa fa-minus text-error"></i></button>
+                <button class="btn" data-bind="click: $root.remove"><i style="cursor: pointer" class="fa fa-times text-error"></i></button>
                 <!--
                 <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
                   <i class="fas fa-ellipsis-v"></i>

@@ -28,7 +28,7 @@ class ContinuousPrintDriver:
         self.finish_script_fn = finish_script_fn
         self.start_print_fn = start_print_fn
         self.cancel_print_fn = cancel_print_fn
-        self._set_status("Initialized")
+        self._set_status("Initialized (click Start Managing to run the queue)")
 
     def _set_status(self, status):
         self.status = status
@@ -54,7 +54,7 @@ class ContinuousPrintDriver:
             if not printer_ready:
                 self._set_status("Inactive (active prints continue unmanaged)")
             else:
-                self._set_status("Inactive (ready)")
+                self._set_status("Inactive (ready - click Start Managing)")
 
     def _cur_idx(self):
         for (i, item) in enumerate(self.q):

@@ -1,25 +1,24 @@
 #tab_plugin_continuousprint .queue-row-container {
   width:100%;
-  display: flex; 
-  flex-wrap: nowrap; 
-  flex-direction: row; 
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
   justify-content: right;
-  
+  align-items: center;
 }
 #tab_plugin_continuousprint .queue-row-container > * {
   margin-left: 10px;
   margin-bottom: 0;
   line-height: 1.6;
 }
+#tab_plugin_continuousprint .loading {
+  opacity: 0.3;
+}
 #tab_plugin_continuousprint .queue-row-details {
   margin-top: 10px;
 }
 #tab_plugin_continuousprint .queuesets > div {
-  border-bottom: 1px black solid;
   padding: 10px;
-}
-#tab_plugin_continuousprint .queuesets > :first-child {
-  border-top: 1px black solid;
 }
 #tab_plugin_continuousprint .queue-set-list {
   table-layout:auto;
@@ -29,6 +28,10 @@
 #tab_plugin_continuousprint .queue-set-list th {
   text-align: left;
   border-bottom: 1px gray solid;
+  padding: 0 3px;
+}
+#tab_plugin_continuousprint .queue-set-list td {
+  padding: 0 3px;
 }
 #tab_plugin_continuousprint .queue-set-list tr :first-child {
   border-right: 1px gray solid;
@@ -38,30 +41,33 @@
 }
 #tab_plugin_continuousprint .count-box{
   min-width:30px;
-  max-width: 30px; 
+  max-width: 30px;
   max-height:15px;
-  
+  -moz-appearance: textfield;
 }
+#tab_plugin_continuousprint .count-box::-webkit-outer-spin-button,
+#tab_plugin_continuousprint .count-box::-webkit-inner-spin-button {
+  /* chrome, safari, edge, opera: hide up/down buttons on count box input */
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 #tab_plugin_continuousprint .file-name {
     flex: 1;
     flex-shrink: 10;
-    overflow-x: scroll;
+    overflow-x: hidden;
     white-space: nowrap;
     max-width: 96%;
-    padding-top: 1px;
+    text-overflow: ellipsis;
 }
 #tab_plugin_continuousprint .end-bundle{
   flex-grow:2;
   overflow-x:scroll;
   white-space: nowrap;
   align-self:left;
-  
-  
 }
 .bold{
   font-weight: bold;
-  
-  
 }
 
 /* https://kamranahmed.info/blog/2016/01/30/yellow-fade-technique-in-css/ */
