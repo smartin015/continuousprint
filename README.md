@@ -78,7 +78,18 @@ octoprint serve
 
 You should see "Successfully installed continuousprint" when running the install command, and you can view the page at http://localhost:5000.
 
-Tips:
+## Installing dev version on OctoPi
+
+Users of [OctoPi](https://octoprint.org/download/) can install a development version directly on their pi as follows:
+
+1. `ssh pi@<your octopi hostname>` and provide your password (the default is `raspberry`, but for security reasons you should change it with `passwd` when you can)
+1. `git clone https://github.com/Zinc-OS/continuousprint.git`
+1. Uninstall any existing continuous print installations (see `Settings` -> `Plugin Manager` in the browser)
+1. `cd continuousprint && ~/oprint/bin/python3 setup.py install`
+
+Note that we're using the bundled version of python3 that comes with octoprint, **NOT** the system installed python3. If you try the latter, it'll give an error that sounds like octoprint isn't installed.
+
+## Developer tips
 
 * Remember, you can enable the virtual printer under `Virtual Printer` in OctoPrint settings.
 * Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.
