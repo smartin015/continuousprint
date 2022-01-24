@@ -1,3 +1,10 @@
+#tab_plugin_continuousprint .cp-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
 #tab_plugin_continuousprint .queue-row-container {
   width:100%;
   display: flex;

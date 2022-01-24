@@ -3,9 +3,13 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 import flask, json
+from io import BytesIO
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import eventManager, Events
 from octoprint.access.permissions import Permissions,ADMIN_GROUP,USER_GROUP
+import octoprint.filemanager
+from octoprint.filemanager.util import StreamWrapper
+from octoprint.filemanager.destinations import FileDestinations
 
 from .print_queue import PrintQueue, QueueItem
 from .driver import ContinuousPrintDriver
@@ -13,7 +17,8 @@ from .driver import ContinuousPrintDriver
 
 QUEUE_KEY = "cp_queue"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
-FINISHED_SCRIPT_KEY = "cp_queue_finished"
+FINISHED_SCRIPT_KEY = "cp_queue_finished_script"
+TEMP_FILES = dict([(k, f"{k}.gcode") for k in [FINISHED_SCRIPT_KEY, CLEARING_SCRIPT_KEY]])
 RESTART_MAX_RETRIES_KEY = "cp_restart_on_pause_max_restarts"
 RESTART_ON_PAUSE_KEY = "cp_restart_on_pause_enabled"
 RESTART_MAX_TIME_KEY = "cp_restart_on_pause_max_seconds"
@@ -69,6 +74,12 @@ class ContinuousprintPlugin(
         return d
 
 
+    def _rm_temp_files(self):
+        # Clean up any file references from prior runs
+        for path in TEMP_FILES.values():
+          if self._file_manager.file_exists(FileDestinations.LOCAL, path):
+            self._file_manager.remove_file(FileDestinations.LOCAL, path)
+
     ##~~ StartupPlugin
     def on_after_startup(self):
         self._settings.save()
@@ -76,34 +87,53 @@ class ContinuousprintPlugin(
         self.d = ContinuousPrintDriver(
                     queue = self.q,
                     finish_script_fn = self.run_finish_script,
+                    clear_bed_fn = self.clear_bed,
                     start_print_fn = self.start_print,
                     cancel_print_fn = self.cancel_print,
                     logger = self._logger,
                 )
         self._update_driver_settings()
+        self._rm_temp_files()
         self._logger.info("Continuous Print Plugin started")
 
     ##~~ EventHandlerPlugin
     def on_event(self, event, payload):
-        if not hasattr(self, "d"): # Sometimes message arrive pre-init
+        if not hasattr(self, "d"): # Ignore any messages arriving before init
             return
         
-        if event == Events.PRINT_DONE:
-            self.d.on_print_success()
+        is_current_path = payload is not None and payload.get('path') == self.d.current_path()
+        is_finish_script = payload is not None and payload.get('path') == TEMP_FILES[FINISHED_SCRIPT_KEY]
+
+        if event == Events.METADATA_ANALYSIS_FINISHED:
+            # OctoPrint analysis writes to the printing file - we must remove
+            # our temp files AFTER analysis has finished or else we'll get a "file not found" log error.
+            # We do so when either we've finished printing or when the temp file is no longer selected
+            if self._printer.get_state_id() != "OPERATIONAL":
+                for path in TEMP_FILES.values():
+                    if self._printer.is_current_file(path, sd=False):
+                        return
+            self._rm_temp_files()
+        elif (is_current_path or is_finish_script) and event == Events.PRINT_DONE:
+            self.d.on_print_success(is_finish_script)
             self.paused = False
             self._msg(type="reload") # reload UI
-        elif event == Events.PRINT_FAILED and payload["reason"] != "cancelled":
+        elif is_current_path and event == Events.PRINT_FAILED and payload["reason"] != "cancelled":
+            # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
             self.d.on_print_failed()
             self.paused = False
             self._msg(type="reload") # reload UI
-        elif event == Events.PRINT_CANCELLED:
+        elif is_current_path and event == Events.PRINT_CANCELLED:
             self.d.on_print_cancelled()
             self.paused = False
             self._msg(type="reload") # reload UI
-        elif event == Events.PRINT_PAUSED:
-            self.d.on_print_paused()
+        elif is_current_path and event == Events.PRINT_PAUSED:
+            self.d.on_print_paused(is_temp_file=(payload['path'] in TEMP_FILES.values()))
             self.paused = True
             self._msg(type="reload") # reload UI
+        elif is_current_path and event == Events.PRINT_RESUMED:
+            self.d.on_print_resumed()
+            self.paused = False
+            self._msg(type="reload")
         elif event == Events.PRINTER_STATE_CHANGED and self._printer.get_state_id() == "OPERATIONAL":
             self._msg(type="reload") # reload UI
         elif event == Events.UPDATED_FILES:
@@ -111,25 +141,39 @@ class ContinuousprintPlugin(
         elif event == Events.SETTINGS_UPDATED:
             self._update_driver_settings()
         # Play out actions until printer no longer in a state where we can run commands
-        while self._printer.get_state_id() in ["OPERATIONAL", "PAUSED"] and self.d.pending_actions() > 0:
+        # Note that PAUSED state is respected so that gcode can include `@pause` commands.
+        # See https://docs.octoprint.org/en/master/features/atcommands.html
+        while self._printer.get_state_id() == "OPERATIONAL" and self.d.pending_actions() > 0:
+            self._logger.warning("on_printer_ready")
             self.d.on_printer_ready()
 
-    def run_finish_script(self, run_finish_script=True):
+    def _write_temp_gcode(self, key):
+        gcode = self._settings.get([key])
+        print(gcode)
+        file_wrapper = StreamWrapper(key, BytesIO(gcode.encode("utf-8")))
+        added_file = self._file_manager.add_file(
+                octoprint.filemanager.FileDestinations.LOCAL,
+                TEMP_FILES[key],
+                file_wrapper,
+                allow_overwrite=True,
+        )
+        self._logger.info(f"Wrote file {added_file}")
+        return added_file
+
+    def run_finish_script(self):
         self._msg("Print Queue Complete", type="complete")
-        if run_finish_script:
-            queue_finished_script = self._settings.get([FINISHED_SCRIPT_KEY]).split("\n")
-            self._printer.commands(queue_finished_script, force=True)
+        path = self._write_temp_gcode(FINISHED_SCRIPT_KEY)
+        self._printer.select_file(path, sd=False, printAfterSelect=True)  
 
     def cancel_print(self):
         self._msg("Print cancelled", type="error")
         self._printer.cancel_print()
 
-    def start_print(self, item, clear_bed=True):
-        if clear_bed:
-            self._logger.info("Clearing bed")
-            bed_clearing_script = self._settings.get([CLEARING_SCRIPT_KEY]).split("\n")
-            self._printer.commands(bed_clearing_script, force=True)
+    def clear_bed(self):
+        path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
+        self._printer.select_file(path, sd=False, printAfterSelect=True)
 
+    def start_print(self, item, clear_bed=True):
         self._msg("Starting print: " + item.name)
         self._msg(type="reload")
         try:
@@ -152,8 +196,8 @@ class ContinuousprintPlugin(
             q = json.dumps(q)
     
         resp = ('{"active": %s, "status": "%s", "queue": %s}' % (
-                "true" if self.d.active else "false",
-                self.d.status,
+                "true" if hasattr(self, "d") and self.d.active else "false",
+                "Initializing" if not hasattr(self, "d") else self.d.status,
                 q
             ))
         return resp

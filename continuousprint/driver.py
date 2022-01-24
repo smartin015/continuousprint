@@ -14,7 +14,7 @@ def timeAgo(elapsed):
 
 class ContinuousPrintDriver:
 
-    def __init__(self, queue, finish_script_fn, start_print_fn, cancel_print_fn, logger):
+    def __init__(self, queue, finish_script_fn, clear_bed_fn, start_print_fn, cancel_print_fn, logger):
         self.q = queue
         self.active = False
         self.retries = 0
@@ -26,6 +26,7 @@ class ContinuousPrintDriver:
         self.actions = []
 
         self.finish_script_fn = finish_script_fn
+        self.clear_bed_fn = clear_bed_fn
         self.start_print_fn = start_print_fn
         self.cancel_print_fn = cancel_print_fn
         self._set_status("Initialized (click Start Managing to run the queue)")
@@ -43,6 +44,7 @@ class ContinuousPrintDriver:
     def set_active(self, active=True, printer_ready=True):
         if active and not self.active:
             self.active = True
+            self.first_print = True
             self.retries = 0
             if not printer_ready:
                 self._set_status("Waiting for printer to be ready")
@@ -63,6 +65,11 @@ class ContinuousPrintDriver:
         return None
 
 
+    def current_path(self):
+      idx = self._cur_idx()
+      return None if idx is None else self.q[idx].name
+      
+
     def _next_available_idx(self):
         for (i, item) in enumerate(self.q):
             if item.end_ts is None:
@@ -79,20 +86,27 @@ class ContinuousPrintDriver:
             p.end_ts = None
             p.retries = self.retries
             self.q[idx] = p
-
-            if self.retries > 0:
-                self._set_status(f"Printing {p.name} (attempt {self.retries+1}/{self.max_retries})")
-            else: 
-                self._set_status(f"Printing {p.name}")
-            P=not self.first_print
-            self.actions.append(lambda: self.start_print_fn(p, clear_bed=P))
+            if not self.first_print:
+              self.actions.append(self._clear_bed)
+            self.actions.append(lambda: self._start_print(p))
             self.first_print = False
         else:
-            self.active = False
-            self._set_status("Inactive (no new work available)")
-            self.actions.append(self.finish_script_fn)
-            self.first_print = True
+            self.actions.append(self._finish)
 
+    def _finish(self):
+        self._set_status(f"Running finish script")
+        self.finish_script_fn()
+
+    def _clear_bed(self):
+        self._set_status(f"Running bed clearing script")
+        self.clear_bed_fn()
+
+    def _start_print(self, p):
+        if self.retries > 0:
+            self._set_status(f"Printing {p.name} (attempt {self.retries+1}/{self.max_retries})")
+        else:
+            self._set_status(f"Printing {p.name}")
+        self.start_print_fn(p)
 
     def _complete_item(self, idx, result):
         item = self.q[idx]    
@@ -112,7 +126,7 @@ class ContinuousPrintDriver:
         else:
             return False
 
-    def on_print_success(self):
+    def on_print_success(self, is_finish_script=False):
         if not self.active:
             return
         
@@ -121,7 +135,11 @@ class ContinuousPrintDriver:
             self._complete_item(idx, "success")
 
         self.retries = 0
-        self.actions.append(self._begin_next_available_print)
+
+        if is_finish_script:
+            self.set_active(False)
+        else:
+            self.actions.append(self._begin_next_available_print)
 
 
     def on_print_failed(self):
@@ -146,8 +164,8 @@ class ContinuousPrintDriver:
             self.active = False
             self._set_status("Inactive (print cancelled with too many retries)")
 
-    def on_print_paused(self, elapsed = None):
-        if not self.active or not self.retry_on_pause:
+    def on_print_paused(self, elapsed = None, is_temp_file = False):
+        if not self.active or not self.retry_on_pause or is_temp_file:
             self._set_status("Print paused")
             return
 

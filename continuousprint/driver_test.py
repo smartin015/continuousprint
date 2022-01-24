@@ -19,6 +19,7 @@ def setupTestQueueAndDriver(self, num_complete):
             finish_script_fn = MagicMock(),
             start_print_fn = MagicMock(),
             cancel_print_fn = MagicMock(),
+            clear_bed_fn = MagicMock(),
             logger = logging.getLogger())
     self.d.set_retry_on_pause(True)
 
@@ -53,6 +54,8 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
         assert_nocalls()
         self.d.on_print_paused(0)
         assert_nocalls()
+        self.d.on_print_resumed()
+        assert_nocalls()
 
     def test_completed_print_not_in_queue(self):
         self.d.set_active(printer_ready=False)
@@ -71,9 +74,9 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
         self.d.on_print_success()
         flush(self.d)
         self.assertEqual(self.d.first_print,False)
+        self.d.clear_bed_fn.assert_called_once()
         self.d.start_print_fn.assert_called_once()
         self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[1])
-        
 
 
 class TestQueueManagerPartiallyComplete(unittest.TestCase):
@@ -107,6 +110,13 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.on_print_paused(self.d.retry_threshold_seconds - 1)
         flush(self.d)
         self.d.cancel_print_fn.assert_called_once_with()
+
+    def test_paused_on_temp_file_falls_through(self):
+        self.d.set_active()
+        self.d.start_print_fn.reset_mock()
+        self.d.on_print_paused(is_temp_file=True)
+        self.d.cancel_print_fn.assert_not_called()
+        self.assertEqual(self.d.pending_actions(), 0)
 
     def test_cancelled_triggers_retry(self):
         self.d.set_active()
@@ -149,6 +159,13 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.assert_not_called()
         self.assertEqual(self.d.active, False)
 
+    def test_resume_sets_status(self):
+        self.d.set_active()
+        self.d.start_print_fn.reset_mock()
+
+        self.d.on_print_resumed()
+        self.assertTrue("paused" not in self.d.status.lower())
+
 
 class TestQueueManagerOnLastPrint(unittest.TestCase):
     def setUp(self):
@@ -160,6 +177,7 @@ class TestQueueManagerOnLastPrint(unittest.TestCase):
 
         self.d.on_print_success()
         flush(self.d)
+        self.d.on_print_success(is_finish_script=True)
         self.d.finish_script_fn.assert_called_once_with()
         self.assertEqual(self.d.active, False)
 

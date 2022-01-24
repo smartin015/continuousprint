@@ -1,25 +1,24 @@
-<button class="btn btn-secondary pull-right" data-bind="visible: active(), click: function() {setActive(false);}">
-  <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
-</button>
-<div class="btn-group pull-right">
-  <button class="btn btn-primary" data-bind="enable: !active(), click: function() {setActive(true);}">
-    <span data-bind="visible: !active()"><i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing</span>
-    <span data-bind="visible:  active()"><i class="fa fa-spinner fa-spin" data-bind="visible: active()"></i>&nbsp;&nbsp;{{ _('Active') }}</span>
-  </button>
-  <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-    <i class="fas fa-ellipsis-v"></i>
-  </a>
-  <ul class="dropdown-menu">
-    <li><a tabindex="-1" href="#" data-bind="click: clearSuccessful">Clear successful (green) items only</a></li>
-    <li><a tabindex="-1" href="#" data-bind="click: clearCompleted">Clear all completed items</a></li>
-    <li><a tabindex="-1" href="#" data-bind="click: clearAll">Clear everything</a></li>
-    <li class="divider"></li>
-    <li><a tabindex="-1" href="#" data-bind="click: refreshQueue">Refresh</a></li>
-    <li><a href="https://github.com/Zinc-OS/continuousprint" target="_blank">Help</a></li>
-  </ul>
+<div class="cp-header">
+  <h3>Continuous Print Queue</h3>
+  <div class="btn-group">
+    <button class="btn" data-bind="click: function() {setActive(!active());}, css: {'btn-primary': !active(), 'btn-secondary': active()}">
+      <i class="fa fa-play"></i>&nbsp;&nbsp;<span data-bind="text: active() ? 'Stop Managing' : 'Start Managing'"/>
+    </button>
+    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+      <i class="fas fa-ellipsis-v"></i>
+    </a>
+    <ul class="dropdown-menu">
+      <li><a tabindex="-1" href="#" data-bind="click: clearSuccessful">Clear successful (green) items only</a></li>
+      <li><a tabindex="-1" href="#" data-bind="click: clearCompleted">Clear all completed items</a></li>
+      <li><a tabindex="-1" href="#" data-bind="click: clearAll">Clear everything</a></li>
+      <li class="divider"></li>
+      <li><a tabindex="-1" href="#" data-bind="click: refreshQueue">Refresh</a></li>
+      <li><a href="https://github.com/Zinc-OS/continuousprint" target="_blank">Help</a></li>
+    </ul>
+  </div>
 </div>
 
-<h3>Continuous Print Queue</h3>
+<span data-bind="visible:  active()"><i class="fa fa-spinner fa-spin" data-bind="visible: active()"></i></span>
 <strong data-bind="text: status"></strong>
 <hr/>
 

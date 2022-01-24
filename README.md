@@ -37,6 +37,8 @@ The print queue won't start your prints just yet. To run the queue:
 
 The plugin will wait until your printer is ready to start a print, then it'll begin with the top of the queue and proceed until the bottom.
 
+Note that when it's time to clear the print bed or finish up, a temporary `cp_\*.gcode` file will appear in your local files, and disappear when it completes. This is a change from older "gcode injecting" behavior that is necessary to support [at-commands](https://docs.octoprint.org/en/master/features/atcommands.html) in the clearing and finish scripts.
+
 ## Inspect queue items
 
 As the print queue is managed and prints complete, you can see the status of individual prints by clicking the small triangle to the left of any individual queue item.
