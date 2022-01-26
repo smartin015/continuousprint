@@ -95,4 +95,6 @@ Note that we're using the bundled version of python3 that comes with octoprint, 
 
 * Remember, you can enable the virtual printer under `Virtual Printer` in OctoPrint settings.
 * Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.
-
+* Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, customized:
+  * https://github.com/SortableJS/knockout-sortablejs/pull/13
+  * https://github.com/SortableJS/knockout-sortablejs/issues/14

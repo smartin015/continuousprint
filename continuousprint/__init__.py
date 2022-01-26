@@ -227,6 +227,21 @@ class ContinuousprintPlugin(
         self.q.move(idx, count, offs)
         return self.state_json(changed=range(idx+offs, idx+offs+count))
 
+    @octoprint.plugin.BlueprintPlugin.route("/assign", methods=["POST"])
+    @restricted_access
+    def move(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_SETQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
+        self.q.assign([QueueItem(
+                name=i["name"],
+                path=i["path"],
+                sd=i["sd"],
+                job=i["job"],
+                run=i["run"],
+            ) for i in items])
+        return self.state_json(changed=range(idx+offs, idx+offs+count))
+
     @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
     def add(self):
@@ -243,6 +258,8 @@ class ContinuousprintPlugin(
                 name=i["name"],
                 path=i["path"],
                 sd=i["sd"],
+                job=i["job"],
+                run=i["run"],
             ) for i in items], idx)
         return self.state_json(changed=range(idx, idx+len(items)))
 
@@ -325,6 +342,8 @@ class ContinuousprintPlugin(
         return dict(js=[
             "js/continuousprint_api.js",
             "js/continuousprint.js",
+            "js/sortable.js",
+            "js/knockout-sortable.js",
             ], css=["css/continuousprint.css"])
 
     def get_update_information(self):
