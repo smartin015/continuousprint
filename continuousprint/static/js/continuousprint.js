@@ -48,7 +48,7 @@ $(function() {
       self.path = data.path;
       self.sd = data.sd;
       self.job = data.job;
-      self.run = data.run;
+      self.run = ko.observable(data.run);
       self.changed = ko.observable(data.changed || false);
       self.retries= ko.observable((data.start_ts !== null) ? data.retries : null);
       self.start_ts = ko.observable(data.start_ts || null);
@@ -93,7 +93,7 @@ $(function() {
       self.path = ko.computed(function() {return self.items()[0].path;});
       self.job = ko.computed(function() {return self.items()[0].job;});
       self.count = ko.computed(function() {
-        return Math.floor(self.length() / (self.items()[self.length()-1].run+1));
+        return Math.floor(self.length() / (self.items()[self.length()-1].run()+1));
       });
       self.sd = ko.computed(function() {return self.items()[0].sd;});
       self.start_ts = ko.computed(function() {return self.items()[0].start_ts();});
@@ -116,6 +116,9 @@ $(function() {
           }
         }
         return i;
+      });
+      self.runs_completed = ko.computed(function() {
+        return Math.floor(self.num_completed() / self.count());
       });
       self.progress = ko.computed(function() {
         let progress = [];
@@ -171,25 +174,29 @@ $(function() {
         if (isNaN(v) || v < 1) {
           return;
         }
-        let cnt = self.count();
-        let diff = v - cnt;
         let items = self.items();
-        let runs = items[items.length-1].run + 1;
+        let cnt = self.count();
+        let runs = items[items.length-1].run() + 1;
+        let diff = v - cnt;
         if (diff > 0) {
           // TODO interleave
           // Splice in `diff` amount of new items at the end of each run
-          console.log(items);
           for (let run = 0; run < runs; run++) {
             let base = run * v + cnt; // Position of next insert
             for (let i = 0; i < diff; i++) {
               items.splice(base, 0, new QueueItem({...self.tmpl, run}));
             }
           }
-          console.log(items);
           self.items(items);
           console.warn("TODO API update");
         } else if (diff < 0) {
-          items.splice(v);
+          items.splice(v*runs);
+          // We must re-specify the runs since we're truncating from the end
+          for (let run = 0; run < runs; run++) {
+            for (let i = 0; i < v; i++) {
+              items[run*v + i].run(run);
+            }
+          }
           self.items(items);
           console.warn("TODO API update");
           //self.api.remove(cnt.idx + (cnt.length() + diff - 1), -diff, self._setState);
@@ -199,7 +206,7 @@ $(function() {
       self.set_runs = function(v) {
         let cnt = self.count();
         let items = self.items();
-        let runs = items[items.length-1].run + 1;
+        let runs = items[items.length-1].run() + 1;
         if (v < runs) {
           items.splice(v*cnt);
           self.items(items);
@@ -245,18 +252,28 @@ $(function() {
       self.name = ko.observable(obj.name);
       self.queuesets = ko.observableArray(obj.queuesets);
       self.idx = obj.idx;
-      self.count = ko.computed(function() {
+      self._count = function(exclude_qs=null) {
         let maxrun = 0;
         for (let qs of self.queuesets()) {
-          if (qs.length) {
-            maxrun = Math.max(maxrun, qs.items()[qs.length()-1].run);
+          if (qs === exclude_qs) {console.log("skipping dropped queueset");}
+          if (qs.length && qs !== exclude_qs) {
+            maxrun = Math.max(maxrun, qs.items()[qs.length()-1].run());
           }
         }
         return maxrun+1; // Runs, not last run idx
-      });
+      }
+      self.count = ko.computed(self._count);
 
       // TODO
-      self.num_completed = ko.computed(function() { return 2; });
+      self.runs_completed = ko.computed(function() { 
+        let rc = self.count();
+        for (let qs of self.queuesets()) {
+          rc = Math.min(rc, qs.runs_completed()); 
+          console.log(rc);
+        }
+        console.log("Runs completed:", rc);
+        return rc;
+      });
       self.progress = ko.computed(function() {
         let result = [];
         for (let qs of self.queuesets()) {
@@ -275,7 +292,7 @@ $(function() {
         for (let ridx = 0; ridx < self.runs(); ridx++) {
           for (let i=0; i < qsi.length; i++) {
             let items = qss[i].items();
-            while (items.length > qsi[i] && items[qsi[i]].run <= ridx) {
+            while (items.length > qsi[i] && items[qsi[i]].run() <= ridx) {
               result.push(items[qsi[i]]);
               qsi[i]++;
             }
@@ -297,9 +314,11 @@ $(function() {
         self.name(name);
         console.log("TODO update from name:", self.name());
       }
-      self.sort_end = function() {
+      self.sort_end = function(item) {
+        let cnt = self._count(exclude_qs=item);
         for (let qs of self.queuesets()) {
-          qs.set_runs(self.count());
+          qs.set_runs(cnt);
+          console.log("Job ", self.name(), "set runs", cnt, "for", qs.name());
         }
       }
     }
@@ -320,7 +339,6 @@ $(function() {
 
         // Obsevable variable definitions
         self.jobs = ko.observableArray([]);
-        self.queuesets = ko.observableArray([]);  
         self.activeIdx = ko.computed(function() {
           if (!self.printerState.isPrinting() && !self.printerState.isPaused()) {
             return null;
@@ -339,9 +357,11 @@ $(function() {
           if (idx === null) {
             return null;
           }
-          for (let qss of self.queuesets()) {
-            if (idx >= qss.idx && idx < qss.idx + qss.length()) {
-              return qss.idx;
+          for (let j of self.jobs()) {
+            for (let qss of j.queuesets()) {
+              if (idx >= qss.idx && idx < qss.idx + qss.length()) {
+                return qss.idx;
+              }
             }
           }
           return null;
@@ -354,11 +374,28 @@ $(function() {
         // Patch the files panel to allow for adding to queue
         self.files = parameters[2];
         self.files.add = function(data) {
-            throw new Error("TODO update adding stuff");
-            self.api.add([{
+            let now = Date.now();
+            let jobs = self.jobs();
+            let job = jobs[jobs.length-1];
+            // We want to add to a job with a single run and no name -
+            // otherwise implies adding to something a user has already configured
+            if (job.name() !== "" || job.count() !== 1) {
+              job = new Job({name: "", idx: now});
+              self.jobs.push(job);
+            }
+  
+            let qs = new QueueSet([new QueueItem({
                 name: data.name,
                 path: data.path,
                 sd: (data.origin !== "local"),
+                run: 0,
+                job: job.name(),
+                idx: now, // Prevent selection errors before sync with server
+            })], now);
+            job.queuesets.push(qs);
+            console.warn("TODO update from new item");
+            /*
+            self.api.add([{
               }], undefined, (state) => {
                 // Notify of additions when we aren't able to see the result
                 if (window.location.hash.indexOf("continuousprint") === -1) {
@@ -372,6 +409,7 @@ $(function() {
                 }
                 self._setState(state);
               });
+          */
         };
 
         self._loadState = function(state) {
@@ -468,12 +506,12 @@ $(function() {
           // file drag and drop behavior.
           self.files.onServerDisconnect();
         }
-        self.sortEnd = function(evt, _, dest) {
+        self.sortEnd = function(evt, item, dest) {
           // Re-enable default drag and drop behavior
           self.files.onServerConnect();
           console.log(arguments);
           for (let j of self.jobs()) {
-            j.sort_end();
+            j.sort_end(item);
           }
         }
         self.sortMove = function(evt, itemVM, parentVM) {
