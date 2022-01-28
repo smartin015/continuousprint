@@ -12,7 +12,7 @@ class QueueItem:
             raise Exception("SD must be bool, got %s" % (type(sd)))
         self.sd = sd
         self.job = job
-        self.run = 0
+        self.run = run
         self.start_ts = start_ts
         self.end_ts = end_ts
         self.result = result

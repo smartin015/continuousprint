@@ -5,13 +5,20 @@
   align-items: center;
 }
 
-#tab_plugin_continuousprint .queue-row-container {
+#tab_plugin_continuousprint .accordion-heading, #tab_plugin_continuousprint .queue-row-container {
   width:100%;
   display: flex;
   flex-wrap: nowrap;
   flex-direction: row;
   justify-content: right;
   align-items: center;
+}
+#tab_plugin_continuousprint .job .accordion-group {
+  border-right: 0px;
+}
+#tab_plugin_continuousprint .job > div.accordion-body > div.accordion-inner {
+  padding-right: 0px;
+  border-right: 0px;
 }
 #tab_plugin_continuousprint .queue-row-container > * {
   margin-left: 10px;
@@ -20,7 +27,7 @@
 }
 #tab_plugin_continuousprint .queue-row-container .total {
   width: 20px;
-  text-align: right;
+  text-align: center;
 }
 #tab_plugin_continuousprint .loading {
   opacity: 0.3;
@@ -54,11 +61,12 @@
 #tab_plugin_continuousprint .jobs-header {
   margin-right: 60px;
 }
-#tab_plugin_continuousprint .job-repeats {
+#tab_plugin_continuousprint .repeats {
   width: 85px;
+  text-align: right;
 }
 #tab_plugin_continuousprint .queue-header > div {
-  margin-left: 10px; 
+  text-align: center;
 }
 #tab_plugin_continuousprint #queue_sets.empty {
   border: 1px #e5e5e5 solid; /* copy from .accordion-group */
@@ -133,7 +141,9 @@
   bottom: -1px;
   border-bottom: 1px gray solid;
 }
-
+#tab_plugin_continuousprint i.fa-grip-lines-vertical {
+  cursor: grab;
+}
 #tab_plugin_continuousprint .queue-set-list td {
   padding: 0 3px;
 }
@@ -147,6 +157,7 @@
   background-color: transparent;
 }
 #tab_plugin_continuousprint .count-box{
+  text-align: left;
   min-width:30px;
   max-width: 30px;
   max-height:15px;
@@ -167,6 +178,8 @@
     white-space: nowrap;
     max-width: 96%;
     text-overflow: ellipsis;
+    border: 0;
+    cursor: pointer;
 }
 #tab_plugin_continuousprint .end-bundle{
   flex-grow:2;
@@ -176,6 +189,11 @@
 }
 .bold{
   font-weight: bold;
+}
+
+#tab_plugin_continuousprint table#debug {
+  width: 100%;
+  table-layout:auto;
 }
 
 /* https://kamranahmed.info/blog/2016/01/30/yellow-fade-technique-in-css/ */

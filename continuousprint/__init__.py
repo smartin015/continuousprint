@@ -229,18 +229,23 @@ class ContinuousprintPlugin(
 
     @octoprint.plugin.BlueprintPlugin.route("/assign", methods=["POST"])
     @restricted_access
-    def move(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_SETQUEUE.can():
+    def assign(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_ASSIGNQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
+        items = json.loads(flask.request.form["items"])
         self.q.assign([QueueItem(
                 name=i["name"],
                 path=i["path"],
                 sd=i["sd"],
                 job=i["job"],
                 run=i["run"],
+                start_ts=i.get("start_ts"),
+                end_ts=i.get("end_ts"),
+                result=i.get("result"),
+                retries=i.get("retries"),
             ) for i in items])
-        return self.state_json(changed=range(idx+offs, idx+offs+count))
+        return self.state_json(changed=[])
 
     @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
@@ -400,6 +405,13 @@ class ContinuousprintPlugin(
                 name="Move items in Queue ",
                 description="Allows for moving items in the queue",
                 roles=["admin","continuousprint-move"],
+                dangerous=True,
+                default_groups=[ADMIN_GROUP]
+            ),
+            dict(key="ASSIGNQUEUE",
+                name="Assign the whole Queue",
+                description="Allows for loading the whole queue from JSON",
+                roles=["admin","continuousprint-assign"],
                 dangerous=True,
                 default_groups=[ADMIN_GROUP]
             ),

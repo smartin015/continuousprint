@@ -24,52 +24,54 @@
 
 <div style='text-align: center' data-bind='visible: jobs().length === 0'>Queue is empty</div>
 
-<div class="queue-header jobs-header">
-  <div style="flex:1">Job Name</div>
+<div class="queue-header">
+  <div style="flex:1">Job</div>
   <div style="width: 150px">Progress</div>
-  <div>Runs</div>
+  <div class="repeats">Count</div>
+  <div class="total">Total</div>
 </div>
-<div id="queue_list" class="accordion" data-bind="sortable: {foreach: jobs, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: { 'loading': $root.loading()}" style="height:80vh; overflow-y: auto">
-  <div class="accordion-group">
-    <div class="accordion-heading queue-row-container">
-      <i class="fas fa-grip-lines-vertical"></i>
-      <input type="text" class="job-name" data-bind="textInput: name, event: { change: $root.setJobName }" placeholder="Name this job"></input>
-      <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
-        <div data-bind="style: { flex: pct, order: order }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
+<div id="queue_list" class="accordion" data-bind="sortable: {foreach: jobs, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: { 'loading': $root.loading()}">
+  <div class="accordion-group job">
+    <div class="accordion-heading job-header">
+      <div class="queue-row-container">
+        <i class="fas fa-grip-lines-vertical"></i>
+        <input type="text" class="job-name" data-bind="visible: queuesets().length > 0, textInput: name, event: { change: $root.setJobName }" placeholder="Click here to name"></input>
+        <div class="progress" data-bind="visible: queuesets().length > 0, foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
+          <div data-bind="style: { flex: pct, order: order }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
+        </div>
+        <div class="repeats" data-bind="visible: queuesets().length > 0">
+          <span data-bind="text: runs_completed() + ' /'">/</span>
+          <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: $root.setCount }"></input>
+        </div>
+        <div class="total" data-bind="text: length"></div>
       </div>
-      <div class="job-repeats">
-        <span data-bind="text: runs_completed() + '/'">/</span>
-        <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: set_count }"></input>
-      </div>
-      <div class="accordion-heading-button pull-right" data-bind="click: $root.remove"><i style="cursor: pointer" class="far fa-trash-alt"></i></div>
+      <div class="accordion-heading-button pull-right" data-bind="click: $root.remove"><i style="cursor: pointer" class="fas fa-trash"></i></div>
     </div>
 
     <div class="accordion-body collapse in">
       <div class="accordion-inner">
-        <div class="queue-header">
-          <div style="flex:1">File</div>
-          <div style="width: 150px">Progress</div>
-          <div>Count</div>
-          <div>Total</div>
-        </div>
         <div id="queue_sets" data-bind="sortable: {foreach: queuesets, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
           <div class="accordion-group">
-            <div class="queue-row-container accordion-heading" data-bind="css: { 'updated-item': changed() && $root.selected() != idx }">
-                <i class="fas fa-grip-lines-vertical"></i>
-                <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
-                <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }"/>
-                <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
-                  <div data-bind="style: { flex: pct, order: order }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
+            <div class="accordion-heading" data-bind="css: { 'updated-item': changed() && $root.selected() != idx }">
+
+                <div class="queue-row-container">
+                  <i class="fas fa-grip-lines-vertical"></i>
+                  <i style="cursor:pointer" class="fa" data-bind="click: $root.setSelected, css: {'fa-caret-down': $root.selected() == idx, 'fa-caret-right': $root.selected() != idx }"></i>
+                  <p class="file-name" data-bind="text: name, style: { 'font-weight': $root.activeQueueSet() == idx ? 'bold': null }"/>
+                  <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.activeQueueSet() == idx }">
+                    <div data-bind="style: { flex: pct, order: order }, css: {'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
+                  </div>
+                  <div class="repeats">
+                    <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: $root.setCount }"></input>
+                  </div>
+                  <div class="total" data-bind="text: length"></div>
                 </div>
-                <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: set_count }"></input>
-                <div class="total" data-bind="text: length"></div>
-            
                 <div class="accordion-heading-button" data-bind="click: $root.remove"><i style="cursor: pointer" class="far fa-trash-alt"></i></div>
             </div>
 
             <div class="accordion-body collapse" data-bind="css: {'in': $root.selected() === idx}">
               <div class="accordion-inner">
-                <h5 data-bind="text: description"></h5>
+                <div data-bind="text: description"></div>
                 <div class="queue-set-list">
                   <table>
                     <thead><th>Name</th><th>SD</th><th>Status</th><th>Duration</th><th>Retries</th></thead>
@@ -92,3 +94,17 @@
     </div>
   </div>
 </div>
+
+<table id="debug">
+  <thead>
+    <th>Idx</th><th>Job</th><th>Run</th><th>Name</th>
+  </thead>
+  <tbody data-bind="foreach:queue">
+    <tr>
+      <td data-bind="text: idx"/>
+      <td data-bind="text: job"/>
+      <td data-bind="text: run"/>
+      <td data-bind="text: name"/>
+    </tr>
+  </tbody>
+</table>

@@ -98,3 +98,14 @@ Note that we're using the bundled version of python3 that comes with octoprint, 
 * Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, customized:
   * https://github.com/SortableJS/knockout-sortablejs/pull/13
   * https://github.com/SortableJS/knockout-sortablejs/issues/14
+
+
+## Potential future work
+
+* File integrity checking (resilience to renames/deletions)
+* Save/remember and allow re-adding of jobs
+* Improved queue history/status with more stats
+* Segmented status bars to better indicate run completion
+* Client library to support queue management automation
+* Bed clearing profiles for specific printers
+

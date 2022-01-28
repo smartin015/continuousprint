@@ -26,6 +26,10 @@ class CPrintAPI {
     this._call(this.BASE + "add", cb, "POST", {items: JSON.stringify(items), idx});
   }
 
+  assign(items, cb) {
+    this._call(this.BASE + "assign", cb, "POST", {items: JSON.stringify(items)});
+  }
+
   remove(idx, count, cb) {
     console.log("remove idx", idx, "count", count);
     this._call(this.BASE + "remove", cb, "POST", {idx, count});
