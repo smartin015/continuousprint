@@ -122,6 +122,10 @@ function CPViewModel(parameters) {
       // Convert to nested representation
       let rep = []; 
       for (let item of q) {
+        // Compatibility for older version data
+        if (item.job === null) {
+          item.job = "";
+        }
         if (item.job !== curJob) {
           rep.push([[]]);
         } else if (item.name !== curName) {
