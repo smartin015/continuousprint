@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test": "jest continuousprint/static/js/*test.js",
+    "watch-test": "jest continuousprint/static/js/*test.js --watch"
+  },
+  "devDependencies": {
+    "jest": "^27.4.7",
+    "knockout": "^3.5.1"
+  }
+}

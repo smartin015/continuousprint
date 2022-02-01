@@ -4,6 +4,9 @@
   justify-content: space-between;
   align-items: center;
 }
+#tab_plugin_continuousprint .job-header {
+  background-color: #eee;
+}
 
 #tab_plugin_continuousprint .accordion-heading, #tab_plugin_continuousprint .queue-row-container {
   width:100%;
@@ -31,6 +34,7 @@
 }
 #tab_plugin_continuousprint .loading {
   opacity: 0.3;
+  cursor: default !important;
 }
 #tab_plugin_continuousprint .progress {
   width: 150px;
@@ -57,9 +61,6 @@
   justify-content: space-between;
   font-weight: bold;
   padding: 0px 44px 0px 32px; 
-}
-#tab_plugin_continuousprint .jobs-header {
-  margin-right: 60px;
 }
 #tab_plugin_continuousprint .repeats {
   width: 85px;
@@ -92,12 +93,6 @@
   padding: 0px 38px; 
   opacity: 0.5;
 }
-#tab_plugin_continuousprint .jobs-header {
-  margin-right: 66px;
-}
-#tab_plugin_continuousprint .job-repeats {
-  width: 85px;
-}
 #tab_plugin_continuousprint .queue-header > div {
   margin-left: 10px; 
 }
@@ -111,7 +106,7 @@
   opacity: 0.7;
 }
 #tab_plugin_continuousprint #queue_sets.empty::before {
-  content: "Drag queue files here!";
+  content: "Click the + button on a file, or drag a queue item here!";
   font-weight: italic;
   opacity: 0.7;
 }
@@ -132,6 +127,7 @@
   padding: 0 3px;
   /* position:sticky doesn't work with regular borders, so we use box shadow */
   box-shadow: inset 0 -1px 0 black;
+  font-weight: normal;
 }
 #tab_plugin_continuousprint .queue-set-list th::after {
   content: ' ';
@@ -152,9 +148,6 @@
 }
 #tab_plugin_continuousprint .queue-set-list tr.run-alt {
   background-color: #e5e5e5;
-}
-#tab_plugin_continuousprint .well {
-  background-color: transparent;
 }
 #tab_plugin_continuousprint .count-box{
   text-align: left;
@@ -181,19 +174,8 @@
     border: 0;
     cursor: pointer;
 }
-#tab_plugin_continuousprint .end-bundle{
-  flex-grow:2;
-  overflow-x:scroll;
-  white-space: nowrap;
-  align-self:left;
-}
 .bold{
   font-weight: bold;
-}
-
-#tab_plugin_continuousprint table#debug {
-  width: 100%;
-  table-layout:auto;
 }
 
 /* https://kamranahmed.info/blog/2016/01/30/yellow-fade-technique-in-css/ */
@@ -227,11 +209,16 @@
     background-size: 40px 40px;
 }
 #tab_plugin_continuousprint .progress.active .bar {
+    animation: none;
+    background-image: none;
+}
+#tab_plugin_continuousprint .progress.active .bar.active {
     -webkit-animation: progress-bar-stripes 2s linear infinite;
     -moz-animation: progress-bar-stripes 2s linear infinite;
     -ms-animation: progress-bar-stripes 2s linear infinite;
     -o-animation: progress-bar-stripes 2s linear infinite;
     animation: progress-bar-stripes 2s linear infinite;
+    background-image: linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
 }
 /* ======== */
 
