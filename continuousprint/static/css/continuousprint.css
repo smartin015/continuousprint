@@ -7,6 +7,12 @@
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
 }
+.themeify.discorded #tab_plugin_continuousprint .job-header,
+.themeify.cyborg #tab_plugin_continuousprint .job-header,
+.themeify.discoranged #tab_plugin_continuousprint .job-header,
+.themeify.nighttime #tab_plugin_continuousprint .job-header { 
+  background-color: #222 !important;
+}
 
 #tab_plugin_continuousprint .accordion-heading, #tab_plugin_continuousprint .queue-row-container {
   width:100%;
@@ -129,6 +135,13 @@
   box-shadow: inset 0 -1px 0 black;
   font-weight: normal;
 }
+.themeify.discorded #tab_plugin_continuousprint .queue-set-list th,
+.themeify.cyborg #tab_plugin_continuousprint .queue-set-list th,
+.themeify.discoranged #tab_plugin_continuousprint .queue-set-list th,
+.themeify.nighttime #tab_plugin_continuousprint .queue-set-list th {
+  background-color: #222 !important;
+}
+
 #tab_plugin_continuousprint .queue-set-list th::after {
   content: ' ';
   position: absolute;
@@ -162,6 +175,15 @@
   /* chrome, safari, edge, opera: hide up/down buttons on count box input */
   -webkit-appearance: none;
   margin: 0;
+}
+
+
+.themeify.discorded #tab_plugin_continuousprint input,
+.themeify.cyborg #tab_plugin_continuousprint input,
+.themeify.discoranged #tab_plugin_continuousprint input,
+.themeify.nighttime #tab_plugin_continuousprint input { 
+  background-color: #656b76 !important;
+  color: white !important;
 }
 
 #tab_plugin_continuousprint .file-name, #tab_plugin_continuousprint .job-name {

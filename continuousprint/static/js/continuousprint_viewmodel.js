@@ -123,7 +123,7 @@ function CPViewModel(parameters) {
       let rep = []; 
       for (let item of q) {
         // Compatibility for older version data
-        if (item.job === null) {
+        if (item.job === null || item.job === undefined) {
           item.job = "";
         }
         if (item.job !== curJob) {

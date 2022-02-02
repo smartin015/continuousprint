@@ -138,6 +138,7 @@ Check these before releasing:
 * Pausing and resuming the print works
 * Cancelling restarts the print
 * Print queue can be started and stopped; queue items complete in order
+* Stylings look good in light and dark themes
 
 ## Potential future work
 
