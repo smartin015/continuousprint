@@ -9,9 +9,8 @@ WARNING: Your printer must have a method of clearing the bed automatically, with
 ## Add the plugin
 
 1. In the OctoPrint UI, go to `Settings` -> `Plugin Manager` -> `Get More`
-1. Search for "Continuous Print", and click Install, following any instructions
-   * If you can't find the plugin, you can also put https://github.com/Zinc-OS/continuousprint/archive/master.zip into the "...from URL" section of the Get More page.
-1. Restart OctoPrint
+2. Put https://github.com/smartin015/continuousprint/archive/master.zip into the "...from URL" section of the Get More page and press install.
+3. Restart OctoPrint
 
 That's it! Now let's configure it to work with your printer.
 
