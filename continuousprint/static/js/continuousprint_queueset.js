@@ -38,14 +38,17 @@ function CPQueueSet(items) {
     let nruns = (len > 0) ? (self.items()[len-1].run() || 0) : 0;
     return Math.floor(self.length() / (nruns+1));
   });
-  self.runs_completed = ko.computed(function() {
+  self.items_completed = ko.computed(function() {
     let i = 0;
     for (let item of self.items()) {
       if (item.end_ts() !== null) {
         i++;
       }
     }
-    return Math.floor(i / (self.count() || 1));
+    return i;
+  });
+  self.runs_completed = ko.computed(function() {
+    return Math.floor(self.items_completed() / (self.count() || 1));
   });
   self.progress = ko.computed(function() {
     let progress = [];

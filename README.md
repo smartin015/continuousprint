@@ -148,4 +148,4 @@ Check these before releasing:
 * Segmented status bars to better indicate run completion
 * Client library to support queue management automation
 * Bed clearing profiles for specific printers
-
+* Multi-user queue modification with attribution (shows who added which prints, prevents overwriting others' jobs)

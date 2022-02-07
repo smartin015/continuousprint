@@ -35,7 +35,7 @@
   line-height: 1.6;
 }
 #tab_plugin_continuousprint .queue-row-container .total {
-  width: 20px;
+  width: 40px;
   text-align: center;
 }
 #tab_plugin_continuousprint .loading {
@@ -96,24 +96,25 @@
 #tab_plugin_continuousprint .queue-header {
   display: flex;
   justify-content: space-between;
-  padding: 0px 38px; 
+  padding: 0px 58px 0 28px; 
   opacity: 0.5;
 }
 #tab_plugin_continuousprint .queue-header > div {
   margin-left: 10px; 
 }
 #tab_plugin_continuousprint #queue_sets.empty {
-  border: 1px #e5e5e5 solid; /* copy from .accordion-group */
   padding: 15px;
-  border-radius: 10px;
+  border: none;
+  box-shadow: none;
 }
 #tab_plugin_continuousprint ::placeholder {
   font-weight: italic;
   opacity: 0.7;
 }
 #tab_plugin_continuousprint #queue_sets.empty::before {
-  content: "Click the + button on a file, or drag a queue item here!";
+  content: "Hint: Click the + button on a file, or drag a queue item here";
   font-weight: italic;
+  font-size: 85%;
   opacity: 0.7;
 }
 #tab_plugin_continuousprint .queue-set-list {
@@ -162,6 +163,13 @@
 #tab_plugin_continuousprint .queue-set-list tr.run-alt {
   background-color: #e5e5e5;
 }
+.themeify.discorded #tab_plugin_continuousprint tr.run-alt,
+.themeify.cyborg #tab_plugin_continuousprint tr.run-alt,
+.themeify.discoranged #tab_plugin_continuousprint tr.run-alt,
+.themeify.nighttime #tab_plugin_continuousprint tr.run-alt { 
+  background-color: #282828 !important;
+}
+
 #tab_plugin_continuousprint .count-box{
   text-align: left;
   min-width:30px;

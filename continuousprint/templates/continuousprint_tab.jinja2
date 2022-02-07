@@ -41,7 +41,7 @@
           <span data-bind="text: runs_completed() + ' /'">/</span>
           <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: $root.setCount }"></input>
         </div>
-        <div class="total" data-bind="text: length"></div>
+        <div class="total" data-bind="text: items_completed() + '/' + length()"></div>
         <div class="accordion-heading-button pull-right" data-bind="click: $root.remove"><i style="cursor: pointer" class="far fa-trash-alt"></i></div>
       </div>
     </div>
@@ -64,7 +64,7 @@
                   <div class="repeats">
                     <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: $root.setCount }"></input>
                   </div>
-                  <div class="total" data-bind="text: length"></div>
+                  <div class="total" data-bind="text: items_completed() + '/' + length()"></div>
                   <div class="accordion-heading-button" data-bind="click: $root.remove"><i style="cursor: pointer" class="far fa-trash-alt"></i></div>
                 </div>
             </div>

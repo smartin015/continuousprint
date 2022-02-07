@@ -51,6 +51,13 @@ function CPJob(obj) {
     }
     return true;
   }
+  self.items_completed = ko.computed(function() {
+    let num = 0;
+    for (let qs of self.queuesets()) {
+      num += qs.items_completed();
+    }
+    return num;
+  })
   self.runs_completed = ko.computed(function() {
     if (self.queuesets().length < 1) {
       return 0;
