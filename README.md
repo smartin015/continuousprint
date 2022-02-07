@@ -37,6 +37,8 @@ The print queue won't start your prints just yet. To run the queue:
 
 The plugin will wait until your printer is ready to start a print, then it'll begin with the top of the queue and proceed until the bottom.
 
+Note that when it's time to clear the print bed or finish up, a temporary `cp_\*.gcode` file will appear in your local files, and disappear when it completes. This is a change from older "gcode injecting" behavior that is necessary to support [at-commands](https://docs.octoprint.org/en/master/features/atcommands.html) in the clearing and finish scripts.
+
 ## Inspect queue items
 
 As the print queue is managed and prints complete, you can see the status of individual prints by clicking the small triangle to the left of any individual queue item.
@@ -78,6 +80,24 @@ octoprint serve
 
 You should see "Successfully installed continuousprint" when running the install command, and you can view the page at http://localhost:5000.
 
+## Testing
+
+Backend unit tests are currently run manually:
+```
+python3 continuousprint/print_queue_test.py
+python3 continuousprint/driver_test.py
+```
+
+Frontend unit tests require some additional setup (make sure [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable) and its dependencies are installed):
+
+```
+cd .../continuousprint
+yarn install
+yarn run test
+```
+
+This will run all frontend JS test files (`continuousprint/static/js/\*.test.js`). You can also `yarn run watch-test` to set up a test process which re-runs whenever you save a JS test file.
+
 ## Installing dev version on OctoPi
 
 Users of [OctoPi](https://octoprint.org/download/) can install a development version directly on their pi as follows:
@@ -91,6 +111,41 @@ Note that we're using the bundled version of python3 that comes with octoprint, 
 
 ## Developer tips
 
+* The backend (`__init__.py` and dependencies) stores a flattened representation of the print queue and 
+  iterates through it from beginning to end. Each item is loaded as a QueueItem (see `print_queue.py`).
+* The frontend talks to the backend with the flattened queue, but operates on an inmemory structured version:
+  * Each flattened queue item is loaded as a `CPQueueItem` (see continuousprint/static/js/continuousprint_queueitem.js)
+  * Sets of the same queue item are aggregated into a `CPQueueSet` (see continuousprint/static/js/continuousprint_queueset.js)
+  * Multiple queuesets are grouped together and run one or more times as a `CPJob` (see continuousprint/static/js/continuousprint_job.js)
+  * For simplicity, each level only understands the level below it - e.g. a Job doesn't care about QueueItems.
 * Remember, you can enable the virtual printer under `Virtual Printer` in OctoPrint settings.
 * Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.
+* Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, customized:
+  * https://github.com/SortableJS/knockout-sortablejs/pull/13
+  * https://github.com/SortableJS/knockout-sortablejs/issues/14
 
+## QA
+
+Check these before releasing:
+
+* All buttons under the triple-dot menu work as intended
+* Jobs and items can be drag-reordered
+* Jobs can't be dragged into items, items can't be dragged outside jobs
+* Adding a file from the Files dialog works as intended
+* Setting the count for jobs and items behaves as expected
+* [At-commands](https://docs.octoprint.org/en/master/features/atcommands.html) work in clearing/finish scripts
+* Temporary gcode files are cleaned up after use
+* Pausing and resuming the print works
+* Cancelling restarts the print
+* Print queue can be started and stopped; queue items complete in order
+* Stylings look good in light and dark themes
+
+## Potential future work
+
+* File integrity checking (resilience to renames/deletions)
+* Save/remember and allow re-adding of jobs
+* Improved queue history/status with more stats
+* Segmented status bars to better indicate run completion
+* Client library to support queue management automation
+* Bed clearing profiles for specific printers
+* Multi-user queue modification with attribution (shows who added which prints, prevents overwriting others' jobs)

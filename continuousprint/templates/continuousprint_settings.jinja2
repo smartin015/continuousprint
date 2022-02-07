@@ -4,8 +4,7 @@
 		When continually printing the bed needs to be cleared in order for the next print to work.
 	</p>
 	<p>
-		There is a special [PAUSE] command that doesn't get sent to the printer but instead indefinatly pauses the queue until the resume button is pressed.<br />
-		<small style="font-size: 0.8em"><b>Note:</b> this doesn't put the printer into a paused state it simply tells the queue to wait.</small>
+		If your printer requires manual intervention to clear the bed, you can use <a href="https://docs.octoprint.org/en/master/features/atcommands.html" target="_blank">@ Commands</a> such as <code>@pause</code> to tell OctoPrint to pause indefinitely until the resume button is pressed.
 	</p>
 	
 	<div class="control-group">

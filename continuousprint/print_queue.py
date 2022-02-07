@@ -3,7 +3,7 @@ import time
 
 # See QueueItem in continuousprint.js for matching JS object
 class QueueItem:
-    def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None, retries=0):
+    def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None, job="", run=0, retries=0):
         self.name = name
         self.path = path
         if type(sd) == str:
@@ -11,6 +11,8 @@ class QueueItem:
         if type(sd) != bool:
             raise Exception("SD must be bool, got %s" % (type(sd)))
         self.sd = sd
+        self.job = job
+        self.run = run
         self.start_ts = start_ts
         self.end_ts = end_ts
         self.result = result
@@ -21,6 +23,8 @@ class QueueItem:
             self.name == other.name 
             and self.path == other.path 
             and self.sd == other.sd
+            and self.job == other.job
+            and self.run == other.run
         )
 
 
@@ -53,6 +57,8 @@ class PrintQueue:
                 start_ts = v.get("start_ts"),
                 end_ts = v.get("end_ts"),
                 result = v.get("result"),
+                job = v.get("job"),
+                run = v.get("run"),
                 retries = v.get("retries", 0),
                 ))
         self.assign(items)
