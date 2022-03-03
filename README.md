@@ -1,8 +1,12 @@
 # Continuous Print Queue Plugin
 
-Octoprint plugin that allows users to generate a print queue, specify a print bed clearning script and run the queue which will
+This plugin automates your printing!
 
-WARNING: Your printer must have a method of clearing the bed automatically, with correct GCODE instructions set up in this plugin's settings page - damage to your printer may occur if this is not done correctly.
+* **Add gcode files to the queue and set a number of times to print each.** The plugin will print them in sequence, running "bed clearing" script after each.
+* **Group multiple files together into "jobs" and run them multiple times.** Don't make 10 boxes by printing 10 bases, then 10 lids - just define a "box" job and print box/lid combos in sequence.
+* **Reduce manual intervention with failure automation.** This plugin optionally integrates with [The Spaghetti Detective](https://www.thespaghettidetective.com/) and can retry prints that fail to adhere to the bed, with configurable limits on how hard to try before giving up.
+
+WARNING: Your printer must have a method of clearing the bed automatically, with correct GCODE instructions set up in this plugin's settings page - damage to your printer may occur if this is not done correctly. If you want to manually remove prints, look in the plugin settings for details on how to use `@pause` so the queue is paused before another print starts.
 
 # Setup
 
@@ -10,7 +14,7 @@ WARNING: Your printer must have a method of clearing the bed automatically, with
 
 1. In the OctoPrint UI, go to `Settings` -> `Plugin Manager` -> `Get More`
 1. Search for "Continuous Print", and click Install, following any instructions
-   * If you can't find the plugin, you can also put https://github.com/Zinc-OS/continuousprint/archive/master.zip into the "...from URL" section of the Get More page.
+   * If you can't find the plugin, you can also put https://github.com/smartin015/continuousprint/archive/master.zip into the "...from URL" section of the Get More page.
 1. Restart OctoPrint
 
 That's it! Now let's configure it to work with your printer.
@@ -72,7 +76,7 @@ pip install -e .
 In the same terminal as the one where you activated the environment, Install the plugin in dev mode and launch the server:
 
 ```shell
-git clone https://github.com/Zinc-OS/continuousprint.git
+git clone https://github.com/smartin015/continuousprint.git
 cd continuousprint
 octoprint dev plugin:install
 octoprint serve
@@ -103,7 +107,7 @@ This will run all frontend JS test files (`continuousprint/static/js/\*.test.js`
 Users of [OctoPi](https://octoprint.org/download/) can install a development version directly on their pi as follows:
 
 1. `ssh pi@<your octopi hostname>` and provide your password (the default is `raspberry`, but for security reasons you should change it with `passwd` when you can)
-1. `git clone https://github.com/Zinc-OS/continuousprint.git`
+1. `git clone https://github.com/smartin015/continuousprint.git`
 1. Uninstall any existing continuous print installations (see `Settings` -> `Plugin Manager` in the browser)
 1. `cd continuousprint && ~/oprint/bin/python3 setup.py install`
 
