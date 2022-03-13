@@ -364,7 +364,7 @@ class ContinuousprintPlugin(
                 displayVersion=self._plugin_version,
                 # version check: github repository
                 type="github_release",
-                user="Zinc-OS",
+                user="smartin015",
                 repo="continuousprint",
                 current=self._plugin_version,
                 stable_branch=dict(
@@ -378,7 +378,7 @@ class ContinuousprintPlugin(
                     )
                 ],
                 # update method: pip
-                pip="https://github.com/Zinc-OS/continuousprint/archive/{target_version}.zip",
+                pip="https://github.com/smartin015/continuousprint/archive/{target_version}.zip",
             )
         )
     def add_permissions(*args, **kwargs):
