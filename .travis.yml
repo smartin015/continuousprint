@@ -14,3 +14,5 @@ jobs:
 notifications:
   email:
     - smartin015@gmail.com
+env:
+  - TRAVIS_CI=1 # setup.py requires particular steps for octoprint vs CI environment
