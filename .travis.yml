@@ -1,0 +1,14 @@
+# https://stackoverflow.com/questions/27644586/how-to-set-up-travis-ci-with-multiple-languages
+jobs:
+  include:
+    - language: node_js
+      node_js: node
+    - language: python
+      python: 3.6
+      before_script:
+        - cd continuousprint/
+      script:
+        - python -m unittest "*_test.py"
+notifications:
+  email:
+    - smartin015@gmail.com
