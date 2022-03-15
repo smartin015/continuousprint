@@ -103,11 +103,11 @@ class ContinuousPrintDriver:
             self.actions.append(self._finish)
 
     def _finish(self):
-        self._set_status(f"Running finish script")
+        self._set_status("Running finish script")
         self.finish_script_fn()
 
     def _clear_bed(self):
-        self._set_status(f"Running bed clearing script")
+        self._set_status("Running bed clearing script")
         self.clear_bed_fn()
 
     def _start_print(self, p):
@@ -165,7 +165,6 @@ class ContinuousPrintDriver:
         if not self.active:
             return
         idx = self._cur_idx()
-        item = self.q[idx]
         if self.retries + 1 < self.max_retries:
             self.retries += 1
             self.actions.append(

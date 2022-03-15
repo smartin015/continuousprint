@@ -14,7 +14,10 @@ def setupTestQueueAndDriver(self, num_complete):
     self.q.assign(
         [
             QueueItem(
-                "foo", "/foo.gcode", True, end_ts=1 if num_complete > 0 else None
+                "foo",
+                "/foo.gcode",
+                True,
+                end_ts=1 if num_complete > 0 else None,
             ),
             QueueItem("bar", "/bar.gco", True, end_ts=2 if num_complete > 1 else None),
             QueueItem("baz", "/baz.gco", True, end_ts=3 if num_complete > 2 else None),

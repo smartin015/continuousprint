@@ -1,8 +1,9 @@
 import json
 import time
 
-# See QueueItem in continuousprint.js for matching JS object
+
 class QueueItem:
+    # See QueueItem in continuousprint.js for matching JS object
     def __init__(
         self,
         name,

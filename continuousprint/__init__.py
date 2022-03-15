@@ -2,11 +2,13 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
-import flask, json
+import flask
+import json
 from io import BytesIO
+from octoprint import InvalidFileLocation, InvalidFileType
 from octoprint.server.util.flask import restricted_access
-from octoprint.events import eventManager, Events
-from octoprint.access.permissions import Permissions, ADMIN_GROUP, USER_GROUP
+from octoprint.events import Events
+from octoprint.access.permissions import Permissions, ADMIN_GROUP
 import octoprint.filemanager
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
@@ -46,7 +48,7 @@ class ContinuousprintPlugin(
             self._settings.get([RESTART_MAX_TIME_KEY]),
         )
 
-    ##~~ SettingsPlugin
+    # part of SettingsPlugin
     def get_settings_defaults(self):
         d = {}
         d[QUEUE_KEY] = "[]"
@@ -80,7 +82,7 @@ class ContinuousprintPlugin(
             if self._file_manager.file_exists(FileDestinations.LOCAL, path):
                 self._file_manager.remove_file(FileDestinations.LOCAL, path)
 
-    ##~~ StartupPlugin
+    # part of StartupPlugin
     def on_after_startup(self):
         self._settings.save()
         self.q = PrintQueue(self._settings, QUEUE_KEY)
@@ -96,7 +98,7 @@ class ContinuousprintPlugin(
         self._rm_temp_files()
         self._logger.info("Continuous Print Plugin started")
 
-    ##~~ EventHandlerPlugin
+    # part of EventHandlerPlugin
     def on_event(self, event, payload):
         if not hasattr(self, "d"):  # Ignore any messages arriving before init
             return
@@ -225,7 +227,7 @@ class ContinuousprintPlugin(
         if self.paused:
             self.d.set_active()
 
-    ##~~ APIs
+    # API methods
     @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
     @restricted_access
     def state(self):
@@ -311,7 +313,7 @@ class ContinuousprintPlugin(
     def set_active(self):
         if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
-            self._logger.info(f"attempt failed due to insufficient permissions.")
+            self._logger.info("attempt failed due to insufficient permissions.")
         self.d.set_active(
             flask.request.form["active"] == "true",
             printer_ready=(self._printer.get_state_id() == "OPERATIONAL"),
@@ -348,10 +350,10 @@ class ContinuousprintPlugin(
             i = self.q[idx]
             i.start_ts = None
             i.end_ts = None
-        self.q.remove(idx, count)
+        self.q.remove(idx, len(idxs))
         return self.state_json(changed=[idx])
 
-    ##~~  TemplatePlugin
+    # part of TemplatePlugin
     def get_template_vars(self):
         return dict(
             cp_enabled=(self.d.active if hasattr(self, "d") else False),
@@ -376,11 +378,13 @@ class ContinuousprintPlugin(
                 template="continuousprint_settings.jinja2",
             ),
             dict(
-                type="tab", custom_bindings=False, template="continuousprint_tab.jinja2"
+                type="tab",
+                custom_bindings=False,
+                template="continuousprint_tab.jinja2",
             ),
         ]
 
-    ##~~ AssetPlugin
+    # part of AssetPlugin
     def get_assets(self):
         return dict(
             js=[
