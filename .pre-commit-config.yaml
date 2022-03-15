@@ -13,6 +13,7 @@ repos:
     rev: v2.3.0
     hooks:
     - id: flake8
+      # IMPORTANT: These args must match .github/workflows/lint.yml
       args:
         # making isort line length compatible with black
         - "--max-line-length=88"
