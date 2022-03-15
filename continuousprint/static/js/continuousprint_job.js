@@ -12,7 +12,7 @@ if (typeof CPQueueSet === "undefined" || CPQueueSet === null) {
   CPQueueSet = require('./continuousprint_queueset');
 }
 
-// jobs and queuesets are derived from self.queue, but they must be 
+// jobs and queuesets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
 function CPJob(obj) {
   var self = this;
@@ -64,7 +64,7 @@ function CPJob(obj) {
     }
     let rc = self.count();
     for (let qs of self.queuesets()) {
-      rc = Math.min(rc, qs.runs_completed()); 
+      rc = Math.min(rc, qs.runs_completed());
     }
     return rc;
   });

@@ -18,11 +18,11 @@ function CPQueueSet(items) {
   var self = this;
   self._n = items[0].name; // Used for easier inspection in console
   self._len = items.length;
- 
+
   self.items = ko.observableArray([]);
   for (let i of items) {
     self.items.push(new CPQueueItem(i));
-  } 
+  }
   self.changed = ko.computed(function() {
     for (let item of self.items()) {
       if (item.changed()) {
@@ -106,7 +106,7 @@ function CPQueueSet(items) {
         }
       }
       self.items(items);
-    } 
+    }
     // Do nothing if equal
   }
   self.set_runs = function(v) {

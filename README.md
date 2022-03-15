@@ -79,6 +79,7 @@ In the same terminal as the one where you activated the environment, Install the
 git clone https://github.com/smartin015/continuousprint.git
 cd continuousprint
 octoprint dev plugin:install
+pre-commit install  # Cleans up files when you commit them - see https://pre-commit.com/. Note that venv must be activated or else flake8 raises improper errors
 octoprint serve
 ```
 
@@ -115,7 +116,7 @@ Note that we're using the bundled version of python3 that comes with octoprint, 
 
 ## Developer tips
 
-* The backend (`__init__.py` and dependencies) stores a flattened representation of the print queue and 
+* The backend (`__init__.py` and dependencies) stores a flattened representation of the print queue and
   iterates through it from beginning to end. Each item is loaded as a QueueItem (see `print_queue.py`).
 * The frontend talks to the backend with the flattened queue, but operates on an inmemory structured version:
   * Each flattened queue item is loaded as a `CPQueueItem` (see continuousprint/static/js/continuousprint_queueitem.js)

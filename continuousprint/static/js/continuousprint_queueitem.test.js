@@ -16,7 +16,7 @@ let now = 10000;
 test('object conversion contains all data fields', () => {
   // Ensure all entries are filled
   let data = {
-    ...DATA, 
+    ...DATA,
     start_ts: now,
     end_ts: now+1000,
     result: "success",
@@ -35,5 +35,3 @@ test('duration works for minutes, hours, days', () => {
   i = new QueueItem({...DATA, start_ts: now, end_ts: now+2*24*60*60});
   expect(i.duration()).toBe('2 days');
 });
-
-

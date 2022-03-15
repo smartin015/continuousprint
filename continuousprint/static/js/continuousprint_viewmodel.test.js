@@ -3,8 +3,8 @@ const VM = require('./continuousprint_viewmodel');
 function mocks(filename="test.gcode") {
   return [
     {
-      isPrinting: jest.fn(() => true), 
-      isPaused: jest.fn(() => false), 
+      isPrinting: jest.fn(() => true),
+      isPaused: jest.fn(() => false),
       filename: jest.fn(() => filename)
     },
     {}, // loginState only used in continuousprint.js
@@ -150,7 +150,7 @@ test('setCount allows only positive integers', () => {
   v.setCount(vm, {target: {value: "0"}});
   v.setCount(vm, {target: {value: "apple"}});
   expect(vm.set_count).not.toHaveBeenCalled();
-  
+
   v.setCount(vm, {target: {value: "5"}});
   expect(vm.set_count).toHaveBeenCalledWith(5);
 
