@@ -1,5 +1,5 @@
 class MockSettings:
-    def __init__(self, k, s = "[]"):
+    def __init__(self, k, s="[]"):
         self.k = k
         self.s = s
 

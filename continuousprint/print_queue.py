@@ -3,11 +3,22 @@ import time
 
 # See QueueItem in continuousprint.js for matching JS object
 class QueueItem:
-    def __init__(self, name, path, sd, start_ts=None, end_ts=None, result=None, job="", run=0, retries=0):
+    def __init__(
+        self,
+        name,
+        path,
+        sd,
+        start_ts=None,
+        end_ts=None,
+        result=None,
+        job="",
+        run=0,
+        retries=0,
+    ):
         self.name = name
         self.path = path
         if type(sd) == str:
-            sd = (sd.lower() == "true")
+            sd = sd.lower() == "true"
         if type(sd) != bool:
             raise Exception("SD must be bool, got %s" % (type(sd)))
         self.sd = sd
@@ -19,9 +30,9 @@ class QueueItem:
         self.retries = retries
 
     def __eq__(self, other):
-        return  (
-            self.name == other.name 
-            and self.path == other.path 
+        return (
+            self.name == other.name
+            and self.path == other.path
             and self.sd == other.sd
             and self.job == other.job
             and self.run == other.run
@@ -50,17 +61,20 @@ class PrintQueue:
                     self._logger.error(f"Invalid queue item {str(v)}, ignoring")
                 continue
             items.append(
-            QueueItem(
-                name = v.get("name", v["path"]), # Use path if name not given (old plugin version data may do this)
-                path = v["path"],
-                sd = v.get("sd", False),
-                start_ts = v.get("start_ts"),
-                end_ts = v.get("end_ts"),
-                result = v.get("result"),
-                job = v.get("job"),
-                run = v.get("run"),
-                retries = v.get("retries", 0),
-                ))
+                QueueItem(
+                    name=v.get(
+                        "name", v["path"]
+                    ),  # Use path if name not given (old plugin version data may do this)
+                    path=v["path"],
+                    sd=v.get("sd", False),
+                    start_ts=v.get("start_ts"),
+                    end_ts=v.get("end_ts"),
+                    result=v.get("result"),
+                    job=v.get("job"),
+                    run=v.get("run"),
+                    retries=v.get("retries", 0),
+                )
+            )
         self.assign(items)
 
     def _validate(self, item):
@@ -106,14 +120,14 @@ class PrintQueue:
 
     def remove(self, idx, num=0):
         self._load()
-        del self.q[idx:idx+num] 
+        del self.q[idx : idx + num]
         self._save()
 
     def move(self, fromidx, num, offs):
         self._load()
-        slc = self.q[fromidx:fromidx+num]
-        self.q = self.q[0:fromidx] + self.q[fromidx+num:]
-        self.q = self.q[0:fromidx+offs] + slc + self.q[fromidx+offs:]
+        slc = self.q[fromidx : fromidx + num]
+        self.q = self.q[0:fromidx] + self.q[fromidx + num :]
+        self.q = self.q[0 : fromidx + offs] + slc + self.q[fromidx + offs :]
         self._save()
 
     def pop(self):

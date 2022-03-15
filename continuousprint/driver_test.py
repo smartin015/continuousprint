@@ -4,24 +4,32 @@ from print_queue import PrintQueue, QueueItem
 from driver import ContinuousPrintDriver
 from mock_settings import MockSettings
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
+
 
 def setupTestQueueAndDriver(self, num_complete):
     self.s = MockSettings("q")
     self.q = PrintQueue(self.s, "q")
-    self.q.assign([
-            QueueItem("foo", "/foo.gcode", True, end_ts = 1 if num_complete > 0 else None),
-            QueueItem("bar", "/bar.gco", True, end_ts = 2 if num_complete > 1 else None),
-            QueueItem("baz", "/baz.gco", True, end_ts = 3 if num_complete > 2 else None),
-        ])
+    self.q.assign(
+        [
+            QueueItem(
+                "foo", "/foo.gcode", True, end_ts=1 if num_complete > 0 else None
+            ),
+            QueueItem("bar", "/bar.gco", True, end_ts=2 if num_complete > 1 else None),
+            QueueItem("baz", "/baz.gco", True, end_ts=3 if num_complete > 2 else None),
+        ]
+    )
     self.d = ContinuousPrintDriver(
-            queue = self.q,
-            finish_script_fn = MagicMock(),
-            start_print_fn = MagicMock(),
-            cancel_print_fn = MagicMock(),
-            clear_bed_fn = MagicMock(),
-            logger = logging.getLogger())
+        queue=self.q,
+        finish_script_fn=MagicMock(),
+        start_print_fn=MagicMock(),
+        cancel_print_fn=MagicMock(),
+        clear_bed_fn=MagicMock(),
+        logger=logging.getLogger(),
+    )
     self.d.set_retry_on_pause(True)
+
 
 def flush(d):
     while d.pending_actions() > 0:
@@ -46,6 +54,7 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
         def assert_nocalls():
             self.d.finish_script_fn.assert_not_called()
             self.d.start_print_fn.assert_not_called()
+
         self.d.on_print_success()
         assert_nocalls()
         self.d.on_print_failed()
@@ -73,7 +82,7 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
 
         self.d.on_print_success()
         flush(self.d)
-        self.assertEqual(self.d.first_print,False)
+        self.assertEqual(self.d.first_print, False)
         self.d.clear_bed_fn.assert_called_once()
         self.d.start_print_fn.assert_called_once()
         self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[1])
@@ -103,7 +112,6 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.assert_called_once
         self.assertEqual(self.d.start_print_fn.call_args[0][0], n)
 
-
     def test_paused_early_triggers_cancel(self):
         self.d.set_active()
 
@@ -129,7 +137,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.assertEqual(self.d.retries, 1)
 
     def test_set_active_clears_retries(self):
-        self.d.retries = self.d.max_retries-1
+        self.d.retries = self.d.max_retries - 1
         self.d.set_active()
         self.assertEqual(self.d.retries, 0)
 
