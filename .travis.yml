@@ -6,11 +6,12 @@ jobs:
     - language: python
       python: 3.6
       install:
+          - pip install OctoPrint # Must be installed for __init__.py
           - pip install -r requirements.txt
       before_script:
         - cd continuousprint/
       script:
-        - python -m unittest "*_test.py"
+        - python -m unittest discover -s continuousprint -p "*_test.py"
 notifications:
   email:
     - smartin015@gmail.com
