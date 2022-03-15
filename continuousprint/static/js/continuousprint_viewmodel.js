@@ -14,7 +14,7 @@ if (typeof CPJob === "undefined" || CPJob === null) {
 
 function CPViewModel(parameters) {
     var self = this;
-    
+
     self.TAB_ID = "#tab_plugin_continuousprint";
     self.printerState = parameters[0];
     self.loginState = parameters[1];
@@ -29,7 +29,7 @@ function CPViewModel(parameters) {
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
 
-    self.isSelected = function(j=null, q=null) {  
+    self.isSelected = function(j=null, q=null) {
       j = self._resolve(j);
       q = self._resolve(q);
       return ko.computed(function() {
@@ -73,7 +73,7 @@ function CPViewModel(parameters) {
       }
       return null;
     });
-    
+
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
         if (self.loading()) {return;}
@@ -109,9 +109,9 @@ function CPViewModel(parameters) {
     self._loadState = function(state) {
         self.loading(true);
         self.api.getState(self._setState);
-    };    
+    };
 
-    self._updateJobs = function(q) {  
+    self._updateJobs = function(q) {
       if (q.length === 0) {
         self.jobs([new CPJob({name: "", idx: 0})]);
         return
@@ -120,7 +120,7 @@ function CPViewModel(parameters) {
       let curJob = null;
 
       // Convert to nested representation
-      let rep = []; 
+      let rep = [];
       for (let item of q) {
         // Compatibility for older version data
         if (item.job === null || item.job === undefined) {
@@ -163,7 +163,7 @@ function CPViewModel(parameters) {
         self.status(state.status);
         self.loading(false);
     };
-                    
+
     // *** ko template methods ***
     self.setActive = function(active) {
         if (self.loading()) return;
@@ -248,7 +248,7 @@ function CPViewModel(parameters) {
     };
 
     self.sortStart = function(evt) {
-      // Faking server disconnect allows us to disable the default whole-page 
+      // Faking server disconnect allows us to disable the default whole-page
       // file drag and drop behavior.
       self.files.onServerDisconnect();
     };
@@ -301,7 +301,7 @@ function CPViewModel(parameters) {
                 theme = "info";
                 break;
         }
-        
+
         if (data.msg != "") {
             new PNotify({
                 title: 'Continuous Print',
@@ -318,5 +318,3 @@ function CPViewModel(parameters) {
 try {
 module.exports = CPViewModel;
 } catch {}
-
-

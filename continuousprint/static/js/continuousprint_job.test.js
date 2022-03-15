@@ -85,17 +85,17 @@ test('as_queue contains all fields and all items in the right order', () => {
   // Note that item 0 and item 1 sets are interleaved, 3 then 3 etc.
   // with completed items listed first and runs increasing per full repetition of all items
   expect(j.as_queue()).toStrictEqual([
-    {"end_ts": 101, "job": "test", "name": "item 0", "path": "item.gcode", "result": "success", "retries": 0, "run": 0, "sd": false, "start_ts": 100}, 
-    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null}, 
-    {"end_ts": 101, "job": "test", "name": "item 1", "path": "item.gcode", "result": "success", "retries": 0, "run": 0, "sd": false, "start_ts": 100}, 
-    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}, 
-    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}, 
+    {"end_ts": 101, "job": "test", "name": "item 0", "path": "item.gcode", "result": "success", "retries": 0, "run": 0, "sd": false, "start_ts": 100},
+    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
+    {"end_ts": 101, "job": "test", "name": "item 1", "path": "item.gcode", "result": "success", "retries": 0, "run": 0, "sd": false, "start_ts": 100},
+    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
+    {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
     {"end_ts": null, "job": "test", "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}
   ]);
 });

@@ -33,14 +33,14 @@
     <div class="accordion-heading job-header">
       <div class="queue-row-container" data-bind="visible: queuesets().length > 0">
         <i class="fas fa-grip-lines-vertical"></i>
-        <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 --> 
+        <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
         <input type="text" class="job-name" data-bind="textInput: name, event: { change: $root.setJobName }, attr: {'_vkenabled': false}, css: {'bold': $root.isActiveItem($index)()}" placeholder="Click here to name"></input>
         <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.isActiveItem($index)() }">
           <div data-bind="style: { flex: pct, order: order }, css: {'active': result === 'started', 'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
         </div>
         <div class="repeats">
           <span data-bind="text: runs_completed() + ' /'">/</span>
-          <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 --> 
+          <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
           <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: $root.setCount }, attr: {'_vkenabled': false}"></input>
         </div>
         <div class="total" data-bind="text: items_completed() + '/' + length()"></div>
@@ -64,7 +64,7 @@
                     <div data-bind="style: { flex: pct, order: order }, css: {'bar': result !== 'pending', 'active': result === 'started', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
                   </div>
                   <div class="repeats">
-                    <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 --> 
+                    <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
                     <input class="fa fa-text count-box" type="number" data-bind="textInput: count, event: { change: $root.setCount }, attr: {'_vkenabled': false}"></input>
                   </div>
                   <div class="total" data-bind="text: items_completed() + '/' + length()"></div>
@@ -94,7 +94,7 @@
                     </tbody>
                   </table>
                 </div>
-              </div> 
+              </div>
             </div>
           </div>
         </div>

@@ -48,16 +48,16 @@ function CPQueueItem(data) {
       }
       var elapsed = current - previous;
       if (elapsed < sPerHour) {
-           return Math.round(elapsed/sPerMinute) + ' minutes';   
+           return Math.round(elapsed/sPerMinute) + ' minutes';
       }
       else if (elapsed < sPerDay ) {
-           return Math.round(elapsed/sPerHour) + ' hours';   
+           return Math.round(elapsed/sPerHour) + ' hours';
       }
       else if (elapsed < sPerMonth) {
-          return Math.round(elapsed/sPerDay) + ' days';   
+          return Math.round(elapsed/sPerDay) + ' days';
       }
       else {
-          return Math.round(elapsed/sPerMonth) + ' months';   
+          return Math.round(elapsed/sPerMonth) + ' months';
       }
   }
 
@@ -77,7 +77,7 @@ function CPQueueItem(data) {
   }
   self.as_object = function() {
     return {
-      name: self.name, 
+      name: self.name,
       path: self.path,
       sd: self.sd,
       job: self.job(),

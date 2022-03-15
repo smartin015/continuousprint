@@ -25,9 +25,9 @@ $(function() {
     OCTOPRINT_VIEWMODELS.push({
         construct: CPViewModel,
         dependencies: [
-          "printerStateViewModel", 
+          "printerStateViewModel",
           "loginStateViewModel",
-          "filesViewModel", 
+          "filesViewModel",
           "settingsViewModel",
         ],
         elements: ["#tab_plugin_continuousprint"]

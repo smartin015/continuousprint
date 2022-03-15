@@ -28,4 +28,3 @@ class CPAPI {
 try {
   module.exports = CPAPI;
 } catch {}
-

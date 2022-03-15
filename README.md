@@ -115,7 +115,7 @@ Note that we're using the bundled version of python3 that comes with octoprint, 
 
 ## Developer tips
 
-* The backend (`__init__.py` and dependencies) stores a flattened representation of the print queue and 
+* The backend (`__init__.py` and dependencies) stores a flattened representation of the print queue and
   iterates through it from beginning to end. Each item is loaded as a QueueItem (see `print_queue.py`).
 * The frontend talks to the backend with the flattened queue, but operates on an inmemory structured version:
   * Each flattened queue item is loaded as a `CPQueueItem` (see continuousprint/static/js/continuousprint_queueitem.js)
