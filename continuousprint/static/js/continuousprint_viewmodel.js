@@ -10,6 +10,9 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   ko = require('knockout');
   CPJob = require('./continuousprint_job');
   CPAPI = require('./continuousprint_api');
+  log = {
+    "getLogger": () => {return console;}
+  };
 }
 
 function CPViewModel(parameters) {
@@ -295,10 +298,10 @@ function CPViewModel(parameters) {
       self._updateQueue();
     });
 
-    self.sortMove = _ecatch("sortMove", function(evt) {
+    self.sortMove = function(evt) {
       // Like must move to like (e.g. no dragging a queueset out of a job)
       return (evt.from.id === evt.to.id);
-    });
+    };
 
     // This also fires on initial load
     self.onTabChange = _ecatch("onTabChange", function(next, current) {
