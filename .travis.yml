@@ -6,7 +6,6 @@ jobs:
     - language: python
       python: 3.6
       install:
-          - pip install wheel # Need wheel for `bdist_wheel` cmd as part of installing octoprint
           - pip install OctoPrint # Need OctoPrint to satisfy req's of `__init__.py`
           - pip install -r requirements.txt
       before_script:
