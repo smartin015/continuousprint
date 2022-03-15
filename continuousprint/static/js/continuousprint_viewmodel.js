@@ -14,6 +14,33 @@ if (typeof CPJob === "undefined" || CPJob === null) {
 
 function CPViewModel(parameters) {
     var self = this;
+    self.PLUGIN_ID = "octoprint.plugins.continuousprint";
+    self.log = log.getLogger(self.PLUGIN_ID);
+    self.log.info(`[${self.PLUGIN_ID}] Initializing`);
+    // Due to minification, it's very difficult to find and fix errors reported by users
+    // due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
+    // function name and args, and prints the error to the console with hopefully enough info
+    // to properly debug.
+    var _ecatch = function(name, fn) {
+      if (typeof(name) !== 'string') {
+        throw Error("_ecatch not passed string as first argument (did you forget the function name?)");
+      }
+      return function() {
+        try {
+          var args = [];
+          for (var i = 0; i < arguments.length; i++) {
+            args.push(arguments[i]);
+          }
+          fn.apply(undefined, args);
+        } catch(err) {
+          let args_json = "<not json-able>";
+          try {
+            let args_json = JSON.stringify(arguments);
+          } catch(e2) {}
+          self.log.error(`[${self.PLUGIN_ID}]: error when calling ${name} with args ${args_json}: ${err}`);
+        }
+      };
+    };
 
     self.TAB_ID = "#tab_plugin_continuousprint";
     self.printerState = parameters[0];
@@ -54,6 +81,7 @@ function CPViewModel(parameters) {
         return (j === null || j === a[0]) && (q === null || q === a[1]) && (i === null || i === a[2]);
       });
     };
+
     self.activeItem = ko.computed(function() {
       if (!self.printerState.isPrinting() && !self.printerState.isPaused()) {
         return null;
@@ -75,7 +103,7 @@ function CPViewModel(parameters) {
     });
 
     // Patch the files panel to allow for adding to queue
-    self.files.add = function(data) {
+    self.files.add = _ecatch("files.add", function(data) {
         if (self.loading()) {return;}
         let now = Date.now();
         let jobs = self.jobs();
@@ -94,24 +122,25 @@ function CPViewModel(parameters) {
             job: job.name(),
         });
         self._updateQueue();
-    };
+    });
 
 
     // Call this after every mutation
-    self._updateQueue = function() {
+    self._updateQueue = _ecatch("_updateQueue", function() {
       let q = [];
       for (let j of self.jobs()) {
         q = q.concat(j.as_queue());
       }
       self.api.assign(q, self._setState);
-    };
+    });
 
-    self._loadState = function(state) {
+    self._loadState = _ecatch("_loadState", function(state) {
+        self.log.info(`[${self.PLUGIN_ID}] loading state...`);
         self.loading(true);
         self.api.getState(self._setState);
-    };
+    });
 
-    self._updateJobs = function(q) {
+    self._updateJobs = _ecatch("_updateJobs", function(q) {
       if (q.length === 0) {
         self.jobs([new CPJob({name: "", idx: 0})]);
         return
@@ -155,22 +184,25 @@ function CPViewModel(parameters) {
         jobs.push(new CPJob());
       }
       self.jobs(jobs);
-    };
+    });
 
     self._setState = function(state) {
+        self.log.info(`[${self.PLUGIN_ID}] updating jobs (queue len ${state.queue.length}, active=${state.active}, status="${state.status})"`);
         self._updateJobs(state.queue);
         self.active(state.active);
         self.status(state.status);
         self.loading(false);
+        self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
     // *** ko template methods ***
-    self.setActive = function(active) {
+
+    self.setActive = _ecatch("setActive", function(active) {
         if (self.loading()) return;
         self.api.setActive(active, self._setState);
-    };
+    });
 
-    self.remove = function(e) {
+    self.remove = _ecatch("remove", function(e) {
         if (self.loading()) return;
         if (e.constructor.name === "CPJob") {
             self.jobs.remove(e);
@@ -180,30 +212,30 @@ function CPViewModel(parameters) {
             }
         }
         self._updateQueue();
-    };
+    });
 
-    self.requeueFailures = function() {
+    self.requeueFailures = _ecatch("requeueFailures", function() {
         if (self.loading()) return;
         self.loading(true);
         for (let j of self.jobs()) {
           j.requeueFailures();
         }
         self._updateQueue();
-    };
+    });
 
-    self.clearCompleted = function() {
+    self.clearCompleted = _ecatch("clearCompleted", function() {
         if (self.loading()) return;
         self.loading(true);
         self.jobs(self.jobs().filter((j) => !j.is_complete()));
         self._updateQueue();
-    };
+    });
 
-    self.clearAll = function() {
+    self.clearAll = _ecatch("clearAll", function() {
         if (self.loading()) return;
         self.loading(true);
         self.jobs([]);
         self._updateQueue();
-    };
+    });
 
     self._resolve = function(observable) {
       if (typeof(observable) === 'undefined') {
@@ -214,7 +246,7 @@ function CPViewModel(parameters) {
       return observable;
     };
 
-    self.setSelected = function(job, queueset) {
+    self.setSelected = _ecatch("setSelected", function(job, queueset) {
         job = self._resolve(job);
         queueset = self._resolve(queueset);
         if (self.loading()) return;
@@ -224,20 +256,20 @@ function CPViewModel(parameters) {
         } else {
           self.selected([job, queueset]);
         }
-    };
+    });
 
-    self.refreshQueue = function() {
+    self.refreshQueue = _ecatch("refreshQueue", function() {
         if (self.loading()) return;
         self._loadState();
-    };
+    });
 
-    self.setJobName = function(job, evt) {
+    self.setJobName = _ecatch("setJobName", function(job, evt) {
         if (self.loading()) return;
         job.set_name(evt.target.value);
         self._updateQueue();
-    };
+    });
 
-    self.setCount = function(vm, e) {
+    self.setCount = _ecatch("setCount", function(vm, e) {
       if (self.loading()) return;
       let v = parseInt(e.target.value, 10);
       if (isNaN(v) || v < 1) {
@@ -245,15 +277,15 @@ function CPViewModel(parameters) {
       }
       vm.set_count(v);
       self._updateQueue();
-    };
+    });
 
-    self.sortStart = function(evt) {
+    self.sortStart = _ecatch("sortStart", function(evt) {
       // Faking server disconnect allows us to disable the default whole-page
       // file drag and drop behavior.
       self.files.onServerDisconnect();
-    };
+    });
 
-    self.sortEnd = function(_, item) {
+    self.sortEnd = _ecatch("sortEnd", function(_, item) {
       if (self.loading()) return;
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
@@ -261,24 +293,25 @@ function CPViewModel(parameters) {
         j.sort_end(item);
       }
       self._updateQueue();
-    };
+    });
 
-    self.sortMove = function(evt) {
+    self.sortMove = _ecatch("sortMove", function(evt) {
       // Like must move to like (e.g. no dragging a queueset out of a job)
       return (evt.from.id === evt.to.id);
-    };
+    });
 
     // This also fires on initial load
-    self.onTabChange = function(next, current) {
+    self.onTabChange = _ecatch("onTabChange", function(next, current) {
+        self.log.info(`[${self.PLUGIN_ID}] onTabChange - ${self.TAB_ID} == ${current} vs ${next}`);
       if (current === self.TAB_ID && next !== self.TAB_ID) {
         // Navigating away - TODO clear hellow highlights
       } else if (current !== self.TAB_ID && next === self.TAB_ID) {
         // Reload in case other things added
         self._loadState();
       }
-    };
+    });
 
-    self.onDataUpdaterPluginMessage = function(plugin, data) {
+    self.onDataUpdaterPluginMessage = _ecatch("onDataUpdaterPluginMessage", function(plugin, data) {
         if (plugin != "continuousprint") return;
         var theme;
         switch(data["type"]) {
@@ -311,7 +344,7 @@ function CPViewModel(parameters) {
                 buttons: {closer: true, sticker: false}
             });
         }
-    };
+    });
 }
 
 
