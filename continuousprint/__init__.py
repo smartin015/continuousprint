@@ -387,14 +387,14 @@ class ContinuousprintPlugin(
     def get_assets(self):
         return dict(
             js=[
+                "js/cp_modified_sortable.js",
+                "js/cp_modified_knockout-sortable.js",
                 "js/continuousprint_api.js",
                 "js/continuousprint_queueitem.js",
                 "js/continuousprint_queueset.js",
                 "js/continuousprint_job.js",
                 "js/continuousprint_viewmodel.js",
                 "js/continuousprint.js",
-                "js/sortable.js",
-                "js/knockout-sortable.js",
             ],
             css=["css/continuousprint.css"],
         )

@@ -144,7 +144,6 @@ function CPViewModel(parameters) {
     });
 
     self._updateJobs = _ecatch("_updateJobs", function(q) {
-      log.info("_updateJobs", q);
       if (q.length === 0) {
         self.jobs([new CPJob({name: "", idx: 0})]);
         return
@@ -191,7 +190,7 @@ function CPViewModel(parameters) {
     });
 
     self._setState = function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] updating jobs (queue len ${state.queue.length}, active=${state.active}, status="${state.status})"`);
+        self.log.info(`[${self.PLUGIN_ID}] updating jobs:`, state);
         self._updateJobs(state.queue);
         self.active(state.active);
         self.status(state.status);
@@ -306,7 +305,7 @@ function CPViewModel(parameters) {
 
     // This also fires on initial load
     self.onTabChange = _ecatch("onTabChange", function(next, current) {
-        self.log.info(`[${self.PLUGIN_ID}] onTabChange - ${self.TAB_ID} == ${current} vs ${next}`);
+      self.log.info(`[${self.PLUGIN_ID}] onTabChange - ${self.TAB_ID} == ${current} vs ${next}`);
       if (current === self.TAB_ID && next !== self.TAB_ID) {
         // Navigating away - TODO clear hellow highlights
       } else if (current !== self.TAB_ID && next === self.TAB_ID) {
