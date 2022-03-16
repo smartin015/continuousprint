@@ -1,5 +1,9 @@
 /*global ko*/
 
+// WARNING WARNING WARNING
+// This has been modified from the source at https://github.com/SortableJS/knockout-sortablejs
+// See developer tips section of https://github.com/smartin015/continuousprint/blob/master/README.md
+
 (function (factory) {
 	"use strict";
 	//get ko ref via global or require
@@ -14,9 +18,9 @@
 	}
 	//get sortable ref via global or require
 	var sortableRef;
-	if (typeof Sortable !== 'undefined') {
+	if (typeof CPSortable !== 'undefined') {
 		//global ref already defined
-		sortableRef = Sortable;
+		sortableRef = CPSortable;
 	}
 	else if (typeof require === 'function' && typeof exports === 'object' && typeof module === 'object') {
 		//commonjs / node.js
@@ -30,8 +34,8 @@
 	else if (typeof define === 'function' && define.amd) {
 		//we may have a reference to only 1, or none
 		if (koRef !== undefined && sortableRef === undefined) {
-			define(['./Sortable'], function (amdSortableRef) {
-				factory(koRef, amdSortableRef);
+			define(['./CPSortable'], function (amdCPSortableRef) {
+				factory(koRef, amdCPSortableRef);
 			});
 		}
 		else if (koRef === undefined && sortableRef !== undefined) {
@@ -40,23 +44,23 @@
 			});
 		}
 		else if (koRef === undefined && sortableRef === undefined) {
-			define(['knockout', './Sortable'], factory);
+			define(['knockout', './CPSortable'], factory);
 		}
 	}
 	//no more routes to get references
 	else {
 		//report specific error
 		if (koRef !== undefined && sortableRef === undefined) {
-			throw new Error('knockout-sortable could not get reference to Sortable');
+			throw new Error('knockout-sortable could not get reference to CPSortable');
 		}
 		else if (koRef === undefined && sortableRef !== undefined) {
 			throw new Error('knockout-sortable could not get reference to Knockout');
 		}
 		else if (koRef === undefined && sortableRef === undefined) {
-			throw new Error('knockout-sortable could not get reference to Knockout or Sortable');
+			throw new Error('knockout-sortable could not get reference to Knockout or CPSortable');
 		}
 	}
-})(function (ko, Sortable) {
+})(function (ko, CPSortable) {
     "use strict";
 
     var init = function (element, valueAccessor, allBindings, viewModel, bindingContext, sortableOptions) {
@@ -72,7 +76,7 @@
                         // All of the bindings on the parent element
                         bindings = ko.utils.peekObservable(parentBindings()),
                         // The binding options for the draggable/sortable binding of the parent element
-                        bindingHandlerBinding = bindings.sortable || bindings.draggable,
+                        bindingHandlerBinding = bindings.cpsortable || bindings.cpdraggable,
                         // The collection that we should modify
                         collection = bindingHandlerBinding.collection || bindingHandlerBinding.foreach;
                     if (handler)
@@ -82,7 +86,7 @@
                 }.bind(undefined, e, viewModel, allBindings, options[e]);
         });
 
-        var sortableElement = Sortable.create(element, options);
+        var sortableElement = CPSortable.create(element, options);
 
         // Destroy the sortable if knockout disposes the element it's connected to
         ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
@@ -119,7 +123,7 @@
                     var removeOperation = currentOperation.event.type === 'remove' ? currentOperation : existingOperation,
                         addOperation = currentOperation.event.type === 'add' ? currentOperation : existingOperation;
 
-                    addOperation.event.groupOption = parentBindings.sortable.options.group;
+                    addOperation.event.groupOption = parentBindings.cpsortable.options.group;
 
                     moveItem(itemVM, removeOperation.collection, addOperation.collection, addOperation.event.clone, addOperation.event);
                 }
@@ -218,28 +222,28 @@
         return merge(options, unwrappedOptions);
     };
 
-    ko.bindingHandlers.draggable = {
+    ko.bindingHandlers.cpdraggable = {
         sortableOptions: {
             group: { pull: 'clone', put: false },
             sort: false
         },
         init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            return init(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.draggable.sortableOptions);
+            return init(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.cpdraggable.sortableOptions);
         },
         update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            return update(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.draggable.sortableOptions);
+            return update(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.cpdraggable.sortableOptions);
         }
     };
 
-    ko.bindingHandlers.sortable = {
+    ko.bindingHandlers.cpsortable = {
         sortableOptions: {
             group: { pull: true, put: true }
         },
         init: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            return init(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.sortable.sortableOptions);
+            return init(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.cpsortable.sortableOptions);
         },
         update: function (element, valueAccessor, allBindings, viewModel, bindingContext) {
-            return update(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.sortable.sortableOptions);
+            return update(element, valueAccessor, allBindings, viewModel, bindingContext, ko.bindingHandlers.cpsortable.sortableOptions);
         }
     };
 });

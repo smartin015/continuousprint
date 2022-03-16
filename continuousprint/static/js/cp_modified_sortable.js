@@ -4,10 +4,15 @@
  * @author	owenm    <owen23355@gmail.com>
  * @license MIT
  */
+
+// WARNING WARNING WARNING
+// This has been modified from the source at https://github.com/SortableJS/Sortable
+// See developer tips section of https://github.com/smartin015/continuousprint/blob/master/README.md
+
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
-  (global = global || self, global.Sortable = factory());
+  (global = global || self, global.CPSortable = factory());
 }(this, (function () { 'use strict';
 
   function ownKeys(object, enumerableOnly) {
@@ -446,7 +451,7 @@
    * and non-draggable elements
    * @param  {HTMLElement} el       The parent element
    * @param  {Number} childNum      The index of the child
-   * @param  {Object} options       Parent Sortable's options
+   * @param  {Object} options       Parent CPSortable's options
    * @return {HTMLElement}          The child at index childNum, or null if not found
    */
 
@@ -457,7 +462,7 @@
         children = el.children;
 
     while (i < children.length) {
-      if (children[i].style.display !== 'none' && children[i] !== Sortable.ghost && (includeDragEl || children[i] !== Sortable.dragged) && closest(children[i], options.draggable, el, false)) {
+      if (children[i].style.display !== 'none' && children[i] !== CPSortable.ghost && (includeDragEl || children[i] !== CPSortable.dragged) && closest(children[i], options.draggable, el, false)) {
         if (currentChild === childNum) {
           return children[i];
         }
@@ -481,7 +486,7 @@
   function lastChild(el, selector) {
     var last = el.lastElementChild;
 
-    while (last && (last === Sortable.ghost || css(last, 'display') === 'none' || selector && !matches(last, selector))) {
+    while (last && (last === CPSortable.ghost || css(last, 'display') === 'none' || selector && !matches(last, selector))) {
       last = last.previousElementSibling;
     }
 
@@ -506,7 +511,7 @@
 
 
     while (el = el.previousElementSibling) {
-      if (el.nodeName.toUpperCase() !== 'TEMPLATE' && el !== Sortable.clone && (!selector || matches(el, selector))) {
+      if (el.nodeName.toUpperCase() !== 'TEMPLATE' && el !== CPSortable.clone && (!selector || matches(el, selector))) {
         index++;
       }
     }
@@ -658,7 +663,7 @@
     css(el, 'height', '');
   }
 
-  var expando = 'Sortable' + new Date().getTime();
+  var expando = 'CPSortable' + new Date().getTime();
 
   function AnimationStateManager() {
     var animationStates = [],
@@ -669,7 +674,7 @@
         if (!this.options.animation) return;
         var children = [].slice.call(this.el.children);
         children.forEach(function (child) {
-          if (css(child, 'display') === 'none' || child === Sortable.ghost) return;
+          if (css(child, 'display') === 'none' || child === CPSortable.ghost) return;
           animationStates.push({
             target: child,
             rect: getRect(child)
@@ -826,7 +831,7 @@
 
       plugins.forEach(function (p) {
         if (p.pluginName === plugin.pluginName) {
-          throw "Sortable: Cannot mount plugin ".concat(plugin.pluginName, " more than once");
+          throw "CPSortable: Cannot mount plugin ".concat(plugin.pluginName, " more than once");
         }
       });
       plugins.push(plugin);
@@ -892,8 +897,8 @@
     modifyOption: function modifyOption(sortable, name, value) {
       var modifiedValue;
       plugins.forEach(function (plugin) {
-        // Plugin must exist on the Sortable
-        if (!sortable[plugin.pluginName]) return; // If static option listener exists for this option, call in the context of the Sortable's instance of this plugin
+        // Plugin must exist on the CPSortable
+        if (!sortable[plugin.pluginName]) return; // If static option listener exists for this option, call in the context of the CPSortable's instance of this plugin
 
         if (plugin.optionListeners && typeof plugin.optionListeners[name] === 'function') {
           modifiedValue = plugin.optionListeners[name].call(sortable[plugin.pluginName], value);
@@ -916,7 +921,7 @@
         oldDraggableIndex = _ref.oldDraggableIndex,
         newDraggableIndex = _ref.newDraggableIndex,
         originalEvent = _ref.originalEvent,
-        putSortable = _ref.putSortable,
+        putCPSortable = _ref.putCPSortable,
         extraEventProperties = _ref.extraEventProperties;
     sortable = sortable || rootEl && rootEl[expando];
     if (!sortable) return;
@@ -943,7 +948,7 @@
     evt.oldDraggableIndex = oldDraggableIndex;
     evt.newDraggableIndex = newDraggableIndex;
     evt.originalEvent = originalEvent;
-    evt.pullMode = putSortable ? putSortable.lastPutMode : undefined;
+    evt.pullMode = putCPSortable ? putCPSortable.lastPutMode : undefined;
 
     var allEventProperties = _objectSpread2(_objectSpread2({}, extraEventProperties), PluginManager.getEventProperties(name, sortable));
 
@@ -967,7 +972,7 @@
         originalEvent = _ref.evt,
         data = _objectWithoutProperties(_ref, _excluded);
 
-    PluginManager.pluginEvent.bind(Sortable)(eventName, sortable, _objectSpread2({
+    PluginManager.pluginEvent.bind(CPSortable)(eventName, sortable, _objectSpread2({
       dragEl: dragEl,
       parentEl: parentEl,
       ghostEl: ghostEl,
@@ -977,8 +982,8 @@
       cloneEl: cloneEl,
       cloneHidden: cloneHidden,
       dragStarted: moved,
-      putSortable: putSortable,
-      activeSortable: Sortable.active,
+      putCPSortable: putCPSortable,
+      activeCPSortable: CPSortable.active,
       originalEvent: originalEvent,
       oldIndex: oldIndex,
       oldDraggableIndex: oldDraggableIndex,
@@ -992,7 +997,7 @@
       cloneNowShown: function cloneNowShown() {
         cloneHidden = false;
       },
-      dispatchSortableEvent: function dispatchSortableEvent(name) {
+      dispatchCPSortableEvent: function dispatchCPSortableEvent(name) {
         _dispatchEvent({
           sortable: sortable,
           name: name,
@@ -1004,7 +1009,7 @@
 
   function _dispatchEvent(info) {
     dispatchEvent(_objectSpread2({
-      putSortable: putSortable,
+      putCPSortable: putCPSortable,
       cloneEl: cloneEl,
       targetEl: dragEl,
       rootEl: rootEl,
@@ -1028,7 +1033,7 @@
       oldDraggableIndex,
       newDraggableIndex,
       activeGroup,
-      putSortable,
+      putCPSortable,
       awaitingDragStarted = false,
       ignoreNextClick = false,
       sortables = [],
@@ -1107,9 +1112,9 @@
    * Detects first nearest empty sortable to X and Y position using emptyInsertThreshold.
    * @param  {Number} x      X position
    * @param  {Number} y      Y position
-   * @return {HTMLElement}   Element of the first found nearest Sortable
+   * @return {HTMLElement}   Element of the first found nearest CPSortable
    */
-  _detectNearestEmptySortable = function _detectNearestEmptySortable(x, y) {
+  _detectNearestEmptyCPSortable = function _detectNearestEmptyCPSortable(x, y) {
     var ret;
     sortables.some(function (sortable) {
       var threshold = sortable[expando].options.emptyInsertThreshold;
@@ -1189,7 +1194,7 @@
     if (dragEl) {
       evt = evt.touches ? evt.touches[0] : evt;
 
-      var nearest = _detectNearestEmptySortable(evt.clientX, evt.clientY);
+      var nearest = _detectNearestEmptyCPSortable(evt.clientX, evt.clientY);
 
       if (nearest) {
         // Create imitation event
@@ -1216,15 +1221,15 @@
     }
   };
   /**
-   * @class  Sortable
+   * @class  CPSortable
    * @param  {HTMLElement}  el
    * @param  {Object}       [options]
    */
 
 
-  function Sortable(el, options) {
+  function CPSortable(el, options) {
     if (!(el && el.nodeType && el.nodeType === 1)) {
-      throw "Sortable: `el` must be an HTMLElement, not ".concat({}.toString.call(el));
+      throw "CPSortable: `el` must be an HTMLElement, not ".concat({}.toString.call(el));
     }
 
     this.el = el; // root element
@@ -1274,7 +1279,7 @@
         x: 0,
         y: 0
       },
-      supportPointer: Sortable.supportPointer !== false && 'PointerEvent' in window && !Safari,
+      supportPointer: CPSortable.supportPointer !== false && 'PointerEvent' in window && !Safari,
       emptyInsertThreshold: 5
     };
     PluginManager.initializePlugins(this, el, defaults); // Set default options
@@ -1320,10 +1325,10 @@
     _extends(this, AnimationStateManager());
   }
 
-  Sortable.prototype =
-  /** @lends Sortable.prototype */
+  CPSortable.prototype =
+  /** @lends CPSortable.prototype */
   {
-    constructor: Sortable,
+    constructor: CPSortable,
     _isOutsideThisEl: function _isOutsideThisEl(target) {
       if (!this.el.contains(target) && target !== this.el) {
         lastTarget = null;
@@ -1455,7 +1460,7 @@
         nextEl = dragEl.nextSibling;
         lastDownEl = target;
         activeGroup = options.group;
-        Sortable.dragged = dragEl;
+        CPSortable.dragged = dragEl;
         tapEvt = {
           target: dragEl,
           clientX: (touch || evt).clientX,
@@ -1472,7 +1477,7 @@
             evt: evt
           });
 
-          if (Sortable.eventCanceled) {
+          if (CPSortable.eventCanceled) {
             _this._onDrop();
 
             return;
@@ -1521,7 +1526,7 @@
         }); // Delay is impossible for native DnD in Edge or IE
 
         if (options.delay && (!options.delayOnTouchOnly || touch) && (!this.nativeDraggable || !(Edge || IE11OrLess))) {
-          if (Sortable.eventCanceled) {
+          if (CPSortable.eventCanceled) {
             this._onDrop();
 
             return;
@@ -1614,7 +1619,7 @@
 
         !fallback && toggleClass(dragEl, options.dragClass, false);
         toggleClass(dragEl, options.ghostClass, true);
-        Sortable.active = this;
+        CPSortable.active = this;
         fallback && this._appendGhost(); // Drag start event
 
         _dispatchEvent({
@@ -1684,7 +1689,7 @@
             dx = (touch.clientX - tapEvt.clientX + fallbackOffset.x) / (scaleX || 1) + (relativeScrollOffset ? relativeScrollOffset[0] - ghostRelativeParentInitialScroll[0] : 0) / (scaleX || 1),
             dy = (touch.clientY - tapEvt.clientY + fallbackOffset.y) / (scaleY || 1) + (relativeScrollOffset ? relativeScrollOffset[1] - ghostRelativeParentInitialScroll[1] : 0) / (scaleY || 1); // only set the status to dragging, when we are actually dragging
 
-        if (!Sortable.active && !awaitingDragStarted) {
+        if (!CPSortable.active && !awaitingDragStarted) {
           if (fallbackTolerance && Math.max(Math.abs(touch.clientX - this._lastX), Math.abs(touch.clientY - this._lastY)) < fallbackTolerance) {
             return;
           }
@@ -1763,7 +1768,7 @@
         css(ghostEl, 'position', PositionGhostAbsolutely ? 'absolute' : 'fixed');
         css(ghostEl, 'zIndex', '100000');
         css(ghostEl, 'pointerEvents', 'none');
-        Sortable.ghost = ghostEl;
+        CPSortable.ghost = ghostEl;
         container.appendChild(ghostEl); // Set transform-origin
 
         css(ghostEl, 'transform-origin', tapDistanceLeft / parseInt(ghostEl.style.width) * 100 + '% ' + tapDistanceTop / parseInt(ghostEl.style.height) * 100 + '%');
@@ -1782,7 +1787,7 @@
         evt: evt
       });
 
-      if (Sortable.eventCanceled) {
+      if (CPSortable.eventCanceled) {
         this._onDrop();
 
         return;
@@ -1790,7 +1795,7 @@
 
       pluginEvent('setupClone', this);
 
-      if (!Sortable.eventCanceled) {
+      if (!CPSortable.eventCanceled) {
         cloneEl = clone(dragEl);
         cloneEl.draggable = false;
         cloneEl.style['will-change'] = '';
@@ -1798,13 +1803,13 @@
         this._hideClone();
 
         toggleClass(cloneEl, this.options.chosenClass, false);
-        Sortable.clone = cloneEl;
+        CPSortable.clone = cloneEl;
       } // #1143: IFrame support workaround
 
 
       _this.cloneId = _nextTick(function () {
         pluginEvent('clone', _this);
-        if (Sortable.eventCanceled) return;
+        if (CPSortable.eventCanceled) return;
 
         if (!_this.options.removeCloneOnHide) {
           rootEl.insertBefore(cloneEl, dragEl);
@@ -1858,10 +1863,10 @@
           revert,
           options = this.options,
           group = options.group,
-          activeSortable = Sortable.active,
+          activeCPSortable = CPSortable.active,
           isOwner = activeGroup === group,
           canSort = options.sort,
-          fromSortable = putSortable || activeSortable,
+          fromCPSortable = putCPSortable || activeCPSortable,
           vertical,
           _this = this,
           completedFired = false;
@@ -1877,7 +1882,7 @@
           dragRect: dragRect,
           targetRect: targetRect,
           canSort: canSort,
-          fromSortable: fromSortable,
+          fromCPSortable: fromCPSortable,
           target: target,
           completed: completed,
           onMove: function onMove(target, after) {
@@ -1893,8 +1898,8 @@
 
         _this.captureAnimationState();
 
-        if (_this !== fromSortable) {
-          fromSortable.captureAnimationState();
+        if (_this !== fromCPSortable) {
+          fromCPSortable.captureAnimationState();
         }
       } // Return invocation when dragEl is inserted (or completed)
 
@@ -1907,25 +1912,25 @@
         if (insertion) {
           // Clones must be hidden before folding animation to capture dragRectAbsolute properly
           if (isOwner) {
-            activeSortable._hideClone();
+            activeCPSortable._hideClone();
           } else {
-            activeSortable._showClone(_this);
+            activeCPSortable._showClone(_this);
           }
 
-          if (_this !== fromSortable) {
+          if (_this !== fromCPSortable) {
             // Set ghost class to new sortable's ghost class
-            toggleClass(dragEl, putSortable ? putSortable.options.ghostClass : activeSortable.options.ghostClass, false);
+            toggleClass(dragEl, putCPSortable ? putCPSortable.options.ghostClass : activeCPSortable.options.ghostClass, false);
             toggleClass(dragEl, options.ghostClass, true);
           }
 
-          if (putSortable !== _this && _this !== Sortable.active) {
-            putSortable = _this;
-          } else if (_this === Sortable.active && putSortable) {
-            putSortable = null;
+          if (putCPSortable !== _this && _this !== CPSortable.active) {
+            putCPSortable = _this;
+          } else if (_this === CPSortable.active && putCPSortable) {
+            putCPSortable = null;
           } // Animation
 
 
-          if (fromSortable === _this) {
+          if (fromCPSortable === _this) {
             _this._ignoreWhileAnimating = target;
           }
 
@@ -1934,9 +1939,9 @@
             _this._ignoreWhileAnimating = null;
           });
 
-          if (_this !== fromSortable) {
-            fromSortable.animateAll();
-            fromSortable._ignoreWhileAnimating = null;
+          if (_this !== fromCPSortable) {
+            fromCPSortable.animateAll();
+            fromCPSortable._ignoreWhileAnimating = null;
           }
         } // Null lastTarget if it is not inside a previously swapped element
 
@@ -1978,7 +1983,7 @@
 
       target = closest(target, options.draggable, el, true);
       dragOverEvent('dragOver');
-      if (Sortable.eventCanceled) return completedFired;
+      if (CPSortable.eventCanceled) return completedFired;
 
       if (dragEl.contains(evt.target) || target.animated && target.animatingX && target.animatingY || _this._ignoreWhileAnimating === target) {
         return completed(false);
@@ -1986,12 +1991,12 @@
 
       ignoreNextClick = false;
 
-      if (activeSortable && !options.disabled && (isOwner ? canSort || (revert = parentEl !== rootEl) // Reverting item into the original list
-      : putSortable === this || (this.lastPutMode = activeGroup.checkPull(this, activeSortable, dragEl, evt)) && group.checkPut(this, activeSortable, dragEl, evt))) {
+      if (activeCPSortable && !options.disabled && (isOwner ? canSort || (revert = parentEl !== rootEl) // Reverting item into the original list
+      : putCPSortable === this || (this.lastPutMode = activeGroup.checkPull(this, activeCPSortable, dragEl, evt)) && group.checkPut(this, activeCPSortable, dragEl, evt))) {
         vertical = this._getDirection(evt, target) === 'vertical';
         dragRect = getRect(dragEl);
         dragOverEvent('dragOverValid');
-        if (Sortable.eventCanceled) return completedFired;
+        if (CPSortable.eventCanceled) return completedFired;
 
         if (revert) {
           parentEl = rootEl; // actualization
@@ -2002,7 +2007,7 @@
 
           dragOverEvent('revert');
 
-          if (!Sortable.eventCanceled) {
+          if (!CPSortable.eventCanceled) {
             if (nextEl) {
               rootEl.insertBefore(dragEl, nextEl);
             } else {
@@ -2172,7 +2177,7 @@
       newIndex = index(dragEl);
       newDraggableIndex = index(dragEl, options.draggable);
 
-      if (Sortable.eventCanceled) {
+      if (CPSortable.eventCanceled) {
         this._nulling();
 
         return;
@@ -2212,7 +2217,7 @@
 
         ghostEl && ghostEl.parentNode && ghostEl.parentNode.removeChild(ghostEl);
 
-        if (rootEl === parentEl || putSortable && putSortable.lastPutMode !== 'clone') {
+        if (rootEl === parentEl || putCPSortable && putCPSortable.lastPutMode !== 'clone') {
           // Remove clone(s)
           cloneEl && cloneEl.parentNode && cloneEl.parentNode.removeChild(cloneEl);
         }
@@ -2228,7 +2233,7 @@
           // ghostClass is added in dragStarted
 
           if (moved && !awaitingDragStarted) {
-            toggleClass(dragEl, putSortable ? putSortable.options.ghostClass : this.options.ghostClass, false);
+            toggleClass(dragEl, putCPSortable ? putCPSortable.options.ghostClass : this.options.ghostClass, false);
           }
 
           toggleClass(dragEl, this.options.chosenClass, false); // Drag stop event
@@ -2278,7 +2283,7 @@
               });
             }
 
-            putSortable && putSortable.save();
+            putCPSortable && putCPSortable.save();
           } else {
             if (newIndex !== oldIndex) {
               if (newIndex >= 0) {
@@ -2300,7 +2305,7 @@
             }
           }
 
-          if (Sortable.active) {
+          if (CPSortable.active) {
             /* jshint eqnull:true */
             if (newIndex == null || newIndex === -1) {
               newIndex = oldIndex;
@@ -2324,7 +2329,7 @@
     },
     _nulling: function _nulling() {
       pluginEvent('nulling', this);
-      rootEl = dragEl = parentEl = ghostEl = nextEl = cloneEl = lastDownEl = cloneHidden = tapEvt = touchEvt = moved = newIndex = newDraggableIndex = oldIndex = oldDraggableIndex = lastTarget = lastDirection = putSortable = activeGroup = Sortable.dragged = Sortable.ghost = Sortable.clone = Sortable.active = null;
+      rootEl = dragEl = parentEl = ghostEl = nextEl = cloneEl = lastDownEl = cloneHidden = tapEvt = touchEvt = moved = newIndex = newDraggableIndex = oldIndex = oldDraggableIndex = lastTarget = lastDirection = putCPSortable = activeGroup = CPSortable.dragged = CPSortable.ghost = CPSortable.clone = CPSortable.active = null;
       savedInputChecked.forEach(function (el) {
         el.checked = true;
       });
@@ -2478,7 +2483,7 @@
     _hideClone: function _hideClone() {
       if (!cloneHidden) {
         pluginEvent('hideClone', this);
-        if (Sortable.eventCanceled) return;
+        if (CPSortable.eventCanceled) return;
         css(cloneEl, 'display', 'none');
 
         if (this.options.removeCloneOnHide && cloneEl.parentNode) {
@@ -2488,8 +2493,8 @@
         cloneHidden = true;
       }
     },
-    _showClone: function _showClone(putSortable) {
-      if (putSortable.lastPutMode !== 'clone') {
+    _showClone: function _showClone(putCPSortable) {
+      if (putCPSortable.lastPutMode !== 'clone') {
         this._hideClone();
 
         return;
@@ -2497,7 +2502,7 @@
 
       if (cloneHidden) {
         pluginEvent('showClone', this);
-        if (Sortable.eventCanceled) return; // show clone at dragEl or original position
+        if (CPSortable.eventCanceled) return; // show clone at dragEl or original position
 
         if (dragEl.parentNode == rootEl && !this.options.group.revertClone) {
           rootEl.insertBefore(cloneEl, dragEl);
@@ -2682,14 +2687,14 @@
 
   if (documentExists) {
     on(document, 'touchmove', function (evt) {
-      if ((Sortable.active || awaitingDragStarted) && evt.cancelable) {
+      if ((CPSortable.active || awaitingDragStarted) && evt.cancelable) {
         evt.preventDefault();
       }
     });
   } // Export utils
 
 
-  Sortable.utils = {
+  CPSortable.utils = {
     on: on,
     off: off,
     css: css,
@@ -2709,21 +2714,21 @@
     getChild: getChild
   };
   /**
-   * Get the Sortable instance of an element
+   * Get the CPSortable instance of an element
    * @param  {HTMLElement} element The element
-   * @return {Sortable|undefined}         The instance of Sortable
+   * @return {CPSortable|undefined}         The instance of CPSortable
    */
 
-  Sortable.get = function (element) {
+  CPSortable.get = function (element) {
     return element[expando];
   };
   /**
-   * Mount a plugin to Sortable
-   * @param  {...SortablePlugin|SortablePlugin[]} plugins       Plugins being mounted
+   * Mount a plugin to CPSortable
+   * @param  {...CPSortablePlugin|CPSortablePlugin[]} plugins       Plugins being mounted
    */
 
 
-  Sortable.mount = function () {
+  CPSortable.mount = function () {
     for (var _len = arguments.length, plugins = new Array(_len), _key = 0; _key < _len; _key++) {
       plugins[_key] = arguments[_key];
     }
@@ -2731,10 +2736,10 @@
     if (plugins[0].constructor === Array) plugins = plugins[0];
     plugins.forEach(function (plugin) {
       if (!plugin.prototype || !plugin.prototype.constructor) {
-        throw "Sortable: Mounted plugin must be a constructor function, not ".concat({}.toString.call(plugin));
+        throw "CPSortable: Mounted plugin must be a constructor function, not ".concat({}.toString.call(plugin));
       }
 
-      if (plugin.utils) Sortable.utils = _objectSpread2(_objectSpread2({}, Sortable.utils), plugin.utils);
+      if (plugin.utils) CPSortable.utils = _objectSpread2(_objectSpread2({}, CPSortable.utils), plugin.utils);
       PluginManager.mount(plugin);
     });
   };
@@ -2745,12 +2750,12 @@
    */
 
 
-  Sortable.create = function (el, options) {
-    return new Sortable(el, options);
+  CPSortable.create = function (el, options) {
+    return new CPSortable(el, options);
   }; // Export
 
 
-  Sortable.version = version;
+  CPSortable.version = version;
 
   var autoScrolls = [],
       scrollEl,
@@ -2956,7 +2961,7 @@
           autoScrolls[layersOut].pid = setInterval(function () {
             // emulate drag over during autoscroll (fallback), emulating native DnD behaviour
             if (isFallback && this.layer === 0) {
-              Sortable.active._onTouchMove(touchEvt$1); // To move ghost if it is positioned absolutely
+              CPSortable.active._onTouchMove(touchEvt$1); // To move ghost if it is positioned absolutely
 
             }
 
@@ -2964,7 +2969,7 @@
             var scrollOffsetX = autoScrolls[this.layer].vx ? autoScrolls[this.layer].vx * speed : 0;
 
             if (typeof scrollCustomFn === 'function') {
-              if (scrollCustomFn.call(Sortable.dragged.parentNode[expando], scrollOffsetX, scrollOffsetY, evt, touchEvt$1, autoScrolls[this.layer].el) !== 'continue') {
+              if (scrollCustomFn.call(CPSortable.dragged.parentNode[expando], scrollOffsetX, scrollOffsetY, evt, touchEvt$1, autoScrolls[this.layer].el) !== 'continue') {
                 return;
               }
             }
@@ -2984,24 +2989,24 @@
 
   var drop = function drop(_ref) {
     var originalEvent = _ref.originalEvent,
-        putSortable = _ref.putSortable,
+        putCPSortable = _ref.putCPSortable,
         dragEl = _ref.dragEl,
-        activeSortable = _ref.activeSortable,
-        dispatchSortableEvent = _ref.dispatchSortableEvent,
+        activeCPSortable = _ref.activeCPSortable,
+        dispatchCPSortableEvent = _ref.dispatchCPSortableEvent,
         hideGhostForTarget = _ref.hideGhostForTarget,
         unhideGhostForTarget = _ref.unhideGhostForTarget;
     if (!originalEvent) return;
-    var toSortable = putSortable || activeSortable;
+    var toCPSortable = putCPSortable || activeCPSortable;
     hideGhostForTarget();
     var touch = originalEvent.changedTouches && originalEvent.changedTouches.length ? originalEvent.changedTouches[0] : originalEvent;
     var target = document.elementFromPoint(touch.clientX, touch.clientY);
     unhideGhostForTarget();
 
-    if (toSortable && !toSortable.el.contains(target)) {
-      dispatchSortableEvent('spill');
+    if (toCPSortable && !toCPSortable.el.contains(target)) {
+      dispatchCPSortableEvent('spill');
       this.onSpill({
         dragEl: dragEl,
-        putSortable: putSortable
+        putCPSortable: putCPSortable
       });
     }
   };
@@ -3016,11 +3021,11 @@
     },
     onSpill: function onSpill(_ref3) {
       var dragEl = _ref3.dragEl,
-          putSortable = _ref3.putSortable;
+          putCPSortable = _ref3.putCPSortable;
       this.sortable.captureAnimationState();
 
-      if (putSortable) {
-        putSortable.captureAnimationState();
+      if (putCPSortable) {
+        putCPSortable.captureAnimationState();
       }
 
       var nextSibling = getChild(this.sortable.el, this.startIndex, this.options);
@@ -3033,8 +3038,8 @@
 
       this.sortable.animateAll();
 
-      if (putSortable) {
-        putSortable.animateAll();
+      if (putCPSortable) {
+        putCPSortable.animateAll();
       }
     },
     drop: drop
@@ -3049,11 +3054,11 @@
   Remove.prototype = {
     onSpill: function onSpill(_ref4) {
       var dragEl = _ref4.dragEl,
-          putSortable = _ref4.putSortable;
-      var parentSortable = putSortable || this.sortable;
-      parentSortable.captureAnimationState();
+          putCPSortable = _ref4.putCPSortable;
+      var parentCPSortable = putCPSortable || this.sortable;
+      parentCPSortable.captureAnimationState();
       dragEl.parentNode && dragEl.parentNode.removeChild(dragEl);
-      parentSortable.animateAll();
+      parentCPSortable.animateAll();
     },
     drop: drop
   };
@@ -3080,10 +3085,10 @@
         var completed = _ref2.completed,
             target = _ref2.target,
             onMove = _ref2.onMove,
-            activeSortable = _ref2.activeSortable,
+            activeCPSortable = _ref2.activeCPSortable,
             changed = _ref2.changed,
             cancel = _ref2.cancel;
-        if (!activeSortable.options.swap) return;
+        if (!activeCPSortable.options.swap) return;
         var el = this.sortable.el,
             options = this.options;
 
@@ -3107,20 +3112,20 @@
         cancel();
       },
       drop: function drop(_ref3) {
-        var activeSortable = _ref3.activeSortable,
-            putSortable = _ref3.putSortable,
+        var activeCPSortable = _ref3.activeCPSortable,
+            putCPSortable = _ref3.putCPSortable,
             dragEl = _ref3.dragEl;
-        var toSortable = putSortable || this.sortable;
+        var toCPSortable = putCPSortable || this.sortable;
         var options = this.options;
         lastSwapEl && toggleClass(lastSwapEl, options.swapClass, false);
 
-        if (lastSwapEl && (options.swap || putSortable && putSortable.options.swap)) {
+        if (lastSwapEl && (options.swap || putCPSortable && putCPSortable.options.swap)) {
           if (dragEl !== lastSwapEl) {
-            toSortable.captureAnimationState();
-            if (toSortable !== activeSortable) activeSortable.captureAnimationState();
+            toCPSortable.captureAnimationState();
+            if (toCPSortable !== activeCPSortable) activeCPSortable.captureAnimationState();
             swapNodes(dragEl, lastSwapEl);
-            toSortable.animateAll();
-            if (toSortable !== activeSortable) activeSortable.animateAll();
+            toCPSortable.animateAll();
+            if (toCPSortable !== activeCPSortable) activeCPSortable.animateAll();
           }
         }
       },
@@ -3159,7 +3164,7 @@
       multiDragClones = [],
       lastMultiDragSelect,
       // for selection with modifier key down (SHIFT)
-  multiDragSortable,
+  multiDragCPSortable,
       initialFolding = false,
       // Initial multi-drag fold when drag started
   folding = false,
@@ -3193,7 +3198,7 @@
         setData: function setData(dataTransfer, dragEl) {
           var data = '';
 
-          if (multiDragElements.length && multiDragSortable === sortable) {
+          if (multiDragElements.length && multiDragCPSortable === sortable) {
             multiDragElements.forEach(function (multiDragElement, i) {
               data += (!i ? '' : ', ') + multiDragElement.textContent;
             });
@@ -3237,14 +3242,14 @@
       clone: function clone(_ref3) {
         var sortable = _ref3.sortable,
             rootEl = _ref3.rootEl,
-            dispatchSortableEvent = _ref3.dispatchSortableEvent,
+            dispatchCPSortableEvent = _ref3.dispatchCPSortableEvent,
             cancel = _ref3.cancel;
         if (!this.isMultiDrag) return;
 
         if (!this.options.removeCloneOnHide) {
-          if (multiDragElements.length && multiDragSortable === sortable) {
+          if (multiDragElements.length && multiDragCPSortable === sortable) {
             insertMultiDragClones(true, rootEl);
-            dispatchSortableEvent('clone');
+            dispatchCPSortableEvent('clone');
             cancel();
           }
         }
@@ -3283,8 +3288,8 @@
       dragStartGlobal: function dragStartGlobal(_ref6) {
         var sortable = _ref6.sortable;
 
-        if (!this.isMultiDrag && multiDragSortable) {
-          multiDragSortable.multiDrag._deselectMultiDrag();
+        if (!this.isMultiDrag && multiDragCPSortable) {
+          multiDragCPSortable.multiDrag._deselectMultiDrag();
         }
 
         multiDragElements.forEach(function (multiDragElement) {
@@ -3353,7 +3358,7 @@
         }
       },
       revert: function revert(_ref9) {
-        var fromSortable = _ref9.fromSortable,
+        var fromCPSortable = _ref9.fromCPSortable,
             rootEl = _ref9.rootEl,
             sortable = _ref9.sortable,
             dragRect = _ref9.dragRect;
@@ -3367,7 +3372,7 @@
             });
             unsetRect(multiDragElement);
             multiDragElement.fromRect = dragRect;
-            fromSortable.removeAnimationState(multiDragElement);
+            fromCPSortable.removeAnimationState(multiDragElement);
           });
           folding = false;
           insertMultiDragElements(!this.options.removeCloneOnHide, rootEl);
@@ -3377,26 +3382,26 @@
         var sortable = _ref10.sortable,
             isOwner = _ref10.isOwner,
             insertion = _ref10.insertion,
-            activeSortable = _ref10.activeSortable,
+            activeCPSortable = _ref10.activeCPSortable,
             parentEl = _ref10.parentEl,
-            putSortable = _ref10.putSortable;
+            putCPSortable = _ref10.putCPSortable;
         var options = this.options;
 
         if (insertion) {
           // Clones must be hidden before folding animation to capture dragRectAbsolute properly
           if (isOwner) {
-            activeSortable._hideClone();
+            activeCPSortable._hideClone();
           }
 
           initialFolding = false; // If leaving sort:false root, or already folding - Fold to new location
 
-          if (options.animation && multiDragElements.length > 1 && (folding || !isOwner && !activeSortable.options.sort && !putSortable)) {
+          if (options.animation && multiDragElements.length > 1 && (folding || !isOwner && !activeCPSortable.options.sort && !putCPSortable)) {
             // Fold: Set all multi drag elements's rects to dragEl's rect when multi-drag elements are invisible
             var dragRectAbsolute = getRect(dragEl$1, false, true, true);
             multiDragElements.forEach(function (multiDragElement) {
               if (multiDragElement === dragEl$1) return;
               setRect(multiDragElement, dragRectAbsolute); // Move element(s) to end of parentEl so that it does not interfere with multi-drag clones insertion if they are inserted
-              // while folding, and so that we can capture them again because old sortable will no longer be fromSortable
+              // while folding, and so that we can capture them again because old sortable will no longer be fromCPSortable
 
               parentEl.appendChild(multiDragElement);
             });
@@ -3413,12 +3418,12 @@
             if (multiDragElements.length > 1) {
               var clonesHiddenBefore = clonesHidden;
 
-              activeSortable._showClone(sortable); // Unfold animation for clones if showing from hidden
+              activeCPSortable._showClone(sortable); // Unfold animation for clones if showing from hidden
 
 
-              if (activeSortable.options.animation && !clonesHidden && clonesHiddenBefore) {
+              if (activeCPSortable.options.animation && !clonesHidden && clonesHiddenBefore) {
                 multiDragClones.forEach(function (clone) {
-                  activeSortable.addAnimationState({
+                  activeCPSortable.addAnimationState({
                     target: clone,
                     rect: clonesFromRect
                   });
@@ -3427,7 +3432,7 @@
                 });
               }
             } else {
-              activeSortable._showClone(sortable);
+              activeCPSortable._showClone(sortable);
             }
           }
         }
@@ -3435,12 +3440,12 @@
       dragOverAnimationCapture: function dragOverAnimationCapture(_ref11) {
         var dragRect = _ref11.dragRect,
             isOwner = _ref11.isOwner,
-            activeSortable = _ref11.activeSortable;
+            activeCPSortable = _ref11.activeCPSortable;
         multiDragElements.forEach(function (multiDragElement) {
           multiDragElement.thisAnimationDuration = null;
         });
 
-        if (activeSortable.options.animation && !isOwner && activeSortable.multiDrag.isMultiDrag) {
+        if (activeCPSortable.options.animation && !isOwner && activeCPSortable.multiDrag.isMultiDrag) {
           clonesFromRect = _extends({}, dragRect);
           var dragMatrix = matrix(dragEl$1, true);
           clonesFromRect.top -= dragMatrix.f;
@@ -3458,10 +3463,10 @@
             rootEl = _ref12.rootEl,
             parentEl = _ref12.parentEl,
             sortable = _ref12.sortable,
-            dispatchSortableEvent = _ref12.dispatchSortableEvent,
+            dispatchCPSortableEvent = _ref12.dispatchCPSortableEvent,
             oldIndex = _ref12.oldIndex,
-            putSortable = _ref12.putSortable;
-        var toSortable = putSortable || this.sortable;
+            putCPSortable = _ref12.putCPSortable;
+        var toCPSortable = putCPSortable || this.sortable;
         if (!evt) return;
         var options = this.options,
             children = parentEl.children; // Multi-drag selection
@@ -3517,7 +3522,7 @@
               lastMultiDragSelect = dragEl$1;
             }
 
-            multiDragSortable = toSortable;
+            multiDragCPSortable = toCPSortable;
           } else {
             multiDragElements.splice(multiDragElements.indexOf(dragEl$1), 1);
             lastMultiDragSelect = null;
@@ -3539,7 +3544,7 @@
             var dragRect = getRect(dragEl$1),
                 multiDragIndex = index(dragEl$1, ':not(.' + this.options.selectedClass + ')');
             if (!initialFolding && options.animation) dragEl$1.thisAnimationDuration = null;
-            toSortable.captureAnimationState();
+            toCPSortable.captureAnimationState();
 
             if (!initialFolding) {
               if (options.animation) {
@@ -3551,7 +3556,7 @@
                     var rect = folding ? getRect(multiDragElement) : dragRect;
                     multiDragElement.fromRect = rect; // Prepare unfold animation
 
-                    toSortable.addAnimationState({
+                    toCPSortable.addAnimationState({
                       target: multiDragElement,
                       rect: rect
                     });
@@ -3572,7 +3577,7 @@
                 multiDragIndex++;
               }); // If initial folding is done, the elements may have changed position because they are now
               // unfolding around dragEl, even though dragEl may not have his index changed, so update event
-              // must be fired here as Sortable will not.
+              // must be fired here as CPSortable will not.
 
               if (oldIndex === index(dragEl$1)) {
                 var update = false;
@@ -3584,7 +3589,7 @@
                 });
 
                 if (update) {
-                  dispatchSortableEvent('update');
+                  dispatchCPSortableEvent('update');
                 }
               }
             } // Must be done after capturing individual rects (scroll bar)
@@ -3593,14 +3598,14 @@
             multiDragElements.forEach(function (multiDragElement) {
               unsetRect(multiDragElement);
             });
-            toSortable.animateAll();
+            toCPSortable.animateAll();
           }
 
-          multiDragSortable = toSortable;
+          multiDragCPSortable = toCPSortable;
         } // Remove clones if necessary
 
 
-        if (rootEl === parentEl || putSortable && putSortable.lastPutMode !== 'clone') {
+        if (rootEl === parentEl || putCPSortable && putCPSortable.lastPutMode !== 'clone') {
           multiDragClones.forEach(function (clone) {
             clone.parentNode && clone.parentNode.removeChild(clone);
           });
@@ -3622,7 +3627,7 @@
       _deselectMultiDrag: function _deselectMultiDrag(evt) {
         if (typeof dragStarted !== "undefined" && dragStarted) return; // Only deselect if selection is in this sortable
 
-        if (multiDragSortable !== this.sortable) return; // Only deselect if target is not item in this sortable
+        if (multiDragCPSortable !== this.sortable) return; // Only deselect if target is not item in this sortable
 
         if (evt && closest(evt.target, this.options.draggable, this.sortable.el, false)) return; // Only deselect if left click
 
@@ -3664,10 +3669,10 @@
           var sortable = el.parentNode[expando];
           if (!sortable || !sortable.options.multiDrag || ~multiDragElements.indexOf(el)) return;
 
-          if (multiDragSortable && multiDragSortable !== sortable) {
-            multiDragSortable.multiDrag._deselectMultiDrag();
+          if (multiDragCPSortable && multiDragCPSortable !== sortable) {
+            multiDragCPSortable.multiDrag._deselectMultiDrag();
 
-            multiDragSortable = sortable;
+            multiDragCPSortable = sortable;
           }
 
           toggleClass(el, sortable.options.selectedClass, true);
@@ -3772,12 +3777,12 @@
     });
   }
 
-  Sortable.mount(new AutoScrollPlugin());
-  Sortable.mount(Remove, Revert);
+  CPSortable.mount(new AutoScrollPlugin());
+  CPSortable.mount(Remove, Revert);
 
-  Sortable.mount(new SwapPlugin());
-  Sortable.mount(new MultiDragPlugin());
+  CPSortable.mount(new SwapPlugin());
+  CPSortable.mount(new MultiDragPlugin());
 
-  return Sortable;
+  return CPSortable;
 
 })));

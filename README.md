@@ -125,9 +125,10 @@ Note that we're using the bundled version of python3 that comes with octoprint, 
   * For simplicity, each level only understands the level below it - e.g. a Job doesn't care about QueueItems.
 * Remember, you can enable the virtual printer under `Virtual Printer` in OctoPrint settings.
 * Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.
-* Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, customized:
-  * https://github.com/SortableJS/knockout-sortablejs/pull/13
-  * https://github.com/SortableJS/knockout-sortablejs/issues/14
+* Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, both of which are heavily customized. For more details on changes see:
+  * Applied fix from https://github.com/SortableJS/knockout-sortablejs/pull/13
+  * Applied fix from https://github.com/SortableJS/knockout-sortablejs/issues/14
+  * Discussion at https://github.com/smartin015/continuousprint/issues/14 (conflict with a different `knockout-sortable` library)
 
 ## QA
 
