@@ -5,7 +5,6 @@ import octoprint.plugin
 import flask
 import json
 from io import BytesIO
-from octoprint import InvalidFileLocation, InvalidFileType
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import Events
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
