@@ -31,7 +31,7 @@
 <div id="queue_list" class="accordion" data-bind="sortable: {foreach: jobs, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading()}">
   <div class="accordion-group job">
     <div class="accordion-heading job-header">
-      <div class="queue-row-container" data-bind="visible: queuesets().length > 0">
+      <div class="queue-row-container" data-bind="visible: $data.queuesets().length > 0">
         <i class="fas fa-grip-lines-vertical"></i>
         <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
         <input type="text" class="job-name" data-bind="textInput: name, event: { change: $root.setJobName }, attr: {'_vkenabled': false}, css: {'bold': $root.isActiveItem($index)()}" placeholder="Click here to name"></input>
@@ -50,7 +50,7 @@
 
     <div class="accordion-body collapse in">
       <div class="accordion-inner">
-        <div id="queue_sets" data-bind="sortable: {foreach: queuesets, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
+        <div id="queue_sets" data-bind="sortable: {foreach: $data.queuesets, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: '$data.queuesets'}}, css: {'empty': $data.queuesets().length < 1}" class="queuesets accordion">
           <div class="accordion-group">
             <div class="accordion-heading">
 

@@ -144,6 +144,7 @@ function CPViewModel(parameters) {
     });
 
     self._updateJobs = _ecatch("_updateJobs", function(q) {
+      log.info("_updateJobs", q);
       if (q.length === 0) {
         self.jobs([new CPJob({name: "", idx: 0})]);
         return
