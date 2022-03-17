@@ -34,7 +34,7 @@ plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = [
-    "pre-commit",  # For running automated precommit scripts 
+    "pre-commit",  # For running automated precommit scripts
     "mkdocs-material",  # Theme for documentation
     "mkdocs",  # Documentation library
     "pymdown-extensions",  # Fancy extensions for documentation
