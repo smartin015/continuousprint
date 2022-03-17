@@ -41,7 +41,7 @@ The print queue won't start your prints just yet. To run the queue:
 
 The plugin will wait until your printer is ready to start a print, then it'll begin with the top of the queue and proceed until the bottom.
 
-Note that when it's time to clear the print bed or finish up, a temporary `cp_\*.gcode` file will appear in your local files, and disappear when it completes. This is a change from older "gcode injecting" behavior that is necessary to support [at-commands](https://docs.octoprint.org/en/master/features/atcommands.html) in the clearing and finish scripts.
+Note that when it's time to clear the print bed or finish up, a temporary `cp\_\*.gcode` file will appear in your local files, and disappear when it completes. This is a change from older "gcode injecting" behavior that is necessary to support [at-commands](https://docs.octoprint.org/en/master/features/atcommands.html) in the clearing and finish scripts.
 
 ## Inspect queue items
 
@@ -58,6 +58,48 @@ If you need to stop early, click `Stop Managing` (**Note: any currently running 
 ## Clean up the queue
 
 Click the triple-dot menu for several convenient queue cleanup options. You can also remove individual queue items with the red `X` next to the item.
+
+## Integrate with scripts / other plugins / other devices
+
+This plugin comes with a basic API to fetch state and start/stop the queue. Other internal web requests exist than what's presented here, but they aren't for external use and are not guaranteed to be stable - if you want additional API features, [please submit a feature request](https://github.com/smartin015/continuousprint/issues/new?template=feature_request.md).
+
+For examples of how to perform these queries, see `api_examples/`
+
+**`HTTP GET http://printer:5000/plugin/continuousprint/state`**
+
+Returns the current internal state of the printer as a JSON string. List entries within `queue` may include fields which are not listed here - those
+fields may be subject to change without notice, so be wary of depending on them.
+
+**Example Response**
+
+```
+{
+  "active": true/false,
+  "status": string,
+  "queue": [
+    {
+      "name": string,
+      "path": string,
+      "sd": bool
+      "job": string,
+      "run": number
+      "start_ts": null | number (seconds),
+      "end_ts": null | number (seconds),
+      "result": string (todo specific stirngs),
+      "retries": number
+    },
+    ...
+  ]
+}
+```
+
+**`HTTP POST http://printer:5000/plugin/continuousprint/set_active`** - payload `active=true` or `active=false`
+
+This starts and stops continuous print management of the printer. Be advised that the queue will wait for an existing print to finish and **will not stop its managed print when sent `active=false`**. See [the OctoPrint REST API](https://docs.octoprint.org/en/master/api/job.html#issue-a-job-command) for additional print job management options.
+
+**Example Response**
+
+Same as `/state` above
 
 # Development
 

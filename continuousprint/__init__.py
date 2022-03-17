@@ -202,20 +202,23 @@ class ContinuousprintPlugin(
         except InvalidFileType:
             self._msg("File not gcode: " + item.path, type="error")
 
-    def state_json(self, changed=None):
-        # Values are stored serialized, so we need to create a json string and inject them
+    def state_json(self, extra_message=None):
+        # Values are stored json-serialized, so we need to create a json string and inject them into it
         q = self._settings.get([QUEUE_KEY])
-        if changed is not None:
-            q = json.loads(q)
-            for i in changed:
-                if i < len(q):  # no deletion of last item
-                    q[i]["changed"] = True
-            q = json.dumps(q)
 
-        resp = '{"active": %s, "status": "%s", "queue": %s}' % (
+        # Format extra message as key:value
+        if extra_message is not None:
+            extra_message = f', extra_message: "{extra_message}"'
+        else:
+            extra_message = ""
+
+        # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
+        # (e.g. 1.4.1 -> 2.0.0).
+        resp = '{"active": %s, "status": "%s", "queue": %s%s}' % (
             "true" if hasattr(self, "d") and self.d.active else "false",
             "Initializing" if not hasattr(self, "d") else self.d.status,
             q,
+            extra_message,
         )
         return resp
 
@@ -226,24 +229,52 @@ class ContinuousprintPlugin(
         if self.paused:
             self.d.set_active()
 
-    # API methods
+    # Public API method returning the full state of the plugin in JSON format.
+    # See `state_json()` for return values.
     @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
     @restricted_access
     def state(self):
         return self.state_json()
 
-    @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
+    # Public method - enables/disables management and returns the current state
+    # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
+    # (e.g. 1.4.1 -> 2.0.0)
+    @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
     @restricted_access
-    def move(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
+    def set_active(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        offs = int(flask.request.form["offs"])
-        self.q.move(idx, count, offs)
-        return self.state_json(changed=range(idx + offs, idx + offs + count))
+        self.d.set_active(
+            flask.request.form["active"] == "true",
+            printer_ready=(self._printer.get_state_id() == "OPERATIONAL"),
+        )
+        return self.state_json()
 
+    # PRIVATE API method - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/clear", methods=["POST"])
+    @restricted_access
+    def clear(self):
+        i = 0
+        keep_failures = flask.request.form["keep_failures"] == "true"
+        keep_non_ended = flask.request.form["keep_non_ended"] == "true"
+        self._logger.info(
+            f"Clearing queue (keep_failures={keep_failures}, keep_non_ended={keep_non_ended})"
+        )
+        changed = []
+        while i < len(self.q):
+            v = self.q[i]
+            self._logger.info(f"{v.name} -- end_ts {v.end_ts} result {v.result}")
+            if v.end_ts is None and keep_non_ended:
+                i = i + 1
+            elif v.result == "failure" and keep_failures:
+                i = i + 1
+            else:
+                del self.q[i]
+                changed.append(i)
+        return self.state_json()
+
+    # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/assign", methods=["POST"])
     @restricted_access
     def assign(self):
@@ -267,8 +298,24 @@ class ContinuousprintPlugin(
                 for i in items
             ]
         )
-        return self.state_json(changed=[])
+        return self.state_json()
 
+    # DEPRECATED
+    @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
+    @restricted_access
+    def move(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
+            return flask.make_response("Insufficient Rights", 403)
+            self._logger.info("attempt failed due to insufficient permissions.")
+        idx = int(flask.request.form["idx"])
+        count = int(flask.request.form["count"])
+        offs = int(flask.request.form["offs"])
+        self.q.move(idx, count, offs)
+        depr = "DEPRECATED: plugin/continuousprint/move is no longer used and will be removed in the next major release."
+        self._logger.warn(depr)
+        return self.state_json(depr)
+
+    # DEPRECATED
     @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
     @restricted_access
     def add(self):
@@ -294,8 +341,11 @@ class ContinuousprintPlugin(
             ],
             idx,
         )
-        return self.state_json(changed=range(idx, idx + len(items)))
+        depr = "DEPRECATED: plugin/continuousprint/add is no longer used and will be removed in the next major release."
+        self._logger.warn(depr)
+        return self.state_json(depr)
 
+    # DEPRECATED
     @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
     @restricted_access
     def remove(self):
@@ -305,42 +355,12 @@ class ContinuousprintPlugin(
         idx = int(flask.request.form["idx"])
         count = int(flask.request.form["count"])
         self.q.remove(idx, count)
-        return self.state_json(changed=[idx])
 
-    @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
-    @restricted_access
-    def set_active(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        self.d.set_active(
-            flask.request.form["active"] == "true",
-            printer_ready=(self._printer.get_state_id() == "OPERATIONAL"),
-        )
-        return self.state_json()
+        depr = "DEPRECATED: plugin/continuousprint/remove is no longer used and will be removed in the next major release."
+        self._logger.warn(depr)
+        return self.state_json(depr)
 
-    @octoprint.plugin.BlueprintPlugin.route("/clear", methods=["POST"])
-    @restricted_access
-    def clear(self):
-        i = 0
-        keep_failures = flask.request.form["keep_failures"] == "true"
-        keep_non_ended = flask.request.form["keep_non_ended"] == "true"
-        self._logger.info(
-            f"Clearing queue (keep_failures={keep_failures}, keep_non_ended={keep_non_ended})"
-        )
-        changed = []
-        while i < len(self.q):
-            v = self.q[i]
-            self._logger.info(f"{v.name} -- end_ts {v.end_ts} result {v.result}")
-            if v.end_ts is None and keep_non_ended:
-                i = i + 1
-            elif v.result == "failure" and keep_failures:
-                i = i + 1
-            else:
-                del self.q[i]
-                changed.append(i)
-        return self.state_json(changed=changed)
-
+    # DEPRECATED
     @octoprint.plugin.BlueprintPlugin.route("/reset", methods=["POST"])
     @restricted_access
     def reset(self):
@@ -350,7 +370,9 @@ class ContinuousprintPlugin(
             i.start_ts = None
             i.end_ts = None
         self.q.remove(idx, len(idxs))
-        return self.state_json(changed=[idx])
+        depr = "DEPRECATED: plugin/continuousprint/reset is no longer used and will be removed in the next major release."
+        self._logger.warn(depr)
+        return self.state_json(depr)
 
     # part of TemplatePlugin
     def get_template_vars(self):
