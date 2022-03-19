@@ -107,17 +107,19 @@ class ContinuousprintPlugin(
     def on_event(self, event, payload):
         if not hasattr(self, "d"):  # Ignore any messages arriving before init
             return
-        
+
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
         # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
         # Avoid using payload.get('path') as some events may not express path info.
-        current_file = self._printer.get_current_job().get('file', {}).get('name') 
-        is_current_path = (current_file == self.d.current_path())
-        is_finish_script = (current_file == TEMP_FILES[FINISHED_SCRIPT_KEY])
+        current_file = self._printer.get_current_job().get("file", {}).get("name")
+        is_current_path = current_file == self.d.current_path()
+        is_finish_script = current_file == TEMP_FILES[FINISHED_SCRIPT_KEY]
 
         # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
         # try to fetch the attribute but default to None
-        tsd_command = getattr(octoprint.events.Events, 'PLUGIN_THESPAGHETTIDETECTIVE_COMMAND', None)
+        tsd_command = getattr(
+            octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+        )
 
         if event == Events.METADATA_ANALYSIS_FINISHED:
             # OctoPrint analysis writes to the printing file - we must remove
@@ -144,12 +146,23 @@ class ContinuousprintPlugin(
         elif is_current_path and event == Events.PRINT_CANCELLED:
             self.d.on_print_cancelled()
             self.paused = False
-            self._msg(type="reload") # reload UI
-        elif is_current_path and tsd_command is not None and event == tsd_command and payload.get('cmd') == "pause" and payload.get('initiator') == "system":
-            self._logger.info(f"Got spaghetti detection event; flagging next pause event for restart")
+            self._msg(type="reload")  # reload UI
+        elif (
+            is_current_path
+            and tsd_command is not None
+            and event == tsd_command
+            and payload.get("cmd") == "pause"
+            and payload.get("initiator") == "system"
+        ):
+            self._logger.info(
+                f"Got spaghetti detection event; flagging next pause event for restart"
+            )
             self.next_pause_is_spaghetti = True
         elif is_current_path and event == Events.PRINT_PAUSED:
-            self.d.on_print_paused(is_temp_file=(payload['path'] in TEMP_FILES.values()), is_spaghetti=self.next_pause_is_spaghetti)
+            self.d.on_print_paused(
+                is_temp_file=(payload["path"] in TEMP_FILES.values()),
+                is_spaghetti=self.next_pause_is_spaghetti,
+            )
             self.next_pause_is_spaghetti = False
             self.paused = True
             self._msg(type="reload")  # reload UI
