@@ -22,6 +22,7 @@ In the same terminal as the one where you activated the environment, Install the
 git clone https://github.com/smartin015/continuousprint.git
 cd continuousprint
 octoprint dev plugin:install
+pip install -r dev-dependencies.txt
 pre-commit install  # Cleans up files when you commit them - see https://pre-commit.com/. Note that venv must be activated or else flake8 raises improper errors
 octoprint serve
 ```
@@ -77,4 +78,3 @@ This is a collection of random tidbits intended to help you get your bearings. I
     * Applied fix from https://github.com/SortableJS/knockout-sortablejs/pull/13
     * Applied fix from https://github.com/SortableJS/knockout-sortablejs/issues/14
     * Discussion at https://github.com/smartin015/continuousprint/issues/14 (conflict with a different `knockout-sortable` library)
-

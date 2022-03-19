@@ -15,4 +15,3 @@ WARNING: Your printer must have a method of clearing the bed automatically, with
 # Documentation
 
 See https://smartin015.github.io/continuousprint/ for all documentation on installation, setup, queueing strategies, and development.
-

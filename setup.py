@@ -33,12 +33,7 @@ plugin_url = "https://github.com/smartin015/continuousprint"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = [
-    "pre-commit",  # For running automated precommit scripts 
-    "mkdocs-material",  # Theme for documentation
-    "mkdocs",  # Documentation library
-    "pymdown-extensions",  # Fancy extensions for documentation
-]
+plugin_requires = []
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point
