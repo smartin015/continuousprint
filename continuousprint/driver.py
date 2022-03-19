@@ -176,13 +176,20 @@ class ContinuousPrintDriver:
             self._set_status("Inactive (print cancelled with too many retries)")
 
     def on_print_paused(self, elapsed=None, is_temp_file=False, is_spaghetti=False):
-        if not self.active or not self.retry_on_pause or is_temp_file or not is_spaghetti:
+        if (
+            not self.active
+            or not self.retry_on_pause
+            or is_temp_file
+            or not is_spaghetti
+        ):
             self._set_status("Print paused")
             return
 
         elapsed = elapsed or (time.time() - self.q[self._cur_idx()].start_ts)
         if elapsed < self.retry_threshold_seconds:
-            self._set_status("Cancelling print (spaghetti detected {timeAgo(elapsed)} into print)")
+            self._set_status(
+                "Cancelling print (spaghetti detected {timeAgo(elapsed)} into print)"
+            )
             self.cancel_print_fn()
             # self.actions.append(self.cancel_print_fn)
         else:
