@@ -1,5 +1,8 @@
 # Continuous Print Queue Plugin
 
+![build status](https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic)
+![code coverage](https://img.shields.io/codecov/c/github/smartin015/continuousprint/master)
+
 This plugin automates your printing!
 
 * **Add gcode files to the queue and set a number of times to print each.** The plugin will print them in sequence, running "bed clearing" script after each.
