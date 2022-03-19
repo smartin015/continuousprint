@@ -115,17 +115,24 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.assert_called_once
         self.assertEqual(self.d.start_print_fn.call_args[0][0], n)
 
-    def test_paused_early_triggers_cancel(self):
+    def test_paused_with_spaghetti_early_triggers_cancel(self):
         self.d.set_active()
 
-        self.d.on_print_paused(self.d.retry_threshold_seconds - 1)
+        self.d.on_print_paused(self.d.retry_threshold_seconds - 1, is_spaghetti=True)
         flush(self.d)
         self.d.cancel_print_fn.assert_called_once_with()
+
+    def test_paused_manually_early_falls_through(self):
+        self.d.set_active()
+
+        self.d.on_print_paused(self.d.retry_threshold_seconds - 1, is_spaghetti=False)
+        flush(self.d)
+        self.d.cancel_print_fn.assert_not_called()
 
     def test_paused_on_temp_file_falls_through(self):
         self.d.set_active()
         self.d.start_print_fn.reset_mock()
-        self.d.on_print_paused(is_temp_file=True)
+        self.d.on_print_paused(is_temp_file=True, is_spaghetti=True)
         self.d.cancel_print_fn.assert_not_called()
         self.assertEqual(self.d.pending_actions(), 0)
 
@@ -158,7 +165,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.set_active()
         self.d.start_print_fn.reset_mock()
 
-        self.d.on_print_paused(self.d.retry_threshold_seconds + 1)
+        self.d.on_print_paused(self.d.retry_threshold_seconds + 1, is_spaghetti=True)
         self.d.start_print_fn.assert_not_called()
 
     def test_failure_sets_inactive(self):
