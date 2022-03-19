@@ -155,7 +155,7 @@ class ContinuousprintPlugin(
             and payload.get("initiator") == "system"
         ):
             self._logger.info(
-                f"Got spaghetti detection event; flagging next pause event for restart"
+                "Got spaghetti detection event; flagging next pause event for restart"
             )
             self.next_pause_is_spaghetti = True
         elif is_current_path and event == Events.PRINT_PAUSED:
