@@ -83,6 +83,20 @@ class ContinuousprintPlugin(
 
     # part of StartupPlugin
     def on_after_startup(self):
+        # Turn on "restart on pause" when TSD plugin is detected (must be version 1.8.11 or higher for custom event hook)
+        if (
+            getattr(
+                octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+            )
+            is not None
+        ):
+            self._logger.info(
+                "Has TSD plugin with custom events integration - enabling failure automation"
+            )
+            self._settings.set([RESTART_ON_PAUSE_KEY], True)
+        else:
+            self._settings.set([RESTART_ON_PAUSE_KEY], False)
+
         self._settings.save()
         self.q = PrintQueue(self._settings, QUEUE_KEY)
         self.d = ContinuousPrintDriver(

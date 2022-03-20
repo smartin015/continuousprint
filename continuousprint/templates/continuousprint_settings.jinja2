@@ -3,7 +3,7 @@
 <form class="form-horizontal">
   <h3>Basic Scripts</h3>
   <p>
-  For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.  
+  For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
   </p>
   <fieldset>
     <div class="control-group">
@@ -22,37 +22,32 @@
 
   <fieldset>
     <h3>Failure Recovery</h3>
-    <div class="alert" data-bind="visible: !settings.plugins.continuousprint.failure_recovery_enabled">
-      <p>Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a>, but the plugin does not appear to be installed.<p>
+    <div class="alert" data-bind="hidden: settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+      <p>Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
       <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
     </div>
-    <div data-bind="visible: settings.plugin.continuousprint.failure_recovery_enabled">
+    <div data-bind="visible: settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+      <p>
+        Failure recovery is enabled because <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> is installed.
+      </p>
       <p>
         Read more about failure recovery settings in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.
+      </p>
       <div class="control-group">
-        <label class="control-label">Enable restart on pause</label>
-        <div class="controls">
-          <label class="checkbox">
-            <input type="checkbox" data-bind="checked: settings.plugins.continuousprint.cp_restart_on_pause_enabled"/>
-              Repeat current queued print when state is <code>PAUSED</code>
-          </label>
-        </div>
-      </div>
-      <div class="control-group">
-        <label class="control-label">Do nothing if printing &gt;</label>
+        <label class="control-label">Retry if started less than</label>
         <div class="controls">
           <div class="input-append">
             <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_seconds"/>
-            <span class="add-on">s</span>
+            <span class="add-on">seconds ago</span>
           </div>
         </div>
       </div>
       <div class="control-group">
-        <label class="control-label">Give up after</label>
+        <label class="control-label">Stop the queue after</label>
         <div class="controls">
           <div class="input-append">
             <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_restarts"/>
-            <span class="add-on">restarts</span>
+            <span class="add-on">retries</span>
           </div>
         </div>
       </div>
