@@ -232,6 +232,21 @@
 
   
   
+  
+    <li class="md-nav__item">
+      <a href="../gcode-scripting/" class="md-nav__link">
+        GCODE Scripting
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
     
   
   
@@ -313,6 +328,21 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../failure-recovery/" class="md-nav__link">
+        Failure Recovery
+      </a>
     </li>
   
 
@@ -442,7 +472,7 @@
 <h2 id="example-1-batched-strategy">Example 1: Batched strategy</h2>
 <p>Let's consider an empty queue. If you add <code>A.gcode</code> with 5 copies and <code>B.gcode</code> with 5 copies, the print order will be:</p>
 <p><code>AAAAA BBBBB</code></p>
-<p>This is great if you want all of your <code>A</code> files to print before all your <code>B</code> files, for instance when you're working on a project that uses <code>A</code> but plan use <code>B</code> for something later. </p>
+<p>This is great if you want all of your <code>A</code> files to print before all your <code>B</code> files, for instance when you're working on a project that uses <code>A</code> but plan use <code>B</code> for something later.</p>
 <h2 id="example-2-interleaved-strategy">Example 2: Interleaved strategy</h2>
 <p>Let's start again with an empty queue, but now suppose we add <code>A.gcode</code> with 1 copy, <code>B.gcode</code> with 1 copy, then set the job count to <code>5</code>. The print order will now be:</p>
 <p><code>AB AB AB AB AB</code></p>
@@ -474,7 +504,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started" rel="prev">
+        <a href="../gcode-scripting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: GCODE Scripting" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -483,20 +513,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Getting Started
+              GCODE Scripting
             </div>
           </div>
         </a>
       
       
         
-        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
+        <a href="../failure-recovery/" class="md-footer__link md-footer__link--next" aria-label="Next: Failure Recovery" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Contributing
+              Failure Recovery
             </div>
           </div>
           <div class="md-footer__button md-icon">

@@ -234,8 +234,38 @@
   
   
     <li class="md-nav__item">
+      <a href="../gcode-scripting/" class="md-nav__link">
+        GCODE Scripting
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../advanced-queuing/" class="md-nav__link">
         Advanced Queuing
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../failure-recovery/" class="md-nav__link">
+        Failure Recovery
       </a>
     </li>
   
@@ -413,7 +443,7 @@ fields may be subject to change without notice, so be wary of depending on them.
 <p><strong>Request</strong></p>
 <p><strong><code>HTTP POST http://printer:5000/plugin/continuousprint/set_active</code></strong></p>
 <p>Payload: <code>active=true</code> or <code>active=false</code></p>
-<p>This starts and stops continuous print management of the printer. </p>
+<p>This starts and stops continuous print management of the printer.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>If <code>active=false</code> is sent, the plugin will stop managing the queue <strong>but it will not stop any currently active print</strong>. This must be done separately.</p>

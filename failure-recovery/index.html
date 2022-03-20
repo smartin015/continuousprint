@@ -13,7 +13,7 @@
     
     
       
-        <title>Contributing - Continuous Print</title>
+        <title>Failure Recovery - Continuous Print</title>
       
     
     
@@ -63,7 +63,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributor-guide" class="md-skip">
+        <a href="#failure-recovery" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              Failure Recovery
             
           </span>
         </div>
@@ -262,21 +262,6 @@
 
   
   
-  
-    <li class="md-nav__item">
-      <a href="../failure-recovery/" class="md-nav__link">
-        Failure Recovery
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
     
   
   
@@ -289,12 +274,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Contributing
+          Failure Recovery
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Contributing
+        Failure Recovery
       </a>
       
         
@@ -313,30 +298,16 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-install-octoprint-from-source" class="md-nav__link">
-    1. Install octoprint from source
+  <a href="#spaghetti-detection-and-recovery" class="md-nav__link">
+    Spaghetti Detection and Recovery
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-dev-tools" class="md-nav__link">
-    2. Install dev tools
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-and-start-the-continuous-print-plugin-in-local-dev-mode" class="md-nav__link">
-    2. Install and start the continuous print plugin in local dev mode
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Install and start the continuous print plugin in local dev mode">
+    <nav class="md-nav" aria-label="Spaghetti Detection and Recovery">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#editing-docs" class="md-nav__link">
-    Editing docs
+  <a href="#configuration" class="md-nav__link">
+    Configuration
   </a>
   
 </li>
@@ -346,31 +317,25 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#3-run-unit-tests-to-verify-changes" class="md-nav__link">
-    3. Run unit tests to verify changes
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-install-a-dev-version-on-octopi" class="md-nav__link">
-    4. Install a dev version on OctoPi
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips-and-tricks" class="md-nav__link">
-    Tips and Tricks
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        Contributing
+      </a>
     </li>
   
 
@@ -417,57 +382,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-install-octoprint-from-source" class="md-nav__link">
-    1. Install octoprint from source
+  <a href="#spaghetti-detection-and-recovery" class="md-nav__link">
+    Spaghetti Detection and Recovery
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-dev-tools" class="md-nav__link">
-    2. Install dev tools
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-and-start-the-continuous-print-plugin-in-local-dev-mode" class="md-nav__link">
-    2. Install and start the continuous print plugin in local dev mode
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Install and start the continuous print plugin in local dev mode">
+    <nav class="md-nav" aria-label="Spaghetti Detection and Recovery">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#editing-docs" class="md-nav__link">
-    Editing docs
+  <a href="#configuration" class="md-nav__link">
+    Configuration
   </a>
   
 </li>
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-run-unit-tests-to-verify-changes" class="md-nav__link">
-    3. Run unit tests to verify changes
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-install-a-dev-version-on-octopi" class="md-nav__link">
-    4. Install a dev version on OctoPi
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips-and-tricks" class="md-nav__link">
-    Tips and Tricks
-  </a>
   
 </li>
       
@@ -485,83 +415,25 @@
                 
 
 
-<h1 id="contributor-guide">Contributor Guide</h1>
-<p>Follow these steps if you'd like to set up a development environment for contributing changes back to Continuous Print.</p>
-<p>If you just want to run the plugin, see <a href="/getting-started/">Getting Started</a>.</p>
-<p><em>This guide is based on the <a href="https://docs.octoprint.org/en/master/plugins/gettingstarted.html">octoprint plugin quickstart guide</a></em></p>
-<h2 id="1-install-octoprint-from-source">1. Install octoprint from source</h2>
-<p>Install octoprint locally:</p>
-<pre><code class="language-shell">git clone https://github.com/OctoPrint/OctoPrint
-cd OctoPrint
-virtualenv venv
-source venv/bin/activate
-pip install -e .
-</code></pre>
-<h2 id="2-install-dev-tools">2. Install dev tools</h2>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>Perform this step <strong>in a different terminal</strong> - NOT using the venv we set up for OctoPrint. The
-dev dependencies are known to conflict with OctoPrint's dependencies and can break your OctoPrint installation.</p>
-</div>
-<pre><code>git clone https://github.com/smartin015/continuousprint.git
-cd continuousprint
-pip install -r dev-dependencies.txt
-pre-commit install
-</code></pre>
-<p>You can verify good installation by running <code>pre-commit run --all-files</code>. If everything passes, you're good to go.</p>
-<h2 id="2-install-and-start-the-continuous-print-plugin-in-local-dev-mode">2. Install and start the continuous print plugin in local dev mode</h2>
-<p>In the same terminal as the one where you activated the environment (see step 1), install the plugin in dev mode and launch the server:</p>
-<pre><code class="language-shell">cd ../continuousprint
-octoprint dev plugin:install
-octoprint serve
-</code></pre>
-<p>You should see "Successfully installed continuousprint" when running the install command, and you can view the page at <a href="http://localhost:5000">http://localhost:5000</a>.</p>
-<h3 id="editing-docs">Editing docs</h3>
-<p>Continuous Print uses <a href="https://www.mkdocs.org/">mkdocs</a> to generate web documentation. All documentation lives in <code>docs/</code>.</p>
-<p>if you installed the dev tools (step 2) you can run <code>mkdocs serve</code> from the root of the repository to see doc edits live at <a href="http://localhost:8000">http://localhost:8000</a>.</p>
-<h2 id="3-run-unit-tests-to-verify-changes">3. Run unit tests to verify changes</h2>
-<p>When you've made your changes, it's important to test for regressions. </p>
-<p>Run python tests with this command:</p>
-<pre><code>python3 -m unittest *_test.py
-</code></pre>
-<p>Frontend unit tests require some additional setup (make sure <a href="https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable">yarn</a> and its dependencies are installed):</p>
-<pre><code>cd .../continuousprint
-yarn install
-yarn run test
-</code></pre>
-<p>This will run all frontend JS test files (<code>continuousprint/static/js/\*.test.js</code>). You can also <code>yarn run watch-test</code> to set up a test process which re-runs whenever you save a JS test file.</p>
-<h2 id="4-install-a-dev-version-on-octopi">4. Install a dev version on OctoPi</h2>
-<p>Users of <a href="https://octoprint.org/download/">OctoPi</a> can install a development version directly on their pi to test their changes on actual hardware.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Editing code - especially unfamiliar code - can lead to unpredictable behavior. You're controlling a robot that can pinch fingers and melt plastic, so be careful and consider using the <a href="https://docs.octoprint.org/en/master/development/virtual_printer.html">built-in virtual printer</a> before a physical test.</p>
-</div>
+<h1 id="failure-recovery">Failure Recovery</h1>
+<p>Sometimes, printers don't do what they're told.</p>
+<p>Follow the steps in this guide to help Continuous Print recover from unexpected printing behavior.</p>
+<h2 id="spaghetti-detection-and-recovery">Spaghetti Detection and Recovery</h2>
+<p>By default, the print queue doesn't know whether your print is proceeding fine or spraying filament everywhere ("spaghettification"). </p>
+<p>Follow <a href="https://www.thespaghettidetective.com/docs/octoprint-plugin-setup/">The Spaghetti Detective installation instructions</a> on your octoprint installation, then restart OctoPrint. Continuous Print will automatically detect that TSD is installed and will enable queue recovery when spaghetti is detected (TSD plugin must be <code>v1.8.11</code> or higher).</p>
+<p>When TSD thinks the print is failing:</p>
 <ol>
-<li><code>ssh pi@&lt;your octopi hostname&gt;</code> and provide your password (the default is <code>raspberry</code>, but for security reasons you should change it with <code>passwd</code> when you can)</li>
-<li><code>git clone https://github.com/smartin015/continuousprint.git</code></li>
-<li>Uninstall any existing continuous print installations (see <code>Settings</code> -&gt; <code>Plugin Manager</code> in the browser)</li>
-<li><code>cd continuousprint &amp;&amp; ~/oprint/bin/python3 setup.py install</code></li>
+<li>Continuous Print checks how long the current print has been running. If the failure was detected late into the print, the queue will pause and wait for user input. </li>
+<li>Otherwise, it looks to see how many time this specific print has been attempted. If it's been tried too many times, the queue pauses and waits for user input.</li>
+<li>Otherwise, run the failure clearing script and try the print again.</li>
 </ol>
-<p>Note that we're using the bundled version of python3 that comes with octoprint, <strong>NOT</strong> the system installed python3. If you try the latter, it'll give an error that sounds like octoprint isn't installed.</p>
-<h2 id="tips-and-tricks">Tips and Tricks</h2>
-<p>This is a collection of random tidbits intended to help you get your bearings.</p>
+<p>In the case of #1, TSD can cause false-positives, so this saves print time and filament even if it's a bit more manual.</p>
+<p>For #2, either the printer isn't adhesive enough or the print itself is at fault. <a href="https://github.com/smartin015/continuousprint/issues/37">Further development</a> may improve behavior here, e.g. attempting the next print in the queue before giving up in case the print itself is at fault.</p>
+<h3 id="configuration">Configuration</h3>
+<p>By going to Settings -&gt; Continuous Print and scrolling down to "Failure Recovery", you can adjust:</p>
 <ul>
-<li>The backend (<code>__init__.py</code> and dependencies) stores a flattened representation of the print queue and
-  iterates through it from beginning to end. Each item is loaded as a QueueItem (see <code>print_queue.py</code>).</li>
-<li>The frontend talks to the backend with the flattened queue, but operates on an inmemory structured version:<ul>
-<li>Each flattened queue item is loaded as a <code>CPQueueItem</code> (see continuousprint/static/js/continuousprint_queueitem.js)</li>
-<li>Sets of the same queue item are aggregated into a <code>CPQueueSet</code> (see continuousprint/static/js/continuousprint_queueset.js)</li>
-<li>Multiple queuesets are grouped together and run one or more times as a <code>CPJob</code> (see continuousprint/static/js/continuousprint_job.js)</li>
-<li>For simplicity, each level only understands the level below it - e.g. a Job doesn't care about QueueItems.</li>
-</ul>
-</li>
-<li>Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.</li>
-<li>Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, both of which are heavily customized. For more details on changes see:<ul>
-<li>Applied fix from https://github.com/SortableJS/knockout-sortablejs/pull/13</li>
-<li>Applied fix from https://github.com/SortableJS/knockout-sortablejs/issues/14</li>
-<li>Discussion at https://github.com/smartin015/continuousprint/issues/14 (conflict with a different <code>knockout-sortable</code> library)</li>
-</ul>
-</li>
+<li>The amount of time a print can run before Continuous Print pauses the qeueue on failure</li>
+<li>The number of allowed retries before stopping the queue</li>
 </ul>
 
               
@@ -576,7 +448,7 @@ yarn run test
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../failure-recovery/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Failure Recovery" rel="prev">
+        <a href="../advanced-queuing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Advanced Queuing" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -585,20 +457,20 @@ yarn run test
               <span class="md-footer__direction">
                 Previous
               </span>
-              Failure Recovery
+              Advanced Queuing
             </div>
           </div>
         </a>
       
       
         
-        <a href="../api/" class="md-footer__link md-footer__link--next" aria-label="Next: API" rel="next">
+        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              API
+              Contributing
             </div>
           </div>
           <div class="md-footer__button md-icon">
