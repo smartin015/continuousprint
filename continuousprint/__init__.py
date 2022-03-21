@@ -153,7 +153,7 @@ class ContinuousprintPlugin(
             self.paused = False
             self._msg(type="reload")  # reload UI
         elif is_current_path and event == Events.PRINT_CANCELLED:
-            self.d.on_print_cancelled()
+            self.d.on_print_cancelled(initiator=payload.get('user', None))
             self.paused = False
             self._msg(type="reload")  # reload UI
         elif (
