@@ -28,12 +28,10 @@ function CPQueueItem(data) {
     if (result !== null && result !== undefined) {
       return result;
     }
-    if (self.start_ts() === null) {
-      return "pending";
-    }
     if (self.start_ts() !== null && self.end_ts() === null) {
       return "started";
     }
+    return "pending";
   });
 
   // Inspired by answers at
