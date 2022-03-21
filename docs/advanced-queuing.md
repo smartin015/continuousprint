@@ -24,7 +24,7 @@ Let's consider an empty queue. If you add `A.gcode` with 5 copies and `B.gcode` 
 
 `AAAAA BBBBB`
 
-This is great if you want all of your `A` files to print before all your `B` files, for instance when you're working on a project that uses `A` but plan use `B` for something later. 
+This is great if you want all of your `A` files to print before all your `B` files, for instance when you're working on a project that uses `A` but plan use `B` for something later.
 
 ## Example 2: Interleaved strategy
 

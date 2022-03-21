@@ -11,7 +11,7 @@ That's it! Now let's configure it to work with your printer.
 
 !!! tip "Want cool features?"
 
-    There's [much more automation on the way](github.com/smartin015/continuousprint/issues)! 
+    There's [much more automation on the way](github.com/smartin015/continuousprint/issues)!
 
     To help speed up development and get features early (and if you don't mind the odd bug here and there), turn on `Release Candidates` under `Settings -> Software Update` (more info [here](https://community.octoprint.org/t/how-to-use-the-release-channels-to-help-test-release-candidates/402))
 
@@ -33,9 +33,9 @@ The queue is actually made up of two levels: sets and jobs.
 
 **Sets** are a single print file, printed one or more times. You created a set by following the "Add prints to the queue" step above.
 
-**Jobs** are a collection of sets, printed one or more times. 
+**Jobs** are a collection of sets, printed one or more times.
 
-By default, every print file you add (as a set) is appended to a default, unnamed job at the end of the queue. If you give this job a name (by clicking the title box, typing a name, then hitting enter or clicking away) it will stop collecting new prints and a new default job will be created 
+By default, every print file you add (as a set) is appended to a default, unnamed job at the end of the queue. If you give this job a name (by clicking the title box, typing a name, then hitting enter or clicking away) it will stop collecting new prints and a new default job will be created
 
 **Example 1: Batched**
 
@@ -43,7 +43,7 @@ Let's consider an empty queue. If you add `A.gcode` with 5 copies and `B.gcode` 
 
 `A A A A A B B B B B`
 
-This is great if you want all of your `A` files to print before all your `B` files, e.g. if you're working on a project that uses `A` but plan use `B` for something later. 
+This is great if you want all of your `A` files to print before all your `B` files, e.g. if you're working on a project that uses `A` but plan use `B` for something later.
 
 **Example 2: Interleaved**
 
@@ -53,7 +53,7 @@ Let's start again with an empty queue, but now suppose we add `A.gcode` with 1 c
 
 This is exactly the pattern you would want if you were, for example, printing a box with `A.gcode` as the base and `B.gcode` as the lid. Each box would be completed in order, so you can use the first box without waiting for all the bases to print, then for the first lid to print.
 
-You can mix and match 
+You can mix and match
 
 ## Start the queue
 
@@ -62,7 +62,7 @@ You can mix and match
     If you glossed over "Configure the plugin" above, read it now. Seriously.
 
     You can permanently damage your printer if you don't set up the correct GCODE instructions to a
-    clear the bed and finish the queue. 
+    clear the bed and finish the queue.
 
     Supporting specific printer profiles is [on the to-do list](https://github.com/smartin015/continuousprint/issues/21), but not yet available, so you'll have to do this on your own for now.
 
@@ -88,8 +88,8 @@ When all prints are finished, the plugin stops managing the queue and waits for 
 
 If you need to stop early, click `Stop Managing`.
 
-!!! important 
-    
+!!! important
+
     The queue may not be managed any more, but **any currently running print will continue printing**  unless you cancel it with the `Cancel` button.
 
 ## Clean up the queue
@@ -98,9 +98,6 @@ Click the triple-dot menu in the top right corner of the plugin tab for several 
 
 ## Troubleshooting
 
-If at any point you're stuck or see unexpected behavior or bugs, please file a [bug report](https://github.com/smartin015/continuousprint/issues/new?assignees=&labels=bug&template=bug_report.md&title=). 
+If at any point you're stuck or see unexpected behavior or bugs, please file a [bug report](https://github.com/smartin015/continuousprint/issues/new?assignees=&labels=bug&template=bug_report.md&title=).
 
 **Be sure to include system info and browser logs** so the problem can be quickly diagnosed and fixed.
-
-
-
