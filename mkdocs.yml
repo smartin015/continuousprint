@@ -26,3 +26,5 @@ nav:
   - Failure Recovery: failure-recovery.md
   - Contributing: contributing.md
   - API: api.md
+  - (ALPHA) Network Queuing: network-queuing.md
+  - Network Queueing Whitepaper: network-technical.md

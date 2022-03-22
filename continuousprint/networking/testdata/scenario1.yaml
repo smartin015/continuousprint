@@ -1,0 +1,60 @@
+queues:
+  - namespace: "ns1"
+    members:
+      - "printerA"
+      - "printerB"
+      - "printerC"
+    jobs:
+      - name: "Table Job"
+        items:
+          - name: "top.gcode"
+            count: 1
+            materials: ["black"]
+          - name: "leg.gcode"
+            count: 4
+            materials: ["black"]
+      - name: "Box job"
+        items:
+          - name: "body.gcode"
+            count: 1
+            materials: ["red"]
+          - name: "lid.gcode"
+            count: 1
+            materials: ["red"]
+
+printers:
+  printerA:  
+    model: "Generic box printer"
+    materialsAvailable: ["black", "red", "blue"]
+    selfClearing: false
+    volume:
+      width: 100
+      depth: 100
+      height: 100
+      formFactor: "rectangular"
+    manualEffortCost: 30
+    materialsReady: ["black"]
+  printerB:
+    model: "Belt printer"
+    materialsAvailable: ["black", "green", "red"]
+    selfClearing: true
+    volume:
+      width: 100
+      depth: 1000
+      height: 100
+      formFactor: "rectangular"
+    manualEffortCost: 30
+    materialsReady: ["black"]
+  printerC:
+    model: "Multifilament box printer"
+    materialsAvailable: ["black", "green", "red"]
+    selfClearing: false
+    volume:
+      width: 100
+      depth: 100
+      height: 100
+      formFactor: "rectangular"
+    manualEffortCost: 30
+    materialsReady: ["black", "green", "red"]
+
+

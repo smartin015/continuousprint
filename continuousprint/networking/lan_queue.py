@@ -2,9 +2,11 @@
 # TODO https://github.com/cr0hn/PyDiscover
 from pysyncobj import SyncObj, SyncObjConf, replicated, FAIL_REASON
 from print_queue import AbstractPrintQueue, QueueItem
-from scheduler import assign_jobs_to_printers
-from discovery import P2PDiscovery
+from networking.scheduler import assign_jobs_to_printers
+from networking.discovery import P2PDiscovery
 from typing import Optional
+from collections import defaultdict
+from dataclasses import dataclass
 import threading
 import logging
 import random
@@ -13,43 +15,54 @@ import json
 
 # This queue is shared with other printers on the local network which are configured with the same namespace.
 # Queue items are distributed by an elected leader.
-# 
-# This class does not guarantee print files are available on patricular hosts; this must be done elsewhere.
+# Files are also fetched from other members as needed
 class LANPrintQueue(SyncObj, AbstractPrintQueue):
-  def __init__(self, addr, peers, printer_config, logger=logging):
+  def __init__(self, addr, peers, ready_cb, logger):
     self._logger = logger
-    self.printer_config = printer_config
     self.addr = addr
     self.peer_addrs = peers
+    self.ready_cb = ready_cb
 
     conf = SyncObjConf(onReady=self._onReady, dynamicMembershipChange=True)
     super(LANPrintQueue, self).__init__(addr, peers, conf)
+    self.__files = defaultdict(dict) # {[md5]: {addr: path}}
     self.__queue = []
     self.__peers = {}
 
-  def _info(self, msg):
-    self._logger.info(f"[{self.addr}] {msg}")
+  def _onReady(self):
+    self.ready_cb()
 
   @replicated
-  def _syncPeers(self, peers):
-    self.__peers = peers
- 
-  def _onReady(self):
-    print("LANPrintQueue connected")
+  def _syncPeer(self, addr, state):
+    self.__peers[addr] = state
   
   @replicated  
   def _syncQueue(self, queue):
     self.__queue = queue
  
-  def setPeerState(self, peer, state):
-    self.__peers[peer] = state
-    self._syncPeers(self.__peers)
+  @replicated
+  def _syncFiles(self, addr, files):
+    for checksum, mapping in self.__files.items():
+      if files.get(checksum) is None:
+        # Delete missing
+        if mapping.get(addr) is not None:
+          del mapping[addr]
+      else:
+        # Upsert present
+        mapping[addr] = files[checksum]
+
+  def setPeerState(self, addr, state):
+    self.__peers[addr] = state
+    self._syncPeer(addr, state)
     self._set_assignment(self.assign_jobs_to_printers(jobs, printers))
+
+  def registerFiles(self, files):
+    self._syncFiles(self.addr, files)
 
   def _set_assignment(self, assignment):
     for peer, job in assignment.items():
       self.__peers[peer]['job'] = job
-    self._syncPeers(self, self.__peers)
+    self._syncPeer(self, self.addr, self.__peers[peer])
 
   def pushJob(self, item):
     self.__queue.append(item)
@@ -101,28 +114,28 @@ class LANPrintQueue(SyncObj, AbstractPrintQueue):
     self.__peers[self.name].active_job = None
 
 class AutoDiscoveryLANPrintQueue(AbstractPrintQueue, P2PDiscovery):
-  def __init__(self, addr, namespace, printer_config, logger=logging):
+  def __init__(self, namespace, addr, ready_cb, logger):
     super().__init__(namespace, addr)
-    self.logger = logger
+    self._logger = logger
+    self.ready_cb = ready_cb
     self.q = None
-    self.printer_config = printer_config
-    print(f"Starting discovery")
+    self._logger.info(f"Starting discovery")
     self.t = threading.Thread(target=self.spin, daemon=True)
     self.t.start()
 
   def _on_host_added(self, host):
     if self.q is not None:
-      print("Adding peer", host)
+      self._logger.info(f"Adding peer {host}")
       self.q.addPeer(host)
 
   def _on_host_removed(self, host):
     if self.q is not None:
-      print("Removing peer", host)
+      self._logger.info(f"Removing peer {host}")
       self.q.removePeer(host)
 
   def _on_startup_complete(self, results):
-    print(f"Discover end: {results}; initializing queue")
-    self.q = LANPrintQueue(self.addr, results.keys(), self.printer_config, self.logger)
+    self._logger.info(f"Discover end: {results}; initializing queue")
+    self.q = LANPrintQueue(self.addr, results.keys(), self.ready_cb, self._logger)
 
   def pushJob(self, item):
     self.q.pushJob(item)
@@ -139,18 +152,23 @@ class AutoDiscoveryLANPrintQueue(AbstractPrintQueue, P2PDiscovery):
   def getNext(self) -> Optional[QueueItem]:
     return self.q.getNext()
 
+  def registerFiles(self, files):
+    self.q.registerFiles(files)
+
 
 
 def main():
-    random.seed()
+    logging.basicConfig(level=logging.DEBUG)
     import sys
     if len(sys.argv) != 3:
         print('Usage: lan_queue.py [namespace] [selfHost:port]')
         sys.exit(-1)
 
-    cfg = {}
+    def ready_cb():
+      logging.info("Queue ready")
+
     state = {"state": "OPERATIONAL", "file": "test.gcode", "time_left": 3000}
-    lpq = AutoDiscoveryLANPrintQueue(sys.argv[2], sys.argv[1], cfg, state)
+    lpq = AutoDiscoveryLANPrintQueue(sys.argv[1], sys.argv[2], ready_cb, logging.getLogger("lpq"))
     while True:
       cmd = input(">> ").split()
       lpq.pushJob({"name": cmd[0], "queuesets": [{"name": 'herp.gcode', 'count': 2}], "count": 2})
