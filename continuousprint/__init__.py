@@ -294,17 +294,7 @@ class ContinuousprintPlugin(
         self._logger.info(
             f"Clearing queue (keep_failures={keep_failures}, keep_non_ended={keep_non_ended})"
         )
-        changed = []
-        while i < len(self.q):
-            v = self.q[i]
-            self._logger.info(f"{v.name} -- end_ts {v.end_ts} result {v.result}")
-            if v.end_ts is None and keep_non_ended:
-                i = i + 1
-            elif v.result == "failure" and keep_failures:
-                i = i + 1
-            else:
-                del self.q[i]
-                changed.append(i)
+        self.q.clear(keep_fn = lambda v: (v.end_ts is None and keep_non_ended) or (v.result.startswith("failure") and keep_failures))
         return self.state_json()
 
     # PRIVATE API METHOD - may change without warning.
@@ -332,80 +322,6 @@ class ContinuousprintPlugin(
             ]
         )
         return self.state_json()
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
-    @restricted_access
-    def move(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        offs = int(flask.request.form["offs"])
-        self.q.move(idx, count, offs)
-        depr = "DEPRECATED: plugin/continuousprint/move is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
-    @restricted_access
-    def add(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = flask.request.form.get("idx")
-        if idx is None:
-            idx = len(self.q)
-        else:
-            idx = int(idx)
-        items = json.loads(flask.request.form["items"])
-        self.q.add(
-            [
-                QueueItem(
-                    name=i["name"],
-                    path=i["path"],
-                    sd=i["sd"],
-                    job=i["job"],
-                    run=i["run"],
-                )
-                for i in items
-            ],
-            idx,
-        )
-        depr = "DEPRECATED: plugin/continuousprint/add is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
-    @restricted_access
-    def remove(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_RMQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        self.q.remove(idx, count)
-
-        depr = "DEPRECATED: plugin/continuousprint/remove is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/reset", methods=["POST"])
-    @restricted_access
-    def reset(self):
-        idxs = json.loads(flask.request.form["idxs"])
-        for idx in idxs:
-            i = self.q[idx]
-            i.start_ts = None
-            i.end_ts = None
-        self.q.remove(idx, len(idxs))
-        depr = "DEPRECATED: plugin/continuousprint/reset is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
 
     # part of TemplatePlugin
     def get_template_vars(self):

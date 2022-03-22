@@ -1,6 +1,9 @@
 import json
 import time
+from typing import Optional
+from collections import namedtuple
 
+QueueJob = namedtuple("QueueJob", "name")
 
 class QueueItem:
     # See QueueItem in continuousprint.js for matching JS object
@@ -39,10 +42,22 @@ class QueueItem:
             and self.run == other.run
         )
 
+class AbstractPrintQueue:
+    def startActiveItem(self, **kwargs):
+      raise Exception("Unimplemented")
+
+    def getActiveItem(self) -> Optional[QueueItem]:
+      raise Exception("Unimplemented")
+    
+    def completeActiveItem(self, result, end_ts = int(time.time())):
+      raise Exception("Unimplemented")
+    
+    def getNext(self) -> Optional[QueueItem]:
+      raise Exception("Unimplemented")
 
 # This is a simple print queue that tracks the order of items
 # and persists state to Octoprint settings
-class PrintQueue:
+class PrintQueue(AbstractPrintQueue):
     def __init__(self, settings, key, logger=None):
         self.key = key
         self._logger = logger
@@ -88,69 +103,35 @@ class PrintQueue:
         self.q = list(items)
         self._save()
 
-    def __len__(self):
+    def clear(self, keep_fn):
         self._load()
-        return len(self.q)
-
-    def __delitem__(self, i):
-        self._load()
-        del self.q[i]
+        self.q = [i for i in self.q if keep_fn(i)]
         self._save()
-
-    def __getitem__(self, i):
+    
+    def _next_available_idx(self):
         self._load()
-        return self.q[i]
+        for (i, item) in enumerate(self.q):
+            if item.end_ts is None:
+                return i
+        return None
 
-    def __setitem__(self, i, v):
-        self._validate(v)
-        self._load()
-        self.q[i] = v
+    def startActiveItem(self, **kwargs):
+        idx = self._next_available_idx()
+        if idx is not None:
+            self._active = self.q[idx]
+
+    def getActiveItem(self) -> Optional[QueueItem]:
+        return self._active
+    
+    def completeActiveItem(self, result, end_ts = int(time.time())):
+        self._active.end_ts = end_ts
+        self._active.result = result
+        self.q[self._active.idx] = self._active
         self._save()
-
-    def json(self):
-        return self._settings.get([self.key])
-
-    def add(self, items, idx=None):
-        for v in items:
-            self._validate(v)
-        if idx is None:
-            idx = len(self.q)
+        self._active = None
+    
+    def getNext(self) -> Optional[QueueItem]:
         self._load()
-        self.q[idx:idx] = items
-        self._save()
-
-    def remove(self, idx, num=0):
-        self._load()
-        del self.q[idx : idx + num]
-        self._save()
-
-    def move(self, fromidx, num, offs):
-        self._load()
-        slc = self.q[fromidx : fromidx + num]
-        self.q = self.q[0:fromidx] + self.q[fromidx + num :]
-        self.q = self.q[0 : fromidx + offs] + slc + self.q[fromidx + offs :]
-        self._save()
-
-    def pop(self):
-        self._load()
-        v = self.q.pop(0)
-        self._save()
-        return v
-
-    def peek(self):
-        self._load()
-        return self.q[0] if len(self.q) > 0 else None
-
-    def available(self):
-        self._load()
-        return list(filter(lambda i: i.end_ts is None, self.q))
-
-    def complete(self, path, result):
-        self._load()
-        for item in self.q:
-            if item.end_ts is None and item.path == path:
-                item.end_ts = int(time.time())
-                item.result = result
-                self._save()
-                return
-        raise Exception("Completed item with path %s not found in queue" % path)
+        idx = self._next_available_idx()
+        if idx is not None:
+            return self.q[idx]
