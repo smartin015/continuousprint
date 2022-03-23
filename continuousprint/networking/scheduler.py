@@ -29,7 +29,7 @@ def assign_jobs_to_printers(jobs, printers):
 
   # Our adjustable variable is which printer is assigned to which jobs, represented here as 
   # a sparse matrix (i.e. dict)
-  x = pulp.LpVariable.dicts('JobAssignedToPrinter', printerjobscores.keys(), lowBound=0, upBound=1, cat=pulp_constants.LpInteger)
+  x = pulp.LpVariable.dicts('JobAssignedToPrinter', printerjobscores.keys(), cat=pulp_constants.LpBinary)
 
   # Objective: minimize the total score of print jobs assigned
   prob = pulp.LpProblem("Print_Assignment", pulp_constants.LpMinimize)
@@ -57,6 +57,7 @@ def assign_jobs_to_printers(jobs, printers):
       if x[(p.name, j.name)].value() == 1:
         result[p.name]=(j, printerjobscores[(p.name, j.name)])
   return result
+
 
 if __name__ == "__main__":
   jobs = [

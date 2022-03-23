@@ -1,0 +1,39 @@
+start_material: m1
+jobs:
+  - material: m1
+    duration: 30
+  - material: m1
+    duration: 15
+  - material: m1
+    duration: 73
+  - material: m2
+    duration: 50
+  - material: m2
+    duration: 120
+  - material: m2 
+    duration: 37
+  - material: m1
+    duration: 30
+  - material: m1
+    duration: 15
+  - material: m1
+    duration: 73
+  - material: m2
+    duration: 50
+  - material: m2
+    duration: 120
+  - material: m2 
+    duration: 37
+schedule:
+#  - start: 0
+#    end: 325
+#    avail: 6
+  - start: 0
+    end: 220
+    avail: 6
+  - start: 221
+    end: 440
+    avail: 0
+  - start: 441
+    end: 650
+    avail: 6
