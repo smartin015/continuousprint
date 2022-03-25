@@ -3,6 +3,10 @@ from pulp import pulp, constants as pulp_constants
 
 LPJob = namedtuple("Job", "name material age")
 
+# TODO determine these via load testing on a raspberry pi
+MAX_SCHEDULABLE_JOBS = 10000
+MAX_SCHEDULABLE_PRINTERS = 1000
+
 class LPPrinter:
   def __init__(self, name, material, time_until_available, maintenance_score=30, will_pause=False):
     self.name = name
@@ -19,6 +23,9 @@ class LPPrinter:
       return self.time_until_available
 
 def assign_jobs_to_printers(jobs, printers):
+  assert (len(jobs) < MAX_SCHEDULABLE_JOBS)
+  assert (len(printers) < MAX_SCHEDULABLE_PRINTERS)
+
   max_job_age = max(*[j.age for j in jobs])
 
   # Score is a combination of the expected added maintenance time from the printer 

@@ -6,7 +6,9 @@ from dataclasses import dataclass
 @dataclass
 class Job:
   material: str
+  changes: int
   duration: int
+  age_rank: int # The number of time this job has been "cut in line"
 
 @dataclass
 class Sched:
@@ -27,15 +29,18 @@ class JobSchedulerDP:
     assert total_duration <= schedule[-1].end, f"Job duration {total_duration} exceeds schedule duration {schedule[-1].end}"
  
   @cache
-  def ordered_candidates(self, exclude: frozenset, material: str):
+  def ordered_candidates(self, exclude: frozenset, material: str, age_rank: int):
     # This returns candidate jobs in an order which minimizes the added cost of switching from the job to a future state.
     scored = []
     for j in range(len(self.jobs)):
       if j in exclude:
         continue
-      score = 0
-      if self.jobs[j].material != material:
+      job = self.jobs[j]
+      score = job.changes # Each material change incurs a cost for the job
+      if job.material != material: # Material switches cost manual effort
         score = 1
+      if job.age_rank < age_rank: # Try to schedule older jobs first
+        score += 1
       scored.append((j, score))
     scored.sort(key=lambda s: s[1])
     return tuple(scored)
@@ -63,12 +68,14 @@ class JobSchedulerDP:
     jstart = 0
     prev_s = None
     prev_m = self.start_material
+    annotated = False
     for t in range(0, self.schedule[-1].end, pd):
       j = self.jobs[order[i]]
       while jstart+j.duration < t:
         jstart += j.duration
         i += 1
         j = self.jobs[order[i]]
+        annotated=False
       s, si = self.schedule_at(t)
       if prev_s is None or prev_s != s:
         print(f"Schedule block {si:02}: {s.start:4} - {s.end:4}, availability {s.avail}")
@@ -78,6 +85,9 @@ class JobSchedulerDP:
       if prev_m is None or j.material != prev_m:
         prev_m = j.material
         appendix = "CHANGE"
+      if not annotated:
+        appendix += f" +{j.changes}"
+        annotated=True
       print(f"@t={t:4}: j{order[i]:02} ({j.material}) {appendix}")
 
   def run(self):
@@ -116,7 +126,7 @@ class JobSchedulerDP:
       # print("valid")
       return (effort_within_sched, tuple([job_idx])) # All jobs used; nothing to do. This is the same as cur_time <= 0.
 
-    for j, cost in self.ordered_candidates(jobs_used, self.jobs[job_idx].material):
+    for j, cost in self.ordered_candidates(jobs_used, self.jobs[job_idx].material, self.jobs[job_idx].age_rank):
       result = self.estimate(j, effort_within_sched+cost, prev_time, jobs_used)
       if result is None:
         continue

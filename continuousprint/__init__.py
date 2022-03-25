@@ -269,6 +269,39 @@ class ContinuousprintPlugin(
     def state(self):
         return self.state_json()
 
+
+    def resolve_path(self, filehash, filename):
+        raise Exception("Unimplemented")
+
+    # https://stackoverflow.com/a/57236538
+    CHUNK_SIZE = 8192
+    def read_file_chunks(self, path):
+        with open(path, 'rb') as fd:
+            while 1:
+                buf = fd.read(self.CHUNK_SIZE)
+                if buf:
+                    yield buf
+                else:
+                    break
+
+
+    # Public API method returning the full state of the plugin in JSON format.
+    # See `state_json()` for return values.
+    @octoprint.plugin.BlueprintPlugin.route("/download", methods=["GET"])
+    @restricted_access
+    def state(self):
+        fp = self.resolve_path(flask.request.args.get("filehash"), flask.request.args.get("filename"))
+        if fp is not None:
+            return Response(
+                stream_with_context(self.read_file_chunks(fp)),
+                headers={
+                    'Content-Disposition': f'attachment; filename={name}'
+                }
+            )
+        else:
+            raise exc.NotFound()
+
+
     # Public method - enables/disables management and returns the current state
     # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
     # (e.g. 1.4.1 -> 2.0.0)

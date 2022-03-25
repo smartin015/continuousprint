@@ -1,39 +1,63 @@
 start_material: m1
 jobs:
   - material: m1
+    changes: 0
     duration: 30
+    age_rank: 0
   - material: m1
+    changes: 0
     duration: 15
+    age_rank: 1
   - material: m1
+    changes: 0
     duration: 73
+    age_rank: 2
   - material: m2
+    changes: 0
     duration: 50
+    age_rank: 3
   - material: m2
+    changes: 0
     duration: 120
+    age_rank: 4
   - material: m2 
+    changes: 0
     duration: 37
+    age_rank: 5
   - material: m1
+    changes: 0
     duration: 30
+    age_rank: 6
   - material: m1
+    changes: 2
     duration: 15
+    age_rank: 7
   - material: m1
+    changes: 1
     duration: 73
+    age_rank: 8
   - material: m2
+    changes: 2
     duration: 50
+    age_rank: 9
   - material: m2
+    changes: 1
     duration: 120
+    age_rank: 10
   - material: m2 
+    changes: 2
     duration: 37
+    age_rank: 11
 schedule:
 #  - start: 0
 #    end: 325
 #    avail: 6
   - start: 0
     end: 220
-    avail: 6
+    avail: 12
   - start: 221
-    end: 440
+    end: 260
     avail: 0
-  - start: 441
+  - start: 261
     end: 650
-    avail: 6
+    avail: 12

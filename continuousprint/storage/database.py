@@ -5,13 +5,16 @@ import sys
 import inspect
 import os
 import yaml
+import time
 
 # Defer initialization
 class DB:
   states = SqliteDatabase(None)
   queues = SqliteDatabase(None)
+  files = SqliteDatabase(None)
 
 class Material(Model):
+  key = CharField(unique=True)
   color = CharField()
   composition = CharField()
   loaded = BooleanField(default=False)
@@ -64,7 +67,7 @@ class Job(Model):
   
 class Set(Model):
   path = CharField()
-  material = ForeignKeyField(Material, backref='sets')
+  material_key = CharField() # Specifically NOT a foreign key - materials are stored in a different db
   job = ForeignKeyField(Job, backref='sets')
   count = IntegerField(default=1)
   class Meta:
@@ -78,6 +81,12 @@ class Attempt(Model):
   class Meta:
     database = DB.queues
 
+class FileHash(Model):
+  path = CharField(unique=True)
+  hash_ = CharField(index=True, column_name='hash')
+  class Meta:
+    database = DB.files
+    
 
 def file_exists(path: str) -> bool:
   try: 
@@ -85,15 +94,15 @@ def file_exists(path: str) -> bool:
   except OSError as error:
     return False
 
-def init(storage_dir: str, db_paths: dict, initial_data_path: str):
-  print("Initializing storage in", storage_dir)
+def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.sqlite3', files='files.sqlite3'), initial_data_path="database_init.yaml"):
+  print("Initializing storage in", base_dir)
   try:
-    os.mkdir(storage_dir)
+    os.mkdir(base_dir)
   except OSError:
     pass
   needs_init = set()
   for name, path in db_paths.items():
-    path = os.path.join(storage_dir, path)
+    path = os.path.join(base_dir, path)
     db = getattr(DB, name)
     if not file_exists(path):
       needs_init.add(name)
@@ -102,7 +111,7 @@ def init(storage_dir: str, db_paths: dict, initial_data_path: str):
 
   print("Databases requiring initialization:", needs_init)
   if len(needs_init) > 0:
-    with open(initial_data_path, 'r') as f:
+    with open(os.path.join(base_dir, initial_data_path), 'r') as f:
       data = yaml.safe_load(f)
   if "states" in needs_init:
     # In dependency order
@@ -125,15 +134,24 @@ def init(storage_dir: str, db_paths: dict, initial_data_path: str):
           ent['queue'] = Queue.get(Queue.name == ent['queue']['name'])
         elif name == 'Set':
           ent['job'] = Job.get(Job.name == ent['job']['name'])
-          ent['material'] = Material.get(composition=ent['material']['composition'], color=ent['material']['color'])
         elif name == 'Attempt':
           ent['set_'] = Set.get(path=ent['set_']['path'])
         print("Creating", name, ent)
         cls.create(**ent)
+  if "files" in needs_init:
+    DB.files.create_tables([FileHash])
+    for ent in data.get('FileHash', []):
+      FileHash.create(**ent)
       
+def upsertJobFromString(v: str):
+  (queue, name, count, sets) = v.split(":")
+  j = Job.create(queue=Queue.get(namespace=queue), name=name.strip(), count=int(count.strip()), lexRank=str(time.time()))
+  for s in sets.split(","):
+    (path, mat, count) = s.split("|")
+    ss = Set.create(path=path.strip(), material=mat.strip(), count=int(count.strip()), job=j)
 
 if __name__ == "__main__":
-  init("data/", dict(states='states.sqlite3', queues='queues.sqlite3'), 'database_init.yaml')
+  init("data/")
   q = Queue.select().join(Job, JOIN.LEFT_OUTER).join(Set, JOIN.LEFT_OUTER).join(Attempt, JOIN.LEFT_OUTER)
   print(len(q), "results")
   for result in q:

@@ -1,9 +1,11 @@
 Material:
-  - color: "Black"
+  - key: "black_pla"
+    color: "black"
     composition: "PLA"
     available: true
     loaded: true
-  - color: "White"
+  - key: "white_pla"
+    color: "white"
     composition: "PLA"
     available: true
     loaded: false
@@ -27,6 +29,9 @@ Queue:
   - name: "default"
     namespace: ""
     network_type: 1 # "NONE"
+  - name: "lan"
+    namespace: "testlan"
+    network_type: 2 # "LAN"
 
 Job:
   - name: "ExampleJob"
@@ -37,9 +42,7 @@ Job:
 
 Set:
   - path: 'test.gcode'
-    material: 
-      color: 'Black'
-      composition: 'PLA'
+    material_key: "black_pla"
     job: 
       name: 'ExampleJob'
     count: 3
@@ -48,3 +51,7 @@ Attempt:
   - set_: 
       path: 'test.gcode'
     
+
+FileHash:
+  - path: 'test.gcode'
+    hash_: 'abcdk12345'

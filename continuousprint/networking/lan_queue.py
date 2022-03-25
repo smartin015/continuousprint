@@ -17,8 +17,9 @@ import json
 # Queue items are distributed by an elected leader.
 # Files are also fetched from other members as needed
 class LANPrintQueue(SyncObj, AbstractPrintQueue):
-  def __init__(self, addr, peers, ready_cb, logger):
+  def __init__(self, name, addr, peers, ready_cb, logger):
     self._logger = logger
+    self.name = name
     self.addr = addr
     self.peer_addrs = peers
     self.ready_cb = ready_cb
@@ -30,7 +31,7 @@ class LANPrintQueue(SyncObj, AbstractPrintQueue):
     self.__peers = {}
 
   def _onReady(self):
-    self.ready_cb()
+    self.ready_cb(self.name)
 
   @replicated
   def _syncPeer(self, addr, state):
@@ -135,7 +136,7 @@ class AutoDiscoveryLANPrintQueue(AbstractPrintQueue, P2PDiscovery):
 
   def _on_startup_complete(self, results):
     self._logger.info(f"Discover end: {results}; initializing queue")
-    self.q = LANPrintQueue(self.addr, results.keys(), self.ready_cb, self._logger)
+    self.q = LANPrintQueue(self.namespace, self.addr, results.keys(), self.ready_cb, self._logger)
 
   def pushJob(self, item):
     self.q.pushJob(item)
