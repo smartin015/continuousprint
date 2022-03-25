@@ -1,3 +1,22 @@
+Schedule:
+  name: "default"
+
+Period:
+  - schedule:
+      name: "default"
+    dayofweek: "MTWRFSS"
+    time: "09:00"
+    duration: 28800
+    max_manual_events: 4
+    tz: "America/New York"
+  - schedule:
+      name: "default"
+    dayofweek: "MTWRFSS"
+    time: "09:00"
+    duration: 28800
+    max_manual_events: 4
+    tz: "America/New York"
+
 Material:
   - key: "black_pla"
     color: "black"

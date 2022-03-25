@@ -13,6 +13,39 @@ class DB:
   queues = SqliteDatabase(None)
   files = SqliteDatabase(None)
 
+class Schedule(Model):
+  name = CharField(unique=True)
+  class Meta:
+    database = db.states
+
+class Period(Model):
+  schedule = ForeignKeyField(Schedule, backref='periods') 
+  # In the future, can potentially have a bool field in here to specifically select
+  # holidays - https://pypi.org/project/holidays/
+  
+  # Leave null if not specific date event
+  date = DateField(null=True)
+
+  # Leave null if onset_date is set
+  dayofweek = CharField(max_length=7) #MTWRFSS
+
+  # Must be populated
+  time = TimeField()
+ 
+  # Duration in seconds
+  duration = IntField()
+
+  # How many times are we allowed to interrupt the user?
+  max_manual_events = IntField()
+
+  # See http://pytz.sourceforge.net/
+  # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+  tz = CharField()
+
+  class Meta:
+    database = db.states
+
+
 class Material(Model):
   key = CharField(unique=True)
   color = CharField()
@@ -39,6 +72,7 @@ class PrinterProfile(Model):
 
 class PrinterState(Model):
   profile = ForeignKeyField(PrinterProfile)
+  schedule = ForeignKeyField(Schedule)
   fileLoaded = CharField()
   octoprintState = CharField()
   class Meta:
@@ -115,13 +149,16 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
       data = yaml.safe_load(f)
   if "states" in needs_init:
     # In dependency order
-    namecls = dict([('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState)])
+    namecls = dict([('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState), ('Schedule', Schedule), ('Period', Period)])
     DB.states.create_tables([Material, PrinterProfile, PrinterState])
     print("Initialized tables", namecls.keys())
     for name, cls in namecls.items():
       for ent in data.get(name, []):
         if name == 'PrinterState':
           ent['profile'] = PrinterProfile.get(PrinterProfile.name == ent['profile']['name'])
+        elif name == 'Period':
+          ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
+          ent['time'] = datetime.time(ent['time'])
         print("Creating", name, ent)
         cls.create(**ent)
   if "queues" in needs_init:

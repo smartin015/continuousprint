@@ -27,7 +27,7 @@ class LocalFileManager:
         result[f] = self.list_files(os.path.join(ddir, f))
     return result
 
-class HeadlessServer:
+class Server:
     def __init__(self, data_dir, start_port, logger):
       self._logger = logger
       db_init(data_dir)
@@ -49,6 +49,10 @@ class HeadlessServer:
       self.next_port += 1
 
     def leave(self, namespace):
+      self._logger.error("UNIMPLEMENTED")
+
+    def getNext(self):
+      # Get the next best print to start, given constraints and whatnot
       self._logger.error("UNIMPLEMENTED")
 
     def queue_ready(self, namespace):
@@ -93,7 +97,11 @@ class Shell(cmd.Cmd):
       'Leave a LAN queue: namespace'
       self.server.leave(arg)
       self.log(f"left {arg}")
-  
+ 
+    def do_schedule(self, arg):
+      'Run job scheduling on queue: namespace'
+      self.log("UNIMPLEMENTED")
+ 
     def do_queues(self, arg):
       'Print current queues'
       self.log("=== Queues: ===")
@@ -115,7 +123,7 @@ def main():
     import argparse
     import zmq
 
-    parser = argparse.ArgumentParser(description='Start a headless network queue server')
+    parser = argparse.ArgumentParser(description='Start a network queue server')
     parser.add_argument('base_dir', type=str, help='path to base directory for data')
     parser.add_argument('--start_port', type=int, default=6700, help='Start of port range for queue networking')
     parser.add_argument('--debug', action='store_true', help='Enable debug socket (address given by server.yaml)')
@@ -125,7 +133,7 @@ def main():
     with open(os.path.join(args.base_dir, "server.yaml"), 'r') as f:
       data = yaml.safe_load(f.read())
 
-    server = HeadlessServer(args.base_dir, args.start_port, logging.getLogger("server"))
+    server = Server(args.base_dir, args.start_port, logging.getLogger("server"))
 
     if args.debug:
       class OutputCapture:
