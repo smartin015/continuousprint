@@ -29,9 +29,11 @@ class FileShare:
         self._logger.debug(db_files)
         diff = (fm_files - db_files)
         self._logger.info(f"Found {len(diff)} unanalyzed files")
+        results = {}
         for path in diff:
           self._logger.info(f"Analyzing {path}")
-          self._queries.addFileWithHash(path, self.analyze(path))
+          results[self.analyze(path)] = path
+        self._queries.syncFiles('', 'local', results, remove=False)
     
     def analyze(self, fname) -> str:
         # https://stackoverflow.com/a/3431838
@@ -44,9 +46,25 @@ class FileShare:
         result = hash_md5.hexdigest()
         return result
 
-    def get_filehash_map(self) -> dict:
+    def getFiles(self) -> dict:
         return self._queries.getFiles()
 
-    def hash_to_path(self, md5:str) -> Optional[str]:
+    def resolveHash(self, md5:str) -> Optional[str]:
         return self._queries.getPathWithHash(md5)
+
+    def downloadFile(self, url:str, path:str):
+        # Get the equivalent path on disk
+        dest = self._fm.path_on_disk(path)
+        written = 0
+        self._logger.debug(f"Opening URL {url}")
+        # Consider using octoprint.storage.LocalFileStorage.add_file()
+        # https://docs.octoprint.org/en/master/modules/filemanager.html#octoprint.filemanager.storage.LocalFileStorage.add_file        
+        with requests.get(url, stream=True) as r:
+          r.raise_for_status()
+          with open(dest, 'wb') as f:
+              for chunk in r.iter_content(chunk_size=8192):
+                  f.write(chunk)
+                  written += len(chunk)
+        self._logger.debug(f"Wrote {written}B to {path}")
+
 

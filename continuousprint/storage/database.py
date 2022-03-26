@@ -1,4 +1,4 @@
-from peewee import Model, SqliteDatabase, CharField, DateTimeField, IntegerField, ForeignKeyField, BooleanField, FloatField, JOIN
+from peewee import Model, SqliteDatabase, CharField, DateTimeField, IntegerField, ForeignKeyField, BooleanField, FloatField, DateField, TimeField, JOIN
 import datetime
 from enum import IntEnum, auto
 import sys
@@ -9,42 +9,89 @@ import time
 
 # Defer initialization
 class DB:
-  states = SqliteDatabase(None)
-  queues = SqliteDatabase(None)
-  files = SqliteDatabase(None)
+  # Adding foreign_keys pragma is necessary for ON DELETE behavior
+  states = SqliteDatabase(None, pragmas={'foreign_keys': 1})
+  queues = SqliteDatabase(None, pragmas={'foreign_keys': 1})
+  files = SqliteDatabase(None, pragmas={'foreign_keys': 1})
 
 class Schedule(Model):
-  name = CharField(unique=True)
+  name = CharField(index=True)
+  peer = CharField(index=True)
   class Meta:
-    database = db.states
+    database = DB.states
+
+  def as_dict(self):
+    periods = []
+    for p in self.periods:
+      periods += p.resolve()
+    periods.sort(key=lambda v: v[0])
+
+    return dict(
+      name=self.name,
+      periods=periods,
+    )
+
+def utc_ts(dt=None) -> int:
+  if dt is None:
+    dt = datetime.datetime.now(tz=datetime.timezone.utc)
+  utc_time = dt.replace(tzinfo=datetime.timezone.utc)
+  return int(utc_time.timestamp())
+
+def next_dt(daystr, dt=None):
+  if dt is None:
+    dt = datetime.datetime.now(tz=datetime.timezone.utc) 
+  cur = dt.weekday()
+  for day in range(cur+1,14): # 2 weeks, guaranteed to have a next day
+    if daystr[day%7] != ' ':
+      break
+  return dt + datetime.timedelta(days=(day-cur))
+
 
 class Period(Model):
-  schedule = ForeignKeyField(Schedule, backref='periods') 
+  schedule = ForeignKeyField(Schedule, backref='periods',  on_delete='CASCADE') 
   # In the future, can potentially have a bool field in here to specifically select
   # holidays - https://pypi.org/project/holidays/
   
-  # Leave null if not specific date event
-  date = DateField(null=True)
+  # Leave null if not specific date event. Timestamp in seconds.
+  timestamp_utc = IntegerField(null=True)
 
-  # Leave null if onset_date is set
-  dayofweek = CharField(max_length=7) #MTWRFSS
-
-  # Must be populated
-  time = TimeField()
- 
-  # Duration in seconds
-  duration = IntField()
-
-  # How many times are we allowed to interrupt the user?
-  max_manual_events = IntField()
+  # Leave null if timestamp_utc is set
+  # Arbitrary characters with spaces for non-selected days (e.g. "MTWRFSU", "M W F  ")
+  # TODO peewee validation
+  daysofweek = CharField(max_length=7, null=True) 
 
   # See http://pytz.sourceforge.net/
   # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-  tz = CharField()
+  # Must be populated if dayofweek is populated
+  tz = CharField(null=True)
+
+  # Must be populated if dayofweek is populated
+  # Seconds after start of day where the period begins
+  start = IntegerField(null=True)
+ 
+  # Duration in seconds
+  duration = IntegerField()
+
+  # How many times are we allowed to interrupt the user?
+  max_manual_events = IntegerField()
+
 
   class Meta:
-    database = db.states
+    database = DB.states
 
+  def resolve(self, now=None, unroll=60*60*24*3) -> list[tuple]:
+    if self.timestamp_utc is not None:
+      return [(self.timestamp_utc, self.duration, self.max_manual_events)]
+    else:
+      result = []
+      now = utc_ts()
+      dt = None
+      ts = 0
+      while ts < now+unroll:
+        dt = next_dt(self.daysofweek, dt)
+        ts = utc_ts(dt) + self.start
+        result.append((ts, self.duration, self.max_manual_events))
+      return result
 
 class Material(Model):
   key = CharField(unique=True)
@@ -60,31 +107,48 @@ class Material(Model):
     )
 
 class PrinterProfile(Model):
-  name = CharField(unique=True)
+  name = CharField(index=True)
+  peer = CharField(index=True)
   model = CharField()
   width = FloatField()
   depth = FloatField()
   height = FloatField()
-  formFactor = str
+  formFactor = CharField()
   selfClearing = BooleanField()
   class Meta:
     database = DB.states
 
 class PrinterState(Model):
+  peer = CharField(unique=True)
   profile = ForeignKeyField(PrinterProfile)
   schedule = ForeignKeyField(Schedule)
-  fileLoaded = CharField()
-  octoprintState = CharField()
+  queue = CharField() # Specifically NOT a foreign key field (queues are in a different DB)
+  status = CharField()
   class Meta:
     database = DB.states
 
+  def as_dict(self):
+    return dict(
+      name=self.profile.name,
+      peer=self.peer,
+      queue=self.queue,
+      model=self.profile.model,
+      width=self.profile.width,
+      depth=self.profile.depth,
+      height=self.profile.height,
+      formFactor=self.profile.formFactor,
+      selfClearing=self.profile.selfClearing,
+      schedule=self.schedule.as_dict(),
+      status=self.status,
+    )
+    
+
 class NetworkType(IntEnum):
   NONE = auto()
-  LAN_DISCOVERY = auto()
+  LAN = auto()
 
 class Queue(Model):
   name = CharField(unique=True)
-  namespace = CharField()
   created = DateTimeField(default=datetime.datetime.now)
   network_type = IntegerField()
   class Meta:
@@ -93,22 +157,36 @@ class Queue(Model):
 class Job(Model):
   name = CharField(unique=True)
   lexRank = CharField()
-  queue = ForeignKeyField(Queue, backref='jobs')
+  queue = ForeignKeyField(Queue, backref='jobs', on_delete='CASCADE')
   count = IntegerField(default=1)
   created = DateTimeField(default=datetime.datetime.now)
   class Meta:
     database = DB.queues
-  
+
+  def as_dict(self):
+    sets = [s.as_dict() for s in self.sets]
+    return dict(name=self.name, count=self.count, sets=sets, created=self.created)
+
+class Assignment(Model):
+  peer = CharField()
+  job = ForeignKeyField(Job, backref='assigned', on_delete='CASCADE')
+  class Meta:
+    database = DB.queues
+ 
 class Set(Model):
   path = CharField()
+  hash_ = CharField()
   material_key = CharField() # Specifically NOT a foreign key - materials are stored in a different db
-  job = ForeignKeyField(Job, backref='sets')
+  job = ForeignKeyField(Job, backref='sets', on_delete='CASCADE')
   count = IntegerField(default=1)
   class Meta:
     database = DB.queues
 
+  def as_dict(self):
+    return dict(path=self.path, count=self.count, hash_=self.hash_, material=self.material_key)
+
 class Attempt(Model):
-  set_ = ForeignKeyField(Set, column_name='set', backref='attempts')
+  set_ = ForeignKeyField(Set, column_name='set', backref='attempts',  on_delete='CASCADE')
   start = DateTimeField(default=datetime.datetime.now)
   end = DateTimeField(null=True)
   result = CharField(null=True)
@@ -116,8 +194,10 @@ class Attempt(Model):
     database = DB.queues
 
 class FileHash(Model):
-  path = CharField(unique=True)
   hash_ = CharField(index=True, column_name='hash')
+  path = CharField()
+  peer = CharField()
+  created = DateTimeField(default=datetime.datetime.now)
   class Meta:
     database = DB.files
     
@@ -149,16 +229,16 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
       data = yaml.safe_load(f)
   if "states" in needs_init:
     # In dependency order
-    namecls = dict([('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState), ('Schedule', Schedule), ('Period', Period)])
-    DB.states.create_tables([Material, PrinterProfile, PrinterState])
+    namecls = dict([('Schedule', Schedule), ('Period', Period), ('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState)])
+    DB.states.create_tables(namecls.values())
     print("Initialized tables", namecls.keys())
     for name, cls in namecls.items():
       for ent in data.get(name, []):
         if name == 'PrinterState':
           ent['profile'] = PrinterProfile.get(PrinterProfile.name == ent['profile']['name'])
+          ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
         elif name == 'Period':
           ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
-          ent['time'] = datetime.time(ent['time'])
         print("Creating", name, ent)
         cls.create(**ent)
   if "queues" in needs_init:
@@ -180,13 +260,6 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
     for ent in data.get('FileHash', []):
       FileHash.create(**ent)
       
-def upsertJobFromString(v: str):
-  (queue, name, count, sets) = v.split(":")
-  j = Job.create(queue=Queue.get(namespace=queue), name=name.strip(), count=int(count.strip()), lexRank=str(time.time()))
-  for s in sets.split(","):
-    (path, mat, count) = s.split("|")
-    ss = Set.create(path=path.strip(), material=mat.strip(), count=int(count.strip()), job=j)
-
 if __name__ == "__main__":
   init("data/")
   q = Queue.select().join(Job, JOIN.LEFT_OUTER).join(Set, JOIN.LEFT_OUTER).join(Attempt, JOIN.LEFT_OUTER)

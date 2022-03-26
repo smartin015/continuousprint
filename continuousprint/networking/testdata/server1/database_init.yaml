@@ -1,20 +1,21 @@
 Schedule:
-  name: "default"
+  - name: "default"
+    peer: 'local'
 
 Period:
   - schedule:
       name: "default"
-    dayofweek: "MTWRFSS"
-    time: "09:00"
+    daysofweek: "M W F  "
+    start: 28800
     duration: 28800
     max_manual_events: 4
     tz: "America/New York"
   - schedule:
       name: "default"
-    dayofweek: "MTWRFSS"
-    time: "09:00"
+    daysofweek: "MTWRFSS"
+    start: 0
     duration: 28800
-    max_manual_events: 4
+    max_manual_events: 2
     tz: "America/New York"
 
 Material:
@@ -31,6 +32,7 @@ Material:
 
 PrinterProfile:
   - name: "Creality CR30"
+    peer: 'local'
     model: "CR30"
     width: 200
     depth: 1000
@@ -41,26 +43,28 @@ PrinterProfile:
 PrinterState:
   - profile:
       name: 'Creality CR30'
-    fileLoaded: ''
-    octoprintState: 'UNKNOWN'
+    queue: "default"
+    schedule: 
+      name: 'default'
+    peer: 'local'
+    status: 'UNKNOWN'
 
 Queue:
   - name: "default"
-    namespace: ""
     network_type: 1 # "NONE"
-  - name: "lan"
-    namespace: "testlan"
+  - name: "testlan"
     network_type: 2 # "LAN"
 
 Job:
   - name: "ExampleJob"
     lexRank: "a"
     queue:
-      name: "default"
+      name: "testlan"
     count: 1
 
 Set:
   - path: 'test.gcode'
+    hash_: 'abcd1234'
     material_key: "black_pla"
     job: 
       name: 'ExampleJob'
@@ -73,4 +77,5 @@ Attempt:
 
 FileHash:
   - path: 'test.gcode'
-    hash_: 'abcdk12345'
+    hash_: 'abcd1234'
+    peer: 'local'

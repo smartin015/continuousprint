@@ -1,9 +1,11 @@
 import json
 import time
 from typing import Optional
-from collections import namedtuple
 
-QueueJob = namedtuple("QueueJob", "name")
+class QueueJob:
+  pass
+  # TODO
+
 
 class QueueItem:
     # See QueueItem in continuousprint.js for matching JS object
@@ -42,22 +44,25 @@ class QueueItem:
             and self.run == other.run
         )
 
-class AbstractPrintQueue:
-    def startActiveItem(self, **kwargs):
+class PrintQueueInterface:
+    def addJob(self, job: QueueJob):
+      raise Exception("Unimplemented")
+      
+    def removeJob(self, name: str) -> QueueJob:
       raise Exception("Unimplemented")
 
-    def getActiveItem(self) -> Optional[QueueItem]:
+    def peekJob(self) -> QueueJob:
       raise Exception("Unimplemented")
-    
-    def completeActiveItem(self, result, end_ts = int(time.time())):
+
+    def acquireJob(self) -> QueueJob:
       raise Exception("Unimplemented")
-    
-    def getNext(self) -> Optional[QueueItem]:
+
+    def releaseJob(self, result: str):
       raise Exception("Unimplemented")
 
 # This is a simple print queue that tracks the order of items
 # and persists state to Octoprint settings
-class PrintQueue(AbstractPrintQueue):
+class PrintQueue(PrintQueueInterface):
     def __init__(self, settings, key, logger=None):
         self.key = key
         self._logger = logger

@@ -50,9 +50,13 @@ class P2PDiscovery:
   def _on_startup_complete(self, results):
     pass
 
+  def destroy(self):
+    self.running = False
+
   def spin(self):
     startup = time.time()
-    while True:
+    self.running = True
+    while self.running:
       ts = time.time()
 
       # We should have received all hosts actively broadcasting on the network basically 

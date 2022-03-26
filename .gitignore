@@ -7,5 +7,6 @@ dist
 *.egg*
 .DS_Store
 *.zip
+*.sqlite3
 site/
 continuousprint/data/
