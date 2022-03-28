@@ -1,90 +1,176 @@
-from collections import namedtuple
-from pulp import pulp, constants as pulp_constants
+import numpy as np
+from functools import cache
+from collections import defaultdict
+from dataclasses import dataclass
 
-LPJob = namedtuple("Job", "name material age")
+@dataclass
+class Job:
+  start_material: str
+  end_material: str
+  changes: int
+  duration: int
+  age_rank: int # The number of time this job has been "cut in line"
 
-# TODO determine these via load testing on a raspberry pi
-MAX_SCHEDULABLE_JOBS = 10000
-MAX_SCHEDULABLE_PRINTERS = 1000
+@dataclass
+class Period:
+  start: int
+  end: int
+  avail: int
 
-class LPPrinter:
-  def __init__(self, name, material, time_until_available, maintenance_score=30, will_pause=False):
-    self.name = name
-    self.material = material
-    self.maintenance_score = maintenance_score
-    self.will_pause = False
-    self.time_until_available = time_until_available
-    pass
+class JobSchedulerDP:
 
-  def score(self, job):
-    if self.will_pause or job.material != self.material:
-      return self.maintenance_score + self.time_until_available
-    else:
-      return self.time_until_available
-
-def assign_jobs_to_printers(jobs, printers):
-  assert (len(jobs) < MAX_SCHEDULABLE_JOBS)
-  assert (len(printers) < MAX_SCHEDULABLE_PRINTERS)
-
-  max_job_age = max(*[j.age for j in jobs])
-
-  # Score is a combination of the expected added maintenance time from the printer 
-  # and the amount of time the job has been sitting in the queue.
-  # This ensures that older jobs are printed eventually, but filament changes etc. are
-  # avoided.
-  printerjobscores = dict([((p.name,j.name), p.score(j) + max_job_age-j.age) for p in printers for j in jobs])
-
-  # Our adjustable variable is which printer is assigned to which jobs, represented here as 
-  # a sparse matrix (i.e. dict)
-  x = pulp.LpVariable.dicts('JobAssignedToPrinter', printerjobscores.keys(), cat=pulp_constants.LpBinary)
-
-  # Objective: minimize the total score of print jobs assigned
-  prob = pulp.LpProblem("Print_Assignment", pulp_constants.LpMinimize)
-  prob += pulp.lpSum([printerjobscores[k] * x[k] for k in printerjobscores.keys()])
-
-  # Constraint: We must assign as many jobs as we can
-  max_assignable = min(len(jobs), len(printers))
-  num_assigned = pulp.lpSum([x[k] for k in printerjobscores.keys()]) 
-  prob += (num_assigned == max_assignable)
-
-  # Constraint: Each printer receives at most one job
-  for p in printers:
-    assignedJobs = pulp.lpSum([x[(p.name,j.name)] for j in jobs])
-    prob += (assignedJobs <= 1)
-
-  # Constraint: Each job assigned to at most one printer
-  for j in jobs:
-    assignedPrinters = pulp.lpSum([x[(p.name, j.name)] for p in printers])
-    prob += (assignedPrinters <= 1)
-
-  prob.solve()
-  result = {}
-  for p in printers:
+  def __init__(self, schedule: list[Period], jobs: list[Job], start_material: str, logger):
+    self._logger = logger
+    self.schedule = schedule
+    self.jobs = jobs
+ 
+    # Collect distinct material IDs
+    self.materials = set([start_material])
     for j in jobs:
-      if x[(p.name, j.name)].value() == 1:
-        result[p.name]=(j, printerjobscores[(p.name, j.name)])
-  return result
+      self.materials.add(j.start_material)
+      self.materials.add(j.end_material)
+    # Convert material strings to integers for speediness
+    self.idx_to_material = list(self.materials)
+    self.material_to_idx = dict([(m,i) for i, m in enumerate(self.idx_to_material)])
 
+    # Integer-ify all materials in data    
+    self.start_material = self.material_to_idx[start_material]
+    for j in self.jobs:
+      j.start_material = self.material_to_idx[j.start_material]
+      j.end_material = self.material_to_idx[j.end_material]
+
+    total_duration = sum([j.duration for j in self.jobs])
+    assert total_duration <= schedule[-1].end, f"Job duration {total_duration} exceeds schedule duration {schedule[-1].end}"
+ 
+  @cache
+  def ordered_candidates(self, exclude: frozenset, next_material: str, age_rank: int):
+    # This returns candidate jobs in an order which minimizes the added cost of switching from the job to a future state.
+    scored = []
+    for j in range(len(self.jobs)):
+      if j in exclude:
+        continue
+      job = self.jobs[j]
+      score = job.changes # Each material change incurs a cost for the job
+      if job.end_material != next_material: # Material switches cost manual effort
+        score = 1
+      if job.age_rank < age_rank: # Try to schedule older jobs first
+        score += 1
+      scored.append((j, score))
+    scored.sort(key=lambda s: s[1])
+    return tuple(scored)
+
+  @cache
+  def schedule_at(self, t): # Simple binary search for the proper schedule position
+    imax = len(self.schedule) - 1
+    imin = 0
+    j = 0
+    while imax >= imin and j < len(self.schedule):
+      i = int((imax - imin)/2) + imin
+      s = self.schedule[i]
+      if s.start <= t and s.end >= t:
+        return s, i # We're within the boundary of this schedule block
+      elif s.start > t:
+        imax = i-1 # We're earlier in the schedule
+      elif s.end < t:
+        imin = i+1 # We're later in the schedule
+      j += 1
+
+    raise Exception(f"schedule_at({t}) failed: imax {imax} imin {imin}")
+
+  def debug(self, order, pd=10):
+    i = 0
+    jstart = 0
+    prev_s = None
+    prev_m = self.start_material
+    annotated = False
+    for t in range(0, self.schedule[-1].end, pd):
+      j = self.jobs[order[i]]
+      while jstart+j.duration < t:
+        jstart += j.duration
+        i += 1
+        j = self.jobs[order[i]]
+        annotated=False
+      s, si = self.schedule_at(t)
+      if prev_s is None or prev_s != s:
+        self._logger.debug(f"Schedule block {si:02}: {s.start:4} - {s.end:4}, availability {s.avail}")
+        prev_s = s
+
+      appendix = ""
+      if prev_m is None or j.end_material != prev_m:
+        appendix = "CHANGE"
+      if not annotated:
+        appendix += f" +{j.changes}"
+        annotated=True
+      prev_m = j.start_material
+      self._logger.debug(f"@t={t:4}: j{order[i]:02} ({j.start_material} - {j.end_material}) {appendix}")
+
+  def run(self):
+    self._logger.info(f"Running scheduler on {len(self.jobs)} job(s)")
+    best = None
+    for j in range(len(self.jobs)):
+      result = self.estimate(len(self.jobs)-1, 0, self.schedule[-1].end, frozenset())
+      if result is None:
+        continue
+      (score, seq) = result
+      if best is None or score < best[0]:
+        best = (score, seq)
+    return best
+
+  # TODO turn job_idx into job_id to obviate cachebusting when trying to schedule different additional jobs
+  @cache # Note: cur_time always the same for a given jobs_used, but it's less work to cache it than re-calculate
+  def estimate(self, job_idx, effort_within_sched, cur_time, jobs_used:frozenset):
+    # print(f"est job{job_idx} effort {effort_within_sched} t={cur_time}, used={jobs_used}")
+    cs, _ = self.schedule_at(cur_time)
+    if effort_within_sched > cs.avail:
+      # print("invalid")
+      return None # Invalid condition; no solution
+  
+    # Compute current & previous time
+    jobs_used |= set([job_idx])
+    prev_time = cur_time - self.jobs[job_idx].duration
+    ps, _ = self.schedule_at(prev_time)
+    if ps.end < cur_time: # We crossed schedule boundaries
+      effort_within_sched = 0
+
+    if len(jobs_used) == len(self.jobs):
+      if self.jobs[job_idx].start_material != self.start_material:
+        effort_within_sched += 1
+      if effort_within_sched > ps.avail:
+        # print("invalid last")
+        return None
+      # print("valid")
+      return (effort_within_sched, tuple([job_idx])) # All jobs used; nothing to do. This is the same as cur_time <= 0.
+
+    for j, cost in self.ordered_candidates(jobs_used, self.jobs[job_idx].start_material, self.jobs[job_idx].age_rank):
+      result = self.estimate(j, effort_within_sched+cost, prev_time, jobs_used)
+      if result is None:
+        continue
+    
+      # Jobs are ordered by best-ness, so return the first one that is valid
+      return (result[0], result[1]+tuple([job_idx]))
+
+    # No valid solutions, return none
+    return None
 
 if __name__ == "__main__":
-  jobs = [
-    LPJob(f"j0", '1', 0),
-    LPJob(f"j1", '1', 10),
-    LPJob(f"j2", '1', 15),
-    LPJob(f"j3", '2', 0),
-    LPJob(f"j4", '2', 5),
-    LPJob(f"j5", '2', 10),
-  ]
+  import yaml
+  import sys
+  import time
+  import logging
+  logging.basicConfig(level=logging.DEBUG)
+  if len(sys.argv) != 2:
+    sys.stderr.write(f"Usage: {sys.argv[0]} [testdata/order.yaml]\n")
+    sys.exit(1)
 
-  print(jobs)
+  with open(sys.argv[1], "r") as f:
+    data = yaml.safe_load(f.read())
+  
+  s = JobSchedulerDP([Period(**s) for s in data['schedule']], [Job(**j) for j in data['jobs']], data['start_material'], logging.getLogger())
 
-  printers = [
-    LPPrinter("A", "1", 0),
-    LPPrinter("B", "1", 0),
-    LPPrinter("C", "2", 0),
-    LPPrinter("D", "2", 0),
-  ]
-
-  assignment = assign_jobs_to_printers(jobs, printers)
-  for k,v in assignment.items():
-    print(f"Printer {k}: {v}")
+  start = time.perf_counter()
+  result = s.run()
+  end = time.perf_counter()
+  print(f"Took {int((end-start)*1000000)}us")
+  print("Result", result)
+  if result is not None:
+    s.debug(result[1])

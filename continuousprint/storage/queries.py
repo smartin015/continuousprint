@@ -1,6 +1,7 @@
 from storage.database import FileHash, Queue, Job, Set, Material, PrinterState, PrinterProfile, Schedule, Period, NetworkType, DB
 from typing import Optional
 from print_queue import QueueJob
+import datetime
 
 def getPathWithhash(hash_: str) -> Optional[str]:
   result = FileHash.get(hash_=hash_)
@@ -8,9 +9,15 @@ def getPathWithhash(hash_: str) -> Optional[str]:
     return None
   return result.path
 
-def getFiles() -> dict:
+def getHashes(peer: str) -> dict:
   result = {}
-  for fh in FileHash.select():
+  for fh in FileHash.select().where(FileHash.peer == peer):
+    result[fh.path] = fh.hash_
+  return result
+
+def getFiles(peer: str) -> dict:
+  result = {}
+  for fh in FileHash.select().where(FileHash.peer == peer):
     result[fh.hash_] = fh.path
   return result
 
@@ -24,24 +31,71 @@ def removeQueue(name):
   q = Queue.get(name=name)
   q.delete_instance()
 
-def getJobs(queue) -> QueueJob:
-  cursor = (Job.select()
-          .join(Queue).where(Queue.name == queue)
-          .join(Set, on=(Set.job == Job.id))
-  )
-  return (QueueJob(c) for c in cursor)
+def getJobs(queue, lexOrder=False):
+  q = Queue.get(name=queue)
+  cursor = Job.select().where(Job.queue == q)
+  if lexOrder:
+    cursor.order_by(Job.lexRank.asc())
+  return cursor.prefetch(Set)
 
 def upsertJob(queue, data: dict):
+  lut = getHashes('local')
+  with DB.queues.atomic() as txn:
+    q = Queue.get(name=queue)
+    j = Job.replace(
+      queue=q,
+      lexRank="0",
+      name=data['name'],
+      count=data['count'],
+      ).execute()
+
+    # re-populate sets
+    Set.delete().where(Set.job == j)
+    for s in data['sets']:
+      if not s.get('hash_'):
+        s['hash_'] = lut[s['path']]
+      Set.create(path=s['path'], hash_=s['hash_'], material_key=s['material'], count=s['count'], job=j)
+
+def _getJob(queue, name):
   q = Queue.get(name=queue)
-  Job.replace(queue=q, **data).execute()
+  return Job.select().where(Job.queue==q and Job.name==name).prefetch(Set)[0]
 
 def removeJob(queue, name):
-  job = Job.select().join(Queue).where(Queue.name == queue and Job.name == name).get()
-  job.delete_instance()
+  job = _getJob(queue, name)
+  job.delete_instance(recursive=True)
   return job
 
-def getPrinterStates(queue='default'):
-  return PrinterState.select().where(PrinterState.queue==queue).prefetch(PrinterProfile, Schedule, Period)
+def transferJob(queue, name, dest):
+  q = Queue.get(name=dest)
+  job = _getJob(queue, name)
+
+  # Reset all state variables
+  job.peerAssigned = None
+  job.peerLease = None
+  job.ageRank = 0
+  job.result = None
+
+  job.queue = q
+  job.save()
+
+def releaseJob(queue, name, result):
+  job = _getJob(queue, name)
+  job.result = result
+  job.peerAssigned = None
+  job.peerLease = None
+  job.save()
+
+def getLoadedMaterials():
+  return Material.select().where(Material.loaded == True)
+
+def getPrinterStates(queue='default', peer=None):
+  cursor = PrinterState.select()
+  if peer is None:
+    cursor = cursor.where(PrinterState.queue==queue)
+  else:
+    cursor = cursor.where(PrinterState.queue==queue and PrinterState.peer == peer)
+  return cursor.prefetch(PrinterProfile, Schedule, Period)
+  
 
 def syncPrinter(addr: str, peer: str, state: dict):
   # TODO handle schedule / profile foreign key resolution
@@ -80,7 +134,42 @@ def syncFiles(addr: str, peer: str, files: dict, remove=True):
       FileHash.create(peer=peer, hash_=hash_, path=path)
 
 def syncAssigned(queue:str, assignment):
-  pass
+  with DB.queues.atomic() as txn:
+    q = Queue.get(name=queue)
+    now = datetime.datetime.now()
+    Job.update(peerAssigned=None).where(Job.queue == q and Job.peerLease < now)
+    for (peer, name) in assignment.items():
+      j = Job.get(queue=q, name=name)
+      j.peerAssigned = peer
+      j.save()
+  
+def getAssigned(peer):
+  return Job.select().where(Job.peerAssigned == peer).prefetch(Queue, Set)
+
+def getSchedule(peer):
+  return Schedule.select().where(Schedule.peer == peer).limit(1).prefetch(Period)
+
+def assignJob(job, peer):
+  job.peerAssigned = peer
+  job.result = None
+  job.save()
+
+def acquireJob(job, duration=60*60):
+  job.peerLease = datetime.datetime.now() + datetime.timedelta(seconds=duration)
+  job.result = None
+  job.save()
+  return job
+
+def getAcquired():
+  cursor = Job.select().where(Job.peerLease > datetime.datetime.now()).limit(1).prefetch(Queue, Set)
+  if len(cursor) > 0:
+    return cursor[0]
+
+def releaseJob(job, result):
+  job.result = result
+  job.peerLease = None
+  job.save()
+  return job
 
 if __name__ == "__main__":
   import sys

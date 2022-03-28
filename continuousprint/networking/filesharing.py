@@ -1,5 +1,6 @@
 import hashlib
 from typing import Optional
+from functools import cache
 # from storage.queries import addFileWithHash, getPathWithHash, getFiles
 
 class FileShare:
@@ -24,9 +25,7 @@ class FileShare:
         # This may need to be adjusted (and parallelized) if there's a massive number of files to analyze.
         self._logger.info("Comparing file paths in sqlite vs OctoPrint...")
         fm_files = self._flatten(self._fm.list_files())
-        self._logger.debug(fm_files)
-        db_files = set(self._queries.getFiles().values())
-        self._logger.debug(db_files)
+        db_files = set(self._queries.getFiles('local').values())
         diff = (fm_files - db_files)
         self._logger.info(f"Found {len(diff)} unanalyzed files")
         results = {}
@@ -46,12 +45,6 @@ class FileShare:
         result = hash_md5.hexdigest()
         return result
 
-    def getFiles(self) -> dict:
-        return self._queries.getFiles()
-
-    def resolveHash(self, md5:str) -> Optional[str]:
-        return self._queries.getPathWithHash(md5)
-
     def downloadFile(self, url:str, path:str):
         # Get the equivalent path on disk
         dest = self._fm.path_on_disk(path)
@@ -67,4 +60,10 @@ class FileShare:
                   written += len(chunk)
         self._logger.debug(f"Wrote {written}B to {path}")
 
+    @cache
+    def estimateDuration(self, path):
+        if self._fm.has_analysis(path):
+            return self._fm.get_additional_metadata(path).get('estimatedPrintTime')
+        else:
+            raise Exception("TODO run metadata analysis")
 

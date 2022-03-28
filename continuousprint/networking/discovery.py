@@ -60,8 +60,8 @@ class P2PDiscovery:
       ts = time.time()
 
       # We should have received all hosts actively broadcasting on the network basically 
-      # instantaneously with rebroadcasts, but wait for a full "min" broadcast period just in case
-      if startup is not None and ts > startup+self.min_broadcast_pd:
+      # instantaneously with rebroadcasts, but wait a bit just in case
+      if startup is not None and ts > startup+self.min_broadcast_pd/2:
         self._on_startup_complete(self.host_timestamps)
         startup = None
 

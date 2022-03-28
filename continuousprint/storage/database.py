@@ -160,6 +160,13 @@ class Job(Model):
   queue = ForeignKeyField(Queue, backref='jobs', on_delete='CASCADE')
   count = IntegerField(default=1)
   created = DateTimeField(default=datetime.datetime.now)
+
+  # Job state variables
+  peerAssigned = CharField(null=True)
+  peerLease = DateTimeField(null=True)
+  result = CharField(null=True)
+  ageRank = IntegerField(default=0)
+
   class Meta:
     database = DB.queues
 
@@ -167,15 +174,22 @@ class Job(Model):
     sets = [s.as_dict() for s in self.sets]
     return dict(name=self.name, count=self.count, sets=sets, created=self.created)
 
-class Assignment(Model):
-  peer = CharField()
-  job = ForeignKeyField(Job, backref='assigned', on_delete='CASCADE')
-  class Meta:
-    database = DB.queues
- 
+  def materialChanges(self, start_material):
+    c = 0
+    cm = start_material
+    for s in self.sets:
+      if s.material_key != cm:
+        c += 1
+        cm = s.material
+    age_rank = 0 # TODO set rank based on number of times passed over for scheduling
+
+
+    return (self.sets[0].material_key, self.sets[-1].material_key)
+
 class Set(Model):
   path = CharField()
   hash_ = CharField()
+  # TODO multi-material
   material_key = CharField() # Specifically NOT a foreign key - materials are stored in a different db
   job = ForeignKeyField(Job, backref='sets', on_delete='CASCADE')
   count = IntegerField(default=1)

@@ -48,13 +48,15 @@ class LANPrintQueueBase(SyncObj):
   
   @replicated  
   def _upsertJob(self, job):
-    self._logger.debug("@replicated _upsertJob")
+    self._logger.debug(f"@replicated _upsertJob {job}")
     queries.upsertJob(self.name, job)
 
   @replicated
-  def _deleteJob(self, name: str):
-    self._logger.debug("@replicated _deleteJob")
-    queries.deleteJob(self.name, name)
+  def _removeJob(self, peer, name: str):
+    if peer == self.name:
+      return # Local removal is handled by caller
+    self._logger.debug("@replicated _removeJob")
+    queries.removeJob(self.name, name)
  
   @replicated
   def _syncFiles(self, peer, files):
@@ -75,15 +77,20 @@ class LANPrintQueueBase(SyncObj):
     self._logger.debug(f"registering files: {files}")
     self._syncFiles(self.addr, files)
 
-  def setAssignment(self, assignment):
-    # TODO validate
+  def runAssignment(self):
+    # TODO validate - also return job
+
+    assignment = None
+    raise NotImplementedError
     self._syncAssigned(self, assignment)
 
-  def upsertJob(self, job: QueueJob):
+  def upsertJob(self, job):
     self._upsertJob(job)
 
-  def deleteJob(self, name: str):
-    self._deleteJob(name)
+  def removeJob(self, name: str):
+    # TODO fix desync issue if consensus fails
+    self._removeJob(self.name, name)
+    return queries.removeJob(self.name, name)
 
 # Wrap LANPrintQueueBase in a discovery class, allowing for dynamic membership based 
 # on a namespace instead of using a list of specific peers.
@@ -106,10 +113,9 @@ class LANPrintQueue(PrintQueueInterface, P2PDiscovery):
     self.q.destroy()
 
   def _on_queue_ready(self):
-    files = self._fs.getFiles()
+    files = queries.getFiles("local")
     self._logger.info(f"Registering {len(files)} files")
     self.q.registerFiles(files)
-    
     self.ready_cb(self.namespace)
 
   def _on_host_added(self, host):
