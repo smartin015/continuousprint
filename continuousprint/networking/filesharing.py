@@ -23,14 +23,14 @@ class FileShare:
         # Analyze any files we haven't already analyzed.
         # Here it's assumed that the list of files can fit reasonably into memory.
         # This may need to be adjusted (and parallelized) if there's a massive number of files to analyze.
-        self._logger.info("Comparing file paths in sqlite vs OctoPrint...")
+        self._logger.debug("Comparing file paths in sqlite vs OctoPrint...")
         fm_files = self._flatten(self._fm.list_files())
         db_files = set(self._queries.getFiles('local').values())
         diff = (fm_files - db_files)
-        self._logger.info(f"Found {len(diff)} unanalyzed files")
+        self._logger.debug(f"Found {len(diff)} unanalyzed files")
         results = {}
         for path in diff:
-          self._logger.info(f"Analyzing {path}")
+          self._logger.debug(f"Analyzing {path}")
           results[self.analyze(path)] = path
         self._queries.syncFiles('', 'local', results, remove=False)
     
@@ -38,7 +38,7 @@ class FileShare:
         # https://stackoverflow.com/a/3431838
         hash_md5 = hashlib.md5()
         realpath = self._fm.path_on_disk(fname)
-        self._logger.info(realpath)
+        self._logger.debug(f"Analyzing {realpath}")
         with open(realpath, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)

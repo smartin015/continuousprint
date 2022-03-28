@@ -33,47 +33,67 @@ def removeQueue(name):
 
 def getJobs(queue, lexOrder=False):
   q = Queue.get(name=queue)
+  if q is None:
+    return []
   cursor = Job.select().where(Job.queue == q)
   if lexOrder:
     cursor.order_by(Job.lexRank.asc())
   return cursor.prefetch(Set)
 
-def upsertJob(queue, data: dict):
+def createJob(queue, data: dict):
   lut = getHashes('local')
+
+  if '/' in data['name']:
+    raise ValueError("createJob requires no forward slashes ('/') in job names")
+  elif len(data['sets']) <= 0:
+    raise ValueError("job must contain at least one set")
+  elif int(data['count']) <= 0:
+    raise ValueError(f"Job count must be at least 1")
+
   with DB.queues.atomic() as txn:
     q = Queue.get(name=queue)
-    j = Job.replace(
+    j = Job.create(
       queue=q,
       lexRank="0",
-      name=data['name'],
-      count=data['count'],
-      ).execute()
+      name=f"{queue}/{data['name']}",
+      count=int(data['count']),
+      )
 
-    # re-populate sets
-    Set.delete().where(Set.job == j)
     for s in data['sets']:
       if not s.get('hash_'):
         s['hash_'] = lut[s['path']]
-      Set.create(path=s['path'], hash_=s['hash_'], material_key=s['material'], count=s['count'], job=j)
+      if int(s['count']) <= 0:
+        raise ValueError(f"Set {s['path']} count must be at least 1")
+      Set.create(path=s['path'], hash_=s['hash_'], material_key=s['material'], count=int(s['count']), job=j)
 
-def _getJob(queue, name):
+def getJob(queue, name):
   q = Queue.get(name=queue)
-  return Job.select().where(Job.queue==q and Job.name==name).prefetch(Set)[0]
+  j = Job.select().where(Job.queue==q and Job.name==f"{queue}/{name}").prefetch(Set)
+  if len(j) > 0:
+    return j[0]
+  raise LookupError(f"No such job {name} in queue {queue}")
 
 def removeJob(queue, name):
-  job = _getJob(queue, name)
+  job = getJob(queue, name)
+  if job.peerLease is not None and job.peerLease > datetime.datetime.now():
+    raise ValueError(f"Job {name} is under lease; cannot transfer")
   job.delete_instance(recursive=True)
   return job
 
 def transferJob(queue, name, dest):
   q = Queue.get(name=dest)
-  job = _getJob(queue, name)
+  job = getJob(queue, name)
+  if job.peerLease is not None and job.peerLease > datetime.datetime.now():
+    raise ValueError(f"Job {name} is under lease; cannot transfer")
 
   # Reset all state variables
   job.peerAssigned = None
   job.peerLease = None
   job.ageRank = 0
   job.result = None
+  
+  # Job name must also change to remain unique
+  job.name = f"{dest}/{name}"
 
   job.queue = q
   job.save()

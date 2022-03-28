@@ -1,4 +1,4 @@
-from peewee import Model, SqliteDatabase, CharField, DateTimeField, IntegerField, ForeignKeyField, BooleanField, FloatField, DateField, TimeField, JOIN
+from peewee import Model, SqliteDatabase, CharField, DateTimeField, IntegerField, ForeignKeyField, BooleanField, FloatField, DateField, TimeField, CompositeKey, JOIN
 import datetime
 from enum import IntEnum, auto
 import sys
@@ -155,9 +155,11 @@ class Queue(Model):
     database = DB.queues
 
 class Job(Model):
-  name = CharField(unique=True)
-  lexRank = CharField()
   queue = ForeignKeyField(Queue, backref='jobs', on_delete='CASCADE')
+  # By convention, namespaced by queue name. We avoid CompositeKey here as PeeWee does not support
+  # foreign-keys to models with CompositeKey primary keys - which is the case with Sets
+  name = CharField(unique=True) 
+  lexRank = CharField()
   count = IntegerField(default=1)
   created = DateTimeField(default=datetime.datetime.now)
 
@@ -223,7 +225,6 @@ def file_exists(path: str) -> bool:
     return False
 
 def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.sqlite3', files='files.sqlite3'), initial_data_path="database_init.yaml"):
-  print("Initializing storage in", base_dir)
   try:
     os.mkdir(base_dir)
   except OSError:
@@ -238,7 +239,6 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
     db.init(path)
     db.connect()
 
-  print("Databases requiring initialization:", needs_init)
   if len(needs_init) > 0:
     if initial_data_path is not None:    
       with open(os.path.join(base_dir, initial_data_path), 'r') as f:
@@ -249,7 +249,6 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
     # In dependency order
     namecls = dict([('Schedule', Schedule), ('Period', Period), ('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState)])
     DB.states.create_tables(namecls.values())
-    print("Initialized tables", namecls.keys())
     for name, cls in namecls.items():
       for ent in data.get(name, []):
         if name == 'PrinterState':
@@ -257,12 +256,10 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
           ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
         elif name == 'Period':
           ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
-        print("Creating", name, ent)
         cls.create(**ent)
   if "queues" in needs_init:
     namecls = dict([('Queue', Queue), ('Job', Job), ('Set', Set), ('Attempt', Attempt)])
     DB.queues.create_tables(namecls.values())
-    print("Initialized tables", namecls.keys())
     for name, cls in namecls.items():
       for ent in data.get(name, []):
         if name == 'Job':
@@ -271,7 +268,6 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
           ent['job'] = Job.get(Job.name == ent['job']['name'])
         elif name == 'Attempt':
           ent['set_'] = Set.get(path=ent['set_']['path'])
-        print("Creating", name, ent)
         cls.create(**ent)
   if "files" in needs_init:
     DB.files.create_tables([FileHash])

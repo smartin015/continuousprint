@@ -47,9 +47,9 @@ class LANPrintQueueBase(SyncObj):
     queries.syncPrinter(self.addr, peer, state)
   
   @replicated  
-  def _upsertJob(self, job):
-    self._logger.debug(f"@replicated _upsertJob {job}")
-    queries.upsertJob(self.name, job)
+  def _createJob(self, job):
+    self._logger.debug(f"@replicated _createJob {job}")
+    queries.createJob(self.name, job)
 
   @replicated
   def _removeJob(self, peer, name: str):
@@ -84,8 +84,8 @@ class LANPrintQueueBase(SyncObj):
     raise NotImplementedError
     self._syncAssigned(self, assignment)
 
-  def upsertJob(self, job):
-    self._upsertJob(job)
+  def createJob(self, job):
+    self._createJob(job)
 
   def removeJob(self, name: str):
     # TODO fix desync issue if consensus fails
@@ -131,21 +131,6 @@ class LANPrintQueue(PrintQueueInterface, P2PDiscovery):
   def _on_startup_complete(self, results):
     self._logger.info(f"Discover end: {results}; initializing queue")
     self.q = LANPrintQueueBase(self.namespace, self.addr, results.keys(), self._on_queue_ready, self._logger)
-
-  def addJob(self, job: QueueJob):
-    pass
-
-  def removeJob(self, name: str) -> QueueJob:
-    pass
-  
-  def peekJob(self) -> QueueJob:
-    pass
-
-  def acquireJob(self) -> QueueJob:
-    pass
-
-  def releaseJob(self, result: str):
-    pass
 
 
 def main():

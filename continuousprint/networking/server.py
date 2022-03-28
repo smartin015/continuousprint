@@ -6,6 +6,7 @@ from networking.filesharing import FileShare
 from print_queue import PrintQueueInterface, QueueJob
 from storage.database import init as db_init, NetworkType
 from storage import queries
+from peewee import IntegrityError
 from networking.scheduler import JobSchedulerDP, Job as SJob, Period as SPeriod
 from functools import cache
 import logging
@@ -45,30 +46,16 @@ class LocalFileManager:
     return {'estimatedPrintTime': 10}
 
 class Server:
-    def __init__(self, data_dir, start_port, logger, clear_data=False):
+    def __init__(self, data_dir, start_port, logger):
       self._logger = logger
-
-      if clear_data:
-        for f in os.listdir(data_dir):
-          if f.endswith('.sqlite3'):
-            os.remove(os.path.join(data_dir, f))
-
       db_init(data_dir)
       self._lfm = LocalFileManager(os.path.join(data_dir, "gcode_files"))
-      print(self._lfm.list_files())
       self._fs = FileShare(self._lfm, queries, logging.getLogger("filemanager"))
       self._fs.analyzeAllNew()
       self._pqs = {}
-      self.acquired = queries.getAcquired()
       self.next_port = start_port
       for q in queries.getQueues():
-          if q.network_type == 1:
-            # Local queue
-            self._logger.info(f"Initializing local queue {q.name}")
-            self._pqs[q.name] = LocalPrintQueue(q.name, logging.getLogger(q.name))
-          if q.network_type == 2:
-            # LAN queue
-            self.join(q.name)
+          self.join(q.network_type, q.name)
     
     # =========== Network administrative methods ===========
 
@@ -78,12 +65,19 @@ class Server:
         self._logger.info("Sending printer state")
         self._pqs[queue].q.setPrinterState(s[0].as_dict())
 
-    def join(self, queue: str):
-      self._logger.info(f"Initializing network queue '{queue}'")
-      queries.addQueue(queue, NetworkType.LAN)
-      self._pqs[queue] = LANPrintQueue(
-          queue, f"localhost:{self.next_port}", self._queue_ready, self._fs, logging.getLogger(queue))
-      self.next_port += 1
+    def join(self, net: NetworkType, queue: str):
+      if net == NetworkType.NONE:
+        self._logger.debug(f"Initializing local queue {queue}")  
+        queries.addQueue(queue, NetworkType.NONE)
+        self._pqs[queue] = LocalPrintQueue(queue, logging.getLogger(queue))
+      elif net == NetworkType.LAN:
+        self._logger.debug(f"Initializing LAN queue '{queue}'")
+        queries.addQueue(queue, NetworkType.LAN)
+        self._pqs[queue] = LANPrintQueue(
+            queue, f"localhost:{self.next_port}", self._queue_ready, self._fs, logging.getLogger(queue))
+        self.next_port += 1
+      else:
+        raise ValueError(f"Unsupported network type {net}")
 
     def leave(self, queue: str):
       self._logger.info(f"Leaving network queue '{queue}'")
@@ -117,10 +111,11 @@ class Server:
     def acquireJob(self):
       # This method looks through the available work, then claims the job of best fit.
       # All relevant files are downloaded once the job has been claimed and before cb() is invoked.
-      if self.acquired is not None:
-        self._logger.info("Job already assigned - returning that one")
-        self.acquired = queries.acquireJob(self.acquired) # re-acquire to refresh the lease
-        return self.acquired
+      acquired = queries.getAcquired()
+      if acquired is not None:
+        self._logger.debug("Job already assigned - returning that one")
+        acquired = queries.acquireJob(acquired) # re-acquire to refresh the lease
+        return acquired
 
       # TODO update JobSchedulerDP to accept multi-material printer
       materials = [m.key for m in queries.getLoadedMaterials()]
@@ -128,11 +123,11 @@ class Server:
 
       assigned = queries.getAssigned('local')
       if len(assigned) == 0:
-        raise Exception("No jobs available to schedule; assign jobs first")
+        raise LookupError("No jobs available to schedule; assign jobs first")
       elif len(assigned) == 1:
-        self._logger.info("Shortcutting scheduler - only one job to assign")
-        self.acquired = queries.acquireJob(assigned[0])
-        return self.acquired
+        self._logger.debug("Shortcutting scheduler - only one job to assign")
+        acquired = queries.acquireJob(assigned[0])
+        return acquired
 
       sjobs = []
       for j in assigned:
@@ -153,17 +148,18 @@ class Server:
       self._logger.debug(f"Result: {result}")
       if result is not None:
         s.debug(result[1])
-        self.acquired = queries.acquireJob(assigned[result[1]])
-        return self.acquired
+        acquired = queries.acquireJob(assigned[result[1]])
+        return acquired
       else:
         raise Exception("Failed to resolve schedule")
 
     
     def releaseJob(self, result):
       # This method release the previously acquired job
-      if self.acquired is None:
-        raise Exception("No job currently acquired")
-      return queries.releaseJob(self.acquired, result)
+      acquired = queries.getAcquired()
+      if acquired is None:
+        raise LookupError("No job currently acquired")
+      return queries.releaseJob(acquired, result)
 
 
 
@@ -200,12 +196,17 @@ class Shell(cmd.Cmd):
     # ====== Network commands =====
  
     def do_join(self, arg):
-      'Join a LAN queue: queue'
-      self.server.join(arg)
-      self.log(f"joined {arg}")
+      'Join a queue: [local|lan] name'
+      typ, name = arg.split(" ")
+      typ = {"local": NetworkType.NONE, "lan": NetworkType.LAN}.get(typ.lower())
+      if typ is None:
+        self.log(f"Invalid network type (options: local, lan)")
+      else:
+        self.server.join(typ, name)
+        self.log(f"joined {arg}")
 
     def do_leave(self, arg):
-      'Leave a LAN queue: queue'
+      'Leave a LAN queue: name'
       if self.validQueue(arg):
         self.server.leave(arg)
         self.log(f"left {arg}")
@@ -216,18 +217,29 @@ class Shell(cmd.Cmd):
       'Create a job on the local (default) queue: jobname count file1,mat1,count1 file2,mat2,count2'
       cmd = arg.split()
       sets = [dict(zip(('path','material','count'),c.split(','))) for c in cmd[2:]]
-      self.server.getQueue('default').upsertJob(dict(name=cmd[0], count=cmd[1], sets=sets))
-      self.log(f"Added job {cmd[0]}")
+      try:
+        self.server.getQueue('default').createJob(dict(name=cmd[0], count=cmd[1], sets=sets))
+        self.log(f"Added job {cmd[0]}")
+      except IntegrityError:
+        self.log(f"Job with name {cmd[0]} already exists in default queue")
+      except ValueError as e:
+        self.log(f"ValueError: {e}")
 
     def do_mv(self, arg):
       'Move a job from one queue to another: jobname from_queue to_queue. Use to_queue="null" to delete'
       name, src, dest = arg.split(' ', 2)
-      if dest == 'null':
-        job = self.server.getQueue(src).removeJob(name)
-        self.log(f"Removed {job.name} from {src}")
-      elif self.validQueue(src) and self.validQueue(dest):
-        queries.transferJob(src, name, dest)
-        self.log(f"Moved {name} from {src} to {dest}")
+      try:
+        if dest == 'null':
+          job = self.server.getQueue(src).removeJob(name)
+          self.log(f"Removed {job.name} from {src}")
+        elif self.validQueue(src) and self.validQueue(dest):
+            queries.transferJob(src, name, dest)
+            self.log(f"Moved {name} from {src} to {dest}")
+      except ValueError as e:
+        self.log(f"ValueError: {e}")
+      except LookupError as e:
+        self.log(f"LookupError: {e}")
+      
 
     def do_assign(self, arg):
       'Compute job assignments for queue: queue'
@@ -248,8 +260,11 @@ class Shell(cmd.Cmd):
       if arg != '' and arg not in self.RESULT_TYPES:
         self.log(f"Invalid result status: {arg}. Must be one of {self.RESULT_TYPES}")
       else:
-        job = self.server.releaseJob(arg)
-        self.log(f"Completed job '{job.name}' with status '{arg}'")
+        try:
+          job = self.server.releaseJob(arg)
+          self.log(f"Released job '{job.name}' with status '{arg}'")
+        except LookupError as e:
+          self.log(f"LookupError: {e}")
  
     # ===== Database and inmemory (network queue) getters =====
 
@@ -263,7 +278,7 @@ class Shell(cmd.Cmd):
     def do_queues(self, arg):
       'Print current queue details'
       qs = queries.getQueues()
-      self.log("=== {len(qs)} Queue(s): ===")
+      self.log(f"=== {len(qs)} Queue(s): ===")
       for q in queries.getQueues():
         self.log(f"name={q.name}, network_type={q.network_type}")
 
@@ -284,10 +299,11 @@ class Shell(cmd.Cmd):
 
     def do_jobs(self, arg):
       'List jobs in a queue: queue'
-      self.log(f"=== Job(s) for queue '{arg}' ===")
       now = datetime.datetime.now()
       if self.validQueue(arg):
-        for j in queries.getJobs(arg):
+        js = queries.getJobs(arg)
+        self.log(f"=== {len(js)} Job(s) for queue '{arg}' ===")
+        for j in js:
           js = f"{j.name} (count={j.count})"
           if j.peerAssigned:
             js += f" assigned to {j.peerAssigned}"
