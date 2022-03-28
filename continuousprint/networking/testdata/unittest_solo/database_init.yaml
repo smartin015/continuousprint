@@ -1,0 +1,81 @@
+Schedule:
+  - name: "default"
+    peer: 'local'
+
+Period:
+  - schedule:
+      name: "default"
+    daysofweek: "M W F  "
+    start: 28800
+    duration: 28800
+    max_manual_events: 4
+    tz: "America/New York"
+  - schedule:
+      name: "default"
+    daysofweek: "MTWRFSS"
+    start: 0
+    duration: 28800
+    max_manual_events: 2
+    tz: "America/New York"
+
+Material:
+  - key: "black_pla"
+    color: "black"
+    composition: "PLA"
+    available: true
+    loaded: true
+  - key: "white_pla"
+    color: "white"
+    composition: "PLA"
+    available: true
+    loaded: false
+
+PrinterProfile:
+  - name: "Creality CR30"
+    peer: 'local'
+    model: "CR30"
+    width: 200
+    depth: 1000
+    height: 200
+    formFactor: "rectangular"
+    selfClearing: true
+
+PrinterState:
+  - profile:
+      name: 'Creality CR30'
+    queue: "default"
+    schedule: 
+      name: 'default'
+    peer: 'local'
+    status: 'UNKNOWN'
+
+Queue:
+  - name: "default"
+    network_type: 1 # "NONE"
+  - name: "testlan"
+    network_type: 2 # "LAN"
+
+Job:
+  - name: "ExampleJob"
+    lexRank: "a"
+    queue:
+      name: "testlan"
+    count: 1
+
+Set:
+  - path: 'test.gcode'
+    hash_: 'abcd1234'
+    material_key: "black_pla"
+    job: 
+      name: 'ExampleJob'
+    count: 3
+
+Attempt:
+  - set_: 
+      path: 'test.gcode'
+    
+
+FileHash:
+  - path: 'test.gcode'
+    hash_: 'abcd1234'
+    peer: 'local'

@@ -45,8 +45,14 @@ class LocalFileManager:
     return {'estimatedPrintTime': 10}
 
 class Server:
-    def __init__(self, data_dir, start_port, logger):
+    def __init__(self, data_dir, start_port, logger, clear_data=False):
       self._logger = logger
+
+      if clear_data:
+        for f in os.listdir(data_dir):
+          if f.endswith('.sqlite3'):
+            os.remove(os.path.join(data_dir, f))
+
       db_init(data_dir)
       self._lfm = LocalFileManager(os.path.join(data_dir, "gcode_files"))
       print(self._lfm.list_files())
@@ -167,6 +173,21 @@ class Shell(cmd.Cmd):
 
     RESULT_TYPES = ("success", "failure", "cancelled")
 
+    class OutputCapture:
+      def __init__(self):
+        self.out = ""
+      def write(self, s):
+        self.out += s
+      def dump(self):
+        s = self.out
+        self.out = ""
+        return s
+
+    def attach(self, server):
+      self.server = server
+      self.stdout = Shell.OutputCapture()
+      self.use_rawinput = False
+
     def log(self, s):
       self.stdout.write(s + "\n")
 
@@ -197,11 +218,6 @@ class Shell(cmd.Cmd):
       sets = [dict(zip(('path','material','count'),c.split(','))) for c in cmd[2:]]
       self.server.getQueue('default').upsertJob(dict(name=cmd[0], count=cmd[1], sets=sets))
       self.log(f"Added job {cmd[0]}")
-
-    def do_seed(self, arg):
-      'Push a fake job onto the default queue'
-      name = f"job_{int(time.time())}"
-      self.do_create(f"{name} 2 a.gcode,a,1 b.gcode,b,2")
 
     def do_mv(self, arg):
       'Move a job from one queue to another: jobname from_queue to_queue. Use to_queue="null" to delete'
@@ -302,20 +318,8 @@ def main():
     server = Server(args.base_dir, int(data['start_port']), logging.getLogger("server"))
 
     if args.debug:
-      class OutputCapture:
-        def __init__(self):
-          self.out = ""
-        def write(self, s):
-          self.out += s
-        def dump(self):
-          s = self.out
-          self.out = ""
-          return s
-
-      oc = OutputCapture()
-      sh = Shell(stdout=oc)
-      sh.server = server
-      sh.use_rawinput = False
+      sh = Shell()
+      sh.attach(server)
       context = zmq.Context()
       socket = context.socket(zmq.REP)
       logging.info(f"Starting debug REP socket at {data['debug_socket']}")
@@ -324,7 +328,7 @@ def main():
         msg = socket.recv_string()
         logging.debug(f"USER: {msg}")
         sh.onecmd(msg)
-        socket.send_string(oc.dump())
+        socket.send_string(sh.stdout.dump())
 
 if __name__ == "__main__":
   main()

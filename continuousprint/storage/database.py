@@ -234,13 +234,17 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
     db = getattr(DB, name)
     if not file_exists(path):
       needs_init.add(name)
+    db.init(None)
     db.init(path)
     db.connect()
 
   print("Databases requiring initialization:", needs_init)
   if len(needs_init) > 0:
-    with open(os.path.join(base_dir, initial_data_path), 'r') as f:
-      data = yaml.safe_load(f)
+    if initial_data_path is not None:    
+      with open(os.path.join(base_dir, initial_data_path), 'r') as f:
+        data = yaml.safe_load(f)
+    else:
+      data = {}
   if "states" in needs_init:
     # In dependency order
     namecls = dict([('Schedule', Schedule), ('Period', Period), ('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState)])
