@@ -2,8 +2,10 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
+import octoprint.util
 import flask
 import json
+import time
 from io import BytesIO
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import Events
@@ -14,7 +16,6 @@ from octoprint.filemanager.destinations import FileDestinations
 
 from .print_queue import PrintQueue, QueueItem
 from .driver import ContinuousPrintDriver
-
 
 QUEUE_KEY = "cp_queue"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
@@ -73,6 +74,10 @@ class ContinuousprintPlugin(
         d[RESTART_MAX_RETRIES_KEY] = 3
         d[RESTART_ON_PAUSE_KEY] = False
         d[RESTART_MAX_TIME_KEY] = 60 * 60
+        d["bed_cooldown_enabled"] = False
+        d["cp_bed_cooldown_script"] = "; Put script to run before bed cools here\n"
+        d["bed_cooldown_threshold"] = 30
+        d["bed_cooldown_timeout"] = 60
         return d
 
     def _rm_temp_files(self):
@@ -186,7 +191,34 @@ class ContinuousprintPlugin(
         self._msg("Print cancelled", type="error")
         self._printer.cancel_print()
 
+    def bed_cooldown(self):
+        self._logger.info("Running bed cooldown script")
+        bed_cooldown_script = self._settings.get(["cp_bed_cooldown_script"]).split("\n")
+        self._printer.commands(bed_cooldown_script, force=True)
+        self._logger.info("Preparing for Bed Cooldown")
+        self._printer.set_temperature("bed", 0)  # turn bed off
+        timeout = 60 * float(
+            self._settings.get(["bed_cooldown_timeout"])
+        )  # timeout converted to seconds
+        start_time = time.time()
+
+        while (time.time() - start_time) <= timeout:
+            bed_temp = self._printer.get_current_temperatures()["bed"]["actual"]
+            if bed_temp <= float(self._settings.get(["bed_cooldown_threshold"])):
+                self._logger.info(
+                    f"Cooldown threshold of {self._settings.get(['bed_cooldown_threshold'])} has been met"
+                )
+                return
+
+        self._logger.info(
+            f"Timeout of {self._settings.get(['bed_cooldown_timeout'])} minutes exceeded"
+        )
+        return
+
     def clear_bed(self):
+        if self._settings.get(["bed_cooldown_enabled"]):
+            # If bed cooldown management is enabled activate cooldown routine
+            self.bed_cooldown()
         path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
         self._printer.select_file(path, sd=False, printAfterSelect=True)
 
@@ -484,5 +516,6 @@ def __plugin_load__():
     __plugin_hooks__ = {
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
         "octoprint.access.permissions": __plugin_implementation__.add_permissions,
-        "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,  # register to listen for "M118 //action:" commands
+        "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
+        # register to listen for "M118 //action:" commands
     }
