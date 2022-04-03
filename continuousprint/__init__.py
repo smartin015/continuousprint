@@ -197,12 +197,9 @@ class ContinuousprintPlugin(
         self._printer.commands(bed_cooldown_script, force=True)
         self._logger.info("Preparing for Bed Cooldown")
         self._printer.set_temperature("bed", 0)  # turn bed off
-        timeout = 60 * float(
-            self._settings.get(["bed_cooldown_timeout"])
-        )  # timeout converted to seconds
         start_time = time.time()
 
-        while (time.time() - start_time) <= timeout:
+        while (time.time() - start_time) <= (60 * float(self._settings.get(["bed_cooldown_timeout"]))):  # timeout converted to seconds
             bed_temp = self._printer.get_current_temperatures()["bed"]["actual"]
             if bed_temp <= float(self._settings.get(["bed_cooldown_threshold"])):
                 self._logger.info(
