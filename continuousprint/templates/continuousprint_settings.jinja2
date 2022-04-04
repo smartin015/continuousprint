@@ -3,6 +3,45 @@
 	<p>
 		When continually printing the bed needs to be cleared in order for the next print to work.
 	</p>
+
+	<h5>Bed Cooldown Settings</h5>
+    <p>
+        If enabled, when print in queue is finished OctoPrint will run <b>Bed Cooldown Script</b>,
+        turn the heated bed off and monitor the bed temperature.
+        After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
+        met the Bed clearing routine will continue.
+    </p>
+
+    <div class="control-group">
+        <label class="control-label">Enable Managed Bed Cooldown</label>
+        <div class="controls">
+                <input type=checkbox data-bind="checked: settings.plugins.continuousprint.bed_cooldown_enabled">
+        </div>
+    </div>
+
+    <div id="cooldownSettings">
+        <div class="control-group">
+            <label class="control-label">Bed Cooldown Script</label>
+            <div class="controls">
+                <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_cooldown_script"></textarea>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Bed Cooldown Threshold  (Celsius)</label>
+            <div class="controls">
+                <textarea rows="1" class="temperature-input" data-bind="value: settings.plugins.continuousprint.bed_cooldown_threshold"></textarea>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label">Bed Cooldown Timeout (Minutes)</label>
+            <div class="controls">
+                <textarea rows="1" class="temperature-input" data-bind="value: settings.plugins.continuousprint.bed_cooldown_timeout"></textarea>
+            </div>
+        </div>
+    </div>
+
+
 	<p>
 		If your printer requires manual intervention to clear the bed, you can use <a href="https://docs.octoprint.org/en/master/features/atcommands.html" target="_blank">@ Commands</a> such as <code>@pause</code> to tell OctoPrint to pause indefinitely until the resume button is pressed.
 	</p>

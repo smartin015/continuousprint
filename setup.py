@@ -14,7 +14,7 @@ plugin_package = "continuousprint"
 plugin_name = "continuousprint"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "1.5.0rc1"
+plugin_version = "1.5.0rc3"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
@@ -34,7 +34,7 @@ plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
 plugin_requires = [
-    "pre-commit",  # For running automated precommit scripts 
+    "pre-commit",  # For running automated precommit scripts
     "mkdocs-material",  # Theme for documentation
     "mkdocs",  # Documentation library
     "pymdown-extensions",  # Fancy extensions for documentation

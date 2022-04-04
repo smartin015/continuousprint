@@ -11,8 +11,6 @@ This plugin automates your printing!
 
 WARNING: Your printer must have a method of clearing the bed automatically, with correct GCODE instructions set up in this plugin's settings page - damage to your printer may occur if this is not done correctly. If you want to manually remove prints, look in the plugin settings for details on how to use `@pause` so the queue is paused before another print starts.
 
-
 # Documentation
 
 See https://smartin015.github.io/continuousprint/ for all documentation on installation, setup, queueing strategies, and development.
-
