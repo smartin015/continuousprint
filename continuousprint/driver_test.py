@@ -62,7 +62,7 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
         assert_nocalls()
         self.d.on_print_failed()
         assert_nocalls()
-        self.d.on_print_cancelled()
+        self.d.on_print_cancelled(initiator=None)
         assert_nocalls()
         self.d.on_print_paused(0)
         assert_nocalls()
@@ -136,11 +136,21 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.cancel_print_fn.assert_not_called()
         self.assertEqual(self.d.pending_actions(), 0)
 
+    def test_user_cancelled_sets_inactive_and_fails_print(self):
+        self.d.set_active()
+        self.d.start_print_fn.reset_mock()
+
+        self.d.on_print_cancelled(initiator="admin")
+        flush(self.d)
+        self.d.start_print_fn.assert_not_called()
+        self.assertEqual(self.d.active, False)
+        self.assertRegex(self.q[1].result, "^failure.*")
+
     def test_cancelled_triggers_retry(self):
         self.d.set_active()
         self.d.start_print_fn.reset_mock()
 
-        self.d.on_print_cancelled()
+        self.d.on_print_cancelled(initiator=None)
         flush(self.d)
         self.d.start_print_fn.assert_called_once()
         self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[1])
@@ -156,7 +166,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.d.start_print_fn.reset_mock()
         self.d.retries = self.d.max_retries
 
-        self.d.on_print_cancelled()
+        self.d.on_print_cancelled(initiator=None)
         flush(self.d)
         self.d.start_print_fn.assert_not_called()
         self.assertEqual(self.d.active, False)

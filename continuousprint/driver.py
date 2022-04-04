@@ -160,12 +160,18 @@ class ContinuousPrintDriver:
         self._set_status("Inactive (print failed)")
         self.first_print = True
 
-    def on_print_cancelled(self):
+    def on_print_cancelled(self, initiator):
         self.first_print = True
         if not self.active:
             return
+
         idx = self._cur_idx()
-        if self.retries + 1 < self.max_retries:
+
+        if initiator is not None:
+            self._complete_item(idx, f"failure (user {initiator} cancelled)")
+            self.active = False
+            self._set_status(f"Inactive (print cancelled by user {initiator})")
+        elif self.retries + 1 < self.max_retries:
             self.retries += 1
             self.actions.append(
                 self._begin_next_available_print

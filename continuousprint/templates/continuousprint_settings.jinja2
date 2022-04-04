@@ -1,9 +1,6 @@
-<h4>Continuous Print Settings</h4>
-<form class="form-horizontal">
-	<p>
-		When continually printing the bed needs to be cleared in order for the next print to work.
-	</p>
+<h3>Continuous Print Settings</h3>
 
+<form class="form-horizontal">
 	<h5>Bed Cooldown Settings</h5>
     <p>
         If enabled, when print in queue is finished OctoPrint will run <b>Bed Cooldown Script</b>,
@@ -41,55 +38,54 @@
         </div>
     </div>
 
-
-	<p>
-		If your printer requires manual intervention to clear the bed, you can use <a href="https://docs.octoprint.org/en/master/features/atcommands.html" target="_blank">@ Commands</a> such as <code>@pause</code> to tell OctoPrint to pause indefinitely until the resume button is pressed.
-	</p>
-
-	<div class="control-group">
-        <label class="control-label">Bed cleaning script</label>
-        <div class="controls">
-            <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_clearing_script"></textarea>
-        </div>
+  <h3>Basic Scripts</h3>
+  <p>
+  For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
+  </p>
+  <fieldset>
+    <div class="control-group">
+      <label class="control-label">Bed cleaning script</label>
+      <div class="controls">
+        <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_clearing_script"></textarea>
+      </div>
     </div>
-
-	<div class="control-group">
-        <label class="control-label">Queue finished script</label>
-        <div class="controls">
-            <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_queue_finished_script"></textarea>
-        </div>
+    <div class="control-group">
+      <label class="control-label">Queue finished script</label>
+      <div class="controls">
+      <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_queue_finished_script"></textarea>
+      </div>
     </div>
+  </fieldset>
 
   <fieldset>
-    <legend>Restart on Pause</legend>
-    <p>
-      Print failure detection automation (such as <a target="_blank" href="https://www.thespaghettidetective.com/">Spaghetti Detective</a>) may auto-pause
-      a print if it detects a potential failure. Enable this feature to auto-retry the current queued print when Octoprint moves to a <code>PAUSED</code> state.
-    </p>
-    <div class="control-group">
-      <label class="control-label">Enable restart on pause</label>
-      <div class="controls">
-        <label class="checkbox">
-          <input type="checkbox" data-bind="checked: settings.plugins.continuousprint.cp_restart_on_pause_enabled"/>
-            Repeat current queued print when state is <code>PAUSED</code>
-        </label>
-      </div>
+    <h3>Failure Recovery</h3>
+    <div class="alert" data-bind="hidden: settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+      <p>Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
+      <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
     </div>
-    <div class="control-group">
-      <label class="control-label">Do nothing if printing &gt;</label>
-      <div class="controls">
-        <div class="input-append">
-          <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_seconds"/>
-          <span class="add-on">s</span>
+    <div data-bind="visible: settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+      <p>
+        Failure recovery is enabled because <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> is installed.
+      </p>
+      <p>
+        Read more about failure recovery settings in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.
+      </p>
+      <div class="control-group">
+        <label class="control-label">Retry if started less than</label>
+        <div class="controls">
+          <div class="input-append">
+            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_seconds"/>
+            <span class="add-on">seconds ago</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="control-group">
-      <label class="control-label">Give up after</label>
-      <div class="controls">
-        <div class="input-append">
-          <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_restarts"/>
-          <span class="add-on">restarts</span>
+      <div class="control-group">
+        <label class="control-label">Stop the queue after</label>
+        <div class="controls">
+          <div class="input-append">
+            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_restarts"/>
+            <span class="add-on">retries</span>
+          </div>
         </div>
       </div>
     </div>
