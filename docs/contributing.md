@@ -25,6 +25,8 @@ pip install -e .
     Perform this step **in a different terminal** - NOT using the venv we set up for OctoPrint. The
     dev dependencies are known to conflict with OctoPrint's dependencies and can break your OctoPrint installation.
 
+It is recommended to [fork](https://docs.github.com/en/get-started/quickstart/fork-a-repo) this repository so that it's easier to submit your changes back to the main repo later (see "Submit a pull request" below).
+
 ```
 git clone https://github.com/smartin015/continuousprint.git
 cd continuousprint
@@ -86,6 +88,20 @@ Users of [OctoPi](https://octoprint.org/download/) can install a development ver
 1. `cd continuousprint && ~/oprint/bin/python3 setup.py install`
 
 Note that we're using the bundled version of python3 that comes with octoprint, **NOT** the system installed python3. If you try the latter, it'll give an error that sounds like octoprint isn't installed.
+
+## 5. Submit a pull request 
+
+When you've made and tested your changes, follow the remaining instructions for [contributing to projects](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) to create a pull request. 
+
+!!! important
+
+    New pull requests must be submitted to the `rc` branch, **not to the `master` branch**. 
+    
+    Additonally, the [plugin version line](https://github.com/smartin015/continuousprint/blob/rc/setup.py#L17) in `setup.py` **must have an incremented `rc` number** (e.g. `1.5.0rc2` -> `1.5.0rc3`, `1.6.1` -> `1.6.2rc1`).
+    
+    This allows users to test the "release candidate" and shake out any bugs before everyone receives the change.
+
+You should receive a review within a day or so - if you haven't heard back in a week or more, [email the plugin author](https://github.com/smartin015/continuousprint/blob/master/setup.py#L27).
 
 ## Tips and Tricks
 
