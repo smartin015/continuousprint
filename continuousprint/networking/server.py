@@ -43,7 +43,7 @@ class LocalFileManager:
 
   def get_additional_metadata(self, path):
     # TODO actual analysis
-    return {'estimatedPrintTime': 10}
+    return {'estimatedPrintTime': 3600}
 
 class Server:
     def __init__(self, data_dir, start_port, logger):
@@ -53,8 +53,10 @@ class Server:
       self._fs = FileShare(self._lfm, queries, logging.getLogger("filemanager"))
       self._fs.analyzeAllNew()
       self._pqs = {}
-      self.next_port = start_port
-      for q in queries.getQueues():
+      self.next_port = start_port 
+      qs = queries.getQueues()
+      self._logger.debug(f"Joining {len(qs)} queues")
+      for q in qs:
           self.join(q.network_type, q.name)
     
     # =========== Network administrative methods ===========
@@ -103,11 +105,6 @@ class Server:
           break
       return self._fs.resolveHash(hash_)
 
-    @cache
-    def _estimateDuration(self, path):
-      # TODO lookup file analysis 
-      return 10 
-
     def acquireJob(self):
       # This method looks through the available work, then claims the job of best fit.
       # All relevant files are downloaded once the job has been claimed and before cb() is invoked.
@@ -118,7 +115,7 @@ class Server:
         return acquired
 
       # TODO update JobSchedulerDP to accept multi-material printer
-      materials = [m.key for m in queries.getLoadedMaterials()]
+      materials = [m.material_key for m in queries.getLoadedMaterials()]
       start_material = materials[0]
 
       assigned = queries.getAssigned('local')
@@ -132,14 +129,15 @@ class Server:
       sjobs = []
       for j in assigned:
         duration = sum([self._fs.estimateDuration(s.path)*s.count for s in j.sets])
-        sjobs.append(SJob(j.sets[0].material, j.materialChanges(start_material), c, d, j.ageRank))
+        sjobs.append(SJob(j.sets[0].material_key, j.sets[-1].material_key, j.materialChanges(start_material), duration, j.ageRank))
 
       # There's only one local peer state
       state = queries.getPrinterStates(peer='local')[0]
 
       periods = [p.resolve() for p in state.schedule.periods]
-      # flatten
+      # flatten, then sort
       periods = [i for ii in periods for i in ii]
+      periods.sort(key=lambda s: s[0])
       start_ts = periods[0][0]
       spds = [SPeriod(ts - start_ts, ts - start_ts + duration, max_events) for ts,duration,max_events in periods]
       
@@ -148,7 +146,8 @@ class Server:
       self._logger.debug(f"Result: {result}")
       if result is not None:
         s.debug(result[1])
-        acquired = queries.acquireJob(assigned[result[1]])
+        # Assign the first job in the sequence
+        acquired = queries.acquireJob(assigned[result[1][0]])
         return acquired
       else:
         raise Exception("Failed to resolve schedule")
@@ -245,7 +244,10 @@ class Shell(cmd.Cmd):
       'Compute job assignments for queue: queue'
       if self.validQueue(arg):
         j = self.server.getQueue(arg).runAssignment()
-        self.log(f"Assigned job {j.name} in queue {arg}")
+        if j is None:
+          self.log(f"No jobs matching constraints for assignment")
+        else:
+          self.log(f"Assigned job {j.name} in queue {arg}")
  
     def do_acquire(self, arg):
       'Claim the next best job out of all queues'

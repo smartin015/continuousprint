@@ -48,6 +48,15 @@ PrinterState:
       name: 'default'
     peer: 'local'
     status: 'UNKNOWN'
+    secondsUntilIdle: 0
+
+MaterialState:
+  - printer:
+      peer: 'local'
+    material_key: 'black_pla'
+    loaded: true
+    inStock: true
+
 
 Queue:
   - name: "default"

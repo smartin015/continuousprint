@@ -23,6 +23,11 @@ class JobSchedulerDP:
     self._logger = logger
     self.schedule = schedule
     self.jobs = jobs
+
+    for i,s in enumerate(self.schedule):
+      assert s.start >= 0, f"Schedule item {i} has start value less than 0: {s.start}"
+      assert s.end >= 0, f"Schedule item {i} has end value less than 0: {s.end}"
+      assert s.end >= 0, f"Schedule item {i} has negative availability: {s.avail}"
  
     # Collect distinct material IDs
     self.materials = set([start_material])
@@ -65,19 +70,19 @@ class JobSchedulerDP:
     imin = 0
     j = 0
     while imax >= imin and j < len(self.schedule):
-      i = int((imax - imin)/2) + imin
-      s = self.schedule[i]
+      s = self.schedule[j]
       if s.start <= t and s.end >= t:
-        return s, i # We're within the boundary of this schedule block
+        return s, j # We're within the boundary of this schedule block
       elif s.start > t:
         imax = i-1 # We're earlier in the schedule
       elif s.end < t:
         imin = i+1 # We're later in the schedule
       j += 1
 
-    raise Exception(f"schedule_at({t}) failed: imax {imax} imin {imin}")
+    raise Exception(f"schedule_at({t}) failed: imax {imax} imin {imin}, schedule {self.schedule}")
 
-  def debug(self, order, pd=10):
+
+  def debug(self, order, pd=600):
     i = 0
     jstart = 0
     prev_s = None
@@ -88,6 +93,8 @@ class JobSchedulerDP:
       while jstart+j.duration < t:
         jstart += j.duration
         i += 1
+        if i >= len(order): # schedule may be longer than total job duration
+          return
         j = self.jobs[order[i]]
         annotated=False
       s, si = self.schedule_at(t)
@@ -105,10 +112,11 @@ class JobSchedulerDP:
       self._logger.debug(f"@t={t:4}: j{order[i]:02} ({j.start_material} - {j.end_material}) {appendix}")
 
   def run(self):
-    self._logger.info(f"Running scheduler on {len(self.jobs)} job(s)")
     best = None
+    end_sec = sum([job.duration for job in self.jobs])
+    self._logger.info(f"Running scheduler on {len(self.jobs)} job(s), total time {end_sec}s")
     for j in range(len(self.jobs)):
-      result = self.estimate(len(self.jobs)-1, 0, self.schedule[-1].end, frozenset())
+      result = self.estimate(len(self.jobs)-1, 0, end_sec, frozenset())
       if result is None:
         continue
       (score, seq) = result
@@ -118,7 +126,7 @@ class JobSchedulerDP:
 
   # TODO turn job_idx into job_id to obviate cachebusting when trying to schedule different additional jobs
   @cache # Note: cur_time always the same for a given jobs_used, but it's less work to cache it than re-calculate
-  def estimate(self, job_idx, effort_within_sched, cur_time, jobs_used:frozenset):
+  def estimate(self, job_idx: int, effort_within_sched: int, cur_time: int, jobs_used:frozenset):
     # print(f"est job{job_idx} effort {effort_within_sched} t={cur_time}, used={jobs_used}")
     cs, _ = self.schedule_at(cur_time)
     if effort_within_sched > cs.avail:

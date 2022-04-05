@@ -1,0 +1,164 @@
+Schedule:
+  - name: "default"
+    peer: 'local'
+
+Period:
+  - schedule:
+      name: "default"
+    daysofweek: "M W F  "
+    start: 28800
+    duration: 28800
+    max_manual_events: 4
+    tz: "America/New York"
+  - schedule:
+      name: "default"
+    daysofweek: "MTWRFSS"
+    start: 0
+    duration: 28800
+    max_manual_events: 2
+    tz: "America/New York"
+
+Material:
+  - key: "a"
+    color: "black"
+    composition: "PLA"
+    available: true
+    loaded: true
+  - key: "b"
+    color: "white"
+    composition: "PLA"
+    available: true
+    loaded: false
+
+PrinterProfile:
+  - name: "Creality CR30"
+    peer: 'local'
+    model: "CR30"
+    width: 200
+    depth: 1000
+    height: 200
+    formFactor: "rectangular"
+    selfClearing: true
+  - name: "Monoprice Mini Delta V2"
+    peer: 'testremote'
+    model: "Monoprice"
+    width: 110
+    depth: 120
+    height: 120
+    formFactor: "circular"
+    selfClearing: false
+
+PrinterState:
+  - profile:
+      name: 'Creality CR30'
+    queue: "default"
+    schedule: 
+      name: 'default'
+    peer: 'local'
+    status: 'OPERATIONAL'
+    secondsUntilIdle: 0
+  - profile:
+      name: 'Creality CR30'
+    queue: "default"
+    schedule: 
+      name: 'default'
+    peer: 'testremote'
+    status: 'OPERATIONAL'
+    secondsUntilIdle: 0
+
+MaterialState:
+  - printer:
+       peer: 'local'
+    material_key: 'a'
+    loaded: true
+    inStock: true
+  - printer:
+      peer: 'testremote'
+    material_key: 'b'
+    loaded: true
+    inStock: true
+
+
+Queue:
+  - name: "default"
+    network_type: 1 # "NONE"
+  - name: "A"
+    network_type: 1 # "NONE"
+  - name: "B"
+    network_type: 1 # "NONE"
+  - name: "C"
+    network_type: 1 # "NONE"
+
+Job:
+  - name: "d1"
+    queue:
+      name: "default"
+    lexRank: "b"
+    count: 1
+  - name: "d2"
+    queue:
+      name: "default"
+    lexRank: "a"
+    count: 2
+  - name: "a1"
+    queue:
+      name: "A"
+    lexRank: "b"
+    count: 2
+  - name: "b1"
+    queue:
+      name: "B"
+    lexRank: "b"
+    count: 1
+  - name: "c1"
+    queue:
+      name: "C"
+    lexRank: "b"
+    count: 1
+
+Set:  
+  # Job d1
+  - path: "a.gcode"
+    material_key: "a"
+    job:
+      name: "default/d1"
+    count: 1
+    hash_: "60b725f10c9c85c70d97880dfe8191b3"
+  - path: "b.gcode"
+    material_key: "b"
+    job:
+      name: "default/d1"
+    count: 2
+    hash_: "3b5d5c3712955042212316173ccf37be"
+
+  # Job d2
+  - path: "a.gcode"
+    material_key: "a"
+    job:
+      name: "default/d2"
+    count: 1
+    hash_: "60b725f10c9c85c70d97880dfe8191b3"
+
+  # Job a1
+  - path: "b.gcode"
+    material_key: "b"
+    job:
+      name: "A/a1"
+    count: 1
+    hash_: "3b5d5c3712955042212316173ccf37be"
+
+  # Job b1
+  - path: "b.gcode"
+    material_key: "b"
+    job:
+      name: "B/b1"
+    count: 1
+    hash_: "3b5d5c3712955042212316173ccf37be"
+
+  # Job c1
+  - path: "b.gcode"
+    material_key: "b"
+    job:
+      name: "C/c1"
+    count: 2
+    hash_: "3b5d5c3712955042212316173ccf37be"

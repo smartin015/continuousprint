@@ -1,6 +1,8 @@
-from storage.database import FileHash, Queue, Job, Set, Material, PrinterState, PrinterProfile, Schedule, Period, NetworkType, DB
+from storage.database import FileHash, Queue, Job, Set, Material, PrinterState, PrinterProfile, Schedule, Period, NetworkType, DB, MaterialState
+from peewee import IntegrityError
 from typing import Optional
 from print_queue import QueueJob
+from networking import distributer
 import datetime
 
 def getPathWithhash(hash_: str) -> Optional[str]:
@@ -25,19 +27,23 @@ def getQueues():
   return Queue.select()
 
 def addQueue(name, network_type: NetworkType):
-  Queue.replace(name=name, network_type=network_type).execute()
+  try:
+    Queue.create(name=name, network_type=network_type)
+  except IntegrityError:
+    return
 
 def removeQueue(name):
   q = Queue.get(name=name)
   q.delete_instance()
 
-def getJobs(queue, lexOrder=False):
-  q = Queue.get(name=queue)
+def getJobs(q=None, lexOrder=False):
+  if type(q) == str:
+    q = Queue.get(name=q)
   if q is None:
     return []
   cursor = Job.select().where(Job.queue == q)
   if lexOrder:
-    cursor.order_by(Job.lexRank.asc())
+    cursor = cursor.order_by(Job.lexRank.asc())
   return cursor.prefetch(Set)
 
 def createJob(queue, data: dict):
@@ -99,14 +105,15 @@ def transferJob(queue, name, dest):
   job.save()
 
 def releaseJob(queue, name, result):
-  job = _getJob(queue, name)
+  job = getJob(queue, name)
   job.result = result
   job.peerAssigned = None
   job.peerLease = None
   job.save()
 
-def getLoadedMaterials():
-  return Material.select().where(Material.loaded == True)
+def getLoadedMaterials(peer='local'):
+  p = PrinterState.get(peer=peer)
+  return MaterialState.select().where(MaterialState.loaded == True and MaterialState.printer == p)
 
 def getPrinterStates(queue='default', peer=None):
   cursor = PrinterState.select()
@@ -159,9 +166,7 @@ def syncAssigned(queue:str, assignment):
     now = datetime.datetime.now()
     Job.update(peerAssigned=None).where(Job.queue == q and Job.peerLease < now)
     for (peer, name) in assignment.items():
-      j = Job.get(queue=q, name=name)
-      j.peerAssigned = peer
-      j.save()
+      assignJob(Job.get(queue=q, name=name), peer)
   
 def getAssigned(peer):
   return Job.select().where(Job.peerAssigned == peer).prefetch(Queue, Set)
@@ -190,6 +195,50 @@ def releaseJob(job, result):
   job.peerLease = None
   job.save()
   return job
+
+def runSimpleAssignment(queue, peer, logger):
+    # Assign jobs to a single printer following a sequential strategy
+    # Note: this shouldn't require running in a transaction, as the queue is local (no peers know about it)
+    jobs = getJobs(queue, lexOrder=True)
+    logger.debug(f"runSimpleAssignment(queue={queue}, peer={peer}) with {len(jobs)} jobs")
+
+    candidate = None
+    for j in jobs:
+      logger.debug(f"Checking job {j.name}, rank {j.lexRank}")
+      # Don't mess with assignment if one has already been leased
+      if j.peerLease is not None:
+        return j
+    
+      # Find the first uncompleted job.
+      if not candidate and j.result not in ('success', 'failure'): 
+        candidate = j
+        # Don't break out here so we can continue to check for pre-assignment
+
+    if candidate is not None:
+      assignJob(candidate, peer)
+    return candidate
+
+def runMultiPrinterAssignment(queue, peer, logger):
+    # Distribute a queue's job across multiple printers
+    # with a linear optimizations strategy (see distributer.py)
+    # Returns a dict of {peer:(lpjob, score)}
+    q = Queue.get(name=queue)
+    
+    # Note queue lookup by name, not by object
+    peers = PrinterState.select().where(PrinterState.queue==queue).prefetch(PrinterProfile, MaterialState)
+    jobs = getJobs(q)
+    if len(peers) == 0:
+      raise Exception("multi printer assignment given 0 peers; need at least 1")
+    if len(jobs) == 0:
+      raise Exception("multi printer assignment given 0 jobs; need at least 1")
+    logger.debug(f"Running multi-printer assignment on queue {q.name}: {len(peers)} peers, {len(jobs)} jobs")
+
+    # TODO multi-material job
+    ljobs = [distributer.LPJob(name=j.name, materials=set([s.material_key for s in j.sets]), age=j.age_sec()) for j in jobs]
+    lprints = [distributer.LPPrinter(name=p.peer, materials=set([m.material_key for m in p.materials]), time_until_available=p.secondsUntilIdle, will_pause=p.profile.selfClearing) for p in peers]
+    assignment = distributer.assign_jobs_to_printers(ljobs, lprints)
+    return assignment
+    
 
 if __name__ == "__main__":
   import sys

@@ -97,8 +97,6 @@ class Material(Model):
   key = CharField(unique=True)
   color = CharField()
   composition = CharField()
-  loaded = BooleanField(default=False)
-  inStock = BooleanField(default=False)
   class Meta:
     database = DB.states
     indexes = (
@@ -124,6 +122,7 @@ class PrinterState(Model):
   schedule = ForeignKeyField(Schedule)
   queue = CharField() # Specifically NOT a foreign key field (queues are in a different DB)
   status = CharField()
+  secondsUntilIdle = IntegerField()
   class Meta:
     database = DB.states
 
@@ -141,7 +140,15 @@ class PrinterState(Model):
       schedule=self.schedule.as_dict(),
       status=self.status,
     )
-    
+
+class MaterialState(Model):
+  material_key = CharField() # Not backref as material may not be known to some printers
+  printer = ForeignKeyField(PrinterState, backref="materials")
+  loaded = BooleanField(default=False)
+  inStock = BooleanField(default=False)
+
+  class Meta:
+    database = DB.states
 
 class NetworkType(IntEnum):
   NONE = auto()
@@ -176,17 +183,21 @@ class Job(Model):
     sets = [s.as_dict() for s in self.sets]
     return dict(name=self.name, count=self.count, sets=sets, created=self.created)
 
+  def age_sec(self, now=None):
+    if now == None:
+      now = datetime.datetime.now()
+    
+    return (now - self.created).total_seconds()
+
   def materialChanges(self, start_material):
     c = 0
     cm = start_material
     for s in self.sets:
       if s.material_key != cm:
         c += 1
-        cm = s.material
+        cm = s.material_key
     age_rank = 0 # TODO set rank based on number of times passed over for scheduling
-
-
-    return (self.sets[0].material_key, self.sets[-1].material_key)
+    return c
 
 class Set(Model):
   path = CharField()
@@ -247,7 +258,14 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
       data = {}
   if "states" in needs_init:
     # In dependency order
-    namecls = dict([('Schedule', Schedule), ('Period', Period), ('Material', Material), ('PrinterProfile', PrinterProfile), ('PrinterState', PrinterState)])
+    namecls = dict([
+      ('Schedule', Schedule), 
+      ('Period', Period), 
+      ('Material', Material), 
+      ('PrinterProfile', PrinterProfile), 
+      ('PrinterState', PrinterState),
+      ('MaterialState', MaterialState),
+    ])
     DB.states.create_tables(namecls.values())
     for name, cls in namecls.items():
       for ent in data.get(name, []):
@@ -256,6 +274,8 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
           ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
         elif name == 'Period':
           ent['schedule'] = Schedule.get(Schedule.name == ent['schedule']['name'])
+        elif name == 'MaterialState':
+          ent['printer'] = PrinterState.get(PrinterState.peer == ent['printer']['peer'])
         cls.create(**ent)
   if "queues" in needs_init:
     namecls = dict([('Queue', Queue), ('Job', Job), ('Set', Set), ('Attempt', Attempt)])
@@ -263,6 +283,7 @@ def init(base_dir: str, db_paths = dict(states='states.sqlite3', queues='queues.
     for name, cls in namecls.items():
       for ent in data.get(name, []):
         if name == 'Job':
+          ent['name'] = f"{ent['queue']['name']}/{ent['name']}" 
           ent['queue'] = Queue.get(Queue.name == ent['queue']['name'])
         elif name == 'Set':
           ent['job'] = Job.get(Job.name == ent['job']['name'])

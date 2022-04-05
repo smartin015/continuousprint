@@ -64,7 +64,9 @@ class LANPrintQueueBase(SyncObj):
     queries.syncFiles(self.addr, peer, files)
 
   @replicated
-  def _syncAssigned(self, assignment):
+  def _syncAssigned(self, peer, assignment):
+    if peer == self.name:
+      return # Local assignment handled by caller (potential race condition?)
     self._logger.debug(f"@replicated _syncAssigned()")
     queries.syncAssigned(self.addr, self.name, assignment)
 
@@ -78,11 +80,9 @@ class LANPrintQueueBase(SyncObj):
     self._syncFiles(self.addr, files)
 
   def runAssignment(self):
-    # TODO validate - also return job
-
-    assignment = None
-    raise NotImplementedError
-    self._syncAssigned(self, assignment)
+    assignment = queries.runMultiPrinterAssignment(self.name, self.addr, self._logger)
+    self._syncAssigned(self, self.name, assignment)
+    return assignment
 
   def createJob(self, job):
     self._createJob(job)

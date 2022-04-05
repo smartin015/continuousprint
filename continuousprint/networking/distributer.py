@@ -1,23 +1,23 @@
 from collections import namedtuple
 from pulp import pulp, constants as pulp_constants
 
-LPJob = namedtuple("Job", "name material age")
+LPJob = namedtuple("Job", "name materials age")
 
 # TODO determine these via load testing on a raspberry pi
 MAX_SCHEDULABLE_JOBS = 10000
 MAX_SCHEDULABLE_PRINTERS = 1000
 
 class LPPrinter:
-  def __init__(self, name, material, time_until_available, maintenance_score=30, will_pause=False):
+  def __init__(self, name, materials: set, time_until_available, maintenance_score=30, will_pause=False):
     self.name = name
-    self.material = material
+    self.materials = materials
     self.maintenance_score = maintenance_score
     self.will_pause = False
     self.time_until_available = time_until_available
     pass
 
   def score(self, job):
-    if self.will_pause or job.material != self.material:
+    if self.will_pause or len(job.materials.difference(self.materials)) > 0:
       return self.maintenance_score + self.time_until_available
     else:
       return self.time_until_available
@@ -62,7 +62,7 @@ def assign_jobs_to_printers(jobs, printers):
   for p in printers:
     for j in jobs:
       if x[(p.name, j.name)].value() == 1:
-        result[p.name]=(j, printerjobscores[(p.name, j.name)])
+        result[p.name]=(j.name, printerjobscores[(p.name, j.name)])
   return result
 
 

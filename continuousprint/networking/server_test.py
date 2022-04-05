@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import ANY
 from networking.server import Server, Shell
 import logging
 import datetime
@@ -7,11 +8,18 @@ import os
 from storage.database import Job, init as init_db, FileHash, Queue, NetworkType
 from storage import queries
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 class TestServerLocalOnlyInstance(unittest.TestCase):
   srv = None
   DATA_DIR = 'networking/testdata/unittest_solo/'
+
+  @classmethod
+  def setUpClass(self):
+    for path in os.listdir(self.DATA_DIR):
+      if path.endswith(".sqlite3"):
+        logging.debug(f"Removing {path}")
+        os.remove(os.path.join(self.DATA_DIR, path))
 
   def setUp(self):
     # Remove any stale state
@@ -109,6 +117,10 @@ class TestServerLocalOnlyInstance(unittest.TestCase):
     self.cli.do_mv("job1 default q2")
     self.assertRegex(self.cli.stdout.dump(), "Moved")
 
+  def testAssignEmpty(self):
+    self.cli.do_assign("default")
+    self.assertRegex(self.cli.stdout.dump(), "No jobs")
+
   def testAssignSingle(self):
     # Note: multiple assignment is handled in a different testclass as it's much more complicated   
     self.cli.do_create("job1 1 a.gcode,a,1")
@@ -159,14 +171,52 @@ class TestServerLocalOnlyInstance(unittest.TestCase):
 
 
 class TestComplexAcquireAssign(unittest.TestCase):
+  srv = None
+  DATA_DIR = 'networking/testdata/unittest_multiqueue/'
+
+  @classmethod
+  def setUpClass(self):
+    for path in os.listdir(self.DATA_DIR):
+      if path.endswith(".sqlite3"):
+        logging.debug(f"Removing {path}")
+        os.remove(os.path.join(self.DATA_DIR, path))
+
   def setUp(self):
+    init_db(self.DATA_DIR)
+    if self.srv is None:
+      self.srv = Server(self.DATA_DIR, 6700, logging.getLogger("server"))
+      self.cli = Shell()
+      self.cli.attach(self.srv)
+
+  def tearDown(self):
+    #del self.cli
+    #del self.srv
+    # Remove any new data - faster and less noisy than reinitializing the datastores every time
+    #Queue.delete().where(Queue.name != "default").execute()
+    #Job.delete().execute()
     pass
 
-  def testAcquireMultiJob(self):
-    pass
+  def testAssignLocalMultiJob(self):
+    # Local assign of queues can be handled directly by the CLI
+    self.cli.do_assign("default")
+    self.assertRegex(self.cli.stdout.dump(), "Assigned job default/d2") # First job by lex rank
 
-  def testAssignMultiJob(self):
-    pass
+  def testAssignLANMultiJob(self):
+    # Linear-optimizing queue assignment assumes multiple printers (i.e. non-local queue)
+    # This test uses only a single server (to avoid networking as part of unit testing)
+    # so we have to approximate proper assignment using the queue function instead of the cli.
+    assignment = queries.runMultiPrinterAssignment("default", "local", logging.getLogger())
+    self.assertDictEqual(assignment, {
+      "local": ("default/d2", ANY),
+      "testremote": ("default/d1", ANY),
+    })
+    
+  def testAssignMultiAcquire(self):
+    j = queries.assignJob(queries.getJob("default", "d1"), "local") 
+    j = queries.assignJob(queries.getJob("A", "a1"), "local")
+    j = queries.assignJob(queries.getJob("B", "b1"), "local")
+    self.cli.do_acquire("")
+    self.assertRegex(self.cli.stdout.dump(), "Acquired job") # Don't care about the order in this test, just that we successfully assign a thing
 
 class TestQueryCommands(unittest.TestCase):
 
