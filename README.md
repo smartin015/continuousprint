@@ -15,3 +15,5 @@ WARNING: Your printer must have a method of clearing the bed automatically, with
 # Documentation
 
 See https://smartin015.github.io/continuousprint/ for all documentation on installation, setup, queueing strategies, and development.
+
+See also [here](https://octo-plugin-stats2-a6l7lv6h7-smartin015.vercel.app/) for adoption stats.
