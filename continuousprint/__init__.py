@@ -227,7 +227,7 @@ class ContinuousprintPlugin(
         self._msg("Print cancelled", type="error")
         self._printer.cancel_print()
 
-    def bed_cooldown(self):
+    def wait_for_bed_cooldown(self):
         self._logger.info("Running bed cooldown script")
         bed_cooldown_script = self._settings.get(["cp_bed_cooldown_script"]).split("\n")
         self._printer.commands(bed_cooldown_script, force=True)
@@ -250,7 +250,7 @@ class ContinuousprintPlugin(
 
     def clear_bed(self):
         if self._settings.get(["bed_cooldown_enabled"]):
-            self.bed_cooldown()
+            self.wait_for_bed_cooldown()
         path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
         self._printer.select_file(path, sd=False, printAfterSelect=True)
 
