@@ -26,7 +26,10 @@ TEMP_FILES = dict(
 RESTART_MAX_RETRIES_KEY = "cp_restart_on_pause_max_restarts"
 RESTART_ON_PAUSE_KEY = "cp_restart_on_pause_enabled"
 RESTART_MAX_TIME_KEY = "cp_restart_on_pause_max_seconds"
-
+BED_COOLDOWN_ENABLED_KEY = "bed_cooldown_enabled"
+BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
+BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
+BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -74,10 +77,10 @@ class ContinuousprintPlugin(
         d[RESTART_MAX_RETRIES_KEY] = 3
         d[RESTART_ON_PAUSE_KEY] = False
         d[RESTART_MAX_TIME_KEY] = 60 * 60
-        d["bed_cooldown_enabled"] = False
-        d["cp_bed_cooldown_script"] = "; Put script to run before bed cools here\n"
-        d["bed_cooldown_threshold"] = 30
-        d["bed_cooldown_timeout"] = 60
+        d[BED_COOLDOWN_ENABLED_KEY] = False
+        d[BED_COOLDOWN_SCRIPT_KEY] = "; Put script to run before bed cools here\n"
+        d[BED_COOLDOWN_THRESHOLD_KEY] = 30
+        d[BED_COOLDOWN_TIMEOUT_KEY] = 60
         return d
 
     def _rm_temp_files(self):
