@@ -250,7 +250,6 @@ class ContinuousprintPlugin(
 
     def clear_bed(self):
         if self._settings.get(["bed_cooldown_enabled"]):
-            # If bed cooldown management is enabled activate cooldown routine
             self.bed_cooldown()
         path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
         self._printer.select_file(path, sd=False, printAfterSelect=True)
