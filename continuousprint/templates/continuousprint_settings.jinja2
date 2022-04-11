@@ -1,6 +1,43 @@
 <h3>Continuous Print Settings</h3>
 
 <form class="form-horizontal">
+	<h5>Bed Cooldown Settings</h5>
+    <p>
+        If enabled, when print in queue is finished OctoPrint will run <b>Bed Cooldown Script</b>,
+        turn the heated bed off and monitor the bed temperature.
+        After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
+        met the Bed clearing routine will continue.
+    </p>
+
+    <div class="control-group">
+        <label class="control-label">Enable Managed Bed Cooldown</label>
+        <div class="controls">
+                <input type=checkbox data-bind="checked: settings.plugins.continuousprint.bed_cooldown_enabled">
+        </div>
+    </div>
+
+    <div id="cooldownSettings">
+        <div class="control-group">
+            <label class="control-label">Bed Cooldown Script</label>
+            <div class="controls">
+                <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_cooldown_script"></textarea>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">Bed Cooldown Threshold  (Celsius)</label>
+            <div class="controls">
+                <textarea rows="1" class="temperature-input" data-bind="value: settings.plugins.continuousprint.bed_cooldown_threshold"></textarea>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label">Bed Cooldown Timeout (Minutes)</label>
+            <div class="controls">
+                <textarea rows="1" class="temperature-input" data-bind="value: settings.plugins.continuousprint.bed_cooldown_timeout"></textarea>
+            </div>
+        </div>
+    </div>
+
   <h3>Basic Scripts</h3>
   <p>
   For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
