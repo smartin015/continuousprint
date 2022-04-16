@@ -1,11 +1,20 @@
 import unittest
 from unittest.mock import MagicMock
 from print_queue import PrintQueue, QueueItem
-from driver import ContinuousPrintDriver
+from driver import ContinuousPrintDriver, Action as DA, Printer as DP
 from mock_settings import MockSettings
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+class Runner():
+  def __init__(self):
+    self.run_finish_script = MagicMock()
+    self.start_print = MagicMock()
+    self.cancel_print = MagicMock()
+    self.clear_bed = MagicMock()
+  
 
 
 def setupTestQueueAndDriver(self, num_complete):
@@ -25,18 +34,11 @@ def setupTestQueueAndDriver(self, num_complete):
     )
     self.d = ContinuousPrintDriver(
         queue=self.q,
-        finish_script_fn=MagicMock(),
-        start_print_fn=MagicMock(),
-        cancel_print_fn=MagicMock(),
-        clear_bed_fn=MagicMock(),
+        script_runner=Runner(),
         logger=logging.getLogger(),
     )
     self.d.set_retry_on_pause(True)
-
-
-def flush(d):
-    while d.pending_actions() > 0:
-        d.on_printer_ready()
+    self.d.action(DA.DEACTIVATE, DP.IDLE)
 
 
 class TestQueueManagerFromInitialState(unittest.TestCase):
@@ -44,155 +46,194 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
         setupTestQueueAndDriver(self, 0)
 
     def test_activate_not_printing(self):
-        self.d.set_active()
-        flush(self.d)
-        self.d.start_print_fn.assert_called_once()
-        self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[0])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE)
+        self.d._runner.start_print.assert_called_once()
+        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[0])
+        self.assertEqual(self.d.state, self.d._state_printing)
 
     def test_activate_already_printing(self):
-        self.d.set_active(printer_ready=False)
-        self.d.start_print_fn.assert_not_called()
+        self.d.action(DA.ACTIVATE, DP.BUSY)
+        self.d.action(DA.TICK, DP.BUSY)
+        self.d._runner.start_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_printing)
 
     def test_events_cause_no_action_when_inactive(self):
         def assert_nocalls():
-            self.d.finish_script_fn.assert_not_called()
-            self.d.start_print_fn.assert_not_called()
+            self.d._runner.run_finish_script.assert_not_called()
+            self.d._runner.start_print.assert_not_called()
 
-        self.d.on_print_success()
-        assert_nocalls()
-        self.d.on_print_failed()
-        assert_nocalls()
-        self.d.on_print_cancelled(initiator=None)
-        assert_nocalls()
-        self.d.on_print_paused(0)
-        assert_nocalls()
-        self.d.on_print_resumed()
-        assert_nocalls()
+        for p in [DP.IDLE, DP.BUSY, DP.PAUSED]:
+          for a in [DA.SUCCESS, DA.FAILURE, DA.TICK, DA.DEACTIVATE, DA.SPAGHETTI]:
+             self.d.action(a, p)
+             assert_nocalls()
+             self.assertEqual(self.d.state, self.d._state_inactive)
 
     def test_completed_print_not_in_queue(self):
-        self.d.set_active(printer_ready=False)
-        self.d.on_print_success()
-        flush(self.d)
+        self.d.action(DA.ACTIVATE, DP.BUSY)
+        self.d.action(DA.SUCCESS, DP.IDLE, "otherprint.gcode") # -> success
+        self.d.action(DA.TICK, DP.IDLE) # -> start_clearing
+
+        self.assertEqual(self.q[0].end_ts, None) # Queue item not completed since print not in queue
+        self.assertEqual(self.q[0].result, None)
+
+        self.d.action(DA.TICK, DP.IDLE) # -> clearing
+        self.d.action(DA.SUCCESS, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
 
         # Non-queue print completion while the driver is active
         # should kick off a new print from the head of the queue
-        self.d.start_print_fn.assert_called_once()
-        self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[0])
-
+        self.d._runner.start_print.assert_called_once()
+        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[0])
+      
     def test_completed_first_print(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.reset_mock()
 
-        self.d.on_print_success()
-        flush(self.d)
-        self.assertEqual(self.d.first_print, False)
-        self.d.clear_bed_fn.assert_called_once()
-        self.d.start_print_fn.assert_called_once()
-        self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[1])
+        self.d._intent = self.q[0].path
+        self.d._cur_path = self.d._intent
 
+        self.d.action(DA.SUCCESS, DP.IDLE, self.d._intent) # -> success
+        self.d.action(DA.TICK, DP.IDLE) # -> start_clearing
+        self.d.action(DA.TICK, DP.IDLE) # -> clearing
+        self.d._runner.clear_bed.assert_called_once()
+        
+        self.d.action(DA.SUCCESS, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.assert_called_once()
+        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[1])
+
+    def test_start_clearing_waits_for_idle(self):
+        self.d.state = self.d._state_start_clearing
+        self.d.action(DA.TICK, DP.BUSY)
+        self.assertEqual(self.d.state, self.d._state_start_clearing)
+        self.d._runner.clear_bed.assert_not_called()
+        self.d.action(DA.TICK, DP.PAUSED)
+        self.assertEqual(self.d.state, self.d._state_start_clearing)
+        self.d._runner.clear_bed.assert_not_called()
 
 class TestQueueManagerPartiallyComplete(unittest.TestCase):
     def setUp(self):
         setupTestQueueAndDriver(self, 1)
 
     def test_success(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.reset_mock()
 
-        self.d.on_print_success()
-        flush(self.d)
-        self.d.start_print_fn.assert_called_once()
-        self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[2])
+        self.d._intent = self.q[1].path
+        self.d._cur_path = self.d._intent
+
+        self.d.action(DA.SUCCESS, DP.IDLE) # -> success
+        self.d.action(DA.TICK, DP.IDLE) # -> start_clearing
+        self.d.action(DA.TICK, DP.IDLE) # -> clearing
+        self.d.action(DA.TICK, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.assert_called_once()
+        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[2])
 
     def test_success_after_queue_prepend_starts_prepended(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.reset_mock()
         n = QueueItem("new", "/new.gco", True)
         self.q.add([n], idx=0)
 
-        self.d.on_print_success()
-        flush(self.d)
-        self.d.start_print_fn.assert_called_once
-        self.assertEqual(self.d.start_print_fn.call_args[0][0], n)
+        self.d._intent = self.q[1].path
+        self.d._cur_path = self.d._intent
+
+        self.d.action(DA.SUCCESS, DP.IDLE) # -> success
+        self.d.action(DA.TICK, DP.IDLE) # -> start_clearing
+        self.d.action(DA.TICK, DP.IDLE) # -> clearing
+        self.d.action(DA.TICK, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.assert_called_once
+        self.assertEqual(self.d._runner.start_print.call_args[0][0], n)
 
     def test_paused_with_spaghetti_early_triggers_cancel(self):
-        self.d.set_active()
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
 
-        self.d.on_print_paused(self.d.retry_threshold_seconds - 1, is_spaghetti=True)
-        flush(self.d)
-        self.d.cancel_print_fn.assert_called_once_with()
+        self.d._elapsed = lambda: 10
+        self.d.action(DA.SPAGHETTI, DP.BUSY) # -> spaghetti_recovery
+        self.d.action(DA.TICK, DP.PAUSED) # -> cancel + failure
+        self.d._runner.cancel_print.assert_called()
+        self.assertEqual(self.d.state, self.d._state_failure)
 
-    def test_paused_manually_early_falls_through(self):
-        self.d.set_active()
+    def test_paused_with_spaghetti_late_waits_for_user(self):
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
 
-        self.d.on_print_paused(self.d.retry_threshold_seconds - 1, is_spaghetti=False)
-        flush(self.d)
-        self.d.cancel_print_fn.assert_not_called()
+        self.d._elapsed = lambda: self.d.retry_threshold_seconds + 1
+        self.d.action(DA.SPAGHETTI, DP.BUSY) # -> printing (ignore spaghetti)
+        self.d.action(DA.TICK, DP.PAUSED) # -> paused
+        self.d._runner.cancel_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_paused)
+
+    def test_paused_manually_early_waits_for_user(self):
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+
+        self.d._elapsed = lambda: 10
+        self.d.action(DA.TICK, DP.PAUSED) # -> paused
+        self.d.action(DA.TICK, DP.PAUSED) # stay in paused state
+        self.d._runner.cancel_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_paused)
+
+    def test_paused_manually_late_waits_for_user(self):
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+
+        self.d._elapsed = lambda: 1000
+        self.d.action(DA.TICK, DP.PAUSED) # -> paused
+        self.d.action(DA.TICK, DP.PAUSED) # stay in paused state
+        self.d._runner.cancel_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_paused)
 
     def test_paused_on_temp_file_falls_through(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
-        self.d.on_print_paused(is_temp_file=True, is_spaghetti=True)
-        self.d.cancel_print_fn.assert_not_called()
-        self.assertEqual(self.d.pending_actions(), 0)
+        self.d.state = self.d._state_clearing # -> clearing
+        self.d.action(DA.TICK, DP.PAUSED)
+        self.d._runner.cancel_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_clearing)
 
-    def test_user_cancelled_sets_inactive_and_fails_print(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
+        self.d.state = self.d._state_finishing # -> finishing
+        self.d.action(DA.TICK, DP.PAUSED) 
+        self.d._runner.cancel_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_finishing)
 
-        self.d.on_print_cancelled(initiator="admin")
-        flush(self.d)
-        self.d.start_print_fn.assert_not_called()
-        self.assertEqual(self.d.active, False)
-        self.assertRegex(self.q[1].result, "^failure.*")
+    def test_user_deactivate_sets_inactive(self):
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.reset_mock()
 
-    def test_cancelled_triggers_retry(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
+        self.d.action(DA.DEACTIVATE, DP.IDLE) # -> inactive
+        self.assertEqual(self.d.state, self.d._state_inactive)
+        self.d._runner.start_print.assert_not_called()
+        self.assertEqual(self.q[1].result, None)
 
-        self.d.on_print_cancelled(initiator=None)
-        flush(self.d)
-        self.d.start_print_fn.assert_called_once()
-        self.assertEqual(self.d.start_print_fn.call_args[0][0], self.q[1])
-        self.assertEqual(self.d.retries, 1)
+    def test_retry_after_failure(self):
+        self.d.state = self.d._state_failure
+        self.d.retries = self.d.max_retries-2
+        self.d.action(DA.TICK, DP.IDLE) # Start clearing
+        self.assertEqual(self.d.retries, self.d.max_retries-1)
+        self.assertEqual(self.d.state, self.d._state_start_clearing)
 
-    def test_set_active_clears_retries(self):
+    def test_activate_clears_retries(self):
         self.d.retries = self.d.max_retries - 1
-        self.d.set_active()
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
         self.assertEqual(self.d.retries, 0)
 
-    def test_cancelled_with_max_retries_sets_inactive(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
-        self.d.retries = self.d.max_retries
+    def test_failure_with_max_retries_sets_inactive(self):
+        self.d.state = self.d._state_failure
+        self.d.retries = self.d.max_retries - 1
+        self.d.action(DA.TICK, DP.IDLE) # -> inactive
+        self.assertEqual(self.d.state, self.d._state_inactive)
 
-        self.d.on_print_cancelled(initiator=None)
-        flush(self.d)
-        self.d.start_print_fn.assert_not_called()
-        self.assertEqual(self.d.active, False)
-
-    def test_paused_late_waits_for_user(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
-
-        self.d.on_print_paused(self.d.retry_threshold_seconds + 1, is_spaghetti=True)
-        self.d.start_print_fn.assert_not_called()
-
-    def test_failure_sets_inactive(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
-
-        self.d.on_print_failed()
-        flush(self.d)
-        self.d.start_print_fn.assert_not_called()
-        self.assertEqual(self.d.active, False)
-
-    def test_resume_sets_status(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
-
-        self.d.on_print_resumed()
-        self.assertTrue("paused" not in self.d.status.lower())
+    def test_resume_from_pause(self):
+        self.d.state = self.d._state_paused
+        self.d.action(DA.TICK, DP.BUSY)
+        self.assertEqual(self.d.state, self.d._state_printing)
 
 
 class TestQueueManagerOnLastPrint(unittest.TestCase):
@@ -200,14 +241,22 @@ class TestQueueManagerOnLastPrint(unittest.TestCase):
         setupTestQueueAndDriver(self, 2)
 
     def test_completed_last_print(self):
-        self.d.set_active()
-        self.d.start_print_fn.reset_mock()
+        self.d.action(DA.ACTIVATE, DP.IDLE) # -> start_print
+        self.d.action(DA.TICK, DP.IDLE) # -> printing
+        self.d._runner.start_print.reset_mock()
 
-        self.d.on_print_success()
-        flush(self.d)
-        self.d.on_print_success(is_finish_script=True)
-        self.d.finish_script_fn.assert_called_once_with()
-        self.assertEqual(self.d.active, False)
+        self.d._intent = self.q[-1].path
+        self.d._cur_path = self.d._intent
+
+        self.d.action(DA.SUCCESS, DP.IDLE, self.d._intent) # -> success
+        self.d.action(DA.TICK, DP.IDLE) # -> start_finishing
+        self.d.action(DA.TICK, DP.IDLE) # -> finishing
+        self.d._runner.run_finish_script.assert_called()
+        self.assertEqual(self.d.state, self.d._state_finishing)
+        
+        self.d.action(DA.TICK, DP.IDLE) # -> inactive
+        self.assertEqual(self.d.state, self.d._state_inactive)
+          
 
 
 if __name__ == "__main__":
