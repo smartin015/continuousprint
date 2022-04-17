@@ -5,6 +5,8 @@ import octoprint.plugin
 import octoprint.util
 import flask
 import json
+import yaml
+import os
 import time
 from io import BytesIO
 from octoprint.server.util.flask import restricted_access
@@ -55,27 +57,24 @@ class ContinuousprintPlugin(
 
     # part of SettingsPlugin
     def get_settings_defaults(self):
+        base = os.path.dirname(__file__)
+        with open(os.path.join(base, "data/printer_profiles.yaml"), "r") as f:
+          self._printer_profiles = yaml.safe_load(f.read())['PrinterProfile']
+        with open(os.path.join(base, "data/gcode_scripts.yaml"), "r") as f:
+          self._gcode_scripts = yaml.safe_load(f.read())['GScript']
+
         d = {}
         d[QUEUE_KEY] = "[]"
-        d[CLEARING_SCRIPT_KEY] = (
-            "M17 ;enable steppers\n"
-            "G91 ; Set relative for lift\n"
-            "G0 Z10 ; lift z by 10\n"
-            "G90 ;back to absolute positioning\n"
-            "M190 R25 ; set bed to 25 and wait for cooldown\n"
-            "G0 X200 Y235 ;move to back corner\n"
-            "G0 X110 Y235 ;move to mid bed aft\n"
-            "G0 Z1 ;come down to 1MM from bed\n"
-            "G0 Y0 ;wipe forward\n"
-            "G0 Y235 ;wipe aft\n"
-            "G28 ; home"
-        )
-        d[FINISHED_SCRIPT_KEY] = (
-            "M18 ; disable steppers\n"
-            "M104 T0 S0 ; extruder heater off\n"
-            "M140 S0 ; heated bed heater off\n"
-            "M300 S880 P300 ; beep to show its finished"
-        )
+        d[CLEARING_SCRIPT_KEY] = ""
+        d[FINISHED_SCRIPT_KEY] = ""
+
+        for s in self._gcode_scripts:
+          name = s['name']
+          gcode = s['gcode']
+          if name == "Pause":
+            d[CLEARING_SCRIPT_KEY] = gcode
+          elif name == "Generic Off":
+            d[FINISHED_SCRIPT_KEY] = gcode
         d[RESTART_MAX_RETRIES_KEY] = 3
         d[RESTART_ON_PAUSE_KEY] = False
         d[RESTART_MAX_TIME_KEY] = 60 * 60
@@ -435,25 +434,15 @@ class ContinuousprintPlugin(
     # part of TemplatePlugin
     def get_template_vars(self):
         return dict(
-            cp_enabled=self._active(),
-            cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
-            cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
-            cp_restart_on_pause_enabled=self._settings.get_boolean(
-                [RESTART_ON_PAUSE_KEY]
-            ),
-            cp_restart_on_pause_max_seconds=self._settings.get_int(
-                [RESTART_MAX_TIME_KEY]
-            ),
-            cp_restart_on_pause_max_restarts=self._settings.get_int(
-                [RESTART_MAX_RETRIES_KEY]
-            ),
+            printer_profiles=self._printer_profiles,
+            gcode_scripts=self._gcode_scripts
         )
 
     def get_template_configs(self):
         return [
             dict(
                 type="settings",
-                custom_bindings=False,
+                custom_bindings=True,
                 template="continuousprint_settings.jinja2",
             ),
             dict(
@@ -474,6 +463,7 @@ class ContinuousprintPlugin(
                 "js/continuousprint_queueset.js",
                 "js/continuousprint_job.js",
                 "js/continuousprint_viewmodel.js",
+                "js/continuousprint_settings.js",
                 "js/continuousprint.js",
             ],
             css=["css/continuousprint.css"],

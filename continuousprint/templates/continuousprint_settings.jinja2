@@ -1,18 +1,65 @@
-<h3>Continuous Print Settings</h3>
+<h3>Continuous Print</h3>
+
+<script type="text/javascript">
+  const CP_PRINTER_PROFILES = {{plugin_continuousprint_printer_profiles|tojson|safe}};
+  const CP_GCODE_SCRIPTS = {{plugin_continuousprint_gcode_scripts|tojson|safe}};
+</script>
 
 <form class="form-horizontal">
+  <h4>Printer Profiles</h4>
+  <p>Load <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">community-contributed</a> bed clearing scripts for your printer:</p>
+  <fieldset>
+    <div class="control-group">
+      <label class="control-label">Manufacturer</label>
+      <div class="controls"> 
+        <select data-bind="foreach: printer_makes, value:selected_make">
+          <option data-bind="text: $data"/>
+        </select>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label">Model</label>
+      <div class="controls"> 
+        <select data-bind="foreach: printer_models, value: selected_model, event:{ change: modelChanged }">
+          <option data-bind="text: $data"/>
+        </select>
+      </div>
+    </div>
+  </fieldset>
+  <p>Click "Save" to keep the changes, or "Close" to discard them.</p>
+
+  <h4>Customize</h4>
+  <p>
+  For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
+  </p>
+
+  <fieldset>
+  <h5>Bed clearing & Finishing</h5>
+    <div class="control-group">
+      <label class="control-label">Bed cleaning script</label>
+      <div class="controls">
+        <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_bed_clearing_script"></textarea>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label">Queue finished script</label>
+      <div class="controls">
+      <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_queue_finished_script"></textarea>
+      </div>
+    </div>
+
 	<h5>Bed Cooldown Settings</h5>
     <p>
         If enabled, when print in queue is finished OctoPrint will run <b>Bed Cooldown Script</b>,
         turn the heated bed off and monitor the bed temperature.
         After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
-        met the Bed clearing routine will continue.
+        met, the bed clearing routine will continue.
     </p>
 
     <div class="control-group">
         <label class="control-label">Enable Managed Bed Cooldown</label>
         <div class="controls">
-                <input type=checkbox data-bind="checked: settings.plugins.continuousprint.bed_cooldown_enabled">
+                <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
         </div>
     </div>
 
@@ -20,50 +67,33 @@
         <div class="control-group">
             <label class="control-label">Bed Cooldown Script</label>
             <div class="controls">
-                <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_cooldown_script"></textarea>
+                <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_bed_cooldown_script"></textarea>
             </div>
         </div>
 
         <div class="control-group">
             <label class="control-label">Bed Cooldown Threshold  (Celsius)</label>
             <div class="controls">
-                <textarea rows="1" class="temperature-input" data-bind="value: settings.plugins.continuousprint.bed_cooldown_threshold"></textarea>
+                <textarea rows="1" class="temperature-input" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_threshold"></textarea>
             </div>
         </div>
         <div class="control-group">
             <label class="control-label">Bed Cooldown Timeout (Minutes)</label>
             <div class="controls">
-                <textarea rows="1" class="temperature-input" data-bind="value: settings.plugins.continuousprint.bed_cooldown_timeout"></textarea>
+                <textarea rows="1" class="temperature-input" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_timeout"></textarea>
             </div>
         </div>
     </div>
 
-  <h3>Basic Scripts</h3>
-  <p>
-  For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
-  </p>
-  <fieldset>
-    <div class="control-group">
-      <label class="control-label">Bed cleaning script</label>
-      <div class="controls">
-        <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_bed_clearing_script"></textarea>
-      </div>
-    </div>
-    <div class="control-group">
-      <label class="control-label">Queue finished script</label>
-      <div class="controls">
-      <textarea rows="8" class="input-block-level" data-bind="value: settings.plugins.continuousprint.cp_queue_finished_script"></textarea>
-      </div>
-    </div>
   </fieldset>
 
   <fieldset>
     <h3>Failure Recovery</h3>
-    <div class="alert" data-bind="hidden: settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+    <div class="alert" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
       <p>Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
       <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
     </div>
-    <div data-bind="visible: settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+    <div data-bind="visible: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
       <p>
         Failure recovery is enabled because <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> is installed.
       </p>
@@ -74,7 +104,7 @@
         <label class="control-label">Retry if started less than</label>
         <div class="controls">
           <div class="input-append">
-            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_seconds"/>
+            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.cp_restart_on_pause_max_seconds"/>
             <span class="add-on">seconds ago</span>
           </div>
         </div>
@@ -83,7 +113,7 @@
         <label class="control-label">Stop the queue after</label>
         <div class="controls">
           <div class="input-append">
-            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.plugins.continuousprint.cp_restart_on_pause_max_restarts"/>
+            <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.cp_restart_on_pause_max_restarts"/>
             <span class="add-on">retries</span>
           </div>
         </div>
