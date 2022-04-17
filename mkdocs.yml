@@ -1,0 +1,28 @@
+site_name: Continuous Print
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: green
+      accent: indigo
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+markdown_extensions:
+  - admonition
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - GCODE Scripting: gcode-scripting.md
+  - Advanced Queuing: advanced-queuing.md
+  - Failure Recovery: failure-recovery.md
+  - Contributing: contributing.md
+  - API: api.md

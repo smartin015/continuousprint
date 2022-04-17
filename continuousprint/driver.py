@@ -160,12 +160,18 @@ class ContinuousPrintDriver:
         self._set_status("Inactive (print failed)")
         self.first_print = True
 
-    def on_print_cancelled(self):
+    def on_print_cancelled(self, initiator):
         self.first_print = True
         if not self.active:
             return
+
         idx = self._cur_idx()
-        if self.retries + 1 < self.max_retries:
+
+        if initiator is not None:
+            self._complete_item(idx, f"failure (user {initiator} cancelled)")
+            self.active = False
+            self._set_status(f"Inactive (print cancelled by user {initiator})")
+        elif self.retries + 1 < self.max_retries:
             self.retries += 1
             self.actions.append(
                 self._begin_next_available_print
@@ -175,14 +181,21 @@ class ContinuousPrintDriver:
             self.active = False
             self._set_status("Inactive (print cancelled with too many retries)")
 
-    def on_print_paused(self, elapsed=None, is_temp_file=False):
-        if not self.active or not self.retry_on_pause or is_temp_file:
+    def on_print_paused(self, elapsed=None, is_temp_file=False, is_spaghetti=False):
+        if (
+            not self.active
+            or not self.retry_on_pause
+            or is_temp_file
+            or not is_spaghetti
+        ):
             self._set_status("Print paused")
             return
 
         elapsed = elapsed or (time.time() - self.q[self._cur_idx()].start_ts)
         if elapsed < self.retry_threshold_seconds:
-            self._set_status("Cancelling print (paused early, likely adhesion failure)")
+            self._set_status(
+                "Cancelling print (spaghetti detected {timeAgo(elapsed)} into print)"
+            )
             self.cancel_print_fn()
             # self.actions.append(self.cancel_print_fn)
         else:

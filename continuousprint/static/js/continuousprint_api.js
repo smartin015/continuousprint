@@ -1,3 +1,5 @@
+// This is an INTERNAL implementation, not to be used for any external integrations with the continuous print plugin.
+// If you see something here you want, open a FR to expose it: https://github.com/smartin015/continuousprint/issues
 class CPAPI {
   BASE = "plugin/continuousprint/"
 

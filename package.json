@@ -5,6 +5,7 @@
   },
   "devDependencies": {
     "jest": "^27.4.7",
-    "knockout": "^3.5.1"
+    "knockout": "^3.5.1",
+    "prettier": "2.6.0"
   }
 }
