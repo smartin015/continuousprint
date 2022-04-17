@@ -55,11 +55,13 @@
         <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
           <div class="accordion-group">
             <div class="accordion-heading">
-
                 <div class="queue-row-container">
                   <i class="fas fa-grip-lines-vertical"></i>
                   <p class="file-name" style="cursor:pointer" data-bind="click: () => $root.setSelected($parentContext.$index, $index), style: { 'font-weight': $root.isActiveItem($parentContext.$index, $index)() ? 'bold': null }">
                     <i class="fa" data-bind="css: $root.isSelected($parentContext.$index, $index)() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+                    <span class="materials" data-bind="visible: materials().length > 0, foreach: materials">
+                      <span class="label" data-bind="text: shortName, style: {'background-color': bgColor, 'color': color}"></span>
+                    </span>
                     <span data-bind="text: name"/>
                   </p>
                   <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.isActiveItem($parentContext.$index, $index)() }">
@@ -72,11 +74,25 @@
                   <div class="total" data-bind="text: items_completed() + '/' + length()"></div>
                   <div class="accordion-heading-button" data-bind="click: $root.remove"><i style="cursor: pointer" class="far fa-trash-alt"></i></div>
                 </div>
+
             </div>
 
             <div class="accordion-body collapse" data-bind="css: {'in': $root.isSelected($parentContext.$index, $index)()}">
               <div class="accordion-inner">
                 <div class="queue-set-list">
+                  <div>Materials:</div>
+                  <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">
+                    <div>
+                      <span data-bind="text: 'E' + $index() + ':'"></span>
+                      <select data-bind="event: {change: (_, evt) => $parent.set_material($index(), evt.target.value)}">
+                        <option>Any</option>
+                        <option value="PLA_000000">Black PLA</option>
+                        <option value="PLA_FF0000">Red PLA</option>
+                        <option value="PLA_FFFFFF">White PLA</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <table>
                     <thead>
                       <th>Name</th>

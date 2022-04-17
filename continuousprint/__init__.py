@@ -30,6 +30,7 @@ BED_COOLDOWN_ENABLED_KEY = "bed_cooldown_enabled"
 BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
 BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
 BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
+MATERIAL_SELECTION_KEY = "cp_material_selection_enabled"
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -105,6 +106,16 @@ class ContinuousprintPlugin(
         else:
             self._settings.set([RESTART_ON_PAUSE_KEY], False)
 
+
+        # SpoolManager plugin isn't required, but does enable material-based printing if it exists
+        self._spool_manager = self._plugin_manager.get_plugin("SpoolManager")
+        if self._spool_manager is not None:
+          self._logger.info(f"SpoolManager found - enabling material selection")
+          self._settings.set([MATERIAL_SELECTION_KEY], True)
+        else:
+          self._settings.set([MATERIAL_SELECTION_KEY], False)
+
+
         self._settings.save()
         self.q = PrintQueue(self._settings, QUEUE_KEY)
         self.d = ContinuousPrintDriver(
@@ -115,6 +126,7 @@ class ContinuousprintPlugin(
             cancel_print_fn=self.cancel_print,
             logger=self._logger,
         )
+
         self._update_driver_settings()
         self._rm_temp_files()
         self.next_pause_is_spaghetti = False

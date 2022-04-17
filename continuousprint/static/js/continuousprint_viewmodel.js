@@ -49,7 +49,8 @@ function CPViewModel(parameters) {
     self.printerState = parameters[0];
     self.loginState = parameters[1];
     self.files = parameters[2];
-    self.settings = parameters[3]; // (smartin015@) IDK why this is a dependency
+    self.printerProfiles = parameters[3];
+    self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
     self.api = parameters[4] || new CPAPI();
 
     // These are used in the jinja template
@@ -190,7 +191,7 @@ function CPViewModel(parameters) {
     });
 
     self._setState = function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] updating jobs:`, state);
+        self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.queue.length})`);
         self._updateJobs(state.queue);
         self.active(state.active);
         self.status(state.status);
