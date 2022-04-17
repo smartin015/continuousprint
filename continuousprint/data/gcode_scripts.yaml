@@ -1,0 +1,64 @@
+GScript:
+  - name: "Sweep Gantry"
+    description: > 
+      This script example assumes a box style printer with a vertical Z axis and a 200mm x 235mm XY build area.
+      It uses the printer's extruder to push the part off the build plate."
+    version: 0.0.1
+    gcode: |
+      M17 ;enable steppers
+      G91 ; Set relative for lift
+      G0 Z10 ; lift z by 10
+      G90 ;back to absolute positioning
+      M190 R25 ; set bed to 25 and wait for cooldown
+      G0 X200 Y235 ;move to back corner
+      G0 X110 Y235 ;move to mid bed aft
+      G0 Z1 ;come down to 1MM from bed
+      G0 Y0 ;wipe forward
+      G0 Y235 ;wipe aft
+      G28 ; home
+  - name: "Advance Belt Short"
+    description: >
+      This script works with a belt printer (specifically, a Creality CR-30). The belt is advanced to move 
+      the print out of the way before starting another print.
+    version: 0.0.1
+    gcode: |
+      M17 ; enable steppers
+      G91 ; Set relative for lift
+      G21 ; Set units to mm
+      G0 Z10 ; advance bed (Z) by 10mm
+      G90 ; back to absolute positioning
+      M104 S0; Set Hot-end to 0C (off)
+      M140 S0; Set bed to 0C (off)
+  - name: "Pause"
+    description: >
+      Use this script if you want to remove the print yourself but use the queue to keep track of your 
+      prints. It uses an @ Command to tell OctoPrint to pause the print. The printer will stay paused 
+      until you press "Resume" on the OctoPrint UI.
+    version: 0.0.1
+    gcode: |
+      M18 ; disable steppers
+      M104 T0 S0 ; extruder heater off
+      M140 S0 ; heated bed heater off
+      @pause ; wait for user input
+  - name: "Generic Off"
+    description: >
+      This is a generic "heaters and motors off" script which should be compatible with most printers.
+    version: 0.0.1
+    gcode: |
+      M18 ; disable steppers
+      M104 T0 S0 ; extruder heater off
+      M140 S0 ; heated bed heater off
+      M300 S880 P300 ; beep to show its finished
+  - name: "Advance Belt Long"
+    description: >
+      The same idea as "Advance Belt Short", but with a longer advancement to roll off all completed prints.
+    version: 0.0.1
+    gcode: |
+      M17 ; enable steppers
+      G91 ; Set relative for lift
+      G21 ; Set units to mm
+      G0 Z300 ; advance bed (Z) to roll off all parts
+      M18 ; Disable steppers
+      G90 ; back to absolute positioning
+      M104 S0; Set Hot-end to 0C (off)
+      M140 S0; Set bed to 0C (off)

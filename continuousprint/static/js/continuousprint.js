@@ -32,4 +32,11 @@ $(function() {
         ],
         elements: ["#tab_plugin_continuousprint"]
     });
+    OCTOPRINT_VIEWMODELS.push({
+        construct: CPSettingsViewModel,
+        dependencies: [
+          "settingsViewModel",
+        ],
+        elements: ["#settings_plugin_continuousprint"]
+    });
 });
