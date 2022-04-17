@@ -20,7 +20,6 @@ from .print_queue import PrintQueue, QueueItem
 from .driver import ContinuousPrintDriver
 
 QUEUE_KEY = "cp_queue"
-PRINTER_PROFILE_KEY = "cp_printer_profile"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished_script"
 TEMP_FILES = dict(
@@ -64,13 +63,9 @@ class ContinuousprintPlugin(
 
         d = {}
         d[QUEUE_KEY] = "[]"
-        d[PRINTER_PROFILE_KEY] = "Generic"
+        d[CLEARING_SCRIPT_KEY] = ""
+        d[FINISHED_SCRIPT_KEY] = ""
 
-        profile = self._printer_profile_manager.get_current()
-        if profile is not None:
-          print("Printer:", profile['model'], "-", profile['name'])
-          print("TODO match profile on default init")
- 
         for s in self._gcode_scripts:
           name = s['name']
           gcode = s['gcode']
