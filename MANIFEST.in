@@ -2,3 +2,4 @@ include README.md
 recursive-include continuousprint/templates *
 recursive-include continuousprint/translations *
 recursive-include continuousprint/static *
+recursive-include continuousprint/data *

@@ -5,6 +5,8 @@ import octoprint.plugin
 import octoprint.util
 import flask
 import json
+import yaml
+import os
 import time
 from io import BytesIO
 from octoprint.server.util.flask import restricted_access
@@ -13,9 +15,11 @@ from octoprint.access.permissions import Permissions, ADMIN_GROUP
 import octoprint.filemanager
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
+from octoprint.util import RepeatedTimer
+
 
 from .print_queue import PrintQueue, QueueItem
-from .driver import ContinuousPrintDriver
+from .driver import ContinuousPrintDriver, Action as DA, Printer as DP
 
 QUEUE_KEY = "cp_queue"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
@@ -54,27 +58,24 @@ class ContinuousprintPlugin(
 
     # part of SettingsPlugin
     def get_settings_defaults(self):
+        base = os.path.dirname(__file__)
+        with open(os.path.join(base, "data/printer_profiles.yaml"), "r") as f:
+          self._printer_profiles = yaml.safe_load(f.read())['PrinterProfile']
+        with open(os.path.join(base, "data/gcode_scripts.yaml"), "r") as f:
+          self._gcode_scripts = yaml.safe_load(f.read())['GScript']
+
         d = {}
         d[QUEUE_KEY] = "[]"
-        d[CLEARING_SCRIPT_KEY] = (
-            "M17 ;enable steppers\n"
-            "G91 ; Set relative for lift\n"
-            "G0 Z10 ; lift z by 10\n"
-            "G90 ;back to absolute positioning\n"
-            "M190 R25 ; set bed to 25 and wait for cooldown\n"
-            "G0 X200 Y235 ;move to back corner\n"
-            "G0 X110 Y235 ;move to mid bed aft\n"
-            "G0 Z1 ;come down to 1MM from bed\n"
-            "G0 Y0 ;wipe forward\n"
-            "G0 Y235 ;wipe aft\n"
-            "G28 ; home"
-        )
-        d[FINISHED_SCRIPT_KEY] = (
-            "M18 ; disable steppers\n"
-            "M104 T0 S0 ; extruder heater off\n"
-            "M140 S0 ; heated bed heater off\n"
-            "M300 S880 P300 ; beep to show its finished"
-        )
+        d[CLEARING_SCRIPT_KEY] = ""
+        d[FINISHED_SCRIPT_KEY] = ""
+
+        for s in self._gcode_scripts:
+          name = s['name']
+          gcode = s['gcode']
+          if name == "Pause":
+            d[CLEARING_SCRIPT_KEY] = gcode
+          elif name == "Generic Off":
+            d[FINISHED_SCRIPT_KEY] = gcode
         d[RESTART_MAX_RETRIES_KEY] = 3
         d[RESTART_ON_PAUSE_KEY] = False
         d[RESTART_MAX_TIME_KEY] = 60 * 60
@@ -83,6 +84,10 @@ class ContinuousprintPlugin(
         d[BED_COOLDOWN_THRESHOLD_KEY] = 30
         d[BED_COOLDOWN_TIMEOUT_KEY] = 60
         return d
+
+    def _active(self):
+        return self.d.state != self.d._state_inactive if hasattr(self, "d") else False
+
 
     def _rm_temp_files(self):
         # Clean up any file references from prior runs
@@ -120,26 +125,40 @@ class ContinuousprintPlugin(
         self.q = PrintQueue(self._settings, QUEUE_KEY)
         self.d = ContinuousPrintDriver(
             queue=self.q,
-            finish_script_fn=self.run_finish_script,
-            clear_bed_fn=self.clear_bed,
-            start_print_fn=self.start_print,
-            cancel_print_fn=self.cancel_print,
+            script_runner=self,
             logger=self._logger,
         )
-
+        self.update(DA.DEACTIVATE) # Initializes and passes printer state
         self._update_driver_settings()
         self._rm_temp_files()
         self.next_pause_is_spaghetti = False
+  
+        # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
+        # timer with a periodic tick ensures that the driver knows what the state of the printer is.
+        self.watchdog = RepeatedTimer(5.0, lambda: self.update(DA.TICK))
+        self.watchdog.start()
         self._logger.info("Continuous Print Plugin started")
+
+    def update(self, a: DA):
+        # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
+        # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
+        # Avoid using payload.get('path') as some events may not express path info.
+        path = self._printer.get_current_job().get("file", {}).get("name")
+        pstate = self._printer.get_state_id() 
+        p = DP.BUSY
+        if pstate == "OPERATIONAL":
+          p = DP.IDLE
+        elif pstate == "PAUSED":
+          p = DP.PAUSED
+
+        if self.d.action(a, p, path):
+          self._msg(type="reload") # Reload UI when new state is added
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
         if not hasattr(self, "d"):  # Ignore any messages arriving before init
             return
 
-        # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
-        # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
-        # Avoid using payload.get('path') as some events may not express path info.
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
         is_finish_script = current_file == TEMP_FILES[FINISHED_SCRIPT_KEY]
@@ -159,23 +178,17 @@ class ContinuousprintPlugin(
                     if self._printer.is_current_file(path, sd=False):
                         return
             self._rm_temp_files()
-        elif (is_current_path or is_finish_script) and event == Events.PRINT_DONE:
-            self.d.on_print_success(is_finish_script)
-            self.paused = False
-            self._msg(type="reload")  # reload UI
-        elif (
-            is_current_path
-            and event == Events.PRINT_FAILED
-            and payload["reason"] != "cancelled"
-        ):
+        elif event == Events.PRINT_DONE:
+            self.update(DA.SUCCESS)
+        elif event == Events.PRINT_FAILED:
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
-            self.d.on_print_failed()
-            self.paused = False
-            self._msg(type="reload")  # reload UI
-        elif is_current_path and event == Events.PRINT_CANCELLED:
-            self.d.on_print_cancelled(initiator=payload.get('user', None))
-            self.paused = False
-            self._msg(type="reload")  # reload UI
+            self.update(DA.FAILURE)
+        elif event == Events.PRINT_CANCELLED:
+            print(payload.get('user'))
+            if payload.get('user') is not None:
+              self.update(DA.DEACTIVATE)
+            else:
+              self.update(DA.TICK)
         elif (
             is_current_path
             and tsd_command is not None
@@ -183,40 +196,20 @@ class ContinuousprintPlugin(
             and payload.get("cmd") == "pause"
             and payload.get("initiator") == "system"
         ):
-            self._logger.info(
-                "Got spaghetti detection event; flagging next pause event for restart"
-            )
-            self.next_pause_is_spaghetti = True
+            self.update(DA.SPAGHETTI)
         elif is_current_path and event == Events.PRINT_PAUSED:
-            self.d.on_print_paused(
-                is_temp_file=(payload["path"] in TEMP_FILES.values()),
-                is_spaghetti=self.next_pause_is_spaghetti,
-            )
-            self.next_pause_is_spaghetti = False
-            self.paused = True
-            self._msg(type="reload")  # reload UI
+            self.update(DA.TICK)
         elif is_current_path and event == Events.PRINT_RESUMED:
-            self.d.on_print_resumed()
-            self.paused = False
-            self._msg(type="reload")
+            self.update(DA.TICK)
         elif (
             event == Events.PRINTER_STATE_CHANGED
             and self._printer.get_state_id() == "OPERATIONAL"
         ):
-            self._msg(type="reload")  # reload UI
+            self.update(DA.TICK)
         elif event == Events.UPDATED_FILES:
             self._msg(type="updatefiles")
         elif event == Events.SETTINGS_UPDATED:
             self._update_driver_settings()
-        # Play out actions until printer no longer in a state where we can run commands
-        # Note that PAUSED state is respected so that gcode can include `@pause` commands.
-        # See https://docs.octoprint.org/en/master/features/atcommands.html
-        while (
-            self._printer.get_state_id() == "OPERATIONAL"
-            and self.d.pending_actions() > 0
-        ):
-            self._logger.warning("on_printer_ready")
-            self.d.on_printer_ready()
 
     def _write_temp_gcode(self, key):
         gcode = self._settings.get([key])
@@ -234,6 +227,7 @@ class ContinuousprintPlugin(
         self._msg("Print Queue Complete", type="complete")
         path = self._write_temp_gcode(FINISHED_SCRIPT_KEY)
         self._printer.select_file(path, sd=False, printAfterSelect=True)
+        return path
 
     def cancel_print(self):
         self._msg("Print cancelled", type="error")
@@ -265,6 +259,7 @@ class ContinuousprintPlugin(
             self.wait_for_bed_cooldown()
         path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
         self._printer.select_file(path, sd=False, printAfterSelect=True)
+        return path
 
     def start_print(self, item, clear_bed=True):
         self._msg("Starting print: " + item.name)
@@ -277,6 +272,7 @@ class ContinuousprintPlugin(
             self._msg("File not found: " + item.path, type="error")
         except InvalidFileType:
             self._msg("File not gcode: " + item.path, type="error")
+        return item.path
 
     def state_json(self, extra_message=None):
         # Values are stored json-serialized, so we need to create a json string and inject them into it
@@ -291,19 +287,18 @@ class ContinuousprintPlugin(
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
         # (e.g. 1.4.1 -> 2.0.0).
         resp = '{"active": %s, "status": "%s", "queue": %s%s}' % (
-            "true" if hasattr(self, "d") and self.d.active else "false",
+            "true" if self._active() else "false",
             "Initializing" if not hasattr(self, "d") else self.d.status,
             q,
             extra_message,
         )
         return resp
 
-    # Listen for resume from printer ("M118 //action:queuego"), only act if actually paused. #from @grtrenchman
+    # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
         if not action == "queuego":
             return
-        if self.paused:
-            self.d.set_active()
+        self.update(DA.ACTIVATE)
 
     # Public API method returning the full state of the plugin in JSON format.
     # See `state_json()` for return values.
@@ -321,10 +316,7 @@ class ContinuousprintPlugin(
         if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-        self.d.set_active(
-            flask.request.form["active"] == "true",
-            printer_ready=(self._printer.get_state_id() == "OPERATIONAL"),
-        )
+        self.update(DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE)
         return self.state_json()
 
     # PRIVATE API method - may change without warning.
@@ -453,25 +445,15 @@ class ContinuousprintPlugin(
     # part of TemplatePlugin
     def get_template_vars(self):
         return dict(
-            cp_enabled=(self.d.active if hasattr(self, "d") else False),
-            cp_bed_clearing_script=self._settings.get([CLEARING_SCRIPT_KEY]),
-            cp_queue_finished=self._settings.get([FINISHED_SCRIPT_KEY]),
-            cp_restart_on_pause_enabled=self._settings.get_boolean(
-                [RESTART_ON_PAUSE_KEY]
-            ),
-            cp_restart_on_pause_max_seconds=self._settings.get_int(
-                [RESTART_MAX_TIME_KEY]
-            ),
-            cp_restart_on_pause_max_restarts=self._settings.get_int(
-                [RESTART_MAX_RETRIES_KEY]
-            ),
+            printer_profiles=self._printer_profiles,
+            gcode_scripts=self._gcode_scripts
         )
 
     def get_template_configs(self):
         return [
             dict(
                 type="settings",
-                custom_bindings=False,
+                custom_bindings=True,
                 template="continuousprint_settings.jinja2",
             ),
             dict(
@@ -492,6 +474,7 @@ class ContinuousprintPlugin(
                 "js/continuousprint_queueset.js",
                 "js/continuousprint_job.js",
                 "js/continuousprint_viewmodel.js",
+                "js/continuousprint_settings.js",
                 "js/continuousprint.js",
             ],
             css=["css/continuousprint.css"],
