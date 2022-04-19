@@ -13,7 +13,7 @@
     
     
       
-        <title>API - Continuous Print</title>
+        <title>Material Selection - Continuous Print</title>
       
     
     
@@ -63,7 +63,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#continuous-print-api" class="md-skip">
+        <a href="#material-selection-beta" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              API
+              Material Selection
             
           </span>
         </div>
@@ -277,11 +277,66 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../material-selection/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Material Selection
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Material Selection
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enabling-material-selection" class="md-nav__link">
+    Enabling material selection
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selecting-materials" class="md-nav__link">
+    Selecting materials
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    Behavior
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -307,59 +362,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          API
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
         API
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#fetch-the-queue-state" class="md-nav__link">
-    Fetch the queue state
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#startstop-managing-the-queue" class="md-nav__link">
-    Start/stop managing the queue
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -391,15 +398,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#fetch-the-queue-state" class="md-nav__link">
-    Fetch the queue state
+  <a href="#enabling-material-selection" class="md-nav__link">
+    Enabling material selection
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#startstop-managing-the-queue" class="md-nav__link">
-    Start/stop managing the queue
+  <a href="#selecting-materials" class="md-nav__link">
+    Selecting materials
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    Behavior
   </a>
   
 </li>
@@ -418,54 +432,25 @@
                 
 
 
-<h1 id="continuous-print-api">Continuous Print API</h1>
-<p>This plugin comes with a basic API to fetch state and start/stop the queue. This allows for other scripts and plugins to interact with the continuous print queue to unlock even more autonomous printing!</p>
+<h1 id="material-selection-beta">Material Selection (BETA)</h1>
+<p>Follow the steps in this guide to support tagging queued items with specific material requirements.</p>
+<h2 id="enabling-material-selection">Enabling material selection</h2>
+<p>Octoprint doesn't know by default what spools of filament you have on hand, nor what's loaded into which hotend of your printer. For this reason, we'll need to install <a href="https://plugins.octoprint.org/plugins/SpoolManager/">SpoolManager</a>, which manages all spool informations and stores it in a database.</p>
+<p>Follow the <a href="https://github.com/OllisGit/OctoPrint-SpoolManager#setup">setup instructions</a> for SpoolManager, then restart OctoPrint. </p>
+<p>To confirm everything's operational, go to <code>Settings &gt; Continuous Print</code> and scroll to "Material Selection". If you see "Material selection is enabled", then you're good to go!</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>Other internal web requests exist than what's presented here, but they aren't for external use and are not guaranteed to be stable.</p>
-<p>If you want additional API features, <a href="https://github.com/smartin015/continuousprint/issues/new?template=feature_request.md">please submit a feature request</a>.</p>
+<p>Continuous Print only knows about the materials that you've defined in SpoolManager. Be sure to add a few spools before trying to select materials, or else you won't see any options available.</p>
 </div>
-<div class="admonition tip">
-<p class="admonition-title">Tip: Usage Examples</p>
-<p>See <a href="https://github.com/smartin015/continuousprint/tree/master/api_examples"><code>api_examples/</code></a> for reference implementations in different languages.</p>
-</div>
-<h2 id="fetch-the-queue-state">Fetch the queue state</h2>
-<p><strong>Request</strong></p>
-<p><strong><code>HTTP GET http://printer:5000/plugin/continuousprint/state</code></strong></p>
-<p>Returns the current internal state of the printer as a JSON string. List entries within <code>queue</code> may include fields which are not listed here - those
-fields may be subject to change without notice, so be wary of depending on them.</p>
-<p><strong>Response</strong></p>
-<pre><code>{
-  &quot;active&quot;: true/false,
-  &quot;status&quot;: string,
-  &quot;queue&quot;: [
-    {
-      &quot;name&quot;: string,
-      &quot;path&quot;: string,
-      &quot;sd&quot;: bool
-      &quot;job&quot;: string,
-      &quot;run&quot;: number
-      &quot;start_ts&quot;: null | number (seconds),
-      &quot;end_ts&quot;: null | number (seconds),
-      &quot;result&quot;: string (todo specific stirngs),
-      &quot;retries&quot;: number
-    },
-    ...
-  ]
-}
-</code></pre>
-<h2 id="startstop-managing-the-queue">Start/stop managing the queue</h2>
-<p><strong>Request</strong></p>
-<p><strong><code>HTTP POST http://printer:5000/plugin/continuousprint/set_active</code></strong></p>
-<p>Payload: <code>active=true</code> or <code>active=false</code></p>
-<p>This starts and stops continuous print management of the printer.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>If <code>active=false</code> is sent, the plugin will stop managing the queue <strong>but it will not stop any currently active print</strong>. This must be done separately.</p>
-<p>See <a href="https://docs.octoprint.org/en/master/api/job.html#issue-a-job-command">the OctoPrint REST API</a> for additional print job management options which include cancelling active prints.</p>
-</div>
-<p><strong>Response</strong></p>
-<p>Same as <code>/state</code> above</p>
+<h2 id="selecting-materials">Selecting materials</h2>
+<p>When you add a new print file to the queue, it assumes nothing about material by default - any material type and color will be used to print it.</p>
+<p>Materials are implemented at the level of Sets (see <a href="https://smartin015.github.io/continuousprint/getting-started/#use-jobs-to-group-your-print-files">here</a> for definition). If you want a set to print in a certain color or material, click the triangle next to its name. If material selection is enabled (as above), you should see drop-down boxes for each extruder your printer has. </p>
+<p>Select the desired materials for your desired hotends (called "tools" in OctoPrint parlance). If you leave a tool empty, it's considered unconstrained - any material will do.</p>
+<p>As you select materials, you'll see labels appear next to the name of the set. These help indicate at a glance what sets are constrained, and how. You can hover over individual labels to see more details on what material is specified.</p>
+<p><img alt="Sample image of material selection" src="../cpq_material_selection.png" /></p>
+<h2 id="behavior">Behavior</h2>
+<p>When the print queue reaches a set with a specific material selected, it will wait to start the set until you select a matching spool via SpoolManager for every tool with a specified material.</p>
+<p>Note that the material (e.g. "PLA") and the color are all that's matched. If for instance you have more than one spool of black PLA, selecting any of these spools in SpoolManager is sufficient if the print requires black PLA.</p>
 
               
             </article>
@@ -479,7 +464,7 @@ fields may be subject to change without notice, so be wary of depending on them.
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../contributing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Contributing" rel="prev">
+        <a href="../failure-recovery/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Failure Recovery" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -488,11 +473,26 @@ fields may be subject to change without notice, so be wary of depending on them.
               <span class="md-footer__direction">
                 Previous
               </span>
-              Contributing
+              Failure Recovery
             </div>
           </div>
         </a>
       
+      
+        
+        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Contributing
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
       
     </nav>
   

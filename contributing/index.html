@@ -277,6 +277,21 @@
 
   
   
+  
+    <li class="md-nav__item">
+      <a href="../material-selection/" class="md-nav__link">
+        Material Selection
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
     
   
   
@@ -356,6 +371,13 @@
         <li class="md-nav__item">
   <a href="#4-install-a-dev-version-on-octopi" class="md-nav__link">
     4. Install a dev version on OctoPi
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-submit-a-pull-request" class="md-nav__link">
+    5. Submit a pull request
   </a>
   
 </li>
@@ -465,6 +487,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#5-submit-a-pull-request" class="md-nav__link">
+    5. Submit a pull request
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#tips-and-tricks" class="md-nav__link">
     Tips and Tricks
   </a>
@@ -503,6 +532,7 @@ pip install -e .
 <p>Perform this step <strong>in a different terminal</strong> - NOT using the venv we set up for OctoPrint. The
 dev dependencies are known to conflict with OctoPrint's dependencies and can break your OctoPrint installation.</p>
 </div>
+<p>It is recommended to <a href="https://docs.github.com/en/get-started/quickstart/fork-a-repo">fork</a> this repository so that it's easier to submit your changes back to the main repo later (see "Submit a pull request" below).</p>
 <pre><code>git clone https://github.com/smartin015/continuousprint.git
 cd continuousprint
 pip install -r dev-dependencies.txt
@@ -543,6 +573,15 @@ yarn run test
 <li><code>cd continuousprint &amp;&amp; ~/oprint/bin/python3 setup.py install</code></li>
 </ol>
 <p>Note that we're using the bundled version of python3 that comes with octoprint, <strong>NOT</strong> the system installed python3. If you try the latter, it'll give an error that sounds like octoprint isn't installed.</p>
+<h2 id="5-submit-a-pull-request">5. Submit a pull request</h2>
+<p>When you've made and tested your changes, follow the remaining instructions for <a href="https://docs.github.com/en/get-started/quickstart/contributing-to-projects">contributing to projects</a> to create a pull request. </p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>New pull requests must be submitted to the <code>rc</code> branch, <strong>not to the <code>master</code> branch</strong>. </p>
+<p>Additonally, the <a href="https://github.com/smartin015/continuousprint/blob/rc/setup.py#L17">plugin version line</a> in <code>setup.py</code> <strong>must have an incremented <code>rc</code> number</strong> (e.g. <code>1.5.0rc2</code> -&gt; <code>1.5.0rc3</code>, <code>1.6.1</code> -&gt; <code>1.6.2rc1</code>).</p>
+<p>This allows users to test the "release candidate" and shake out any bugs before everyone receives the change.</p>
+</div>
+<p>You should receive a review within a day or so - if you haven't heard back in a week or more, <a href="https://github.com/smartin015/continuousprint/blob/master/setup.py#L27">email the plugin author</a>.</p>
 <h2 id="tips-and-tricks">Tips and Tricks</h2>
 <p>This is a collection of random tidbits intended to help you get your bearings.</p>
 <ul>
@@ -576,7 +615,7 @@ yarn run test
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../failure-recovery/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Failure Recovery" rel="prev">
+        <a href="../material-selection/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Material Selection" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -585,7 +624,7 @@ yarn run test
               <span class="md-footer__direction">
                 Previous
               </span>
-              Failure Recovery
+              Material Selection
             </div>
           </div>
         </a>
