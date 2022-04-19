@@ -129,6 +129,11 @@
   font-weight: italic;
   opacity: 0.7;
 }
+#tab_plugin_continuousprint .hint {
+  font-weight: italic;
+  font-size: 85%;
+  opacity: 0.7;
+}
 #tab_plugin_continuousprint #queue_sets.empty::before {
   content: "Hint: Click the + button on a file, or drag a queue item here";
   font-weight: italic;

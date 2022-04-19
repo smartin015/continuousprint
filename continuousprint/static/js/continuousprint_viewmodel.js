@@ -60,11 +60,8 @@ function CPViewModel(parameters) {
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
 
-    try {
-
     self.materials = ko.observable([]);
     self.api.getSpoolManagerState(function(resp) {
-      console.log(resp);
       let result = {};
       for (let spool of resp.allSpools) {
         let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
@@ -72,9 +69,6 @@ function CPViewModel(parameters) {
       }
       self.materials(Object.values(result));
     });
-
-    } catch (e) { console.error(e);}
-
 
     self.isSelected = function(j=null, q=null) {
       j = self._resolve(j);

@@ -83,6 +83,7 @@ class ContinuousprintPlugin(
         d[BED_COOLDOWN_SCRIPT_KEY] = "; Put script to run before bed cools here\n"
         d[BED_COOLDOWN_THRESHOLD_KEY] = 30
         d[BED_COOLDOWN_TIMEOUT_KEY] = 60
+        d[MATERIAL_SELECTION_KEY] = False
         return d
 
     def _active(self):
