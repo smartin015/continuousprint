@@ -45,11 +45,15 @@ class ContinuousPrintDriver:
         self._runner = script_runner
         self._intent = None # Intended file path
         self._update_ui = False
+        self._cur_path = None
+        self._cur_materials = []
 
-    def action(self, a: Action, p: Printer, path: str=None):
-      self._logger.debug(f"{a.name}, {p.name}, path={path}")
+    def action(self, a: Action, p: Printer, path: str=None, materials: list=[]):
+      self._logger.debug(f"{a.name}, {p.name}, path={path}, materials={materials}")
       if path is not None:
         self._cur_path = path
+      if len(materials) > 0:
+        self._cur_materials = materials
       nxt = self.state(a, p)
       if nxt is not None:
         self._logger.info(f"{self.state.__name__} -> {nxt.__name__}")
@@ -90,6 +94,16 @@ class ContinuousPrintDriver:
           self._set_status("Waiting for printer to be ready")
           return
 
+      # Block until we have the right materials loaded (if required)
+      item = self.q[self._next_available_idx()]
+      for i, im in enumerate(item.materials):
+        if im is None: # No constraint
+          continue
+        cur = self._cur_materials[i] if i < len(self._cur_materials) else None
+        if im != cur:
+          self._set_status(f"Waiting for spool {im} in tool {i} (currently: {cur})")
+          return
+
       # The next print may not be the *immediately* next print
       # e.g. if we skip over a print or start mid-print
       idx = self._next_available_idx()
@@ -103,7 +117,7 @@ class ContinuousPrintDriver:
           return self._state_printing
       else:
           return self._state_inactive
-          
+
 
     def _elapsed(self):
       return (time.time() - self.q[self._cur_idx()].start_ts)

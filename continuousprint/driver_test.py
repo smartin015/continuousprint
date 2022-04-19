@@ -17,7 +17,7 @@ class Runner():
   
 
 
-def setupTestQueueAndDriver(self, num_complete):
+def setupTestQueueAndDriver(self, num_complete=0):
     self.s = MockSettings("q")
     self.q = PrintQueue(self.s, "q")
     self.q.assign(
@@ -41,7 +41,7 @@ def setupTestQueueAndDriver(self, num_complete):
     self.d.action(DA.DEACTIVATE, DP.IDLE)
 
 
-class TestQueueManagerFromInitialState(unittest.TestCase):
+class TestFromInitialState(unittest.TestCase):
     def setUp(self):
         setupTestQueueAndDriver(self, 0)
 
@@ -113,7 +113,7 @@ class TestQueueManagerFromInitialState(unittest.TestCase):
         self.assertEqual(self.d.state, self.d._state_start_clearing)
         self.d._runner.clear_bed.assert_not_called()
 
-class TestQueueManagerPartiallyComplete(unittest.TestCase):
+class TestPartiallyComplete(unittest.TestCase):
     def setUp(self):
         setupTestQueueAndDriver(self, 1)
 
@@ -236,7 +236,7 @@ class TestQueueManagerPartiallyComplete(unittest.TestCase):
         self.assertEqual(self.d.state, self.d._state_printing)
 
 
-class TestQueueManagerOnLastPrint(unittest.TestCase):
+class TestOnLastPrint(unittest.TestCase):
     def setUp(self):
         setupTestQueueAndDriver(self, 2)
 
@@ -257,7 +257,70 @@ class TestQueueManagerOnLastPrint(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE) # -> inactive
         self.assertEqual(self.d.state, self.d._state_inactive)
           
+class TestMaterialConstraints(unittest.TestCase):
+    def setUp(self):
+        setupTestQueueAndDriver(self)
 
+    def _setItemMaterials(self, m):
+        self.q.assign([
+              QueueItem("foo", "/foo.gcode", True, materials=m)
+          ])
+    
+    def test_empty(self):
+        self._setItemMaterials([])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE)
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state, self.d._state_printing)
+
+    def test_none(self):
+        self._setItemMaterials([None])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE)
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state, self.d._state_printing)
+
+    def test_tool1mat_none(self):
+        self._setItemMaterials(["tool1mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE)
+        self.d._runner.start_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_start_print)
+
+    def test_tool1mat_wrong(self):
+        self._setItemMaterials(["tool1mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE, materials=["tool0bad"])
+        self.d._runner.start_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_start_print)
+
+    def test_tool1mat_ok(self):
+        self._setItemMaterials(["tool1mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE, materials=["tool1mat"])
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state, self.d._state_printing)
+
+    def test_tool1mat_ok(self):
+        self._setItemMaterials([None, "tool2mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE, materials=[None, "tool2mat"])
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state, self.d._state_printing)
+
+    def test_tool1mat_tool2mat_ok(self):
+        self._setItemMaterials(["tool1mat", "tool2mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE, materials=["tool1mat", "tool2mat"])
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state, self.d._state_printing)
+
+    def test_tool1mat_tool2mat_reversed(self):
+        self._setItemMaterials(["tool1mat", "tool2mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.TICK, DP.IDLE, materials=["tool2mat", "tool1mat"])
+        self.d._runner.start_print.assert_not_called()
+        self.assertEqual(self.d.state, self.d._state_start_print)
 
 if __name__ == "__main__":
     unittest.main()

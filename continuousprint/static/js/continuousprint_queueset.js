@@ -56,7 +56,7 @@ function CPQueueSet(items) {
       mats = mats.materials()
     }
     for (let i of mats) {
-      if (i === null || i === "Any") {
+      if (i === null || i === "") {
         result.push({
           title: "any",
           shortName: " ",

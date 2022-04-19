@@ -52,7 +52,7 @@
 
     <div class="accordion-body collapse in">
       <div class="accordion-inner">
-        <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
+        <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, as: 'queueset', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
           <div class="accordion-group">
             <div class="accordion-heading">
                 <div class="queue-row-container">
@@ -84,7 +84,7 @@
                   <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">
                     <div>
                       <span data-bind="text: 'E' + $index() + ':'"></span>
-                      <select data-bind="event: {change: (_, evt) => $root.setMaterial($parent, $index(), evt.target.value)}">
+                      <select data-bind="value: (queueset.materials()[$index()] || {}).key, event: {change: (_, evt) => $root.setMaterial($parent, $index(), evt.target.value)}">
                         <option key=""></option>
                         <!-- ko foreach: $root.materials -->
                         <option data-bind="value: value, text: text"></option>

@@ -113,13 +113,15 @@ class ContinuousprintPlugin(
 
 
         # SpoolManager plugin isn't required, but does enable material-based printing if it exists
-        self._spool_manager = self._plugin_manager.get_plugin("SpoolManager")
-        if self._spool_manager is not None:
+        # Code based loosely on https://github.com/OllisGit/OctoPrint-PrintJobHistory/ (see _getPluginInformation)
+        smplugin = self._plugin_manager.plugins.get("SpoolManager")
+        if smplugin is not None and smplugin.enabled:
+          self._spool_manager = smplugin.implementation
           self._logger.info(f"SpoolManager found - enabling material selection")
           self._settings.set([MATERIAL_SELECTION_KEY], True)
         else:
+          self._spool_manager = None
           self._settings.set([MATERIAL_SELECTION_KEY], False)
-
 
         self._settings.save()
         self.q = PrintQueue(self._settings, QUEUE_KEY)
@@ -151,8 +153,16 @@ class ContinuousprintPlugin(
         elif pstate == "PAUSED":
           p = DP.PAUSED
 
-        if self.d.action(a, p, path):
+        materials = []
+        if self._spool_manager is not None:
+          # We need *all* selected spools for all tools, so we must look it up from the plugin itself
+          # (event payload also excludes color hex string which is needed for our identifiers)
+          materials = self._spool_manager.api_getSelectedSpoolInformations()
+          materials = [f"{m['material']}_{m['colorName']}_{m['color']}" if m is not None else None for m in materials]
+
+        if self.d.action(a, p, path, materials):
           self._msg(type="reload") # Reload UI when new state is added
+
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -163,10 +173,18 @@ class ContinuousprintPlugin(
         is_current_path = current_file == self.d.current_path()
         is_finish_script = current_file == TEMP_FILES[FINISHED_SCRIPT_KEY]
 
+        # Try to fetch plugin-specific events, defaulting to None otherwise
+
         # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
-        # try to fetch the attribute but default to None
         tsd_command = getattr(
             octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+        )
+        # This event is only defined when OctoPrint-SpoolManager plugin is installed.
+        spool_selected = getattr(
+            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_SELECTED", None
+        )
+        spool_deselected = getattr(
+            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
         )
 
         if event == Events.METADATA_ANALYSIS_FINISHED:
@@ -197,6 +215,10 @@ class ContinuousprintPlugin(
             and payload.get("initiator") == "system"
         ):
             self.update(DA.SPAGHETTI)
+        elif (spool_selected is not None and event == spool_selected):
+            self.update(DA.TICK)
+        elif (spool_deselected is not None and event == spool_deselected):
+            self.update(DA.TICK)
         elif is_current_path and event == Events.PRINT_PAUSED:
             self.update(DA.TICK)
         elif is_current_path and event == Events.PRINT_RESUMED:
