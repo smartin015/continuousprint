@@ -34,6 +34,8 @@ BED_COOLDOWN_ENABLED_KEY = "bed_cooldown_enabled"
 BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
 BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
 BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
+MATERIAL_SELECTION_KEY = "cp_material_selection_enabled"
+
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -59,9 +61,9 @@ class ContinuousprintPlugin(
     def get_settings_defaults(self):
         base = os.path.dirname(__file__)
         with open(os.path.join(base, "data/printer_profiles.yaml"), "r") as f:
-          self._printer_profiles = yaml.safe_load(f.read())['PrinterProfile']
+            self._printer_profiles = yaml.safe_load(f.read())["PrinterProfile"]
         with open(os.path.join(base, "data/gcode_scripts.yaml"), "r") as f:
-          self._gcode_scripts = yaml.safe_load(f.read())['GScript']
+            self._gcode_scripts = yaml.safe_load(f.read())["GScript"]
 
         d = {}
         d[QUEUE_KEY] = "[]"
@@ -69,12 +71,12 @@ class ContinuousprintPlugin(
         d[FINISHED_SCRIPT_KEY] = ""
 
         for s in self._gcode_scripts:
-          name = s['name']
-          gcode = s['gcode']
-          if name == "Pause":
-            d[CLEARING_SCRIPT_KEY] = gcode
-          elif name == "Generic Off":
-            d[FINISHED_SCRIPT_KEY] = gcode
+            name = s["name"]
+            gcode = s["gcode"]
+            if name == "Pause":
+                d[CLEARING_SCRIPT_KEY] = gcode
+            elif name == "Generic Off":
+                d[FINISHED_SCRIPT_KEY] = gcode
         d[RESTART_MAX_RETRIES_KEY] = 3
         d[RESTART_ON_PAUSE_KEY] = False
         d[RESTART_MAX_TIME_KEY] = 60 * 60
@@ -82,11 +84,11 @@ class ContinuousprintPlugin(
         d[BED_COOLDOWN_SCRIPT_KEY] = "; Put script to run before bed cools here\n"
         d[BED_COOLDOWN_THRESHOLD_KEY] = 30
         d[BED_COOLDOWN_TIMEOUT_KEY] = 60
+        d[MATERIAL_SELECTION_KEY] = False
         return d
 
     def _active(self):
         return self.d.state != self.d._state_inactive if hasattr(self, "d") else False
-
 
     def _rm_temp_files(self):
         # Clean up any file references from prior runs
@@ -110,6 +112,17 @@ class ContinuousprintPlugin(
         else:
             self._settings.set([RESTART_ON_PAUSE_KEY], False)
 
+        # SpoolManager plugin isn't required, but does enable material-based printing if it exists
+        # Code based loosely on https://github.com/OllisGit/OctoPrint-PrintJobHistory/ (see _getPluginInformation)
+        smplugin = self._plugin_manager.plugins.get("SpoolManager")
+        if smplugin is not None and smplugin.enabled:
+            self._spool_manager = smplugin.implementation
+            self._logger.info("SpoolManager found - enabling material selection")
+            self._settings.set([MATERIAL_SELECTION_KEY], True)
+        else:
+            self._spool_manager = None
+            self._settings.set([MATERIAL_SELECTION_KEY], False)
+
         self._settings.save()
         self.q = PrintQueue(self._settings, QUEUE_KEY)
         self.d = ContinuousPrintDriver(
@@ -117,11 +130,11 @@ class ContinuousprintPlugin(
             script_runner=self,
             logger=self._logger,
         )
-        self.update(DA.DEACTIVATE) # Initializes and passes printer state
+        self.update(DA.DEACTIVATE)  # Initializes and passes printer state
         self._update_driver_settings()
         self._rm_temp_files()
         self.next_pause_is_spaghetti = False
-  
+
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
         # timer with a periodic tick ensures that the driver knows what the state of the printer is.
         self.watchdog = RepeatedTimer(5.0, lambda: self.update(DA.TICK))
@@ -133,15 +146,27 @@ class ContinuousprintPlugin(
         # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
         # Avoid using payload.get('path') as some events may not express path info.
         path = self._printer.get_current_job().get("file", {}).get("name")
-        pstate = self._printer.get_state_id() 
+        pstate = self._printer.get_state_id()
         p = DP.BUSY
         if pstate == "OPERATIONAL":
-          p = DP.IDLE
+            p = DP.IDLE
         elif pstate == "PAUSED":
-          p = DP.PAUSED
+            p = DP.PAUSED
 
-        if self.d.action(a, p, path):
-          self._msg(type="reload") # Reload UI when new state is added
+        materials = []
+        if self._spool_manager is not None:
+            # We need *all* selected spools for all tools, so we must look it up from the plugin itself
+            # (event payload also excludes color hex string which is needed for our identifiers)
+            materials = self._spool_manager.api_getSelectedSpoolInformations()
+            materials = [
+                f"{m['material']}_{m['colorName']}_{m['color']}"
+                if m is not None
+                else None
+                for m in materials
+            ]
+
+        if self.d.action(a, p, path, materials):
+            self._msg(type="reload")  # Reload UI when new state is added
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -150,12 +175,19 @@ class ContinuousprintPlugin(
 
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
-        is_finish_script = current_file == TEMP_FILES[FINISHED_SCRIPT_KEY]
+
+        # Try to fetch plugin-specific events, defaulting to None otherwise
 
         # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
-        # try to fetch the attribute but default to None
         tsd_command = getattr(
             octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+        )
+        # This event is only defined when OctoPrint-SpoolManager plugin is installed.
+        spool_selected = getattr(
+            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_SELECTED", None
+        )
+        spool_deselected = getattr(
+            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
         )
 
         if event == Events.METADATA_ANALYSIS_FINISHED:
@@ -173,11 +205,11 @@ class ContinuousprintPlugin(
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
             self.update(DA.FAILURE)
         elif event == Events.PRINT_CANCELLED:
-            print(payload.get('user'))
-            if payload.get('user') is not None:
-              self.update(DA.DEACTIVATE)
+            print(payload.get("user"))
+            if payload.get("user") is not None:
+                self.update(DA.DEACTIVATE)
             else:
-              self.update(DA.TICK)
+                self.update(DA.TICK)
         elif (
             is_current_path
             and tsd_command is not None
@@ -186,6 +218,10 @@ class ContinuousprintPlugin(
             and payload.get("initiator") == "system"
         ):
             self.update(DA.SPAGHETTI)
+        elif spool_selected is not None and event == spool_selected:
+            self.update(DA.TICK)
+        elif spool_deselected is not None and event == spool_deselected:
+            self.update(DA.TICK)
         elif is_current_path and event == Events.PRINT_PAUSED:
             self.update(DA.TICK)
         elif is_current_path and event == Events.PRINT_RESUMED:
@@ -230,7 +266,9 @@ class ContinuousprintPlugin(
         self._printer.set_temperature("bed", 0)  # turn bed off
         start_time = time.time()
 
-        while (time.time() - start_time) <= (60 * float(self._settings.get(["bed_cooldown_timeout"]))):  # timeout converted to seconds
+        while (time.time() - start_time) <= (
+            60 * float(self._settings.get(["bed_cooldown_timeout"]))
+        ):  # timeout converted to seconds
             bed_temp = self._printer.get_current_temperatures()["bed"]["actual"]
             if bed_temp <= float(self._settings.get(["bed_cooldown_threshold"])):
                 self._logger.info(
@@ -305,7 +343,9 @@ class ContinuousprintPlugin(
         if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-        self.update(DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE)
+        self.update(
+            DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
+        )
         return self.state_json()
 
     # PRIVATE API method - may change without warning.
@@ -346,6 +386,7 @@ class ContinuousprintPlugin(
                     path=i["path"],
                     sd=i["sd"],
                     job=i["job"],
+                    materials=i["materials"],
                     run=i["run"],
                     start_ts=i.get("start_ts"),
                     end_ts=i.get("end_ts"),
@@ -434,8 +475,7 @@ class ContinuousprintPlugin(
     # part of TemplatePlugin
     def get_template_vars(self):
         return dict(
-            printer_profiles=self._printer_profiles,
-            gcode_scripts=self._gcode_scripts
+            printer_profiles=self._printer_profiles, gcode_scripts=self._gcode_scripts
         )
 
     def get_template_configs(self):

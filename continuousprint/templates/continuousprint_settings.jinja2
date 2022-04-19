@@ -11,7 +11,7 @@
   <fieldset>
     <div class="control-group">
       <label class="control-label">Manufacturer</label>
-      <div class="controls"> 
+      <div class="controls">
         <select data-bind="foreach: printer_makes, value:selected_make">
           <option data-bind="text: $data"/>
         </select>
@@ -19,7 +19,7 @@
     </div>
     <div class="control-group">
       <label class="control-label">Model</label>
-      <div class="controls"> 
+      <div class="controls">
         <select data-bind="foreach: printer_models, value: selected_model, event:{ change: modelChanged }">
           <option data-bind="text: $data"/>
         </select>
@@ -118,6 +118,22 @@
           </div>
         </div>
       </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <h3>Material Selection</h3>
+    <div class="alert" data-bind="hidden: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
+      <p>Material selection requires <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a>, but the plugin does not appear to be installed or enabled.<p>
+      <p>Read more about this feature in the <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">Material Selection guide</a>.</p>
+    </div>
+    <div data-bind="visible: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
+      <p>
+        Material selection is enabled because <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a> is installed and enabled.
+      </p>
+      <p>
+        Read more about material selection in the <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">Material Selection guide</a>.
+      </p>
     </div>
   </fieldset>
 </form>

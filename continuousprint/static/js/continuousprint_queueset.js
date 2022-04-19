@@ -31,6 +31,53 @@ function CPQueueSet(items) {
     }
     return false;
   });
+
+  self._textColorFromBackground = function(rrggbb) {
+    // https://stackoverflow.com/a/12043228
+    var rgb = parseInt(rrggbb.substr(1), 16);   // convert rrggbb to decimal
+    var r = (rgb >> 16) & 0xff;  // extract red
+    var g = (rgb >>  8) & 0xff;  // extract green
+    var b = (rgb >>  0) & 0xff;  // extract blue
+    var luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
+    return (luma >= 128) ? "#000000" : "#FFFFFF";
+  }
+  self._materialShortName = function(m) {
+    m = m.trim().toUpperCase();
+    if (m === "PETG") {
+      return "G";
+    }
+    return m[0];
+  }
+
+  self.materials = ko.computed(function() {
+    let result = [];
+    let mats = self.items()[0];
+    if (mats !== undefined) {
+      mats = mats.materials()
+    }
+    for (let i of mats) {
+      if (i === null || i === "") {
+        result.push({
+          title: "any",
+          shortName: " ",
+          color: "transparent",
+          bgColor: "transparent",
+          key: i,
+        });
+        continue;
+      }
+      let split = i.split("_");
+      let bg = split[2] || "";
+      result.push({
+        title: i.replaceAll("_", " "),
+        shortName: self._materialShortName(split[0]),
+        color: self._textColorFromBackground(bg),
+        bgColor: bg,
+        key: i,
+      });
+    }
+    return result;
+  });
   self.length = ko.computed(function() {return self.items().length;});
   self.name = ko.computed(function() {return self.items()[0].name;});
   self.count = ko.computed(function() {
@@ -124,6 +171,18 @@ function CPQueueSet(items) {
       }
       self.items(items);
     }
+  }
+  self.set_material = function(t, v) {
+    const items = self.items();
+    for (let i of items) {
+      let mats = i.materials();
+      while (t >= mats.length) {
+        mats.push(null);
+      }
+      mats[t] = v;
+      i.materials(mats);
+    }
+    self.items(items);
   }
 }
 

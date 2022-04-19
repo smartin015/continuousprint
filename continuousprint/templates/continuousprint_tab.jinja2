@@ -52,14 +52,16 @@
 
     <div class="accordion-body collapse in">
       <div class="accordion-inner">
-        <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
+        <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, as: 'queueset', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
           <div class="accordion-group">
             <div class="accordion-heading">
-
                 <div class="queue-row-container">
                   <i class="fas fa-grip-lines-vertical"></i>
                   <p class="file-name" style="cursor:pointer" data-bind="click: () => $root.setSelected($parentContext.$index, $index), style: { 'font-weight': $root.isActiveItem($parentContext.$index, $index)() ? 'bold': null }">
                     <i class="fa" data-bind="css: $root.isSelected($parentContext.$index, $index)() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+                    <span class="materials" data-bind="visible: materials().length > 0, foreach: materials">
+                      <span class="label" data-bind="attr: {title: title}, text: shortName, style: {'background-color': bgColor, 'color': color}"></span>
+                    </span>
                     <span data-bind="text: name"/>
                   </p>
                   <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.isActiveItem($parentContext.$index, $index)() }">
@@ -72,11 +74,29 @@
                   <div class="total" data-bind="text: items_completed() + '/' + length()"></div>
                   <div class="accordion-heading-button" data-bind="click: $root.remove"><i style="cursor: pointer" class="far fa-trash-alt"></i></div>
                 </div>
+
             </div>
 
             <div class="accordion-body collapse" data-bind="css: {'in': $root.isSelected($parentContext.$index, $index)()}">
               <div class="accordion-inner">
                 <div class="queue-set-list">
+                  <div data-bind="visible: $root.materials().length > 0">
+                    <div>Materials:</div>
+                    <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">
+                      <div>
+                        <span data-bind="text: '' + $index() + ':'"></span>
+                        <select data-bind="value: (queueset.materials()[$index()] || {}).key, event: {change: (_, evt) => $root.setMaterial($parent, $index(), evt.target.value)}">
+                          <option key=""></option>
+                          <!-- ko foreach: $root.materials -->
+                          <option data-bind="value: value, text: text"></option>
+                          <!-- /ko -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="hint" data-bind="hidden: $root.materials().length > 0">
+                    Hint: Install SpoolManager, add spools, then reload the page to select material types.
+                  </div>
                   <table>
                     <thead>
                       <th>Name</th>

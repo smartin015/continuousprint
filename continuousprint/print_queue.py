@@ -13,6 +13,7 @@ class QueueItem:
         end_ts=None,
         result=None,
         job="",
+        materials=[],
         run=0,
         retries=0,
     ):
@@ -24,6 +25,7 @@ class QueueItem:
             raise Exception("SD must be bool, got %s" % (type(sd)))
         self.sd = sd
         self.job = job
+        self.materials = materials
         self.run = run
         self.start_ts = start_ts
         self.end_ts = end_ts
@@ -72,6 +74,7 @@ class PrintQueue:
                     end_ts=v.get("end_ts"),
                     result=v.get("result"),
                     job=v.get("job"),
+                    materials=v.get("materials", []),
                     run=v.get("run"),
                     retries=v.get("retries", 0),
                 )
