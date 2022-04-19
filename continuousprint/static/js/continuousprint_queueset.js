@@ -31,7 +31,7 @@ function CPQueueSet(items) {
     }
     return false;
   });
-  
+
   self._textColorFromBackground = function(rrggbb) {
     // https://stackoverflow.com/a/12043228
     var rgb = parseInt(rrggbb.substr(1), 16);   // convert rrggbb to decimal
@@ -39,7 +39,7 @@ function CPQueueSet(items) {
     var g = (rgb >>  8) & 0xff;  // extract green
     var b = (rgb >>  0) & 0xff;  // extract blue
     var luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
-    return (luma >= 128) ? "#000000" : "#FFFFFF";    
+    return (luma >= 128) ? "#000000" : "#FFFFFF";
   }
   self._materialShortName = function(m) {
     m = m.trim().toUpperCase();
@@ -71,7 +71,7 @@ function CPQueueSet(items) {
       result.push({
         title: i.replaceAll("_", " "),
         shortName: self._materialShortName(split[0]),
-        color: self._textColorFromBackground(bg), 
+        color: self._textColorFromBackground(bg),
         bgColor: bg,
         key: i,
       });
