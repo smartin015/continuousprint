@@ -10,7 +10,7 @@ function mocks(filename="test.gcode") {
     {}, // loginState only used in continuousprint.js
     {onServerDisconnect: jest.fn(), onServerConnect: jest.fn()},
     {currentProfileData: () => {return {extruder: {count: () => 1}}}},
-    {assign: jest.fn(), getState: jest.fn(), setActive: jest.fn()},
+    {assign: jest.fn(), getState: jest.fn(), setActive: jest.fn(), getSpoolManagerState: jest.fn()},
   ];
 }
 

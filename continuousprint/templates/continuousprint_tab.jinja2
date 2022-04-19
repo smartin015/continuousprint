@@ -84,7 +84,7 @@
                     <div>Materials:</div>
                     <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">
                       <div>
-                        <span data-bind="text: 'E' + $index() + ':'"></span>
+                        <span data-bind="text: '' + $index() + ':'"></span>
                         <select data-bind="value: (queueset.materials()[$index()] || {}).key, event: {change: (_, evt) => $root.setMaterial($parent, $index(), evt.target.value)}">
                           <option key=""></option>
                           <!-- ko foreach: $root.materials -->
