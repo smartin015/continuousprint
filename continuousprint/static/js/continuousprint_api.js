@@ -25,6 +25,10 @@ class CPAPI {
   setActive(active, cb) {
     this._call(this.BASE + "set_active", cb, "POST", {active});
   }
+
+  getSpoolManagerState(cb) {
+    this._call("plugin/SpoolManager/loadSpoolsByQuery?selectedPageSize=25&from=0&to=25&sortColumn=displayName&sortOrder=desc&filterName=&materialFilter=all&vendorFilter=all&colorFilter=all", cb, "GET");
+  }
 }
 
 try {

@@ -34,7 +34,7 @@ function CPQueueSet(items) {
   
   self._textColorFromBackground = function(rrggbb) {
     // https://stackoverflow.com/a/12043228
-    var rgb = parseInt(rrggbb, 16);   // convert rrggbb to decimal
+    var rgb = parseInt(rrggbb.substr(1), 16);   // convert rrggbb to decimal
     var r = (rgb >> 16) & 0xff;  // extract red
     var g = (rgb >>  8) & 0xff;  // extract green
     var b = (rgb >>  0) & 0xff;  // extract blue
@@ -56,12 +56,23 @@ function CPQueueSet(items) {
       mats = mats.materials()
     }
     for (let i of mats) {
+      if (i === null || i === "Any") {
+        result.push({
+          title: "any",
+          shortName: " ",
+          color: "transparent",
+          bgColor: "transparent",
+          key: i,
+        });
+        continue;
+      }
       let split = i.split("_");
-      let bg = split[1];
+      let bg = split[2] || "";
       result.push({
+        title: i.replaceAll("_", " "),
         shortName: self._materialShortName(split[0]),
         color: self._textColorFromBackground(bg), 
-        bgColor: "#" + bg,
+        bgColor: bg,
         key: i,
       });
     }

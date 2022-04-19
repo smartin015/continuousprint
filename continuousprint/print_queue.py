@@ -74,6 +74,7 @@ class PrintQueue:
                     end_ts=v.get("end_ts"),
                     result=v.get("result"),
                     job=v.get("job"),
+                    materials=v.get("materials", []),
                     run=v.get("run"),
                     retries=v.get("retries", 0),
                 )

@@ -60,6 +60,22 @@ function CPViewModel(parameters) {
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
 
+    try {
+
+    self.materials = ko.observable([]);
+    self.api.getSpoolManagerState(function(resp) {
+      console.log(resp);
+      let result = {};
+      for (let spool of resp.allSpools) {
+        let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
+        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
+      }
+      self.materials(Object.values(result));
+    });
+
+    } catch (e) { console.error(e);}
+
+
     self.isSelected = function(j=null, q=null) {
       j = self._resolve(j);
       q = self._resolve(q);
@@ -135,6 +151,7 @@ function CPViewModel(parameters) {
       for (let j of self.jobs()) {
         q = q.concat(j.as_queue());
       }
+      console.log(q);
       self.api.assign(q, self._setState);
     });
 
@@ -280,6 +297,11 @@ function CPViewModel(parameters) {
         return;
       }
       vm.set_count(v);
+      self._updateQueue();
+    });
+
+    self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
+      vm.set_material(idx, mat);
       self._updateQueue();
     });
 

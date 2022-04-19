@@ -357,6 +357,7 @@ class ContinuousprintPlugin(
                     path=i["path"],
                     sd=i["sd"],
                     job=i["job"],
+                    materials=i["materials"],
                     run=i["run"],
                     start_ts=i.get("start_ts"),
                     end_ts=i.get("end_ts"),
