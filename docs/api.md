@@ -52,7 +52,7 @@ fields may be subject to change without notice, so be wary of depending on them.
 
 Payload: `active=true` or `active=false`
 
-This starts and stops continuous print management of the printer. 
+This starts and stops continuous print management of the printer.
 
 !!! warning
 

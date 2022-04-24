@@ -3,7 +3,7 @@
 ![build status](https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic)
 ![code coverage](https://img.shields.io/codecov/c/github/smartin015/continuousprint/master)
 
-Thanks for your interest in the OctoPrint Continuous Print plugin! 
+Thanks for your interest in the OctoPrint Continuous Print plugin!
 
 For an overview, check out the [plugin repository page](https://plugins.octoprint.org/plugins/continuousprint/).
 
