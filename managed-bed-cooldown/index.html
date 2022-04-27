@@ -8,19 +8,19 @@
       
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.11">
     
     
       
-        <title>Continuous Print</title>
+        <title>Managed Bed Cooldown - Continuous Print</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.8c5ef100.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.8c5ef100.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.9647289d.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.9647289d.min.css">
         
       
     
@@ -35,7 +35,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -63,7 +63,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#continuous-print-queue-plugin" class="md-skip">
+        <a href="#managed-bed-cooldown" class="md-skip">
           Skip to content
         </a>
       
@@ -77,7 +77,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
+    <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Managed Bed Cooldown
             
           </span>
         </div>
@@ -185,7 +185,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
+    <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -195,6 +195,66 @@
   </label>
   
   <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcode-scripting/" class="md-nav__link">
+        GCODE Scripting
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../advanced-queuing/" class="md-nav__link">
+        Advanced Queuing
+      </a>
+    </li>
+  
+
     
       
       
@@ -213,70 +273,48 @@
         
       
       
-      <a href="." class="md-nav__link md-nav__link--active">
-        Home
-      </a>
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Managed Bed Cooldown
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="getting-started/" class="md-nav__link">
-        Getting Started
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="gcode-scripting/" class="md-nav__link">
-        GCODE Scripting
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="advanced-queuing/" class="md-nav__link">
-        Advanced Queuing
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="managed-bed-cooldown/" class="md-nav__link">
+      <a href="./" class="md-nav__link md-nav__link--active">
         Managed Bed Cooldown
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#use-case" class="md-nav__link">
+    Use Case
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-feature" class="md-nav__link">
+    Configure feature
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -289,7 +327,7 @@
   
   
     <li class="md-nav__item">
-      <a href="failure-recovery/" class="md-nav__link">
+      <a href="../failure-recovery/" class="md-nav__link">
         Failure Recovery
       </a>
     </li>
@@ -304,7 +342,7 @@
   
   
     <li class="md-nav__item">
-      <a href="material-selection/" class="md-nav__link">
+      <a href="../material-selection/" class="md-nav__link">
         Material Selection
       </a>
     </li>
@@ -319,7 +357,7 @@
   
   
     <li class="md-nav__item">
-      <a href="contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         Contributing
       </a>
     </li>
@@ -334,7 +372,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         API
       </a>
     </li>
@@ -361,6 +399,28 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#use-case" class="md-nav__link">
+    Use Case
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-feature" class="md-nav__link">
+    Configure feature
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -373,13 +433,21 @@
                 
 
 
-<h1 id="continuous-print-queue-plugin">Continuous Print Queue Plugin</h1>
-<p><img alt="build status" src="https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic" />
-<img alt="code coverage" src="https://img.shields.io/codecov/c/github/smartin015/continuousprint/master" /></p>
-<p>Thanks for your interest in the OctoPrint Continuous Print plugin!</p>
-<p>For an overview, check out the <a href="https://plugins.octoprint.org/plugins/continuousprint/">plugin repository page</a>.</p>
-<p>If you're looking for source code, head over to the <a href="github.com/smartin015/continuousprint">github repository</a>.</p>
-<p>Use the nav section on the left to learn more.</p>
+<h1 id="managed-bed-cooldown">Managed Bed Cooldown</h1>
+<h2 id="use-case">Use Case</h2>
+<p>Depending on your printer model the g-code instruction M190 (Wait for Bed Temperature) is not always respected
+when the targed temperature is cooling down.
+For printers that don't respect the M190 cooldown instruction but depend on the bed cooling to a specified temperature
+this feature should be enabled.</p>
+<h2 id="configure-feature">Configure feature</h2>
+<p>This feature can be configured in the Continuous Print settings panel under <code>Bed Cooldown Settings</code>.</p>
+<p><strong>Enable Managed Bed Cooldown Box</strong> enables and disables the feature.</p>
+<p><strong>Bed Cooldown Script</strong> is the  G-Code script that will run once print in queue is finished, but before bed cooldown is run. Useful for triggering events via g-code like activating part cooling fan, or moving print head from above part while it cools.</p>
+<p><strong>Bed Cooldown Threshold</strong> is the temperature in Celsius that once met triggers the bed to clear.
+The goal is to pick a temperature at which the part becomes free from the bed. Example temperature range is around 25 to 35 but depends greatly on your bed material. Experiment to find the best threshold for your printer.</p>
+<p><strong>Bed Cooldown Timeout</strong> a timeout in minutes starting from after the bed clear script has run when once exceeded bed will be cleared regardless of bed temperature. Useful for cases where the target bed temperature is not being met, but the part is ready to be cleared anyway. Useful for cases where the part cools faster than the bed, or external environment is too hot so bed is not meeting temperature, but part has already cooled enough.</p>
+<p>Once configured the final event flow will look like this</p>
+<p><code>PRINT FINISHES -&gt; Bed Cooldown Script Runs -&gt; Bed is turned off -&gt; Wait until measured temp meets threshold OR timeout is exceeded -&gt; Bed Clearing Script Runs -&gt; NEXT PRINT BEGINS</code></p>
 
               
             </article>
@@ -392,15 +460,30 @@
   
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
+        
+        <a href="../advanced-queuing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Advanced Queuing" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Advanced Queuing
+            </div>
+          </div>
+        </a>
+      
       
         
-        <a href="getting-started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting Started" rel="next">
+        <a href="../failure-recovery/" class="md-footer__link md-footer__link--next" aria-label="Next: Failure Recovery" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Getting Started
+              Failure Recovery
             </div>
           </div>
           <div class="md-footer__button md-icon">
@@ -430,10 +513,10 @@
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": ".", "features": [], "search": "assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="assets/javascripts/bundle.748e2769.min.js"></script>
+      <script src="../assets/javascripts/bundle.748e2769.min.js"></script>
       
     
   </body>
