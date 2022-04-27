@@ -52,6 +52,10 @@ You should see "Successfully installed continuousprint" when running the install
 
 Continuous Print uses [mkdocs](https://www.mkdocs.org/) to generate web documentation. All documentation lives in `docs/`.
 
+```shell
+pip install mkdocs mkdocs-material
+```
+
 if you installed the dev tools (step 2) you can run `mkdocs serve` from the root of the repository to see doc edits live at [http://localhost:8000](http://localhost:8000).
 
 ## 3. Run unit tests to verify changes
