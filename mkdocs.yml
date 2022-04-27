@@ -23,6 +23,7 @@ nav:
   - Getting Started: getting-started.md
   - GCODE Scripting: gcode-scripting.md
   - Advanced Queuing: advanced-queuing.md
+  - Managed Bed Cooldown: managed-bed-cooldown.md
   - Failure Recovery: failure-recovery.md
   - Material Selection: material-selection.md
   - Contributing: contributing.md
