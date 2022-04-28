@@ -1,0 +1,11 @@
+services:
+  dev:
+    image: continuousprint-dev
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ".:/continuousprint"
+      - "./volume:/home/oprint/.octoprint"
+    environment:
+      - "PYTHONUNBUFFERED=1"

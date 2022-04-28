@@ -14,30 +14,47 @@ if (typeof CPQueueSet === "undefined" || CPQueueSet === null) {
 
 // jobs and queuesets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
-function CPJob(obj) {
+function CPJob(obj, api) {
   var self = this;
-  obj = {...{queuesets: [], name: ""}, ...obj};
+  obj = {...{sets: [], name: "", count: 1, queue: "default", id: -1}, ...obj};
+  self.id = ko.observable(obj.id);
   self.name = ko.observable(obj.name);
   self.queuesets = ko.observableArray([]);
-  for (let qs of obj.queuesets) {
-    self.queuesets.push(new CPQueueSet(qs));
+  for (let s of obj.sets) {
+    self.queuesets.push(new CPQueueSet(s, api, self));
   }
-  self._count = function(exclude_qs=null) {
-    let maxrun = 0;
+
+  self.onSetModified = function(s) {
     for (let qs of self.queuesets()) {
-      if (qs.length() > 0 && qs !== exclude_qs) {
-        maxrun = Math.max(maxrun, qs.items()[qs.length()-1].run());
+      if (qs.id === s.id) {
+        return self.queuesets.replace(qs, s);
       }
     }
-    return maxrun+1; // Runs, not last run idx
+    self.queuesets.push(new CPQueueSet(s, api, self));
   }
-  self.count = ko.computed(self._count);
+
+  self.count = ko.observable(obj.count);
   self.length = ko.computed(function() {
     let l = 0;
+    let c = self.count();
     for (let qs of self.queuesets()) {
-      l += qs.length();
+      l += qs.count()*c;
     }
     return l;
+  });
+  self.selected = ko.observable(false);
+  self.checkFraction = ko.computed(function() {
+    let qss = self.queuesets();
+    let numsel = (self.selected()) ? 0.1 : 0;
+    if (qss.length === 0) {
+      return numsel;
+    }
+    for (let qs of qss) {
+      if (qs.selected()) {
+        numsel++;
+      }
+    }
+    return numsel / qss.length;
   });
   self.is_configured = function() {
     return (self.name() !== "" || self.count() != 1);
@@ -50,24 +67,14 @@ function CPJob(obj) {
       }
     }
     return true;
-  }
-  self.items_completed = ko.computed(function() {
+  };
+  self.runs_completed = ko.computed(function() {
     let num = 0;
     for (let qs of self.queuesets()) {
-      num += qs.items_completed();
+      num = Math.min(num, qs.runs_completed());
     }
     return num;
   })
-  self.runs_completed = ko.computed(function() {
-    if (self.queuesets().length < 1) {
-      return 0;
-    }
-    let rc = self.count();
-    for (let qs of self.queuesets()) {
-      rc = Math.min(rc, qs.runs_completed());
-    }
-    return rc;
-  });
   self.progress = ko.computed(function() {
     let result = [];
     for (let qs of self.queuesets()) {
@@ -96,40 +103,23 @@ function CPJob(obj) {
     }
     return result;
   }
+  self.onChecked = function() {
+    self.selected(!self.selected());
+  }
 
   // ==== Mutation methods =====
 
-  self.set_count = function(v) {
-    for (let qs of self.queuesets()) {
-      qs.set_runs(v);
-    }
+  self.set_count = function(count) {
+    api.updateJob({id: self.id, count}, (result) => {
+      self.count(result.count);
+      self.id(result.id); // May change if no id to start with
+    });
   }
   self.set_name = function(name) {
-    self.name(name);
-  }
-  self.sort_end = function(item) {
-    let cnt = self._count(exclude_qs=item);
-    for (let qs of self.queuesets()) {
-      qs.set_runs(cnt);
-    }
-  }
-  self.pushQueueItem = function(item) {
-    self.queuesets.push(new CPQueueSet([item]));
-  }
-  self.requeueFailures = function() {
-    for (let qs of self.queuesets()) {
-      let items = qs.items();
-      let modified = false;
-      for (let i of items) {
-        if (i.result().startsWith("fail")) {
-          i.requeue();
-          modified = true;
-        }
-      }
-      if (modified) {
-        qs.items(items);
-      }
-    }
+    api.updateJob({id: obj.id, name}, (result) => {
+      self.name(result.name);
+      self.id(result.id); // May change if no id to start with
+    });
   }
 }
 

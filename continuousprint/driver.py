@@ -28,17 +28,17 @@ def timeAgo(elapsed):
         return str(round(elapsed / (60 * 60 * 24))) + " days"
 
 
-class ContinuousPrintDriver:
+class Driver:
     def __init__(
         self,
-        queue,
+        supervisor,
         script_runner,
         logger,
     ):
         self._logger = logger
         self.status = None
         self._set_status("Initializing")
-        self.q = queue
+        self.s = supervisor
         self.state = self._state_unknown
         self.retries = 0
         self.retry_on_pause = False
@@ -95,8 +95,11 @@ class ContinuousPrintDriver:
             self._set_status("Waiting for printer to be ready")
             return
 
+        item = self.s.get_assignment()
+        if item is None:
+            return self._state_inactive
+
         # Block until we have the right materials loaded (if required)
-        item = self.q[self._next_available_idx()]
         for i, im in enumerate(item.materials):
             if im is None:  # No constraint
                 continue
@@ -107,22 +110,9 @@ class ContinuousPrintDriver:
                 )
                 return
 
-        # The next print may not be the *immediately* next print
-        # e.g. if we skip over a print or start mid-print
-        idx = self._next_available_idx()
-        if idx is not None:
-            p = self.q[idx]
-            p.start_ts = int(time.time())
-            p.end_ts = None
-            p.retries = self.retries
-            self.q[idx] = p
-            self._intent = self._runner.start_print(p)
-            return self._state_printing
-        else:
-            return self._state_inactive
-
-    def _elapsed(self):
-        return time.time() - self.q[self._cur_idx()].start_ts
+        path = self.s.begin_assignment()
+        self._runner.start_print(p)
+        return self._state_printing
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
         if a == Action.DEACTIVATE:
@@ -130,7 +120,7 @@ class ContinuousPrintDriver:
         elif a == Action.FAILURE:
             return self._state_failure
         elif a == Action.SPAGHETTI:
-            elapsed = self._elapsed()
+            elapsed = self.s.elapsed()
             if self.retry_on_pause and elapsed < self.retry_threshold_seconds:
                 return self._state_spaghetti_recovery
             else:
@@ -142,9 +132,9 @@ class ContinuousPrintDriver:
             return self._state_success
 
         if p == Printer.BUSY:
-            idx = self._cur_idx()
-            if idx is not None:
-                self._set_status(f"Printing {self.q[idx].name}")
+            item = self.s.get_assignment()
+            if item is not None:
+                self._set_status(f"Printing {item.path}")
         elif p == Printer.PAUSED:
             return self._state_paused
         elif p == Printer.IDLE:  # Idle state without event; assume success
@@ -172,19 +162,16 @@ class ContinuousPrintDriver:
             self.retries += 1
             return self._state_start_clearing
         else:
-            idx = self._cur_idx()
-            if idx is not None:
-                self._complete_item(idx, "failure")
+            self.s.end_assignment("failure")
             return self._state_inactive
 
     def _state_success(self, a: Action, p: Printer):
-        idx = self._cur_idx()
+        item = self.s.get_assignment()
 
         # Complete prior queue item if that's what we just finished
-        if idx is not None:
-            path = self.q[idx].path
-            if self._intent == path and self._cur_path == path:
-                self._complete_item(idx, "success")
+        if item is not None:
+            if self._intent == item.path and self._cur_path == item.path:
+                self.s.end_assignment("success")
             else:
                 self._logger.info(
                     f"Current queue item {path} not matching intent {self._intent}, current path {self._cur_path} - no completion"
@@ -192,8 +179,8 @@ class ContinuousPrintDriver:
         self.retries = 0
 
         # Clear bed if we have a next queue item, otherwise run finishing script
-        idx = self._next_available_idx()
-        if idx is not None:
+        item = self.s.get_assignment()
+        if item is not None:
             return self._state_start_clearing
         else:
             return self._state_start_finishing
@@ -253,25 +240,6 @@ class ContinuousPrintDriver:
             f"Retry on pause: {enabled} (max_retries {max_retries}, threshold {retry_threshold_seconds}s)"
         )
 
-    def _cur_idx(self):
-        for (i, item) in enumerate(self.q):
-            if item.start_ts is not None and item.end_ts is None:
-                return i
-        return None
-
     def current_path(self):
-        idx = self._cur_idx()
-        return None if idx is None else self.q[idx].name
-
-    def _next_available_idx(self):
-        for (i, item) in enumerate(self.q):
-            if item.end_ts is None:
-                return i
-        return None
-
-    def _complete_item(self, idx, result):
-        self._logger.debug(f"Completing q[{idx}] - {result}")
-        item = self.q[idx]
-        item.end_ts = int(time.time())
-        item.result = result
-        self.q[idx] = item  # TODO necessary?
+        item = self.s.get_assignment()
+        return None if item is None else item.path

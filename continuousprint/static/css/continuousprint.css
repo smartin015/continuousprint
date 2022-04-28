@@ -57,6 +57,9 @@
 #tab_plugin_continuousprint .accordion-heading-button {
   padding: 8px 15px; /* copied from .octoprint-container .accordion-heading .accordion-heading-button > a */
 }
+#tab_plugin_continuousprint .accordion-heading-button input {
+  margin-top: -2px;
+}
 #tab_plugin_continuousprint .accordion-body.collapse {
   /* Transitions copied from div#files.accordion-body.collapse */
   max-height: 0;

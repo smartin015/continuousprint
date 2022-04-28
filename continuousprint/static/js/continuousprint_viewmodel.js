@@ -51,24 +51,13 @@ function CPViewModel(parameters) {
     self.files = parameters[2];
     self.printerProfiles = parameters[3];
     self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
-    self.api = parameters[4] || new CPAPI();
-
     // These are used in the jinja template
-    self.loading = ko.observable(true);
+    self.loading = ko.observable(false);
     self.active = ko.observable(false);
     self.status = ko.observable("Initializing...");
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
-
     self.materials = ko.observable([]);
-    self.api.getSpoolManagerState(function(resp) {
-      let result = {};
-      for (let spool of resp.allSpools) {
-        let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
-        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
-      }
-      self.materials(Object.values(result));
-    });
 
     self.isSelected = function(j=null, q=null) {
       j = self._resolve(j);
@@ -116,140 +105,170 @@ function CPViewModel(parameters) {
       return null;
     });
 
+    self.batchSelectBase = function(mode) {
+      switch (mode) {
+        case "All":
+          for (let j of self.jobs()) {
+            j.selected(true);
+            for (let s of j.queuesets()) {
+              s.selected(true);
+            }
+          }
+          break;
+        case "None":
+          for (let j of self.jobs()) {
+            j.selected(false);
+            for (let s of j.queuesets()) {
+              s.selected(false);
+            }
+          }
+          break;
+        case "Empty Jobs":
+          for (let j of self.jobs()) {
+            j.selected(j.queuesets().length === 0);
+          }
+          break;
+        case "Unstarted Jobs":
+          for (let j of self.jobs()) {
+            j.selected(j.queuesets().length !== 0 && j.runs_completed() === 0);
+          }
+          break;
+        case "Incomplete Jobs":
+          for (let j of self.jobs()) {
+            j.selected(j.runs_completed() > 0 && !j.is_complete());
+          }
+          break;
+        case "Completed Jobs":
+          for (let j of self.jobs()) {
+            j.selected(j.queuesets().length !== 0 && j.is_complete());
+          }
+          break;
+        case "Unstarted Sets":
+          for (let j of self.jobs()) {
+            j.selected(false);
+            for (let s of j.queuesets()) {
+              s.selected(s.runs_completed() == 0);
+            }
+          }
+          break;
+        case "Incomplete Sets":
+          for (let j of self.jobs()) {
+            j.selected(false);
+            for (let s of j.queuesets()) {
+              s.selected(s.runs_completed() > 0 && s.runs_completed() < (s.length() * j.count()));
+            }
+          }
+          break;
+        case "Completed Sets":
+          for (let j of self.jobs()) {
+            j.selected(false);
+            for (let s of j.queuesets()) {
+              s.selected(s.runs_completed() >= (s.length() * j.count()));
+            }
+          }
+          break;
+        default:
+          console.error("Unknown batch select mode: " + mode);
+      }
+    }
+    self.batchSelect = function(_, e) {
+      return self.batchSelectBase(e.target.innerText);
+    }
+
+    self.checkFraction = ko.computed(function() {
+      let js = self.jobs();
+      if (js.length === 0) {
+        return 0;
+      }
+      let numsel = 0;
+      for (let j of js) {
+        numsel += j.checkFraction();
+      }
+      return numsel / js.length;
+    });
+    self.onChecked = function(v, e) {
+      let c = self.checkFraction();
+      console.log(c);
+      self.batchSelectBase((c == 0) ? "All" : "None");
+      e.cancelBubble = true;
+      if (e.stopPropagation) {
+        e.stopPropagation();
+      }
+
+    }
+
     // Patch the files panel to allow for adding to queue
     self.files.add = _ecatch("files.add", function(data) {
         if (self.loading()) {return;}
         let now = Date.now();
         let jobs = self.jobs();
         let job = jobs[jobs.length-1];
-        // We want to add to a job with a single run and no name -
-        // otherwise implies adding to something a user has already configured
-        if (job.is_configured()) {
-          job = new CPJob();
-          self.jobs.push(job);
-        }
-        job.pushQueueItem({
+        let jobname = (job !== undefined) ? job.name() : "";
+        self.api.addSet({
             name: data.name,
             path: data.path,
             sd: (data.origin !== "local"),
-            run: 0,
-            job: job.name(),
+            count: 1,
+            hash_: "", // TODO
+            material: "",
+            job: jobname,
+        }, (response) => {
+          // Take the updated job ID and set and merge it into the nested arrays
+          for (let j of self.jobs()) {
+            if (j.id() === response.job_id) {
+              return j.onSetModified(response.set_);
+            }
+          }
+          return self.jobs.push(new CPJob({id: response.job_id, name: jobname, count: 1, sets: [response.set_]}));
         });
-        self._updateQueue();
-    });
-
-
-    // Call this after every mutation
-    self._updateQueue = _ecatch("_updateQueue", function() {
-      let q = [];
-      for (let j of self.jobs()) {
-        q = q.concat(j.as_queue());
-      }
-      console.log(q);
-      self.api.assign(q, self._setState);
     });
 
     self._loadState = _ecatch("_loadState", function(state) {
         self.log.info(`[${self.PLUGIN_ID}] loading state...`);
-        self.loading(true);
         self.api.getState(self._setState);
     });
 
-    self._updateJobs = _ecatch("_updateJobs", function(q) {
-      if (q.length === 0) {
-        self.jobs([new CPJob({name: "", idx: 0})]);
-        return
+    self._updateJobs = _ecatch("_updateJobs", function(jobs) {
+      let result = [];
+      for (let j of jobs) {
+        result.push(new CPJob(j, self.api)); //{name, count, sets:[...]}));
       }
-      let curName = null;
-      let curJob = null;
-
-      // Convert to nested representation
-      let rep = [];
-      for (let item of q) {
-        // Compatibility for older version data
-        if (item.job === null || item.job === undefined) {
-          item.job = "";
-        }
-        if (item.job !== curJob) {
-          rep.push([[]]);
-        } else if (item.name !== curName) {
-          rep[rep.length-1].push([]);
-        }
-        curJob = item.job;
-        curName = item.name;
-        let qsl = rep[rep.length-1].length;
-        rep[rep.length-1][qsl-1].push(item);
-      }
-      let jobs = [];
-      // In-place merge alike queuesets
-      for (let i = 0; i < rep.length; i++) {
-        let r = rep[i];
-        for (let j = 0; j < r.length; j++) {
-          for (let k = r.length-1; k > j; k--) {
-            if (r[k][0].name === r[j][0].name) {
-              r[j] = r[j].concat(r[k]);
-              r.splice(k,1);
-            }
-          }
-        }
-        jobs.push(new CPJob({name: rep[i][0][0].job || "", queuesets: r}));
-      }
-      // Push an extra empty job on the end if the last job is configured
-      if (jobs.length < 1 || jobs[jobs.length-1].is_configured()) {
-        jobs.push(new CPJob());
-      }
-      self.jobs(jobs);
+      self.jobs(result);
     });
 
     self._setState = function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.queue.length})`);
-        self._updateJobs(state.queue);
+        self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
+        self._updateJobs(state.jobs);
         self.active(state.active);
         self.status(state.status);
-        self.loading(false);
         self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
     // *** ko template methods ***
-
     self.setActive = _ecatch("setActive", function(active) {
-        if (self.loading()) return;
-        self.api.setActive(active, self._setState);
+        self.api.setActive(active);
     });
 
-    self.remove = _ecatch("remove", function(e) {
-        if (self.loading()) return;
+    self.deleteSelected = _ecatch("remove", function(e) {
         if (e.constructor.name === "CPJob") {
-            self.jobs.remove(e);
+            self.api.rmJob({ids: [e.id]}, () => {
+              self.jobs.remove(e);
+            });
         } else if (e.constructor.name === "CPQueueSet") {
-            for (let j of self.jobs()) {
-                j.queuesets.remove(e);
-            }
+            self.api.rmSet({ids: [e.id]}, () => {
+              e.job.queuesets.remove(e);
+            });
         }
-        self._updateQueue();
     });
 
-    self.requeueFailures = _ecatch("requeueFailures", function() {
-        if (self.loading()) return;
-        self.loading(true);
-        for (let j of self.jobs()) {
-          j.requeueFailures();
-        }
-        self._updateQueue();
+    self.resetSelected = _ecatch("redoSelected", function() {
+        throw Error("TODO clearCompleted");
     });
 
-    self.clearCompleted = _ecatch("clearCompleted", function() {
-        if (self.loading()) return;
-        self.loading(true);
-        self.jobs(self.jobs().filter((j) => !j.is_complete()));
-        self._updateQueue();
-    });
-
-    self.clearAll = _ecatch("clearAll", function() {
-        if (self.loading()) return;
-        self.loading(true);
-        self.jobs([]);
-        self._updateQueue();
+    self.newEmptyJob = _ecatch("newEmptyJob", function() {
+        self.api.addJob((result) => {
+          self.jobs.push(new CPJob(result, self.api));
+        });
     });
 
     self._resolve = function(observable) {
@@ -274,29 +293,24 @@ function CPViewModel(parameters) {
     });
 
     self.refreshQueue = _ecatch("refreshQueue", function() {
-        if (self.loading()) return;
-        self._loadState();
+      self._loadState();
     });
 
     self.setJobName = _ecatch("setJobName", function(job, evt) {
-        if (self.loading()) return;
-        job.set_name(evt.target.value);
-        self._updateQueue();
+      job.set_name(evt.target.value);
     });
 
     self.setCount = _ecatch("setCount", function(vm, e) {
-      if (self.loading()) return;
       let v = parseInt(e.target.value, 10);
       if (isNaN(v) || v < 1) {
         return;
       }
       vm.set_count(v);
-      self._updateQueue();
     });
 
     self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
       vm.set_material(idx, mat);
-      self._updateQueue();
+      throw Error("TODO set material");
     });
 
     self.sortStart = _ecatch("sortStart", function(evt) {
@@ -305,14 +319,35 @@ function CPViewModel(parameters) {
       self.files.onServerDisconnect();
     });
 
-    self.sortEnd = _ecatch("sortEnd", function(_, item) {
-      if (self.loading()) return;
+    self.sortEnd = _ecatch("sortEnd", function(_, e, p) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
-      for (let j of self.jobs()) {
-        j.sort_end(item);
+      console.log(e);
+      console.log(p);
+      let jobs = self.jobs();
+      if (e.constructor.name === "CPJob") {
+        let dest_idx = jobs.indexOf(e);
+        console.log(dest_idx);
+        self.api.mvJob({
+            id: e.id,
+            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id : -1
+        }, (result) => {
+          console.log(result);
+        });
+      } else if (e.constructor.name === "CPQueueSet") {
+        let dest_job = jobs[jobs.indexOf(p)].id;
+
+        let qss = p.queuesets()
+        let dest_idx = qss.indexOf(e);
+        console.log(dest_job, dest_idx);
+        self.api.mvSet({
+          id: e.id,
+          dest_job,
+          after_id: (dest_idx > 0) ? qss[dest_idx-1].id : -1,
+        }, (result) => {
+          console.log(result);
+        });
       }
-      self._updateQueue();
     });
 
     self.sortMove = function(evt) {
@@ -364,6 +399,17 @@ function CPViewModel(parameters) {
                 buttons: {closer: true, sticker: false}
             });
         }
+    });
+
+    self.api = parameters[4] || new CPAPI();
+    self.api.init(self.loading);
+    self.api.getSpoolManagerState(function(resp) {
+      let result = {};
+      for (let spool of resp.allSpools) {
+        let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
+        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
+      }
+      self.materials(Object.values(result));
     });
 }
 

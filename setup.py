@@ -14,7 +14,7 @@ plugin_package = "continuousprint"
 plugin_name = "continuousprint"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "1.6.0rc4"
+plugin_version = "2.0.0"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
@@ -33,7 +33,7 @@ plugin_url = "https://github.com/smartin015/continuousprint"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = []
+plugin_requires = ["peewee"]
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point

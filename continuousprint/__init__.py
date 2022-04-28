@@ -18,10 +18,13 @@ from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 
 
-from .print_queue import PrintQueue, QueueItem
-from .driver import ContinuousPrintDriver, Action as DA, Printer as DP
+from .driver import Driver, Action as DA, Printer as DP
+from .supervisor import Supervisor
+from .storage.database import init as init_db
+from .storage import queries
 
 QUEUE_KEY = "cp_queue"
+DEFAULT_QUEUE = "default"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished_script"
 TEMP_FILES = dict(
@@ -124,9 +127,13 @@ class ContinuousprintPlugin(
             self._settings.set([MATERIAL_SELECTION_KEY], False)
 
         self._settings.save()
-        self.q = PrintQueue(self._settings, QUEUE_KEY)
-        self.d = ContinuousPrintDriver(
-            queue=self.q,
+
+        storage_init_path = os.path.join(os.path.dirname(__file__), "data/storage_init.yaml")
+        init_db(db_path=os.path.join(self.get_plugin_data_folder(), "queue.sqlite3"), initial_data_path=storage_init_path)
+
+        self.s = Supervisor(queries, DEFAULT_QUEUE)
+        self.d = Driver(
+            supervisor=self.s,
             script_runner=self,
             logger=self._logger,
         )
@@ -236,7 +243,7 @@ class ContinuousprintPlugin(
         elif event == Events.SETTINGS_UPDATED:
             self._update_driver_settings()
 
-    def _write_temp_gcode(self, key):
+    def execute_gcode(self, key):
         gcode = self._settings.get([key])
         file_wrapper = StreamWrapper(key, BytesIO(gcode.encode("utf-8")))
         added_file = self._file_manager.add_file(
@@ -246,13 +253,12 @@ class ContinuousprintPlugin(
             allow_overwrite=True,
         )
         self._logger.info(f"Wrote file {added_file}")
+        self._printer.select_file(path, sd=False, printAfterSelect=True)
         return added_file
 
     def run_finish_script(self):
         self._msg("Print Queue Complete", type="complete")
-        path = self._write_temp_gcode(FINISHED_SCRIPT_KEY)
-        self._printer.select_file(path, sd=False, printAfterSelect=True)
-        return path
+        return self.execute_gcode(FINISHED_SCRIPT_KEY)
 
     def cancel_print(self):
         self._msg("Print cancelled", type="error")
@@ -284,42 +290,33 @@ class ContinuousprintPlugin(
     def clear_bed(self):
         if self._settings.get(["bed_cooldown_enabled"]):
             self.wait_for_bed_cooldown()
-        path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
-        self._printer.select_file(path, sd=False, printAfterSelect=True)
-        return path
+        return self.execute_gcode(CLEARING_SCRIPT_KEY)
 
     def start_print(self, item, clear_bed=True):
         self._msg("Starting print: " + item.name)
         self._msg(type="reload")
         try:
-            self._printer.select_file(item.path, item.sd)
             self._logger.info(item.path)
-            self._printer.start_print()
+            self._printer.select_file(item.path, item.sd, printAfterSelect=True)
         except InvalidFileLocation:
             self._msg("File not found: " + item.path, type="error")
         except InvalidFileType:
             self._msg("File not gcode: " + item.path, type="error")
         return item.path
 
-    def state_json(self, extra_message=None):
-        # Values are stored json-serialized, so we need to create a json string and inject them into it
-        q = self._settings.get([QUEUE_KEY])
-
-        # Format extra message as key:value
-        if extra_message is not None:
-            extra_message = f', extra_message: "{extra_message}"'
-        else:
-            extra_message = ""
+    def state_json(self):
+        orderedJobs = queries.getJobsAndSets(DEFAULT_QUEUE, lexOrder=True)
 
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
         # (e.g. 1.4.1 -> 2.0.0).
-        resp = '{"active": %s, "status": "%s", "queue": %s%s}' % (
-            "true" if self._active() else "false",
-            "Initializing" if not hasattr(self, "d") else self.d.status,
-            q,
-            extra_message,
-        )
-        return resp
+        jobs = [j.as_dict(json_safe=True) for j in orderedJobs]
+
+        resp = {
+          "active": self._active(),
+          "status": "Initializing" if not hasattr(self, "d") else self.d.status,
+          "jobs": jobs,
+        }
+        return json.dumps(resp)
 
     # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
@@ -343,6 +340,9 @@ class ContinuousprintPlugin(
         if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
+
+        queries.normalizeLexRanks()
+
         self.update(
             DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
         )
@@ -372,105 +372,80 @@ class ContinuousprintPlugin(
         return self.state_json()
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/assign", methods=["POST"])
+    @octoprint.plugin.BlueprintPlugin.route("/set/add", methods=["POST"])
     @restricted_access
-    def assign(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_ASSIGNQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        items = json.loads(flask.request.form["items"])
-        self.q.assign(
-            [
-                QueueItem(
-                    name=i["name"],
-                    path=i["path"],
-                    sd=i["sd"],
-                    job=i["job"],
-                    materials=i["materials"],
-                    run=i["run"],
-                    start_ts=i.get("start_ts"),
-                    end_ts=i.get("end_ts"),
-                    result=i.get("result"),
-                    retries=i.get("retries"),
-                )
-                for i in items
-            ]
-        )
-        return self.state_json()
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
-    @restricted_access
-    def move(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        offs = int(flask.request.form["offs"])
-        self.q.move(idx, count, offs)
-        depr = "DEPRECATED: plugin/continuousprint/move is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
-    @restricted_access
-    def add(self):
+    def add_set(self):
         if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-        idx = flask.request.form.get("idx")
-        if idx is None:
-            idx = len(self.q)
-        else:
-            idx = int(idx)
-        items = json.loads(flask.request.form["items"])
-        self.q.add(
-            [
-                QueueItem(
-                    name=i["name"],
-                    path=i["path"],
-                    sd=i["sd"],
-                    job=i["job"],
-                    run=i["run"],
-                )
-                for i in items
-            ],
-            idx,
-        )
-        depr = "DEPRECATED: plugin/continuousprint/add is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
+        return json.dumps(queries.appendSet(DEFAULT_QUEUE, flask.request.form['job'], flask.request.form))
 
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/job/add", methods=["POST"])
     @restricted_access
-    def remove(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_RMQUEUE.can():
+    def add_job(self):
+        if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        self.q.remove(idx, count)
+        j = queries.newEmptyJob(DEFAULT_QUEUE)
+        return json.dumps(j.as_dict(json_safe=True))
 
-        depr = "DEPRECATED: plugin/continuousprint/remove is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/reset", methods=["POST"])
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
-    def reset(self):
-        idxs = json.loads(flask.request.form["idxs"])
-        for idx in idxs:
-            i = self.q[idx]
-            i.start_ts = None
-            i.end_ts = None
-        self.q.remove(idx, len(idxs))
-        depr = "DEPRECATED: plugin/continuousprint/reset is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
+    def mv_set(self):
+      queries.moveSet(
+        int(flask.request.form["id"]),
+        int(flask.request.form["after_id"]),  # Move to after this set (-1 for beginning of job)
+        int(flask.request.form["dest_job"]),  # Move to this job (null for new job at end)
+      )
+      return json.dumps("ok")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/set/update", methods=["POST"])
+    @restricted_access
+    def update_set(self):
+      return json.dumps(queries.updateSet(
+        flask.request.form["id"],
+        flask.request.form,
+        json_safe=True,
+      ))
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/set/rm", methods=["POST"])
+    @restricted_access
+    def rm_set(self):
+      sids = flask.request.form.getlist("ids[]")
+      queries.removeSets(sids)
+      return json.dumps(sids)
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
+    @restricted_access
+    def mv_job(self):
+      queries.moveJob(
+        int(flask.request.form["id"]),
+        int(flask.request.form["after_id"]),  # Move to after this job (-1 for beginning of queue)
+      )
+      return json.dumps("ok")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/job/update", methods=["POST"])
+    @restricted_access
+    def update_job(self):
+      return json.dumps(queries.updateJob(
+        flask.request.form["id"],
+        flask.request.form,
+        json_safe=True
+      ))
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/job/rm", methods=["POST"])
+    @restricted_access
+    def rm_job(self):
+      jids = flask.request.form.getlist("ids[]")
+      queries.removeJobs(jids)
+      return json.dumps(jids)
 
     # part of TemplatePlugin
     def get_template_vars(self):
@@ -542,7 +517,7 @@ class ContinuousprintPlugin(
             dict(
                 key="STARTQUEUE",
                 name="Start Queue",
-                description="Allows for starting queue",
+                description="Allows for starting and stopping queue",
                 roles=["admin", "continuousprint-start"],
                 dangerous=True,
                 default_groups=[ADMIN_GROUP],
@@ -568,14 +543,6 @@ class ContinuousprintPlugin(
                 name="Move items in Queue ",
                 description="Allows for moving items in the queue",
                 roles=["admin", "continuousprint-move"],
-                dangerous=True,
-                default_groups=[ADMIN_GROUP],
-            ),
-            dict(
-                key="ASSIGNQUEUE",
-                name="Assign the whole Queue",
-                description="Allows for loading the whole queue from JSON",
-                roles=["admin", "continuousprint-assign"],
                 dangerous=True,
                 default_groups=[ADMIN_GROUP],
             ),

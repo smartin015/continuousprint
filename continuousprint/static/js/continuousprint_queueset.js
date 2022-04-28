@@ -14,22 +14,23 @@ if (typeof CPQueueItem === "undefined" || CPQueueItem === null) {
 
 // QueueSets are a sequence of the same queue item repated a number of times.
 // This is an abstraction on top of the actual queue maintained by the server.
-function CPQueueSet(items) {
+function CPQueueSet(data, api, job) {
   var self = this;
-  self._n = items[0].name; // Used for easier inspection in console
-  self._len = items.length;
-
-  self.items = ko.observableArray([]);
-  for (let i of items) {
-    self.items.push(new CPQueueItem(i));
-  }
-  self.changed = ko.computed(function() {
-    for (let item of self.items()) {
-      if (item.changed()) {
-        return true;
+  self.id = data.id;
+  self.job = job;
+  self.runs = ko.observable(data.runs);
+  self.name = ko.observable(data.path);
+  self.length = ko.observable(data.count);
+  self.count = ko.observable(data.count);
+  self.selected = ko.observable(false);
+  self.runs_completed = ko.computed(function() {
+    let n = 0;
+    for (let r of self.runs()) {
+      if (r.status == 'success') {
+        n++;
       }
     }
-    return false;
+    return n/self.count();
   });
 
   self._textColorFromBackground = function(rrggbb) {
@@ -48,14 +49,9 @@ function CPQueueSet(items) {
     }
     return m[0];
   }
-
   self.materials = ko.computed(function() {
     let result = [];
-    let mats = self.items()[0];
-    if (mats !== undefined) {
-      mats = mats.materials()
-    }
-    for (let i of mats) {
+    for (let i of data.materials) {
       if (i === null || i === "") {
         result.push({
           title: "any",
@@ -78,26 +74,8 @@ function CPQueueSet(items) {
     }
     return result;
   });
-  self.length = ko.computed(function() {return self.items().length;});
-  self.name = ko.computed(function() {return self.items()[0].name;});
-  self.count = ko.computed(function() {
-    let len = self.length();
-    let nruns = (len > 0) ? (self.items()[len-1].run() || 0) : 0;
-    return Math.floor(self.length() / (nruns+1));
-  });
-  self.items_completed = ko.computed(function() {
-    let i = 0;
-    for (let item of self.items()) {
-      if (item.end_ts() !== null) {
-        i++;
-      }
-    }
-    return i;
-  });
-  self.runs_completed = ko.computed(function() {
-    return Math.floor(self.items_completed() / (self.count() || 1));
-  });
   self.progress = ko.computed(function() {
+    /*
     let progress = [];
     let curNum = 0;
     let curResult = self.items()[0].result();
@@ -119,60 +97,30 @@ function CPQueueSet(items) {
     }
     pushProgress();
     return progress;
+    */
+    return [];
   });
   self.active = ko.computed(function() {
+    /*
     for (let item of self.items()) {
       if (item.start_ts === null && item.end_ts !== null) {
         return true;
       }
     }
+    */
     return false;
   });
 
-  self._tmpl = {...self.items()[0].as_object(), start_ts: null, end_ts: null, result: null, retries: 0};
-  self.set_count = function(v) {
-    let items = self.items();
-    let cnt = self.count();
-    let runs = items[items.length-1].run() + 1;
-    let diff = v - cnt;
-    if (diff > 0) {
-      // Splice in `diff` amount of new items at the end of each run
-      for (let run = 0; run < runs; run++) {
-        let base = run * v + cnt; // Position of next insert
-        for (let i = 0; i < diff; i++) {
-          items.splice(base, 0, new CPQueueItem({...self._tmpl, run}));
-        }
-      }
-      self.items(items);
-    } else if (diff < 0) {
-      items.splice(v*runs);
-      // We must re-specify the runs since we're truncating from the end
-      for (let run = 0; run < runs; run++) {
-        for (let i = 0; i < v; i++) {
-          items[run*v + i].run(run);
-        }
-      }
-      self.items(items);
-    }
-    // Do nothing if equal
-  }
-  self.set_runs = function(v) {
-    let cnt = self.count();
-    let items = self.items();
-    let runs = items[items.length-1].run() + 1;
-    if (v < runs) {
-      items.splice(v*cnt);
-      self.items(items);
-    } else if (v > runs) {
-      for (let run = runs; run < v; run++) {
-        for (let j = 0; j < cnt; j++) {
-          items.push(new CPQueueItem({...self._tmpl, run}));
-        }
-      }
-      self.items(items);
-    }
+  // ==== Mutation methods ====
+
+  self.set_count = function(count) {
+    api.updateSet({id: self.id, count}, (result) => {
+      self.count(result.count);
+    });
   }
   self.set_material = function(t, v) {
+    throw Error("TODO");
+    /*
     const items = self.items();
     for (let i of items) {
       let mats = i.materials();
@@ -183,6 +131,7 @@ function CPQueueSet(items) {
       i.materials(mats);
     }
     self.items(items);
+    */
   }
 }
 
