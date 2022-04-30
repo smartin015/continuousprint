@@ -15,6 +15,9 @@ if (typeof CPQueueSet === "undefined" || CPQueueSet === null) {
 // jobs and queuesets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
 function CPJob(obj, api) {
+  if (api === undefined) {
+    throw Error("API must be provided when creating CPJob");
+  }
   var self = this;
   obj = {...{sets: [], name: "", count: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
@@ -25,12 +28,13 @@ function CPJob(obj, api) {
   }
 
   self.onSetModified = function(s) {
+    let newqs = new CPQueueSet(s, api, self);
     for (let qs of self.queuesets()) {
       if (qs.id === s.id) {
-        return self.queuesets.replace(qs, s);
+        return self.queuesets.replace(qs, newqs);
       }
     }
-    self.queuesets.push(new CPQueueSet(s, api, self));
+    self.queuesets.push(newqs);
   }
 
   self.count = ko.observable(obj.count);
@@ -110,13 +114,13 @@ function CPJob(obj, api) {
   // ==== Mutation methods =====
 
   self.set_count = function(count) {
-    api.updateJob({id: self.id, count}, (result) => {
+    api.update(api.JOB, {id: self.id, count}, (result) => {
       self.count(result.count);
       self.id(result.id); // May change if no id to start with
     });
   }
   self.set_name = function(name) {
-    api.updateJob({id: obj.id, name}, (result) => {
+    api.update(api.JOB, {id: obj.id, name}, (result) => {
       self.name(result.name);
       self.id(result.id); // May change if no id to start with
     });

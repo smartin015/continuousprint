@@ -16,7 +16,7 @@ import octoprint.filemanager
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
-
+from octoprint.printer import InvalidFileLocation, InvalidFileType
 
 from .driver import Driver, Action as DA, Printer as DP
 from .supervisor import Supervisor
@@ -246,13 +246,14 @@ class ContinuousprintPlugin(
     def execute_gcode(self, key):
         gcode = self._settings.get([key])
         file_wrapper = StreamWrapper(key, BytesIO(gcode.encode("utf-8")))
+        path = TEMP_FILES[key]
         added_file = self._file_manager.add_file(
             octoprint.filemanager.FileDestinations.LOCAL,
-            TEMP_FILES[key],
+            path,
             file_wrapper,
             allow_overwrite=True,
         )
-        self._logger.info(f"Wrote file {added_file}")
+        self._logger.info(f"Wrote file {path}")
         self._printer.select_file(path, sd=False, printAfterSelect=True)
         return added_file
 
@@ -293,7 +294,7 @@ class ContinuousprintPlugin(
         return self.execute_gcode(CLEARING_SCRIPT_KEY)
 
     def start_print(self, item, clear_bed=True):
-        self._msg("Starting print: " + item.name)
+        self._msg("Starting print: " + item.path)
         self._msg(type="reload")
         try:
             self._logger.info(item.path)
@@ -340,9 +341,6 @@ class ContinuousprintPlugin(
         if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-
-        queries.normalizeLexRanks()
-
         self.update(
             DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
         )
@@ -412,14 +410,6 @@ class ContinuousprintPlugin(
       ))
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/set/rm", methods=["POST"])
-    @restricted_access
-    def rm_set(self):
-      sids = flask.request.form.getlist("ids[]")
-      queries.removeSets(sids)
-      return json.dumps(sids)
-
-    # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
     @restricted_access
     def mv_job(self):
@@ -440,12 +430,20 @@ class ContinuousprintPlugin(
       ))
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/job/rm", methods=["POST"])
+    @octoprint.plugin.BlueprintPlugin.route("/multi/rm", methods=["POST"])
     @restricted_access
-    def rm_job(self):
-      jids = flask.request.form.getlist("ids[]")
-      queries.removeJobs(jids)
-      return json.dumps(jids)
+    def rm_multi(self):
+      jids = flask.request.form.getlist("job_ids[]")
+      sids = flask.request.form.getlist("set_ids[]")
+      return json.dumps(queries.removeJobsAndSets(jids, sids))
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/multi/reset", methods=["POST"])
+    @restricted_access
+    def reset_multi(self):
+      jids = flask.request.form.getlist("job_ids[]")
+      sids = flask.request.form.getlist("set_ids[]")
+      return json.dumps(queries.removeRuns(jids, sids))
 
     # part of TemplatePlugin
     def get_template_vars(self):

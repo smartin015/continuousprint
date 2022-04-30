@@ -18,7 +18,13 @@ function CPQueueSet(data, api, job) {
   var self = this;
   self.id = data.id;
   self.job = job;
-  self.runs = ko.observable(data.runs);
+
+  let runs = [];
+  for (let r of data.runs) {
+    runs.push(new CPQueueItem(r));
+  }
+  self.sd = ko.observable(data.sd);
+  self.runs = ko.observable(runs);
   self.name = ko.observable(data.path);
   self.length = ko.observable(data.count);
   self.count = ko.observable(data.count);
@@ -114,7 +120,7 @@ function CPQueueSet(data, api, job) {
   // ==== Mutation methods ====
 
   self.set_count = function(count) {
-    api.updateSet({id: self.id, count}, (result) => {
+    api.update(api.SET, {id: self.id, count}, (result) => {
       self.count(result.count);
     });
   }

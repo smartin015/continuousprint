@@ -59,6 +59,9 @@ function CPViewModel(parameters) {
     self.selected = ko.observable(null);
     self.materials = ko.observable([]);
 
+    self.api = parameters[4] || new CPAPI();
+    self.api.init(self.loading);
+
     self.isSelected = function(j=null, q=null) {
       j = self._resolve(j);
       q = self._resolve(q);
@@ -204,7 +207,7 @@ function CPViewModel(parameters) {
         let jobs = self.jobs();
         let job = jobs[jobs.length-1];
         let jobname = (job !== undefined) ? job.name() : "";
-        self.api.addSet({
+        self.api.add(self.api.SET, {
             name: data.name,
             path: data.path,
             sd: (data.origin !== "local"),
@@ -219,7 +222,7 @@ function CPViewModel(parameters) {
               return j.onSetModified(response.set_);
             }
           }
-          return self.jobs.push(new CPJob({id: response.job_id, name: jobname, count: 1, sets: [response.set_]}));
+          return self.jobs.push(new CPJob({id: response.job_id, name: jobname, count: 1, sets: [response.set_]}, self.api));
         });
     });
 
@@ -246,27 +249,59 @@ function CPViewModel(parameters) {
 
     // *** ko template methods ***
     self.setActive = _ecatch("setActive", function(active) {
-        self.api.setActive(active);
+        self.api.setActive(active, () => {
+          self.active(active);
+        });
     });
+
+    self._getSelections = function() {
+      let jobs = [];
+      let job_ids = [];
+      let sets = [];
+      let set_ids = [];
+      for (let j of self.jobs()) {
+        if (j.selected()) {
+          jobs.push(j);
+          job_ids.push(j.id());
+        }
+        for (let s of j.queuesets()) {
+          if (s.selected()) {
+            sets.push(s);
+            set_ids.push(s.id);
+          }
+        }
+      }
+      return {jobs, job_ids, sets, set_ids};
+    }
 
     self.deleteSelected = _ecatch("remove", function(e) {
-        if (e.constructor.name === "CPJob") {
-            self.api.rmJob({ids: [e.id]}, () => {
-              self.jobs.remove(e);
-            });
-        } else if (e.constructor.name === "CPQueueSet") {
-            self.api.rmSet({ids: [e.id]}, () => {
-              e.job.queuesets.remove(e);
-            });
-        }
+      let d = self._getSelections();
+      self.api.rm({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
+          for (let s of d.sets) {
+            s.job.queuesets.remove(s);
+          } 
+          for (let j of d.jobs) {
+            self.jobs.remove(j);
+          }
+      });
     });
 
-    self.resetSelected = _ecatch("redoSelected", function() {
-        throw Error("TODO clearCompleted");
+    self.resetSelected = _ecatch("resetSelected", function() {
+      let d = self._getSelections();
+      self.api.reset({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
+        for (let j of d.jobs) {
+          for (let s of j.queuesets()) {
+            s.runs([]);
+          }
+        }
+        for (let s of d.sets) {
+          s.runs([]);
+        }  
+      });
     });
 
     self.newEmptyJob = _ecatch("newEmptyJob", function() {
-        self.api.addJob((result) => {
+        self.api.add(self.api.JOB, (result) => {
           self.jobs.push(new CPJob(result, self.api));
         });
     });
@@ -328,7 +363,7 @@ function CPViewModel(parameters) {
       if (e.constructor.name === "CPJob") {
         let dest_idx = jobs.indexOf(e);
         console.log(dest_idx);
-        self.api.mvJob({
+        self.api.mv(self.api.JOB, {
             id: e.id,
             after_id: (dest_idx > 0) ? jobs[dest_idx-1].id : -1
         }, (result) => {
@@ -336,11 +371,10 @@ function CPViewModel(parameters) {
         });
       } else if (e.constructor.name === "CPQueueSet") {
         let dest_job = jobs[jobs.indexOf(p)].id;
-
-        let qss = p.queuesets()
+        let qss = p.queuesets();
         let dest_idx = qss.indexOf(e);
         console.log(dest_job, dest_idx);
-        self.api.mvSet({
+        self.api.mv(self.api.SET, {
           id: e.id,
           dest_job,
           after_id: (dest_idx > 0) ? qss[dest_idx-1].id : -1,
@@ -401,8 +435,6 @@ function CPViewModel(parameters) {
         }
     });
 
-    self.api = parameters[4] || new CPAPI();
-    self.api.init(self.loading);
     self.api.getSpoolManagerState(function(resp) {
       let result = {};
       for (let spool of resp.allSpools) {

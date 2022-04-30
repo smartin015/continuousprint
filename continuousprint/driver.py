@@ -100,7 +100,7 @@ class Driver:
             return self._state_inactive
 
         # Block until we have the right materials loaded (if required)
-        for i, im in enumerate(item.materials):
+        for i, im in enumerate(item.materials()):
             if im is None:  # No constraint
                 continue
             cur = self._cur_materials[i] if i < len(self._cur_materials) else None
@@ -111,7 +111,7 @@ class Driver:
                 return
 
         path = self.s.begin_assignment()
-        self._runner.start_print(p)
+        self._runner.start_print(item)
         return self._state_printing
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
@@ -167,14 +167,13 @@ class Driver:
 
     def _state_success(self, a: Action, p: Printer):
         item = self.s.get_assignment()
-
         # Complete prior queue item if that's what we just finished
         if item is not None:
             if self._intent == item.path and self._cur_path == item.path:
                 self.s.end_assignment("success")
             else:
                 self._logger.info(
-                    f"Current queue item {path} not matching intent {self._intent}, current path {self._cur_path} - no completion"
+                    f"Current queue item {item.path} not matching intent {self._intent}, current path {self._cur_path} - no completion"
                 )
         self.retries = 0
 

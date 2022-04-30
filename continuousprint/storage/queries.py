@@ -1,6 +1,6 @@
 from peewee import IntegrityError, JOIN
 from typing import Optional
-from .database import Queue, Job, Set, DB
+from .database import Queue, Job, Set, Run, DB
 import time
 import base64
 
@@ -27,28 +27,6 @@ def getJobsAndSets(q=None, lexOrder=False):
     cursor = cursor.order_by(Job.lexRank.asc())
   return cursor.execute()
 
-def createJob(queue, data: dict):
-  if '/' in data['name']:
-    raise ValueError("createJob requires no forward slashes ('/') in job names")
-  elif len(data['sets']) <= 0:
-    raise ValueError("job must contain at least one set")
-  elif int(data['count']) <= 0:
-    raise ValueError(f"Job count must be at least 1")
-
-  with DB.queues.atomic() as txn:
-    q = Queue.get(name=queue)
-    j = Job.create(
-      queue=q,
-      lexRank="0",
-      name=f"{queue}/{data['name']}",
-      count=int(data['count']),
-      )
-
-    for s in data['sets']:
-      if int(s['count']) <= 0:
-        raise ValueError(f"Set {s['path']} count must be at least 1")
-      Set.create(path=s['path'], material_keys=s['material'], count=int(s['count']), job=j)
-
 def getJob(queue, name):
   q = Queue.get(name=queue)
   j = Job.select().where(Job.queue==q and Job.name==name).prefetch(Set, Run)
@@ -68,11 +46,6 @@ def updateJob(job_id, data, json_safe=False, queue="default"):
     setattr(j, k, v)
   j.save()
   return j.as_dict(json_safe)
-
-def removeJobs(jids):
-  with DB.queues.atomic() as txn:
-    for jid in jids:
-      Job.get(id=jid).delete_instance(recursive=True)
 
 MAX_LEX = 1000000.0 # Arbitrary
 def genLex(n):
@@ -179,6 +152,7 @@ def appendSet(queue: str, job: str, data: dict):
   except Set.DoesNotExist:
     s = Set.create(
         path=data['path'],
+        sd=data['sd'],
         lexRank=lexEnd(),
         material_keys=",".join(data['material']),
         count=count,
@@ -196,13 +170,20 @@ def updateSet(set_id, data, json_safe=False):
   s.save()
   return s.as_dict(json_safe=json_safe)
 
-def removeSets(set_ids: list):
+def removeJobsAndSets(job_ids: list, set_ids: list):
   with DB.queues.atomic() as txn:
-    for sid in set_ids:
-      Set.get(id=sid).delete_instance(recursive=True)
+    j = Job.delete().where(Job.id.in_(job_ids)).execute()
+    s = Set.delete().where(Set.id.in_(set_ids)).execute()
+  return {"jobs_deleted": j, "sets_deleted": s}
+
+def removeRuns(job_ids: list, set_ids: list):
+  with DB.queues.atomic() as txn:
+    sids = set(set_ids)
+    sids.union([s.id for j in Job.select().join(Set).where(Job.id.in_(job_ids)) for s in j.sets])
+    return {"runs_deleted": Run.delete().where(Run.set_.in_(sids)).execute()}
 
 def beginRun(s):
-  Run.create(set_=s, start=datetime.now())
+  Run.create(set_=s) # start defaults to now()
 
 def endRun(r, result: str):
   with DB.queues.atomic() as txn:
@@ -211,6 +192,3 @@ def endRun(r, result: str):
     r.set_.remaining = max(r.set_.remaining - 1, 0)
     r.save()
     s.save()
-
-def normalizeLexRanks():
-  raise NotImplemented

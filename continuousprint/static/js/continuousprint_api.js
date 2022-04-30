@@ -1,7 +1,10 @@
 // This is an INTERNAL implementation, not to be used for any external integrations with the continuous print plugin.
 // If you see something here you want, open a FR to expose it: https://github.com/smartin015/continuousprint/issues
 class CPAPI {
-  BASE = "plugin/continuousprint/"
+  BASE = "plugin/continuousprint"
+  SET = "set"
+  JOB = "job"
+  RUN = "run"
 
   init(loading_vm) {
     console.log("API init");
@@ -34,43 +37,31 @@ class CPAPI {
   }
 
   getState(cb) {
-    this._call(this.BASE + "state", undefined, cb);
+    this._call(`${this.BASE}/state`, undefined, cb);
   }
 
-  addSet(data, cb) {
-    this._call(this.BASE + "set/add", data, cb);
+  add(type, data, cb) {
+    this._call(`${this.BASE}/${type}/add`, data, cb);
   }
 
-  updateSet(data, cb) {
-    this._call(this.BASE + "set/update", data, cb);
+  update(type, data, cb) {
+    this._call(t`${this.BASE}/${type}/update`, data, cb);
   }
 
-  mvSet(data, cb) {
-    this._call(this.BASE + "set/mv", data, cb);
+  mv(type, data, cb) {
+    this._call(`${this.BASE}/${type}/mv`, data, cb);
   }
 
-  rmSet(data, cb) {
-    this._call(this.BASE + "set/rm", data, cb);
+  rm(data, cb) {
+    this._call(`${this.BASE}/multi/rm`, data, cb);
   }
 
-  addJob(cb) {
-    this._call(this.BASE + "job/add", {}, cb);
-  }
-
-  updateJob(data, cb) {
-    this._call(this.BASE + "job/update", data, cb);
-  }
-
-  mvJob(data, cb) {
-    this._call(this.BASE + "job/mv", data, cb);
-  }
-
-  rmJob(data, cb) {
-    this._call(this.BASE + "job/rm", data, cb);
+  reset(data, cb) {
+    this._call(`${this.BASE}/multi/reset`, data, cb);
   }
 
   setActive(active, cb) {
-    this._call(this.BASE + "set_active", {active}, cb);
+    this._call(`${this.BASE}/set_active`, {active}, cb);
   }
 
   getSpoolManagerState(cb) {

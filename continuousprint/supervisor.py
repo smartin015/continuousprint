@@ -20,7 +20,7 @@ class Supervisor:
 
   def begin_assignment(self):
     s = self.get_assignment()
-    if a is not None:
+    if s is not None:
       self.run = self.queries.beginRun(s)
 
   def end_assignment(self, result):

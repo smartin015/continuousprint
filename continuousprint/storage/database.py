@@ -41,6 +41,7 @@ class Job(Model):
 
 class Set(Model):
   path = CharField()
+  sd = BooleanField()
   job = ForeignKeyField(Job, backref='sets', on_delete='CASCADE')
   lexRank = FloatField()
   count = IntegerField(default=1)
@@ -50,13 +51,18 @@ class Set(Model):
   # (makes it easier to manage material keys as a single field)
   # It's intentionally NOT a foreign key for this reason.
   material_keys = CharField()
+  def materials(self):
+    if self.material_keys == "":
+      return []
+    return self.material_keys.split(",")
 
   class Meta:
     database = DB.queues
 
   def as_dict(self, json_safe=False):
     runs = [r.as_dict(json_safe) for r in self.runs]
-    return dict(path=self.path, count=self.count, materials=self.material_keys.split(","), runs=runs, id=self.id, lr=self.lexRank)
+    return dict(path=self.path, count=self.count, materials=self.material_keys.split(","), runs=runs, id=self.id, lr=self.lexRank, sd=self.sd)
+
 
 
 class Run(Model):
@@ -69,10 +75,11 @@ class Run(Model):
     database = DB.queues
 
   def as_dict(self, json_safe=True):
-    d = dict(start=start, end=end, result=result, id=self.id)
+    d = dict(start=self.start, end=self.end, result=self.result, id=self.id)
     if json_safe:
       d['start'] = int(d['start'].timestamp())
-      d['end'] = int(d['end'].timestamp())
+      if d['end'] is not None:
+        d['end'] = int(d['end'].timestamp())
     return d
 
 

@@ -128,19 +128,15 @@
                   </div>
                   <table>
                     <thead>
-                      <th>Name</th>
-                      <th>SD</th>
+                      <th>Started</th>
                       <th>Status</th>
                       <th>Duration</th>
-                      <th>Retries</th>
                     </thead>
                     <tbody data-bind="foreach: runs">
-                      <tr data-bind="style: { 'font-weight': $root.isActiveItem($parentContext.$parentContext.$index, $parentContext.$index, $index)() ? 'bold' : null }, css: { 'run-alt': (run() % 2) === 1}">
-                        <td data-bind="text:name"/>
-                        <td data-bind="text: (sd) ? 'Y' : 'N'"/>
+                      <tr data-bind="style: { 'font-weight': $root.isActiveItem($parentContext.$parentContext.$index, $parentContext.$index, $index)() ? 'bold' : null }, css: { 'run-alt': ($index % 2) === 1}">
+                        <td data-bind="text:start"/>
                         <td data-bind="text:result, style: { color: result().startsWith('failure') ? 'red' : null }"/>
                         <td data-bind="text:duration"/>
-                        <td data-bind="text:retries"/>
                       </tr>
                     </tbody>
                   </table>
