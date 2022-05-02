@@ -45,7 +45,7 @@ class CPAPI {
   }
 
   update(type, data, cb) {
-    this._call(t`${this.BASE}/${type}/update`, data, cb);
+    this._call(`${this.BASE}/${type}/update`, data, cb);
   }
 
   mv(type, data, cb) {
@@ -62,6 +62,14 @@ class CPAPI {
 
   setActive(active, cb) {
     this._call(`${this.BASE}/set_active`, {active}, cb);
+  }
+
+  history(cb) {
+    this._call(`${this.BASE}/history`, undefined, cb, false);
+  }
+
+  clearHistory(cb) {
+    this._call(`${this.BASE}/clearHistory`, {}, cb, false);
   }
 
   getSpoolManagerState(cb) {

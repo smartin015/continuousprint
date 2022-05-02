@@ -1,4 +1,0 @@
-Queue:
-  - name: "default"
-    namespace: ""
-    network_type: 1 # "NONE"

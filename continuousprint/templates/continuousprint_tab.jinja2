@@ -1,16 +1,11 @@
 <div class="cp-header">
   <h3>Continuous Print Queue</h3>
-  <div class="btn-group">
-    <button class="btn" data-bind="click: function() {setActive(!active());}, css: {'btn-primary': !active(), 'btn-secondary': active()}">
-      <i class="fa fa-play"></i>&nbsp;&nbsp;<span data-bind="text: active() ? 'Stop Managing' : 'Start Managing'"/>
-    </button>
-    <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-      <i class="fas fa-ellipsis-v"></i>
-    </a>
-    <ul class="dropdown-menu">
-      <li><a href="https://github.com/smartin015/continuousprint" target="_blank">Help</a></li>
-    </ul>
-  </div>
+  <button class="btn btn-secondary" data-bind="visible: active(), click: function() {setActive(false);}">
+    <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
+  </button>
+  <button class="btn btn-primary" data-bind="hidden: active(), click: function() {setActive(true);}">
+    <i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing
+  </button>
 </div>
 
 <span data-bind="visible:  active()"><i class="fa fa-spinner fa-spin" data-bind="visible: active()"></i></span>
@@ -25,8 +20,12 @@
   </div>
 
   <div class="pull-right btn-group">
-    <button class="btn" data-bind="visible: checkFraction() > 0"><i style="cursor: pointer" data-bind="click: deleteSelected" class="far fa-trash-alt"></i></button>
-    <button class="btn" data-bind="visible: checkFraction() > 0"><i style="cursor: pointer" data-bind="click: resetSelected" class="fas fa-redo"></i></button>
+    <button class="btn" data-bind="visible: checkFraction() > 0, click: deleteSelected">
+      <i style="cursor: pointer" class="far fa-trash-alt"></i>
+    </button>
+    <button class="btn" data-bind="visible: checkFraction() > 0, click: resetSelected">
+      <i style="cursor: pointer" class="fas fa-redo"></i>
+    </button>
     <a class="btn dropdown-toggle" data-toggle="dropdown">
       <i style="cursor: pointer" data-bind="click: onChecked, css: (checkFraction() >= 1) ? 'fas fa-check-square' : ((checkFraction() > 0) ? 'fas fa-minus-square' : 'far fa-square')"></i>
       <i style="cursor: pointer" class="fa fa-caret-down"></i>
@@ -60,16 +59,16 @@
       <div class="queue-row-container">
         <i class="fas fa-grip-lines-vertical"></i>
         <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
-        <input type="text" class="job-name" data-bind="textInput: name, event: { change: $root.setJobName }, attr: {'_vkenabled': false}, css: {'bold': $root.isActiveItem($index)()}" placeholder="Click here to name"></input>
-        <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.isActiveItem($index)() }">
-          <div data-bind="style: { flex: pct, order: order }, css: {'active': result === 'started', 'bar': result !== 'pending', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
+        <input type="text" class="job-name" data-bind="textInput: name, event: { change: $root.setJobName }, attr: {'_vkenabled': false}" placeholder="Click here to name"></input>
+        <div class="progress">
+          <div data-bind="style: { width: pct_complete() }" class="bar bar-success"></div>
         </div>
         <div class="repeats">
-          <span data-bind="text: runs_completed() + ' /'">/</span>
+          <span data-bind="text: (count()-remaining()) + ' /'">/</span>
           <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
-          <input class="fa fa-text count-box" type="number" data-bind="value: count, event: { change: $root.setCount }, attr: {'_vkenabled': false}"></input>
+          <input class="fa fa-text count-box" type="number" data-bind="value: countInput, event: { change: $root.setCount }, attr: {'_vkenabled': false}"></input>
         </div>
-        <div class="total" data-bind="text: runs_completed() + '/' + length()"></div>
+        <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
         <div class="accordion-heading-button pull-right" data-bind="click: onChecked">
           <i style="cursor: pointer" data-bind="css: selected() ? 'fas fa-check-square' : 'far fa-square'"></i>
         </div>
@@ -78,37 +77,38 @@
 
     <div class="accordion-body collapse in">
       <div class="accordion-inner">
-        <div data-bind="text: id"></div>
         <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, as: 'queueset', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
           <div class="accordion-group">
             <div class="accordion-heading">
                 <div class="queue-row-container">
                   <i class="fas fa-grip-lines-vertical"></i>
-                  <p class="file-name" style="cursor:pointer" data-bind="click: () => $root.setSelected($parentContext.$index, $index), style: { 'font-weight': $root.isActiveItem($parentContext.$index, $index)() ? 'bold': null }">
+                  <p class="file-name" style="cursor:pointer" data-bind="click: () => $root.setSelected($parentContext.$index, $index), style: { 'font-weight': $root.active_set() == id ? 'bold': null }">
                     <i class="fa" data-bind="css: $root.isSelected($parentContext.$index, $index)() ? 'fa-caret-down' : 'fa-caret-right'"></i>
                     <span class="materials" data-bind="visible: materials().length > 0, foreach: materials">
                       <span class="label" data-bind="attr: {title: title}, text: shortName, style: {'background-color': bgColor, 'color': color}"></span>
                     </span>
                     <span data-bind="text: name"/>
                   </p>
-                  <div class="progress" data-bind="foreach: progress, css: { 'progress-striped active': $root.isActiveItem($parentContext.$index, $index)() }">
-                    <div data-bind="style: { flex: pct, order: order }, css: {'bar': result !== 'pending', 'active': result === 'started', 'bar-success': result == 'success', 'bar-danger': result.startsWith('failure')}"></div>
+                  <div class="progress" data-bind="css: { 'progress-striped active': $root.active_set() == id }">
+                    <div data-bind="style: { width: pct_complete() }" class="bar bar-success"></div>
+                    <div data-bind="visible: $root.active_set() == id, style: { width: pct_active() }" class="bar active"></div>
                   </div>
                   <div class="repeats">
                     <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
-                    <input class="fa fa-text count-box" type="number" data-bind="value: count, event: { change: $root.setCount }, attr: {'_vkenabled': false}"></input>
+                    <span data-bind="text: (count()-remaining()) + ' /'"></span>
+                    <input class="fa fa-text count-box" type="number" data-bind="value: countInput, event: { change: $root.setCount }, attr: {'_vkenabled': false}"></input>
                   </div>
-                  <div class="total" data-bind="text: runs_completed() + '/' + $parent.count()*count()"></div>
+                  <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
                   <div class="accordion-heading-button pull-right">
                     <input type="checkbox" data-bind="checked: selected"></input>
                   </div>
                 </div>
-
             </div>
 
             <div class="accordion-body collapse" data-bind="css: {'in': $root.isSelected($parentContext.$index, $index)()}">
               <div class="accordion-inner">
                 <div class="queue-set-list">
+                  <div data-bind="text: $root.active_set() + ' vs ' + id"></div>
                   <div data-bind="visible: $root.materials().length > 0">
                     <div>Materials:</div>
                     <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">
@@ -126,20 +126,6 @@
                   <div class="hint" data-bind="hidden: $root.materials().length > 0">
                     Hint: Install SpoolManager, add spools, then reload the page to select material types.
                   </div>
-                  <table>
-                    <thead>
-                      <th>Started</th>
-                      <th>Status</th>
-                      <th>Duration</th>
-                    </thead>
-                    <tbody data-bind="foreach: runs">
-                      <tr data-bind="style: { 'font-weight': $root.isActiveItem($parentContext.$parentContext.$index, $parentContext.$index, $index)() ? 'bold' : null }, css: { 'run-alt': ($index % 2) === 1}">
-                        <td data-bind="text:start"/>
-                        <td data-bind="text:result, style: { color: result().startsWith('failure') ? 'red' : null }"/>
-                        <td data-bind="text:duration"/>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>

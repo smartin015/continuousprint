@@ -46,7 +46,6 @@ class Driver:
         self.retry_threshold_seconds = 0
         self.first_print = True
         self._runner = script_runner
-        self._intent = None  # Intended file path
         self._update_ui = False
         self._cur_path = None
         self._cur_materials = []
@@ -97,6 +96,7 @@ class Driver:
 
         item = self.s.get_assignment()
         if item is None:
+            self._set_status("No work to do; going inactive")
             return self._state_inactive
 
         # Block until we have the right materials loaded (if required)
@@ -110,9 +110,9 @@ class Driver:
                 )
                 return
 
-        path = self.s.begin_assignment()
-        self._runner.start_print(item)
-        return self._state_printing
+        self.s.begin_run()
+        if self._runner.start_print(item):
+            return self._state_printing
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
         if a == Action.DEACTIVATE:
@@ -151,7 +151,6 @@ class Driver:
         self._set_status("Cancelling print (spaghetti seen early in print)")
         if p == Printer.PAUSED:
             self._runner.cancel_print()
-            self._intent = None
             return self._state_failure
 
     def _state_failure(self, a: Action, p: Printer):
@@ -162,19 +161,14 @@ class Driver:
             self.retries += 1
             return self._state_start_clearing
         else:
-            self.s.end_assignment("failure")
+            self.s.end_run("failure")
             return self._state_inactive
 
     def _state_success(self, a: Action, p: Printer):
-        item = self.s.get_assignment()
-        # Complete prior queue item if that's what we just finished
-        if item is not None:
-            if self._intent == item.path and self._cur_path == item.path:
-                self.s.end_assignment("success")
-            else:
-                self._logger.info(
-                    f"Current queue item {item.path} not matching intent {self._intent}, current path {self._cur_path} - no completion"
-                )
+        # Complete prior queue item if that's what we just finished.
+        # Note that end_run fails silently if there's no active run
+        # (e.g. if we start managing mid-print)
+        self.s.end_run("success")
         self.retries = 0
 
         # Clear bed if we have a next queue item, otherwise run finishing script
@@ -197,11 +191,16 @@ class Driver:
     def _state_clearing(self, a: Action, p: Printer):
         if a == Action.DEACTIVATE:
             return self._state_inactive
-        if p != Printer.IDLE:
-            return
+        elif a == Action.SUCCESS:
+            return self._state_start_print
+        elif a == Action.FAILURE:
+            self._set_status("Error occurred clearing bed - aborting")
+            return self._state_inactive  # Skip past failure state to inactive
 
-        self._set_status("Clearing bed")
-        return self._state_start_print
+        if p == Printer.IDLE:  # Idle state without event; assume success
+            return self._state_start_print
+        else:
+            self._set_status("Clearing bed")
 
     def _state_start_finishing(self, a: Action, p: Printer):
         if a == Action.DEACTIVATE:
@@ -214,14 +213,13 @@ class Driver:
         return self._state_finishing
 
     def _state_finishing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
+        if a in [Action.DEACTIVATE, Action.SUCCESS, Action.FAILURE]:
             return self._state_inactive
-        if p != Printer.IDLE:
-            return
 
-        self._set_status("Finising up")
-
-        return self._state_inactive
+        if p == Printer.IDLE:  # Idle state without event; assume success
+            return self._state_inactive
+        else:
+            self._set_status("Finishing up")
 
     def _set_status(self, status):
         if status != self.status:

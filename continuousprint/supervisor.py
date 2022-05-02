@@ -1,35 +1,35 @@
 import time
 
+
 class Supervisor:
-  def __init__(self, queries, queueName):
-    self.queue = queueName
-    self.queries = queries
-    self.assigned = None
-    self.run = None
+    def __init__(self, queries, queueName):
+        self.queue = queueName
+        self.queries = queries
+        self.assigned = None
+        self.run = None
 
-  def get_assignment(self):
-    if self.assigned is not None:
-      return self.assigned
+    def clear_cache(self):
+        self.assigned = None
 
-    # Need to loop over jobs first to maintain job order
-    for job in self.queries.getJobsAndSets(q=self.queue, lexOrder=True):
-      for set_ in job.sets:
-        if set_.remaining > 0:
-          self.assigned = set_
-          return self.assigned
+    def get_assignment(self):
+        if self.assigned is None:
+            self.assigned = self.queries.getNextSetInQueue(self.queue)
+        return self.assigned
 
-  def begin_assignment(self):
-    s = self.get_assignment()
-    if s is not None:
-      self.run = self.queries.beginRun(s)
+    def begin_run(self):
+        s = self.get_assignment()
+        if s is not None:
+            self.run = self.queries.beginRun(s)
+            return self.run
 
-  def end_assignment(self, result):
-    if self.run is not None:
-      self.queries.endRun(self.run, result)
-      self.run = None
+    def end_run(self, result):
+        if self.run is not None:
+            self.queries.endRun(self.get_assignment(), self.run, result)
+            self.run = None
+            self.clear_cache()  # Ensure we pick up the next assignment if we've tapped this one out
 
-  def elapsed(self, now=None):
-    if now is None:
-      now = time.time()
-    if self.run is not None:
-      return now - self.run.start
+    def elapsed(self, now=None):
+        if now is None:
+            now = time.time()
+        if self.run is not None:
+            return now - self.run.start

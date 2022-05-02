@@ -277,4 +277,53 @@
     animation: progress-bar-stripes 2s linear infinite;
     background-image: linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
 }
+
+/* Below stylesheets are for the "history" page */
+
+#tab_plugin_continuousprint_2 .header, #tab_plugin_continuousprint_2 .entries > div  {
+  display: flex;
+  justify-content: space-between;
+  padding: 0px 44px 0px 32px;
+  flex-direction: row;
+}
+
+#tab_plugin_continuousprint_2 .entry.success {
+  opacity: 0.5;
+}
+
+#tab_plugin_continuousprint_2 .header {
+  font-weight: bold;
+  opacity: 0.5;
+}
+
+#tab_plugin_continuousprint_2 .header > *, #tab_plugin_continuousprint_2 .entries > div > * {
+  flex: 1;
+  text-align: center;
+}
+
+#tab_plugin_continuousprint_2 .separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+}
+
+#tab_plugin_continuousprint_2 .separator::before, #tab_plugin_continuousprint_2 .separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #000;
+}
+
+#tab_plugin_continuousprint_2 .separator:not(:empty)::before {
+  margin-right: .25em;
+}
+
+#tab_plugin_continuousprint_2 .separator:not(:empty)::after {
+  margin-left: .25em;
+}
+
+
+#tab_plugin_continuousprint_2 .cp-header {
+  margin-bottom: 50px;
+}
+
 /* ======== */

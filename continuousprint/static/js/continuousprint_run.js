@@ -10,10 +10,13 @@ if (typeof ko === "undefined" || ko === null) {
 }
 
 // see QueueItem in print_queue.py for matching python object
-function CPQueueItem(data) {
+function CPHistoryRow(data) {
   var self = this;
-  self.start = ko.observable((data.start !== null) ? timeAgo(data.start) + " ago" : null);
+  self.start = ko.observable(data.start || null);
   self.end = ko.observable(data.end || null);
+  self.active = ko.observable(data.active || false);
+  self.job_name = data.job_name;
+  self.set_path = data.set_path;
   self._result = ko.observable(data.result || null);
   self.result = ko.computed(function() {
     let result = self._result();
@@ -23,6 +26,13 @@ function CPQueueItem(data) {
     return "started";
   });
 
+  function pluralize(num, unit) {
+    num = Math.round(num);
+    if (num === 1) {
+      return `${num} ${unit}`;
+    }
+    return `${num} ${unit}s`;
+  }
   // Inspired by answers at
   // https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
   function timeAgo(previous, current=null) {
@@ -34,19 +44,34 @@ function CPQueueItem(data) {
         current = (new Date()).getTime()/1000;
       }
       var elapsed = current - previous;
+      console.log("timeago", previous, current, "=>", elapsed);
       if (elapsed < sPerHour) {
-           return Math.round(elapsed/sPerMinute) + ' minutes';
+           return pluralize(elapsed/sPerMinute, 'minute');
       }
-      else if (elapsed < sPerDay ) {
-           return Math.round(elapsed/sPerHour) + ' hours';
+      else if (elapsed < sPerDay) {
+           return pluralize(elapsed/sPerHour, 'hour');
       }
       else if (elapsed < sPerMonth) {
-          return Math.round(elapsed/sPerDay) + ' days';
+          return pluralize(elapsed/sPerDay, 'day');
       }
       else {
-          return Math.round(elapsed/sPerMonth) + ' months';
+          return pluralize(elapsed/sPerMonth, 'month');
       }
   }
+  self.startedDate = ko.computed(function() {
+    let start = self.start();
+    if (start === null) {
+      return null;
+    }
+    return (new Date(start*1000)).toLocaleDateString('sv');
+  })
+  self.startedTime = ko.computed(function() {
+    let start = self.start();
+    if (start === null) {
+      return null;
+    }
+    return (new Date(start*1000)).toLocaleTimeString();
+  })
   self.duration = ko.computed(function() {
     let start = self.start();
     let end = self.end();

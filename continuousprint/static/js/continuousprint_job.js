@@ -19,9 +19,13 @@ function CPJob(obj, api) {
     throw Error("API must be provided when creating CPJob");
   }
   var self = this;
-  obj = {...{sets: [], name: "", count: 1, queue: "default", id: -1}, ...obj};
+  obj = {...{sets: [], name: "", count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
   self.name = ko.observable(obj.name);
+  self.count = ko.observable(obj.count);
+  self.countInput = ko.observable(obj.count);
+  self.remaining = ko.observable(obj.remaining);
+
   self.queuesets = ko.observableArray([]);
   for (let s of obj.sets) {
     self.queuesets.push(new CPQueueSet(s, api, self));
@@ -37,7 +41,6 @@ function CPJob(obj, api) {
     self.queuesets.push(newqs);
   }
 
-  self.count = ko.observable(obj.count);
   self.length = ko.computed(function() {
     let l = 0;
     let c = self.count();
@@ -45,6 +48,13 @@ function CPJob(obj, api) {
       l += qs.count()*c;
     }
     return l;
+  });
+  self.length_completed = ko.computed(function() {
+    let r = 0;
+    for (let qs of self.queuesets()) {
+      r += qs.length_completed();
+    }
+    return r;
   });
   self.selected = ko.observable(false);
   self.checkFraction = ko.computed(function() {
@@ -64,28 +74,11 @@ function CPJob(obj, api) {
     return (self.name() !== "" || self.count() != 1);
   }
   self.is_complete = function() {
-    let cnt = self.count();
-    for (let qs of self.queuesets()) {
-      if (qs.runs_completed() !== cnt) {
-        return false;
-      }
-    }
-    return true;
+    return self.remaining() >= self.count();
   };
-  self.runs_completed = ko.computed(function() {
-    let num = 0;
-    for (let qs of self.queuesets()) {
-      num = Math.min(num, qs.runs_completed());
-    }
-    return num;
-  })
-  self.progress = ko.computed(function() {
-    let result = [];
-    for (let qs of self.queuesets()) {
-      result.push(qs.progress());
-    }
-    return result.flat();
-  })
+  self.pct_complete = ko.computed(function() {
+    return Math.round(100 * (self.count() - self.remaining())/(self.count())) + '%';
+  });
   self.as_queue = function() {
     let result = [];
     let qss = self.queuesets();
@@ -116,6 +109,8 @@ function CPJob(obj, api) {
   self.set_count = function(count) {
     api.update(api.JOB, {id: self.id, count}, (result) => {
       self.count(result.count);
+      self.countInput(result.count);
+      self.remaining(result.remaining); // Adjusted when count is mutated
       self.id(result.id); // May change if no id to start with
     });
   }

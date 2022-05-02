@@ -54,10 +54,12 @@ function CPViewModel(parameters) {
     // These are used in the jinja template
     self.loading = ko.observable(false);
     self.active = ko.observable(false);
+    self.active_set = ko.observable(null);
     self.status = ko.observable("Initializing...");
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
     self.materials = ko.observable([]);
+    self.activeEntities = ko.observable([null, null, null]);
 
     self.api = parameters[4] || new CPAPI();
     self.api.init(self.loading);
@@ -74,39 +76,6 @@ function CPViewModel(parameters) {
         return r;
       });
     };
-
-    self.isActiveItem = function(j=null, q=null, i=null) {
-      j = self._resolve(j);
-      q = self._resolve(q);
-      i = self._resolve(i);
-      return ko.computed(function() {
-        let a = self.activeItem();
-        if (a === null) {
-          return false;
-        }
-        return (j === null || j === a[0]) && (q === null || q === a[1]) && (i === null || i === a[2]);
-      });
-    };
-
-    self.activeItem = ko.computed(function() {
-      if (!self.printerState.isPrinting() && !self.printerState.isPaused()) {
-        return null;
-      }
-      let printname = self.printerState.filename();
-      for (let j = 0; j < self.jobs().length; j++) {
-        let job = self.jobs()[j];
-        for (let q = 0; q < job.queuesets().length; q++) {
-          let qs = job.queuesets()[q];
-          for (let i = 0; i < qs.items().length; i++) {
-            let item = qs.items()[i];
-            if (item.path === printname && item.start_ts() !== null && item.end_ts() === null) {
-              return [j,q,i];
-            }
-          }
-        }
-      }
-      return null;
-    });
 
     self.batchSelectBase = function(mode) {
       switch (mode) {
@@ -133,12 +102,12 @@ function CPViewModel(parameters) {
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.queuesets().length !== 0 && j.runs_completed() === 0);
+            j.selected(j.queuesets().length !== 0 && j.length_completed() === 0);
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.runs_completed() > 0 && !j.is_complete());
+            j.selected(j.length_completed() > 0 && !j.is_complete());
           }
           break;
         case "Completed Jobs":
@@ -150,7 +119,7 @@ function CPViewModel(parameters) {
           for (let j of self.jobs()) {
             j.selected(false);
             for (let s of j.queuesets()) {
-              s.selected(s.runs_completed() == 0);
+              s.selected(s.length_completed() == 0);
             }
           }
           break;
@@ -158,7 +127,7 @@ function CPViewModel(parameters) {
           for (let j of self.jobs()) {
             j.selected(false);
             for (let s of j.queuesets()) {
-              s.selected(s.runs_completed() > 0 && s.runs_completed() < (s.length() * j.count()));
+              s.selected(s.length_completed() > 0 && s.length_completed() < (s.length() * j.count()));
             }
           }
           break;
@@ -166,7 +135,7 @@ function CPViewModel(parameters) {
           for (let j of self.jobs()) {
             j.selected(false);
             for (let s of j.queuesets()) {
-              s.selected(s.runs_completed() >= (s.length() * j.count()));
+              s.selected(s.length_completed() >= (s.length() * j.count()));
             }
           }
           break;
@@ -243,6 +212,7 @@ function CPViewModel(parameters) {
         self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
         self._updateJobs(state.jobs);
         self.active(state.active);
+        self.active_set(state.active_set);
         self.status(state.status);
         self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
@@ -279,7 +249,7 @@ function CPViewModel(parameters) {
       self.api.rm({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
           for (let s of d.sets) {
             s.job.queuesets.remove(s);
-          } 
+          }
           for (let j of d.jobs) {
             self.jobs.remove(j);
           }
@@ -290,18 +260,16 @@ function CPViewModel(parameters) {
       let d = self._getSelections();
       self.api.reset({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
         for (let j of d.jobs) {
-          for (let s of j.queuesets()) {
-            s.runs([]);
-          }
+          j.remaining(j.count());
         }
         for (let s of d.sets) {
-          s.runs([]);
-        }  
+          s.remaining(s.count());
+        }
       });
     });
 
     self.newEmptyJob = _ecatch("newEmptyJob", function() {
-        self.api.add(self.api.JOB, (result) => {
+        self.api.add(self.api.JOB, {}, (result) => {
           self.jobs.push(new CPJob(result, self.api));
         });
     });

@@ -8,9 +8,6 @@
 if (typeof ko === "undefined" || ko === null) {
   ko = require('knockout');
 }
-if (typeof CPQueueItem === "undefined" || CPQueueItem === null) {
-  CPQueueItem = require('./continuousprint_queueitem');
-}
 
 // QueueSets are a sequence of the same queue item repated a number of times.
 // This is an abstraction on top of the actual queue maintained by the server.
@@ -19,26 +16,24 @@ function CPQueueSet(data, api, job) {
   self.id = data.id;
   self.job = job;
 
-  let runs = [];
-  for (let r of data.runs) {
-    runs.push(new CPQueueItem(r));
-  }
   self.sd = ko.observable(data.sd);
-  self.runs = ko.observable(runs);
   self.name = ko.observable(data.path);
-  self.length = ko.observable(data.count);
   self.count = ko.observable(data.count);
-  self.selected = ko.observable(false);
-  self.runs_completed = ko.computed(function() {
-    let n = 0;
-    for (let r of self.runs()) {
-      if (r.status == 'success') {
-        n++;
-      }
-    }
-    return n/self.count();
+  self.countInput = ko.observable(data.count);
+  self.length = ko.computed(function() {
+    return job.count() * self.count();
   });
-
+  self.remaining = ko.observable(data.remaining);
+  self.length_completed = ko.computed(function() {
+    let c = self.count()
+    let job_completed = (job.count() - job.remaining());
+    console.log(c, job_completed, self.remaining());
+    if (self.remaining() == 0) {
+      return c*job_completed;
+    }
+    return c*job_completed + (c - self.remaining());
+  });
+  self.selected = ko.observable(false);
   self._textColorFromBackground = function(rrggbb) {
     // https://stackoverflow.com/a/12043228
     var rgb = parseInt(rrggbb.substr(1), 16);   // convert rrggbb to decimal
@@ -80,41 +75,11 @@ function CPQueueSet(data, api, job) {
     }
     return result;
   });
-  self.progress = ko.computed(function() {
-    /*
-    let progress = [];
-    let curNum = 0;
-    let curResult = self.items()[0].result();
-    let pushProgress = function() {
-      progress.push({
-        pct: Math.round(100 * curNum / self._len),
-        order: {"pending": 3, "success": 1}[curResult] || 2,
-        result: curResult,
-      });
-    }
-    for (let item of self.items()) {
-      let res = item.result();
-      if (res !== curResult) {
-        pushProgress();
-        curNum = 0;
-        curResult = res;
-      }
-      curNum++;
-    }
-    pushProgress();
-    return progress;
-    */
-    return [];
+  self.pct_complete = ko.computed(function() {
+    return Math.max(1, Math.round(100 * (self.count() - self.remaining())/(self.count()))) + '%';
   });
-  self.active = ko.computed(function() {
-    /*
-    for (let item of self.items()) {
-      if (item.start_ts === null && item.end_ts !== null) {
-        return true;
-      }
-    }
-    */
-    return false;
+  self.pct_active = ko.computed(function() {
+    return Math.max(1, Math.round(100 / self.count())) + '%';
   });
 
   // ==== Mutation methods ====
@@ -122,6 +87,9 @@ function CPQueueSet(data, api, job) {
   self.set_count = function(count) {
     api.update(api.SET, {id: self.id, count}, (result) => {
       self.count(result.count);
+      self.countInput(result.count);
+      self.remaining(result.remaining); // Adjusted when count is mutated
+      self.job.remaining(result.job_remaining);
     });
   }
   self.set_material = function(t, v) {

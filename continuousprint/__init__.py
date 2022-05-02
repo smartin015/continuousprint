@@ -1,14 +1,15 @@
 # coding=utf-8
 from __future__ import absolute_import
 
-import octoprint.plugin
-import octoprint.util
 import flask
 import json
 import yaml
 import os
 import time
 from io import BytesIO
+
+import octoprint.plugin
+import octoprint.util
 from octoprint.server.util.flask import restricted_access
 from octoprint.events import Events
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
@@ -128,8 +129,13 @@ class ContinuousprintPlugin(
 
         self._settings.save()
 
-        storage_init_path = os.path.join(os.path.dirname(__file__), "data/storage_init.yaml")
-        init_db(db_path=os.path.join(self.get_plugin_data_folder(), "queue.sqlite3"), initial_data_path=storage_init_path)
+        storage_init_path = os.path.join(
+            os.path.dirname(__file__), "data/storage_init.yaml"
+        )
+        init_db(
+            db_path=os.path.join(self.get_plugin_data_folder(), "queue.sqlite3"),
+            initial_data_path=storage_init_path,
+        )
 
         self.s = Supervisor(queries, DEFAULT_QUEUE)
         self.d = Driver(
@@ -212,7 +218,6 @@ class ContinuousprintPlugin(
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
             self.update(DA.FAILURE)
         elif event == Events.PRINT_CANCELLED:
-            print(payload.get("user"))
             if payload.get("user") is not None:
                 self.update(DA.DEACTIVATE)
             else:
@@ -293,30 +298,46 @@ class ContinuousprintPlugin(
             self.wait_for_bed_cooldown()
         return self.execute_gcode(CLEARING_SCRIPT_KEY)
 
-    def start_print(self, item, clear_bed=True):
-        self._msg("Starting print: " + item.path)
+    def start_print(self, item):
+        self._msg(f"Job {item.job.name}: printing {item.path}")
         self._msg(type="reload")
         try:
-            self._logger.info(item.path)
+            self._logger.info(f"Attempting to print {item.path} (sd={item.sd})")
             self._printer.select_file(item.path, item.sd, printAfterSelect=True)
-        except InvalidFileLocation:
+        except InvalidFileLocation as e:
+            self._logger.error(e)
             self._msg("File not found: " + item.path, type="error")
-        except InvalidFileType:
+        except InvalidFileType as e:
+            self._logger.error(e)
             self._msg("File not gcode: " + item.path, type="error")
-        return item.path
+        return True
 
     def state_json(self):
-        orderedJobs = queries.getJobsAndSets(DEFAULT_QUEUE, lexOrder=True)
-
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
         # (e.g. 1.4.1 -> 2.0.0).
-        jobs = [j.as_dict(json_safe=True) for j in orderedJobs]
+        orderedJobs = queries.getJobsAndSets(DEFAULT_QUEUE, lexOrder=True)
+
+        active_set = None
+        # Only annotate active jobs/sets if we've started a run
+        if self._active() and self.s.run is not None:
+            assigned = self.s.get_assignment()
+            if assigned is not None:
+                active_set = assigned.id
+
+        jobs = []
+        for j in orderedJobs:
+            jd = j.as_dict(json_safe=True)
+            jobs.append(jd)
 
         resp = {
-          "active": self._active(),
-          "status": "Initializing" if not hasattr(self, "d") else self.d.status,
-          "jobs": jobs,
+            "active": self._active(),
+            "active_set": active_set,
+            "status": "Initializing" if not hasattr(self, "d") else self.d.status,
+            "jobs": jobs,
         }
+
+        # This may be a bit query-inefficient, but it's simple. Can optimize later if needed.
+
         return json.dumps(resp)
 
     # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
@@ -376,7 +397,11 @@ class ContinuousprintPlugin(
         if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
             return flask.make_response("Insufficient Rights", 403)
             self._logger.info("attempt failed due to insufficient permissions.")
-        return json.dumps(queries.appendSet(DEFAULT_QUEUE, flask.request.form['job'], flask.request.form))
+        return json.dumps(
+            queries.appendSet(
+                DEFAULT_QUEUE, flask.request.form["job"], flask.request.form
+            )
+        )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/add", methods=["POST"])
@@ -392,58 +417,87 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
     def mv_set(self):
-      queries.moveSet(
-        int(flask.request.form["id"]),
-        int(flask.request.form["after_id"]),  # Move to after this set (-1 for beginning of job)
-        int(flask.request.form["dest_job"]),  # Move to this job (null for new job at end)
-      )
-      return json.dumps("ok")
+        queries.moveSet(
+            int(flask.request.form["id"]),
+            int(
+                flask.request.form["after_id"]
+            ),  # Move to after this set (-1 for beginning of job)
+            int(
+                flask.request.form["dest_job"]
+            ),  # Move to this job (null for new job at end)
+        )
+        return json.dumps("ok")
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/set/update", methods=["POST"])
     @restricted_access
     def update_set(self):
-      return json.dumps(queries.updateSet(
-        flask.request.form["id"],
-        flask.request.form,
-        json_safe=True,
-      ))
+        return json.dumps(
+            queries.updateSet(
+                flask.request.form["id"],
+                flask.request.form,
+                json_safe=True,
+            )
+        )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
     @restricted_access
     def mv_job(self):
-      queries.moveJob(
-        int(flask.request.form["id"]),
-        int(flask.request.form["after_id"]),  # Move to after this job (-1 for beginning of queue)
-      )
-      return json.dumps("ok")
+        queries.moveJob(
+            int(flask.request.form["id"]),
+            int(
+                flask.request.form["after_id"]
+            ),  # Move to after this job (-1 for beginning of queue)
+        )
+        return json.dumps("ok")
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/update", methods=["POST"])
     @restricted_access
     def update_job(self):
-      return json.dumps(queries.updateJob(
-        flask.request.form["id"],
-        flask.request.form,
-        json_safe=True
-      ))
+        return json.dumps(
+            queries.updateJob(
+                flask.request.form["id"], flask.request.form, json_safe=True
+            )
+        )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/multi/rm", methods=["POST"])
     @restricted_access
     def rm_multi(self):
-      jids = flask.request.form.getlist("job_ids[]")
-      sids = flask.request.form.getlist("set_ids[]")
-      return json.dumps(queries.removeJobsAndSets(jids, sids))
+        jids = flask.request.form.getlist("job_ids[]")
+        sids = flask.request.form.getlist("set_ids[]")
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
+        return json.dumps(queries.removeJobsAndSets(jids, sids))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/multi/reset", methods=["POST"])
     @restricted_access
     def reset_multi(self):
-      jids = flask.request.form.getlist("job_ids[]")
-      sids = flask.request.form.getlist("set_ids[]")
-      return json.dumps(queries.removeRuns(jids, sids))
+        jids = flask.request.form.getlist("job_ids[]")
+        sids = flask.request.form.getlist("set_ids[]")
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
+        return json.dumps(queries.replenish(jids, sids))
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/history", methods=["GET"])
+    @restricted_access
+    def get_history(self):
+        h = queries.getHistory()
+        if self.s.run is not None:
+            for row in h:
+                if row["run_id"] == self.s.run:
+                    row["active"] = True
+                    break
+        return json.dumps(h)
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/clearHistory", methods=["POST"])
+    @restricted_access
+    def clear_history(self):
+        queries.clearHistory()
+        return json.dumps("OK")
 
     # part of TemplatePlugin
     def get_template_vars(self):
@@ -460,8 +514,15 @@ class ContinuousprintPlugin(
             ),
             dict(
                 type="tab",
+                name="Queue",
                 custom_bindings=False,
                 template="continuousprint_tab.jinja2",
+            ),
+            dict(
+                type="tab",
+                name="History",
+                custom_bindings=False,
+                template="continuousprint_history_tab.jinja2",
             ),
         ]
 
@@ -472,10 +533,11 @@ class ContinuousprintPlugin(
                 "js/cp_modified_sortable.js",
                 "js/cp_modified_knockout-sortable.js",
                 "js/continuousprint_api.js",
-                "js/continuousprint_queueitem.js",
+                "js/continuousprint_run.js",
                 "js/continuousprint_queueset.js",
                 "js/continuousprint_job.js",
                 "js/continuousprint_viewmodel.js",
+                "js/continuousprint_history.js",
                 "js/continuousprint_settings.js",
                 "js/continuousprint.js",
             ],

@@ -237,6 +237,12 @@ class TestPartiallyComplete(unittest.TestCase):
         self.d.action(DA.TICK, DP.BUSY)
         self.assertEqual(self.d.state, self.d._state_printing)
 
+    def test_bed_clearing_failure(self):
+        raise Exception("Unimplemented")
+
+    def test_finishing_failure(self):
+        raise Exception("Unimplemented")
+
 
 class TestOnLastPrint(unittest.TestCase):
     def setUp(self):

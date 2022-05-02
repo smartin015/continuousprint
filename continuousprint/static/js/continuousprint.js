@@ -33,6 +33,11 @@ $(function() {
         elements: ["#tab_plugin_continuousprint"]
     });
     OCTOPRINT_VIEWMODELS.push({
+        construct: CPHistoryViewModel,
+        dependencies: [],
+        elements: ["#tab_plugin_continuousprint_2"]
+    });
+    OCTOPRINT_VIEWMODELS.push({
         construct: CPSettingsViewModel,
         dependencies: [
           "settingsViewModel",
