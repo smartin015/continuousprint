@@ -14,7 +14,6 @@ function CPHistoryRow(data) {
   var self = this;
   self.start = ko.observable(data.start || null);
   self.end = ko.observable(data.end || null);
-  self.active = ko.observable(data.active || false);
   self.job_name = data.job_name;
   self.set_path = data.set_path;
   self._result = ko.observable(data.result || null);
@@ -83,5 +82,5 @@ function CPHistoryRow(data) {
 }
 
 try {
-  module.exports = CPQueueItem;
+  module.exports = CPHistoryRow;
 } catch {}

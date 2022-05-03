@@ -9,7 +9,7 @@ if (typeof CPHistoryRow === "undefined" || CPHistoryRow === null) {
   // In the testing environment, dependencies must be manually imported
   ko = require('knockout');
   CPAPI = require('./continuousprint_api');
-  CPHistoryRow = require('./continuousprint_run');
+  CPHistoryRow = require('./continuousprint_history_row');
   log = {
     "getLogger": () => {return console;}
   };

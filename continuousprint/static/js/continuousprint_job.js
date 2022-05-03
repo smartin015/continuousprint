@@ -8,11 +8,11 @@
 if (typeof ko === "undefined" || ko === null) {
   ko = require('knockout');
 }
-if (typeof CPQueueSet === "undefined" || CPQueueSet === null) {
-  CPQueueSet = require('./continuousprint_queueset');
+if (typeof CPSet === "undefined" || CPSet === null) {
+  CPSet = require('./continuousprint_set');
 }
 
-// jobs and queuesets are derived from self.queue, but they must be
+// jobs and sets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
 function CPJob(obj, api) {
   if (api === undefined) {
@@ -26,80 +26,53 @@ function CPJob(obj, api) {
   self.countInput = ko.observable(obj.count);
   self.remaining = ko.observable(obj.remaining);
 
-  self.queuesets = ko.observableArray([]);
+  self.sets = ko.observableArray([]);
   for (let s of obj.sets) {
-    self.queuesets.push(new CPQueueSet(s, api, self));
+    self.sets.push(new CPSet(s, api, self));
   }
 
   self.onSetModified = function(s) {
-    let newqs = new CPQueueSet(s, api, self);
-    for (let qs of self.queuesets()) {
+    let newqs = new CPSet(s, api, self);
+    for (let qs of self.sets()) {
       if (qs.id === s.id) {
-        return self.queuesets.replace(qs, newqs);
+        return self.sets.replace(qs, newqs);
       }
     }
-    self.queuesets.push(newqs);
+    self.sets.push(newqs);
   }
 
   self.length = ko.computed(function() {
     let l = 0;
     let c = self.count();
-    for (let qs of self.queuesets()) {
+    for (let qs of self.sets()) {
       l += qs.count()*c;
     }
     return l;
   });
   self.length_completed = ko.computed(function() {
     let r = 0;
-    for (let qs of self.queuesets()) {
+    for (let qs of self.sets()) {
       r += qs.length_completed();
     }
     return r;
   });
   self.selected = ko.observable(false);
   self.checkFraction = ko.computed(function() {
-    let qss = self.queuesets();
+    let ss = self.sets();
     let numsel = (self.selected()) ? 0.1 : 0;
-    if (qss.length === 0) {
+    if (ss.length === 0) {
       return numsel;
     }
-    for (let qs of qss) {
+    for (let qs of ss) {
       if (qs.selected()) {
         numsel++;
       }
     }
-    return numsel / qss.length;
+    return numsel / ss.length;
   });
-  self.is_configured = function() {
-    return (self.name() !== "" || self.count() != 1);
-  }
-  self.is_complete = function() {
-    return self.remaining() >= self.count();
-  };
   self.pct_complete = ko.computed(function() {
     return Math.round(100 * (self.count() - self.remaining())/(self.count())) + '%';
   });
-  self.as_queue = function() {
-    let result = [];
-    let qss = self.queuesets();
-    let qsi = [];
-    for (let i = 0; i < qss.length; i++) {
-      qsi.push(0);
-    }
-    // Round-robin through the queuesets, pushing until we've exhausted each run
-    let job = self.name();
-    for (let run = 0; run < self.count(); run++) {
-      for (let i=0; i < qsi.length; i++) {
-        let items = qss[i].items();
-        while (items.length > qsi[i] && items[qsi[i]].run() <= run) {
-          let item = {...items[qsi[i]].as_object(), job, run};
-          result.push(item);
-          qsi[i]++;
-        }
-      }
-    }
-    return result;
-  }
   self.onChecked = function() {
     self.selected(!self.selected());
   }

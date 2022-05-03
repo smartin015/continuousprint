@@ -19,7 +19,6 @@ function CPViewModel(parameters) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
-    self.log.info(`[${self.PLUGIN_ID}] Initializing`);
     // Due to minification, it's very difficult to find and fix errors reported by users
     // due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
     // function name and args, and prints the error to the console with hopefully enough info
@@ -160,7 +159,6 @@ function CPViewModel(parameters) {
     });
     self.onChecked = function(v, e) {
       let c = self.checkFraction();
-      console.log(c);
       self.batchSelectBase((c == 0) ? "All" : "None");
       e.cancelBubble = true;
       if (e.stopPropagation) {
@@ -209,12 +207,12 @@ function CPViewModel(parameters) {
     });
 
     self._setState = function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
+        //self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
         self._updateJobs(state.jobs);
         self.active(state.active);
         self.active_set(state.active_set);
         self.status(state.status);
-        self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
+        //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
     // *** ko template methods ***
@@ -313,7 +311,6 @@ function CPViewModel(parameters) {
 
     self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
       vm.set_material(idx, mat);
-      throw Error("TODO set material");
     });
 
     self.sortStart = _ecatch("sortStart", function(evt) {
@@ -325,8 +322,6 @@ function CPViewModel(parameters) {
     self.sortEnd = _ecatch("sortEnd", function(_, e, p) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
-      console.log(e);
-      console.log(p);
       let jobs = self.jobs();
       if (e.constructor.name === "CPJob") {
         let dest_idx = jobs.indexOf(e);

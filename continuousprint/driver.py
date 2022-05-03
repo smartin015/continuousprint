@@ -129,7 +129,11 @@ class Driver:
                 )
                 return self._state_paused
         elif a == Action.SUCCESS:
-            return self._state_success
+            item = self.s.get_assignment()
+            if item.path == self._cur_path:
+                return self._state_success
+            else:
+                return self._state_start_clearing
 
         if p == Printer.BUSY:
             item = self.s.get_assignment()
@@ -185,7 +189,7 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._intent = self._runner.clear_bed()
+        self._runner.clear_bed()
         return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
@@ -209,7 +213,7 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._intent = self._runner.run_finish_script()
+        self._runner.run_finish_script()
         return self._state_finishing
 
     def _state_finishing(self, a: Action, p: Printer):

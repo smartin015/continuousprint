@@ -10,7 +10,7 @@ function mocks(filename="test.gcode") {
     {}, // loginState only used in continuousprint.js
     {onServerDisconnect: jest.fn(), onServerConnect: jest.fn()},
     {currentProfileData: () => {return {extruder: {count: () => 1}}}},
-    {assign: jest.fn(), getState: jest.fn(), setActive: jest.fn(), getSpoolManagerState: jest.fn()},
+    {init: jest.fn(), getState: jest.fn(), setActive: jest.fn(), getSpoolManagerState: jest.fn(), add: jest.fn(), rm: jest.fn(), reset: jest.fn()},
   ];
 }
 
@@ -27,24 +27,16 @@ const DATA = {
   retries: 0,
 };
 
-function items(njobs = 1, nsets = 2, count = 3, runs = 2, ncomplete = 1) {
-  let items = [];
+function items(njobs = 1, nsets = 2) {
+  let jobs = [];
   for (let j = 0; j < njobs; j++) {
+    let job = {name: `job${j}`, count: 1, remaining: 1, sets: [], id: j};
     for (let s = 0; s < nsets; s++) {
-      for (let run = 0; run < runs; run++) {
-        for (let i = 0; i < count; i++) {
-          let idx=count*run+i;
-          let data = {...DATA, name: `item ${s}`, idx, run, job: `job${j}`};
-          if (idx < ncomplete) {
-            items.push({...data, start_ts:100, end_ts:101, result:"success"});
-          } else {
-            items.push(data);
-          }
-        }
-      }
+      job.sets.push({...DATA, name: `set${s}`, id: s, materials: []});
     }
+    jobs.push(job);
   }
-  return items;
+  return jobs;
 }
 
 function init(njobs = 1, filename="test.gcode") {
@@ -52,7 +44,7 @@ function init(njobs = 1, filename="test.gcode") {
   v._setState({
     active: false,
     status: 'Test Status',
-    queue: items(njobs),
+    jobs: items(njobs),
   });
   return v;
 }
@@ -74,7 +66,7 @@ test('setActive notifies server', () => {
   let v = new VM(mocks());
   v.loading(false); // Inits to loading by default
   v.setActive(true);
-  expect(v.api.setActive).toHaveBeenCalledWith(true, v._setState);
+  expect(v.api.setActive).toHaveBeenCalledWith(true, expect.any(Function));
 });
 
 test('refreshQueue triggers state reload', () => {
@@ -84,32 +76,15 @@ test('refreshQueue triggers state reload', () => {
   expect(v.api.getState).toHaveBeenCalled();
 });
 
-test('mutation methods do nothing if in loading state', () => {
-  let v = new VM(mocks()); // default loading state
-  v.setActive(true);
-  v.setSelected(null);
-  v.files.add({});
-  v.clearCompleted();
-  v.clearAll();
-  v.requeueFailures();
-  v.remove(null);
-  v.setJobName(null, null);
-  v.setCount(null, null);
-  v.sortEnd(null, null, null);
-
-  expect(v.api.assign).not.toHaveBeenCalled();
-});
-
-test('files.add adds to bottom job and syncs to server', () => {
+test.only('files.add adds to bottom job and syncs to server', () => {
   let v = init();
   let data = {name: 'new file', path: 'test.gcode', origin: 'local'};
+  v.api.add = (_, data, cb) => cb({job_id: 1, set_: []});
   v.files.add(data);
-  expect(v.api.assign).toHaveBeenCalled();
-  let q = v.api.assign.mock.calls[0][0];
-  expect(q.length).toBe(13);
-  expect(q[q.length-1].name).toBe(data.name);
+  expect(v.api.add).toHaveBeenCalled();
 });
 
+/*
 test('setSelected sets/clears the indexes', () => {
   let v = init();
   expect(v.selected()).toBe(null);
@@ -201,3 +176,4 @@ test('activeItem returns indexes for job, queueset, and item', () => {
   i.start_ts(5);
   expect(v.activeItem()).toStrictEqual([1, 0, 2]);
 });
+*/

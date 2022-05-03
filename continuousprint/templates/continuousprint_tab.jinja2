@@ -77,7 +77,7 @@
 
     <div class="accordion-body collapse in">
       <div class="accordion-inner">
-        <div id="queue_sets" data-bind="cpsortable: {foreach: queuesets, as: 'queueset', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'queuesets'}}, css: {'empty': queuesets().length < 1}" class="queuesets accordion">
+        <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1}" class="sets accordion">
           <div class="accordion-group">
             <div class="accordion-heading">
                 <div class="queue-row-container">
@@ -87,7 +87,7 @@
                     <span class="materials" data-bind="visible: materials().length > 0, foreach: materials">
                       <span class="label" data-bind="attr: {title: title}, text: shortName, style: {'background-color': bgColor, 'color': color}"></span>
                     </span>
-                    <span data-bind="text: name"/>
+                    <span data-bind="text: path"/>
                   </p>
                   <div class="progress" data-bind="css: { 'progress-striped active': $root.active_set() == id }">
                     <div data-bind="style: { width: pct_complete() }" class="bar bar-success"></div>
@@ -114,7 +114,7 @@
                     <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">
                       <div>
                         <span data-bind="text: '' + $index() + ':'"></span>
-                        <select data-bind="value: (queueset.materials()[$index()] || {}).key, event: {change: (_, evt) => $root.setMaterial($parent, $index(), evt.target.value)}">
+                        <select data-bind="value: (set.materials()[$index()] || {}).key, event: {change: (_, evt) => $root.setMaterial($parent, $index(), evt.target.value)}">
                           <option key=""></option>
                           <!-- ko foreach: $root.materials -->
                             <option data-bind="value: value, text: text"></option>

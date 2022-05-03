@@ -31,4 +31,4 @@ class TestSupervisor(unittest.TestCase):
     def testEndRun(self):
         r = self.s.begin_run()
         self.s.end_run("result")
-        self.queries.endRun.assert_called_with(r, "result")
+        self.queries.endRun.assert_called_with(DUMMY_SET, r, "result")

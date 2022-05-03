@@ -9,15 +9,15 @@ if (typeof ko === "undefined" || ko === null) {
   ko = require('knockout');
 }
 
-// QueueSets are a sequence of the same queue item repated a number of times.
+// Sets are a sequence of the same queue item repated a number of times.
 // This is an abstraction on top of the actual queue maintained by the server.
-function CPQueueSet(data, api, job) {
+function CPSet(data, api, job) {
   var self = this;
   self.id = data.id;
   self.job = job;
 
   self.sd = ko.observable(data.sd);
-  self.name = ko.observable(data.path);
+  self.path = ko.observable(data.path);
   self.count = ko.observable(data.count);
   self.countInput = ko.observable(data.count);
   self.length = ko.computed(function() {
@@ -27,7 +27,6 @@ function CPQueueSet(data, api, job) {
   self.length_completed = ko.computed(function() {
     let c = self.count()
     let job_completed = (job.count() - job.remaining());
-    console.log(c, job_completed, self.remaining());
     if (self.remaining() == 0) {
       return c*job_completed;
     }
@@ -43,6 +42,7 @@ function CPQueueSet(data, api, job) {
     var luma = 0.2126 * r + 0.7152 * g + 0.0722 * b; // per ITU-R BT.709
     return (luma >= 128) ? "#000000" : "#FFFFFF";
   }
+  self.mats = ko.observable(data.materials);
   self._materialShortName = function(m) {
     m = m.trim().toUpperCase();
     if (m === "PETG") {
@@ -52,7 +52,7 @@ function CPQueueSet(data, api, job) {
   }
   self.materials = ko.computed(function() {
     let result = [];
-    for (let i of data.materials) {
+    for (let i of self.mats()) {
       if (i === null || i === "") {
         result.push({
           title: "any",
@@ -93,22 +93,17 @@ function CPQueueSet(data, api, job) {
     });
   }
   self.set_material = function(t, v) {
-    throw Error("TODO");
-    /*
-    const items = self.items();
-    for (let i of items) {
-      let mats = i.materials();
-      while (t >= mats.length) {
-        mats.push(null);
-      }
-      mats[t] = v;
-      i.materials(mats);
+    let mats = self.mats();
+    while (t >= mats.length) {
+      mats.push('');
     }
-    self.items(items);
-    */
+    mats[t] = v;
+    api.update(api.SET, {id: self.id, materials: mats.join(',')}, (result) => {
+      self.mats(result.materials);
+    });
   }
 }
 
 try {
-  module.exports = CPQueueSet;
+  module.exports = CPSet;
 } catch {}
