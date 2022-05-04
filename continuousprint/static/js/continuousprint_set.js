@@ -26,11 +26,15 @@ function CPSet(data, api, job) {
   self.remaining = ko.observable(data.remaining);
   self.length_completed = ko.computed(function() {
     let c = self.count()
-    let job_completed = (job.count() - job.remaining());
-    if (self.remaining() == 0) {
-      return c*job_completed;
+    let jc = job.count()
+    let job_completed = (jc - job.remaining());
+    let result = c - self.remaining();
+    if (job_completed !== jc) {
+      result += c*job_completed;
+    } else { // Prevent double-counting the end of the job
+      result += c*(job_completed-1);
     }
-    return c*job_completed + (c - self.remaining());
+    return result;
   });
   self.selected = ko.observable(false);
   self._textColorFromBackground = function(rrggbb) {

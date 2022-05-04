@@ -47,7 +47,19 @@ test('pct_active', () => {
   i.count(5);
   expect(i.pct_active()).toBe("20%");
 });
+test('length_completed', () => {
+  let i = new CPSet(data(count=1), api(), {count: () => 1, remaining: () => 1});
+  expect(i.length_completed()).toBe(0);
 
+  // Completing a job should increase the length
+  i.remaining(0);
+  expect(i.length_completed()).toBe(1);
+
+  // Job completion shouldn't double-count
+  i = new CPSet(data(count=1), api(), {count: () => 1, remaining: () => 0});
+  i.remaining(0);
+  expect(i.length_completed()).toBe(1);
+});
 test('set_count', () => {
   let i = new CPSet(data(), api(), job);
   i.set_count(4);

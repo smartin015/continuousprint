@@ -58,7 +58,6 @@ function CPViewModel(parameters) {
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
     self.materials = ko.observable([]);
-    self.activeEntities = ko.observable([null, null, null]);
 
     self.api = parameters[4] || new CPAPI();
     self.api.init(self.loading);
@@ -81,7 +80,7 @@ function CPViewModel(parameters) {
         case "All":
           for (let j of self.jobs()) {
             j.selected(true);
-            for (let s of j.queuesets()) {
+            for (let s of j.sets()) {
               s.selected(true);
             }
           }
@@ -89,35 +88,48 @@ function CPViewModel(parameters) {
         case "None":
           for (let j of self.jobs()) {
             j.selected(false);
-            for (let s of j.queuesets()) {
+            for (let s of j.sets()) {
               s.selected(false);
             }
           }
           break;
         case "Empty Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.queuesets().length === 0);
+            j.selected(j.sets().length === 0);
+            for (let s of j.sets()) {
+              s.selected(false);
+            }
           }
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.queuesets().length !== 0 && j.length_completed() === 0);
+            j.selected(j.sets().length !== 0 && j.length_completed() === 0);
+            for (let s of j.sets()) {
+              s.selected(false);
+            }
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.length_completed() > 0 && !j.is_complete());
+            let lc = j.length_completed();
+            j.selected(lc > 0 && lc < j.length());
+            for (let s of j.sets()) {
+              s.selected(false);
+            }
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.queuesets().length !== 0 && j.is_complete());
+            j.selected(j.sets().length !== 0 && j.length_completed() >= j.length());
+            for (let s of j.sets()) {
+              s.selected(false);
+            }
           }
           break;
         case "Unstarted Sets":
           for (let j of self.jobs()) {
             j.selected(false);
-            for (let s of j.queuesets()) {
+            for (let s of j.sets()) {
               s.selected(s.length_completed() == 0);
             }
           }
@@ -125,7 +137,7 @@ function CPViewModel(parameters) {
         case "Incomplete Sets":
           for (let j of self.jobs()) {
             j.selected(false);
-            for (let s of j.queuesets()) {
+            for (let s of j.sets()) {
               s.selected(s.length_completed() > 0 && s.length_completed() < (s.length() * j.count()));
             }
           }
@@ -133,7 +145,7 @@ function CPViewModel(parameters) {
         case "Completed Sets":
           for (let j of self.jobs()) {
             j.selected(false);
-            for (let s of j.queuesets()) {
+            for (let s of j.sets()) {
               s.selected(s.length_completed() >= (s.length() * j.count()));
             }
           }
@@ -232,7 +244,7 @@ function CPViewModel(parameters) {
           jobs.push(j);
           job_ids.push(j.id());
         }
-        for (let s of j.queuesets()) {
+        for (let s of j.sets()) {
           if (s.selected()) {
             sets.push(s);
             set_ids.push(s.id);
@@ -246,7 +258,7 @@ function CPViewModel(parameters) {
       let d = self._getSelections();
       self.api.rm({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
           for (let s of d.sets) {
-            s.job.queuesets.remove(s);
+            s.job.sets.remove(s);
           }
           for (let j of d.jobs) {
             self.jobs.remove(j);
@@ -281,15 +293,15 @@ function CPViewModel(parameters) {
       return observable;
     };
 
-    self.setSelected = _ecatch("setSelected", function(job, queueset) {
+    self.setSelected = _ecatch("setSelected", function(job, set) {
         job = self._resolve(job);
-        queueset = self._resolve(queueset);
+        set = self._resolve(set);
         if (self.loading()) return;
         let s = self.selected();
-        if (s !== null && s[0] == job && s[1] == queueset) {
+        if (s !== null && s[0] == job && s[1] == set) {
           self.selected(null);
         } else {
-          self.selected([job, queueset]);
+          self.selected([job, set]);
         }
     });
 
@@ -325,18 +337,16 @@ function CPViewModel(parameters) {
       let jobs = self.jobs();
       if (e.constructor.name === "CPJob") {
         let dest_idx = jobs.indexOf(e);
-        console.log(dest_idx);
         self.api.mv(self.api.JOB, {
             id: e.id,
-            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id : -1
+            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
         }, (result) => {
           console.log(result);
         });
       } else if (e.constructor.name === "CPQueueSet") {
         let dest_job = jobs[jobs.indexOf(p)].id;
-        let qss = p.queuesets();
+        let qss = p.sets();
         let dest_idx = qss.indexOf(e);
-        console.log(dest_job, dest_idx);
         self.api.mv(self.api.SET, {
           id: e.id,
           dest_job,
@@ -348,7 +358,7 @@ function CPViewModel(parameters) {
     });
 
     self.sortMove = function(evt) {
-      // Like must move to like (e.g. no dragging a queueset out of a job)
+      // Like must move to like (e.g. no dragging a set out of a job)
       return (evt.from.id === evt.to.id);
     };
 
