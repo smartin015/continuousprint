@@ -9,7 +9,9 @@ class Supervisor:
         self.run = None
 
     def clear_cache(self):
-        self.assigned = None
+        # Only clear assignment if we haven't yet started a run
+        if self.run is None:
+            self.assigned = None
 
     def get_assignment(self):
         if self.assigned is None:

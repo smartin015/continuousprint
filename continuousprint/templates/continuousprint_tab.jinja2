@@ -108,7 +108,6 @@
             <div class="accordion-body collapse" data-bind="css: {'in': $root.isSelected($parentContext.$index, $index)()}">
               <div class="accordion-inner">
                 <div class="queue-set-list">
-                  <div data-bind="text: $root.active_set() + ' vs ' + id"></div>
                   <div data-bind="visible: $root.materials().length > 0">
                     <div>Materials:</div>
                     <div class="material_select" data-bind="foreach: new Array($root.extruders() || 0)">

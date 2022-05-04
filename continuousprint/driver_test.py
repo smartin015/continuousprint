@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from .driver import Driver, Action as DA, Printer as DP
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class MockItem:

@@ -331,7 +331,7 @@ function CPViewModel(parameters) {
       self.files.onServerDisconnect();
     });
 
-    self.sortEnd = _ecatch("sortEnd", function(_, e, p) {
+    self.sortEnd = _ecatch("sortEnd", function(evt, e) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       let jobs = self.jobs();
@@ -343,9 +343,16 @@ function CPViewModel(parameters) {
         }, (result) => {
           console.log(result);
         });
-      } else if (e.constructor.name === "CPQueueSet") {
-        let dest_job = jobs[jobs.indexOf(p)].id;
-        let qss = p.sets();
+      } else if (e.constructor.name === "CPSet") {
+        // Sadly there's no "destination job" information, so we have to
+        // infer the index of the job based on the rendered HTML given by evt.to
+        let to = evt.to;
+        while (to.className !== "accordion-group job" && to !== undefined) {
+          to = to.parentElement;
+        }
+        let dest_job_idx = Array.from(to.parentNode.children).indexOf(to);
+        let dest_job = jobs[dest_job_idx].id;
+        let qss = jobs[dest_job_idx].sets();
         let dest_idx = qss.indexOf(e);
         self.api.mv(self.api.SET, {
           id: e.id,

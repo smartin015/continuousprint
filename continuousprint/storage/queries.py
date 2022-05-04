@@ -25,7 +25,6 @@ def decrementJobRemaining(j):
     if j.remaining > 0:
         # Refresh sets within the job if this isn't the last go-around
         Set.update(remaining=Set.count).where(Set.job == j).execute()
-        print("Refreshed sets belonging to job", j.id)
         return True
     return False
 
@@ -41,7 +40,6 @@ def getNextSetInQueue(q=None):
         # decrement the job. Pick its first set if there's still more work to be done.
         if job.remaining > 0 and decrementJobRemaining(job):
             return job.sets[0]
-    print("No set in queue available for next")
 
 
 def updateJob(job_id, data, json_safe=False, queue="default"):
@@ -60,14 +58,6 @@ def updateJob(job_id, data, json_safe=False, queue="default"):
         inc = newCount - j.count
         j.remaining = min(newCount, j.remaining + max(inc, 0))
         j.count = newCount
-        print(
-            "Job now count",
-            j.count,
-            "remaining",
-            j.remaining,
-            "rtype",
-            type(j.remaining),
-        )
 
     j.save()
     return j.as_dict(json_safe)

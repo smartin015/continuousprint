@@ -6,12 +6,12 @@ import tempfile
 import os
 import time
 
+# logging.basicConfig(level=logging.DEBUG)
+
 from .database import Job, Set, Run, Queue, init as init_db
 from ..storage import queries as q
 
 QNAME = "default"
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 class TestEmptyQueue(unittest.TestCase):

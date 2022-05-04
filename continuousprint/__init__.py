@@ -417,6 +417,7 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
     def mv_set(self):
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
         queries.moveSet(
             int(flask.request.form["id"]),
             int(
@@ -432,6 +433,7 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/set/update", methods=["POST"])
     @restricted_access
     def update_set(self):
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
         return json.dumps(
             queries.updateSet(
                 flask.request.form["id"],
@@ -444,6 +446,7 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
     @restricted_access
     def mv_job(self):
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
         queries.moveJob(
             int(flask.request.form["id"]),
             int(
@@ -456,6 +459,7 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/job/update", methods=["POST"])
     @restricted_access
     def update_job(self):
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
         return json.dumps(
             queries.updateJob(
                 flask.request.form["id"], flask.request.form, json_safe=True
@@ -466,18 +470,18 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/multi/rm", methods=["POST"])
     @restricted_access
     def rm_multi(self):
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
         jids = flask.request.form.getlist("job_ids[]")
         sids = flask.request.form.getlist("set_ids[]")
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         return json.dumps(queries.removeJobsAndSets(jids, sids))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/multi/reset", methods=["POST"])
     @restricted_access
     def reset_multi(self):
+        self.s.clear_cache()  # API call affects runs; assignment may have changed
         jids = flask.request.form.getlist("job_ids[]")
         sids = flask.request.form.getlist("set_ids[]")
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         return json.dumps(queries.replenish(jids, sids))
 
     # PRIVATE API METHOD - may change without warning.
@@ -533,11 +537,11 @@ class ContinuousprintPlugin(
                 "js/cp_modified_sortable.js",
                 "js/cp_modified_knockout-sortable.js",
                 "js/continuousprint_api.js",
-                "js/continuousprint_run.js",
-                "js/continuousprint_queueset.js",
+                "js/continuousprint_history_row.js",
+                "js/continuousprint_history.js",
+                "js/continuousprint_set.js",
                 "js/continuousprint_job.js",
                 "js/continuousprint_viewmodel.js",
-                "js/continuousprint_history.js",
                 "js/continuousprint_settings.js",
                 "js/continuousprint.js",
             ],
