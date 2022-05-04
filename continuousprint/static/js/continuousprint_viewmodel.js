@@ -49,7 +49,8 @@ function CPViewModel(parameters) {
     self.printerState = parameters[0];
     self.loginState = parameters[1];
     self.files = parameters[2];
-    self.settings = parameters[3]; // (smartin015@) IDK why this is a dependency
+    self.printerProfiles = parameters[3];
+    self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
     self.api = parameters[4] || new CPAPI();
 
     // These are used in the jinja template
@@ -58,6 +59,16 @@ function CPViewModel(parameters) {
     self.status = ko.observable("Initializing...");
     self.jobs = ko.observableArray([]);
     self.selected = ko.observable(null);
+
+    self.materials = ko.observable([]);
+    self.api.getSpoolManagerState(function(resp) {
+      let result = {};
+      for (let spool of resp.allSpools) {
+        let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
+        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
+      }
+      self.materials(Object.values(result));
+    });
 
     self.isSelected = function(j=null, q=null) {
       j = self._resolve(j);
@@ -134,6 +145,7 @@ function CPViewModel(parameters) {
       for (let j of self.jobs()) {
         q = q.concat(j.as_queue());
       }
+      console.log(q);
       self.api.assign(q, self._setState);
     });
 
@@ -190,7 +202,7 @@ function CPViewModel(parameters) {
     });
 
     self._setState = function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] updating jobs:`, state);
+        self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.queue.length})`);
         self._updateJobs(state.queue);
         self.active(state.active);
         self.status(state.status);
@@ -279,6 +291,11 @@ function CPViewModel(parameters) {
         return;
       }
       vm.set_count(v);
+      self._updateQueue();
+    });
+
+    self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
+      vm.set_material(idx, mat);
       self._updateQueue();
     });
 

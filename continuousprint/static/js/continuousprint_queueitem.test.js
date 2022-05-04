@@ -5,6 +5,7 @@ const DATA = {
   path: "item.gcode",
   sd: false,
   job: "testjob",
+  materials: [],
   run: 0,
   start_ts: null,
   end_ts: null,

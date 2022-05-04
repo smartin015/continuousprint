@@ -52,11 +52,15 @@ You should see "Successfully installed continuousprint" when running the install
 
 Continuous Print uses [mkdocs](https://www.mkdocs.org/) to generate web documentation. All documentation lives in `docs/`.
 
+```shell
+pip install mkdocs mkdocs-material
+```
+
 if you installed the dev tools (step 2) you can run `mkdocs serve` from the root of the repository to see doc edits live at [http://localhost:8000](http://localhost:8000).
 
 ## 3. Run unit tests to verify changes
 
-When you've made your changes, it's important to test for regressions. 
+When you've made your changes, it's important to test for regressions.
 
 Run python tests with this command:
 
@@ -89,16 +93,16 @@ Users of [OctoPi](https://octoprint.org/download/) can install a development ver
 
 Note that we're using the bundled version of python3 that comes with octoprint, **NOT** the system installed python3. If you try the latter, it'll give an error that sounds like octoprint isn't installed.
 
-## 5. Submit a pull request 
+## 5. Submit a pull request
 
-When you've made and tested your changes, follow the remaining instructions for [contributing to projects](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) to create a pull request. 
+When you've made and tested your changes, follow the remaining instructions for [contributing to projects](https://docs.github.com/en/get-started/quickstart/contributing-to-projects) to create a pull request.
 
 !!! important
 
-    New pull requests must be submitted to the `rc` branch, **not to the `master` branch**. 
-    
+    New pull requests must be submitted to the `rc` branch, **not to the `master` branch**.
+
     Additonally, the [plugin version line](https://github.com/smartin015/continuousprint/blob/rc/setup.py#L17) in `setup.py` **must have an incremented `rc` number** (e.g. `1.5.0rc2` -> `1.5.0rc3`, `1.6.1` -> `1.6.2rc1`).
-    
+
     This allows users to test the "release candidate" and shake out any bugs before everyone receives the change.
 
 You should receive a review within a day or so - if you haven't heard back in a week or more, [email the plugin author](https://github.com/smartin015/continuousprint/blob/master/setup.py#L27).

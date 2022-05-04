@@ -17,6 +17,7 @@ function CPQueueItem(data) {
   self.sd = data.sd;
   self.job = ko.observable(data.job);
   self.run = ko.observable(data.run);
+  self.materials = ko.observable(data.materials || []);
   self.changed = ko.observable(data.changed || false);
   self.start_ts = ko.observable(data.start_ts || null);
   self.end_ts = ko.observable(data.end_ts || null);
@@ -80,6 +81,7 @@ function CPQueueItem(data) {
       sd: self.sd,
       job: self.job(),
       run: self.run(),
+      materials: self.materials(),
       start_ts: self.start_ts(),
       end_ts: self.end_ts(),
       result: self._result(), // Don't propagate default strings
