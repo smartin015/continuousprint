@@ -18,6 +18,8 @@ from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 from octoprint.printer import InvalidFileLocation, InvalidFileType
+from peerprint.server import Server as PeerPrintServer
+from peerprint.adapter import Adapter as PeerPrintAdapter
 
 from .driver import Driver, Action as DA, Printer as DP
 from .supervisor import Supervisor
@@ -26,6 +28,7 @@ from .storage import queries
 
 QUEUE_KEY = "cp_queue"
 DEFAULT_QUEUE = "default"
+PRINTER_PROFILE_KEY = "cp_printer_profile"
 CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
 FINISHED_SCRIPT_KEY = "cp_queue_finished_script"
 TEMP_FILES = dict(
@@ -39,6 +42,26 @@ BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
 BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
 BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
 MATERIAL_SELECTION_KEY = "cp_material_selection_enabled"
+
+
+class OctoPrintAdapter(PeerPrintAdapter):
+    def __init__(self, namespace, addr):
+        self.ns = namespace
+        self.addr = addr
+        self.server = server
+
+    def get_namespace(self):
+        return self.ns
+
+    def get_host_addr(self):
+        return self.addr
+
+    def upsert_job(self, data):
+        job = queries.importJob(self.ns, data)
+        return job.id
+
+    def remove_job(self, local_id):
+        queries.removeJobsAndSets(job_ids=[local_id], set_ids=[])
 
 
 class ContinuousprintPlugin(
@@ -89,6 +112,7 @@ class ContinuousprintPlugin(
         d[BED_COOLDOWN_THRESHOLD_KEY] = 30
         d[BED_COOLDOWN_TIMEOUT_KEY] = 60
         d[MATERIAL_SELECTION_KEY] = False
+        d[PRINTER_PROFILE_KEY] = "Generic"
         return d
 
     def _active(self):
@@ -132,10 +156,33 @@ class ContinuousprintPlugin(
         storage_init_path = os.path.join(
             os.path.dirname(__file__), "data/storage_init.yaml"
         )
+        plugin_data_dir = self.get_plugin_data_folder()
         init_db(
-            db_path=os.path.join(self.get_plugin_data_folder(), "queue.sqlite3"),
+            db_path=os.path.join(plugin_data_dir, "queue.sqlite3"),
             initial_data_path=storage_init_path,
         )
+
+        profname = self._settings.get([PRINTER_PROFILE_KEY])
+        for prof in self._printer_profiles:
+            if prof["name"] == profname:
+                self._printer_profile = dict(
+                    model=prof["model"],
+                    width=prof["width"],
+                    depth=prof["depth"],
+                    height=prof["height"],
+                    formFactor=prof["formFactor"],
+                    selfClearing=prof["selfClearing"],
+                )
+                break
+
+        self.peer_server = PeerPrintServer(
+            os.path.join(plugin_data_dir, "peerprint.sqlite3"), self._logger
+        )
+        port = 9876  # TODO better port handling, dynamic queue creation
+        for q in queries.getQueues():
+            if q.addr is not None:
+                self.peer_server.join(PeerPrintAdapter(q.name, q.addr))
+                port += 1
 
         self.s = Supervisor(queries, DEFAULT_QUEUE)
         self.d = Driver(
@@ -153,6 +200,18 @@ class ContinuousprintPlugin(
         self.watchdog = RepeatedTimer(5.0, lambda: self.update(DA.TICK))
         self.watchdog.start()
         self._logger.info("Continuous Print Plugin started")
+
+    def _on_db_change(
+        self,
+        upserted_jobs: list = [],
+        upserted_queues: list = [],
+        removed_sets: list = [],
+        removed_jobs: list = [],
+        removed_queues=[],
+    ):
+        self._logger.info(
+            "TODO _on_db_change", upsert, removed_sets, removed_jobs, removed_queues
+        )
 
     def update(self, a: DA):
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
@@ -180,6 +239,13 @@ class ContinuousprintPlugin(
 
         if self.d.action(a, p, path, materials):
             self._msg(type="reload")  # Reload UI when new state is added
+
+        # Send our updates to PeerPrint (if configured)
+        if self.peer_server is not None:
+            # elapsed = self.s.elapsed()
+            # estTime = 1000  # TODO
+            # self.peer_server.updatePeer(PeerData(status=pstate, secondsUntilIdle=(estTime-elapsed)))
+            pass
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -473,7 +539,12 @@ class ContinuousprintPlugin(
         self.s.clear_cache()  # API call affects runs; assignment may have changed
         jids = flask.request.form.getlist("job_ids[]")
         sids = flask.request.form.getlist("set_ids[]")
-        return json.dumps(queries.removeJobsAndSets(jids, sids))
+        qids = flask.request.form.getlist("queue_ids[]")
+
+        result = queries.removeJobsAndSets(jids, sids)
+        if qids is not None:
+            result["queues_deleted"] = queries.removeQueues(qids)
+        return json.dumps(result)
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/multi/reset", methods=["POST"])
@@ -503,6 +574,23 @@ class ContinuousprintPlugin(
         queries.clearHistory()
         return json.dumps("OK")
 
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/queues", methods=["GET"])
+    @restricted_access
+    def get_queues(self):
+        return json.dumps([q.as_dict() for q in queries.getQueues()])
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/queues/commit", methods=["POST"])
+    @restricted_access
+    def commit_queues(self):
+        self._logger.info("/queues/commit")
+        for qdata in json.loads(flask.request.form.get("queues")):
+            self._logger.info(qdata)
+            queries.upsertQueue(qdata["name"], qdata["strategy"], qdata["addr"])
+        # TODO remove non-present queues
+        return json.dumps("OK")
+
     # part of TemplatePlugin
     def get_template_vars(self):
         return dict(
@@ -518,13 +606,13 @@ class ContinuousprintPlugin(
             ),
             dict(
                 type="tab",
-                name="Queue",
+                name="Continuous Print",
                 custom_bindings=False,
                 template="continuousprint_tab.jinja2",
             ),
             dict(
                 type="tab",
-                name="History",
+                name="CPQ History",
                 custom_bindings=False,
                 template="continuousprint_history_tab.jinja2",
             ),

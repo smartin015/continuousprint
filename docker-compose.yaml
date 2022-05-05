@@ -6,6 +6,7 @@ services:
       - "5000:5000"
     volumes:
       - ".:/continuousprint"
+      - "../peerprint:/peerprint"
       - "./volume:/home/oprint/.octoprint"
     environment:
       - "PYTHONUNBUFFERED=1"

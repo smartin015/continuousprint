@@ -31,9 +31,21 @@ class DB:
 class Queue(Model):
     name = CharField(unique=True)
     created = DateTimeField(default=datetime.datetime.now)
+    addr = CharField(null=True)  # null == local queue
+    strategy = CharField()
 
     class Meta:
         database = DB.queues
+
+    def as_dict(self):
+        q = dict(
+            name=self.name,
+            addr=self.addr,
+            strategy=self.strategy,
+        )
+        # if json_safe:
+        #    q["created"] = int(q["created"].timestamp())
+        return q
 
 
 class Job(Model):
@@ -136,5 +148,5 @@ def init(db_path="queues.sqlite3", initial_data_path="init.yaml"):
 
     if needs_init:
         DB.queues.create_tables([Queue, Job, Set, Run])
-        Queue.create(name="default")
-        Queue.create(name="archive")
+        Queue.create(name="default", strategy="LINEAR")
+        Queue.create(name="archive", strategy="LINEAR")

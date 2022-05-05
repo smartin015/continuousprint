@@ -7,6 +7,19 @@ import base64
 from .database import Queue, Job, Set, Run, DB
 
 
+def getQueues():
+    return Queue.select()
+
+
+def upsertQueue(name, strategy, addr=None):
+    q = Queue.replace(name=name, strategy=strategy, addr=addr).execute()
+    return q
+
+
+def removeQueue(qid):
+    Queue.get(qid).delete_instance(recursive=True).execute()
+
+
 def getJobsAndSets(q=None, lexOrder=False):
     if type(q) == str:
         q = Queue.get(name=q)
@@ -26,7 +39,8 @@ def decrementJobRemaining(j):
         # Refresh sets within the job if this isn't the last go-around
         Set.update(remaining=Set.count).where(Set.job == j).execute()
         return True
-    return False
+    else:
+        return False
 
 
 def getNextSetInQueue(q=None):
@@ -140,12 +154,38 @@ def moveCls(cls, src_id: int, dest_id: int, retried=False):
 def newEmptyJob(q, lex=lexEnd):
     if type(q) == str:
         q = Queue.get(name=q)
-    return Job.create(
+    j = Job.create(
         queue=q,
         lexRank=lex(),
         name="",
         count=1,
     )
+    return j
+
+
+def importJob(q, data, lex=lexEnd):
+    if type(q) == str:
+        q = Queue.get(name=q)
+    with DB.queues.atomic():
+        j = Job.create(
+            queue=q,
+            lexRank=lex(),
+            name=data["name"],
+            count=data["count"],
+            remaining=data["count"],
+        )
+        for s in data["sets"]:
+            # Note: hash is used in place of path here. This MUST be resolved before starting the job.
+            Set.create(
+                path=f"md5://{s['hash_']}",
+                sd=False,
+                job=j,
+                lexRank=lex(),
+                count=s["count"],
+                remaining=s["count"],
+                material_keys=(",".join(["material_keys"])),
+            )
+    return j
 
 
 def appendSet(queue: str, job: str, data: dict, lex=lexEnd):
@@ -173,6 +213,7 @@ def appendSet(queue: str, job: str, data: dict, lex=lexEnd):
             remaining=count,
             job=j,
         )
+
     return dict(job_id=j.id, set_=s.as_dict(json_safe=True))
 
 
@@ -199,6 +240,10 @@ def updateSet(set_id, data, json_safe=False):
     result = s.as_dict(json_safe=json_safe)
     result["job_remaining"] = job_remaining
     return result
+
+
+def removeQueues(queue_ids: list):
+    return {"queues_deleted": Queue.remove().where(Queue.id.in_(queue_ids)).execute()}
 
 
 def removeJobsAndSets(job_ids: list, set_ids: list):

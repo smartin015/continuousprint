@@ -6,6 +6,7 @@ if (typeof log === "undefined" || log === null) {
   };
   CP_PRINTER_PROFILES = [];
   CP_GCODE_SCRIPTS = [];
+  CPAPI = require('./continuousprint_api');
 }
 
 function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=CP_GCODE_SCRIPTS) {
@@ -13,6 +14,9 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
     self.settings = parameters[0];
+    self.api = parameters[1] || new CPAPI();
+    self.loading = ko.observable(false);
+    self.api.init(self.loading);
 
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)
     self.profiles = {};
@@ -26,6 +30,19 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     for (let s of scripts) {
       self.scripts[s.name] = s.gcode;
     }
+
+    // Queues are stored in the DB; we must fetch them.
+    self.queues = ko.observableArray();
+    self.api.queues((result) => {
+      let queues = []
+      for (let r of result) {
+        if (r.name === "default" || r.name === "archive") {
+          continue;
+        }
+        queues.push(r);
+      }
+      self.queues(queues);
+    });
 
     self.selected_make = ko.observable();
     let makes = Object.keys(self.profiles);
@@ -50,6 +67,19 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
       let cpset = self.settings.settings.plugins.continuousprint;
       cpset.cp_bed_clearing_script(self.scripts[profile.defaults.clearBed]);
       cpset.cp_queue_finished_script(self.scripts[profile.defaults.finished]);
+    };
+
+    self.newBlankQueue = function() {
+      self.queues.push({name: "", addr: "", strategy: ""});
+    };
+
+    // Called automatically by SettingsViewModel
+    self.onSettingsBeforeSave = function() {
+      // Sadly it appears flask doesn't have good parsing of nested POST structures,
+      // So we pass it a JSON string instead.
+      self.api.commitQueues({queues: JSON.stringify(self.queues())}, () => {
+        console.log("TODO some visual of commited queues");
+      });
     }
 }
 

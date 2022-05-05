@@ -4,7 +4,6 @@ class CPAPI {
   BASE = "plugin/continuousprint"
   SET = "set"
   JOB = "job"
-  RUN = "run"
 
   init(loading_vm) {
     console.log("API init");
@@ -70,6 +69,14 @@ class CPAPI {
 
   clearHistory(cb) {
     this._call(`${this.BASE}/clearHistory`, {}, cb, false);
+  }
+
+  queues(cb) {
+    this._call(`${this.BASE}/queues`, undefined, cb, false);
+  }
+
+  commitQueues(data, cb) {
+    this._call(`${this.BASE}/queues/commit`, data, cb);
   }
 
   getSpoolManagerState(cb) {
