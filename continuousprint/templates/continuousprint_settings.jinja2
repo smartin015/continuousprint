@@ -6,14 +6,14 @@
 </script>
 
 <ul class="nav nav-pills">
-  <li><a href="#settings_continuousprint_gcode" data-toggle="tab">Scripts</a></li>
+  <li class="active"><a href="#settings_continuousprint_gcode" data-toggle="tab">Scripts</a></li>
   <li><a href="#settings_continuousprint_behaviors" data-toggle="tab">Behaviors</a></li>
   <li><a href="#settings_continuousprint_queues" data-toggle="tab">Queues</a></li>
 </ul>
 <div class="tab-content">
-  <div id="settings_continuousprint_gcode" class="tab-pane">
+  <div id="settings_continuousprint_gcode" class="tab-pane active">
     <form class="form-horizontal">
-      <h4>Printer Profiles</h4>
+      <legend>Printer Profiles</legend>
       <p>Load <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">community-contributed</a> bed clearing scripts for your printer:</p>
       <fieldset>
         <div class="control-group">
@@ -35,7 +35,7 @@
       </fieldset>
       <p>Click "Save" to keep the changes, or "Close" to discard them.</p>
 
-      <h4>Customize</h4>
+      <legend>Customize</legend>
       <p>
       For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
       </p>
@@ -54,11 +54,7 @@
           <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_queue_finished_script"></textarea>
           </div>
         </div>
-    </form>
-  </div> <!-- /settings_continuousprint_gcode -->
 
-  <div id="settings_continuousprint_behaviors" class="tab-pane">
-    <form class="form-horizontal">
       <h5>Bed Cooldown Settings</h5>
         <p>
             If enabled, when print in queue is finished OctoPrint will run <b>Bed Cooldown Script</b>,
@@ -98,8 +94,13 @@
 
       </fieldset>
 
+    </form>
+  </div> <!-- /settings_continuousprint_gcode -->
+
+  <div id="settings_continuousprint_behaviors" class="tab-pane">
+    <form class="form-horizontal">
       <fieldset>
-        <h3>Failure Recovery</h3>
+        <legend>Failure Recovery</legend>
         <div class="alert" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
           <p>Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
           <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
@@ -133,7 +134,7 @@
       </fieldset>
 
       <fieldset>
-        <h3>Material Selection</h3>
+        <legend>Material Selection</legend>
         <div class="alert" data-bind="hidden: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
           <p>Material selection requires <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a>, but the plugin does not appear to be installed or enabled.<p>
           <p>Read more about this feature in the <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">Material Selection guide</a>.</p>
@@ -152,29 +153,40 @@
 
 
   <div id="settings_continuousprint_queues" class="tab-pane">
-    <form class="form-horizontal">
-      <h5>Queues (Alpha Feature)</h5>
+  <form class="form-horizontal">
+      <legend>Queues (Alpha Feature)</legend>
         <p>
             This is an unproven feature for sharing one or more Continuous Print queues across multiple octoprint instances
             (and thus multiple printers).
         </p>
         <p>
-            Configure LAN queues below, then go back to the Continuous Print tab to see them listed below the default (local) queue.
+        Configure your LAN queues below, then go back to the Continuous Print tab to see them listed below the default (local) queue. If you're unsure how, see <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">this guide</a>.
         </p>
 
-        <button data-bind="click: newBlankQueue">Add</button>
-
-        <div data-bind="foreach: queues">
-            <div>Namespace: <input type="text" data-bind="value: name"></input></div>
-            <div>Address: <input type="text" data-bind="value: addr"></input></div>
-            <div>Strategy:
-                <select data-bind="value: strategy">
-                  <option>In-Order</option>
-                  <option>Least Manual</option>
-                </select>
-            </div>
-            <div>Todo strategy description</div>
-        </div>
+        <table class="table table-striped table-hover table-condensed table-hover">
+            <thead>
+            <tr>
+              <th style="text-align: center">Name</th>
+              <th style="text-align: center; width:190px">Hostname:Port</th>
+              <th style="text-align: center">Strategy</th>
+              <th style="width:20px"></th>
+            </tr>
+            </thead>
+            <tbody data-bind="foreach: queues">
+            <tr>
+                <td><input type="text" style="width:90%" data-bind="value: name"></input></td>
+                <td><input type="text" style="width:90%" data-bind="value: addr"></input></td>
+                <td>
+                  <select data-bind="value: strategy">
+                    <option>In-Order</option>
+                    <option>Least Manual</option>
+                  </select>
+                </td>
+                <td><div data-bind="click: $root.rmQueue"><i class="far fa-trash-alt"></i></div></td>
+            </tr>
+            </tbody>
+            </table>
+        <button class="btn pull-right" data-bind="click: newBlankQueue"><i class="fas fa-plus"></i> Add Queue</button>
     </form>
   </div> <!-- settings_continuousprint_lan -->
 </div>

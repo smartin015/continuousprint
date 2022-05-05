@@ -48,7 +48,6 @@ class OctoPrintAdapter(PeerPrintAdapter):
     def __init__(self, namespace, addr):
         self.ns = namespace
         self.addr = addr
-        self.server = server
 
     def get_namespace(self):
         return self.ns
@@ -178,11 +177,14 @@ class ContinuousprintPlugin(
         self.peer_server = PeerPrintServer(
             os.path.join(plugin_data_dir, "peerprint.sqlite3"), self._logger
         )
-        port = 9876  # TODO better port handling, dynamic queue creation
         for q in queries.getQueues():
             if q.addr is not None:
-                self.peer_server.join(PeerPrintAdapter(q.name, q.addr))
-                port += 1
+                try:
+                    self.peer_server.join(OctoPrintAdapter(q.name, q.addr))
+                except ValueError:
+                    self._logger.error(
+                        f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
+                    )
 
         self.s = Supervisor(queries, DEFAULT_QUEUE)
         self.d = Driver(
@@ -542,7 +544,7 @@ class ContinuousprintPlugin(
         qids = flask.request.form.getlist("queue_ids[]")
 
         result = queries.removeJobsAndSets(jids, sids)
-        if qids is not None:
+        if len(qids) > 0:
             result["queues_deleted"] = queries.removeQueues(qids)
         return json.dumps(result)
 
@@ -584,10 +586,26 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/queues/commit", methods=["POST"])
     @restricted_access
     def commit_queues(self):
-        self._logger.info("/queues/commit")
-        for qdata in json.loads(flask.request.form.get("queues")):
-            self._logger.info(qdata)
+        queues = json.loads(flask.request.form.get("queues"))
+        # Default/archive queues should never be removed
+        names = set([qdata["name"] for qdata in queues] + ["default", "archive"])
+        for q in queries.getQueues():
+            if q.name not in names:
+                self._logger.info(f"Removing queue {q.name} ({q.id})")
+                queries.removeQueue(q.id)
+                self.peer_server.leave(q.name)
+        for qdata in queues:
             queries.upsertQueue(qdata["name"], qdata["strategy"], qdata["addr"])
+            if self.peer_server.get(qdata["name"]) is None:
+                try:
+                    self.peer_server.join(
+                        OctoPrintAdapter(qdata["name"], qdata["addr"])
+                    )
+                except ValueError:
+                    self._logger.error(
+                        f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
+                    )
+
         # TODO remove non-present queues
         return json.dumps("OK")
 

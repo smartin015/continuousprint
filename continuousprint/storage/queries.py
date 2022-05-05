@@ -17,7 +17,7 @@ def upsertQueue(name, strategy, addr=None):
 
 
 def removeQueue(qid):
-    Queue.get(qid).delete_instance(recursive=True).execute()
+    Queue.get(qid).delete_instance(recursive=True)
 
 
 def getJobsAndSets(q=None, lexOrder=False):
@@ -243,7 +243,7 @@ def updateSet(set_id, data, json_safe=False):
 
 
 def removeQueues(queue_ids: list):
-    return {"queues_deleted": Queue.remove().where(Queue.id.in_(queue_ids)).execute()}
+    return {"queues_deleted": Queue.delete().where(Queue.id.in_(queue_ids)).execute()}
 
 
 def removeJobsAndSets(job_ids: list, set_ids: list):

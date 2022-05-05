@@ -72,13 +72,16 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.newBlankQueue = function() {
       self.queues.push({name: "", addr: "", strategy: ""});
     };
+    self.rmQueue = function(q) {
+      self.queues.remove(q);
+    }
 
     // Called automatically by SettingsViewModel
     self.onSettingsBeforeSave = function() {
       // Sadly it appears flask doesn't have good parsing of nested POST structures,
       // So we pass it a JSON string instead.
       self.api.commitQueues({queues: JSON.stringify(self.queues())}, () => {
-        console.log("TODO some visual of commited queues");
+        console.log("Queues committed");
       });
     }
 }

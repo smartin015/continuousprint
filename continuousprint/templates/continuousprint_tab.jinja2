@@ -13,13 +13,13 @@
 <hr/>
 
 
-<div class="action_bar">
+<div class="cp-header action-bar">
   <div class="btn-group">
     <button class="btn" data-bind="click: newEmptyJob"><i style="cursor:pointer" class="fas fa-plus"></i></button>
     <button class="btn" data-bind="click: refreshQueue"><i style="cursor: pointer" class="fas fa-sync"></i></button>
   </div>
-
-  <div class="pull-right btn-group">
+  <div>Local</div>
+  <div class="btn-group">
     <button class="btn" data-bind="visible: checkFraction() > 0, click: deleteSelected">
       <i style="cursor: pointer" class="far fa-trash-alt"></i>
     </button>
@@ -53,7 +53,7 @@
   <div class="total">Total</div>
 </div>
 <!-- `cpsortable` is renamed from `sortable` - see https://github.com/smartin015/continuousprint/issues/14 -->
-<div id="queue_list" class="accordion" data-bind="cpsortable: {foreach: jobs, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading()}">
+<div class="accordion queue-list" data-bind="cpsortable: {foreach: jobs, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading()}">
   <div class="accordion-group job">
     <div class="accordion-heading job-header">
       <div class="queue-row-container">
@@ -133,4 +133,30 @@
       </div>
     </div>
   </div>
+</div>
+
+<hr/>
+<div class="cp-header action-bar">
+  <div></div>
+  <div>LAN 1</div>
+  <div class="btn-group">
+    <button class="btn">
+      <i style="cursor: pointer" class="far fa-trash-alt"></i>
+    </button>
+    <button class="btn">
+      <i style="cursor: pointer" class="fas fa-arrow-up"></i>
+    </button>
+    <a class="btn dropdown-toggle" data-toggle="dropdown">
+      <i style="cursor: pointer" data-bind="click: onChecked, css: (checkFraction() >= 1) ? 'fas fa-check-square' : ((checkFraction() > 0) ? 'fas fa-minus-square' : 'far fa-square')"></i>
+      <i style="cursor: pointer" class="fa fa-caret-down"></i>
+    </a>
+    <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+      <li><a tabindex="-1" data-bind="click: batchSelect">All</a></li>
+      <li><a tabindex="-1" data-bind="click: batchSelect">None</a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="accordion queue-list">
+TODO
 </div>

@@ -3,7 +3,19 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  font-weight: bold;
+  text-align: center;
 }
+#tab_plugin_continuousprint .action-bar > * {
+  flex: 1;
+}
+#tab_plugin_continuousprint .action-bar :first-child {
+  text-align: left;
+}
+#tab_plugin_continuousprint .action-bar :last-child {
+  text-align: right;
+}
+
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
 }
@@ -13,7 +25,9 @@
 .themeify.nighttime #tab_plugin_continuousprint .job-header {
   background-color: #222 !important;
 }
-
+#tab_plugin_continuousprint .queue-list {
+  min-height: 100px;
+}
 #tab_plugin_continuousprint .accordion-heading, {
   width:100%;
   display: flex;
