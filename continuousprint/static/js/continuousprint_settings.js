@@ -14,7 +14,8 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
     self.settings = parameters[0];
-    self.api = parameters[1] || new CPAPI();
+    self.files = parameters[1]
+    self.api = parameters[2] || new CPAPI();
     self.loading = ko.observable(false);
     self.api.init(self.loading);
 
@@ -36,8 +37,8 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.api.queues((result) => {
       let queues = []
       for (let r of result) {
-        if (r.name === "default" || r.name === "archive") {
-          continue;
+        if (r.name === "archive") {
+          continue; // Archive is hidden
         }
         queues.push(r);
       }
@@ -84,6 +85,16 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
         console.log("Queues committed");
       });
     }
+
+    self.sortStart = function() {
+      // Faking server disconnect allows us to disable the default whole-page
+      // file drag and drop behavior.
+      self.files.onServerDisconnect();
+    };
+    self.sortEnd = function() {
+      // Re-enable default drag and drop behavior
+      self.files.onServerConnect();
+    };
 }
 
 

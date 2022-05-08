@@ -28,9 +28,14 @@ class DB:
     queues = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
+DEFAULT_QUEUE = "local"
+ARCHIVE_QUEUE = "archive"
+
+
 class Queue(Model):
     name = CharField(unique=True)
     created = DateTimeField(default=datetime.datetime.now)
+    lexRank = FloatField()
     addr = CharField(null=True)  # null == local queue
     strategy = CharField()
 
@@ -43,14 +48,13 @@ class Queue(Model):
             addr=self.addr,
             strategy=self.strategy,
         )
-        # if json_safe:
-        #    q["created"] = int(q["created"].timestamp())
         return q
 
 
 class Job(Model):
     queue = ForeignKeyField(Queue, backref="jobs", on_delete="CASCADE")
     name = CharField()
+    draft = BooleanField(default=True)
     lexRank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count > 0")])
     remaining = IntegerField(
@@ -61,20 +65,20 @@ class Job(Model):
     class Meta:
         database = DB.queues
 
-    def as_dict(self, json_safe=False):
+    def as_dict(self):
         sets = list(self.sets)
         sets.sort(key=lambda s: s.lexRank)
-        sets = [s.as_dict(json_safe) for s in sets]
+        sets = [s.as_dict() for s in sets]
         d = dict(
             name=self.name,
             count=self.count,
+            draft=self.draft,
             sets=sets,
             created=self.created,
             id=self.id,
             remaining=self.remaining,
         )
-        if json_safe:
-            d["created"] = int(d["created"].timestamp())
+        d["created"] = int(d["created"].timestamp())
         return d
 
 
@@ -101,7 +105,7 @@ class Set(Model):
     class Meta:
         database = DB.queues
 
-    def as_dict(self, json_safe=False):
+    def as_dict(self):
         return dict(
             path=self.path,
             count=self.count,
@@ -123,12 +127,11 @@ class Run(Model):
     class Meta:
         database = DB.queues
 
-    def as_dict(self, json_safe=True):
+    def as_dict(self):
         d = dict(start=self.start, end=self.end, result=self.result, id=self.id)
-        if json_safe:
-            d["start"] = int(d["start"].timestamp())
-            if d["end"] is not None:
-                d["end"] = int(d["end"].timestamp())
+        d["start"] = int(d["start"].timestamp())
+        if d["end"] is not None:
+            d["end"] = int(d["end"].timestamp())
         return d
 
 
@@ -148,5 +151,5 @@ def init(db_path="queues.sqlite3", initial_data_path="init.yaml"):
 
     if needs_init:
         DB.queues.create_tables([Queue, Job, Set, Run])
-        Queue.create(name="default", strategy="LINEAR")
-        Queue.create(name="archive", strategy="LINEAR")
+        Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", lexRank=0)
+        Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", lexRank=-1)

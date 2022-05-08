@@ -36,7 +36,7 @@
   justify-content: right;
   align-items: center;
 }
-#tab_plugin_continuousprint .queue-row-container {
+#tab_plugin_continuousprint .queue-row-container, #settings_continuousprint_queues .queue-row-container {
   width:100%;
   display: flex;
   flex-wrap: nowrap;
@@ -51,7 +51,7 @@
   padding-right: 0px;
   border-right: 0px;
 }
-#tab_plugin_continuousprint .queue-row-container > * {
+#tab_plugin_continuousprint .queue-row-container > *, #settings_continuousprint_queues .queue-row-container > * {
   margin-left: 10px;
   margin-bottom: 0;
   line-height: 1.6;
@@ -87,18 +87,20 @@
   max-height: 500px;
 }
 
-#tab_plugin_continuousprint .queue-header {
+#tab_plugin_continuousprint .queue-header, #settings_continuousprint_queues .queue-header {
   display: flex;
   justify-content: space-between;
   font-weight: bold;
-  padding: 0px 44px 0px 32px;
+  padding: 0px 58px 0 28px;
+  opacity: 0.5;
 }
 #tab_plugin_continuousprint .repeats {
   width: 85px;
-  text-align: right;
-}
-#tab_plugin_continuousprint .queue-header > div {
   text-align: center;
+}
+#tab_plugin_continuousprint .queue-header > div, #settings_continuousprint_queues .queue-header > div {
+  text-align: center;
+  margin-left: 10px;
 }
 #tab_plugin_continuousprint #queue_sets.empty {
   border: 1px #e5e5e5 solid; /* copy from .accordion-group */
@@ -116,21 +118,6 @@
 }
 #tab_plugin_continuousprint .accordion-body.collapse.in {
   max-height: 500px;
-}
-
-#tab_plugin_continuousprint .queue-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 0px 58px 0 28px;
-  opacity: 0.5;
-}
-#tab_plugin_continuousprint .queue-header > div {
-  margin-left: 10px;
-}
-#tab_plugin_continuousprint #queue_sets.empty {
-  padding: 15px;
-  border: none;
-  box-shadow: none;
 }
 #tab_plugin_continuousprint .label {
   border: 1px gray solid;
@@ -152,7 +139,7 @@
   font-size: 85%;
   opacity: 0.7;
 }
-#tab_plugin_continuousprint #queue_sets.empty::before {
+#tab_plugin_continuousprint #queue_sets.empty.draft::before {
   content: "Hint: Click the + button on a file, or drag a queue item here";
   font-weight: italic;
   font-size: 85%;
@@ -243,7 +230,6 @@
     max-width: 96%;
     text-overflow: ellipsis;
     border: 0;
-    cursor: pointer;
 }
 .bold{
   font-weight: bold;
@@ -294,50 +280,39 @@
 
 /* Below stylesheets are for the "history" page */
 
-#tab_plugin_continuousprint_2 .header, #tab_plugin_continuousprint_2 .entries > div  {
+#tab_plugin_continuousprint .header, #tab_plugin_continuousprint .entries > div  {
   display: flex;
   justify-content: space-between;
   padding: 0px 44px 0px 32px;
   flex-direction: row;
 }
 
-#tab_plugin_continuousprint_2 .entry.success {
+#tab_plugin_continuousprint .entry.success {
   opacity: 0.5;
 }
 
-#tab_plugin_continuousprint_2 .header {
+#tab_plugin_continuousprint .header {
   font-weight: bold;
   opacity: 0.5;
+  border-bottom: 1px gray solid;
 }
 
-#tab_plugin_continuousprint_2 .header > *, #tab_plugin_continuousprint_2 .entries > div > * {
+#tab_plugin_continuousprint .header > *, #tab_plugin_continuousprint .entries > .entry > * {
   flex: 1;
   text-align: center;
 }
 
-#tab_plugin_continuousprint_2 .separator {
+#tab_plugin_continuousprint .separator {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  text-align: center;
 }
-
-#tab_plugin_continuousprint_2 .separator::before, #tab_plugin_continuousprint_2 .separator::after {
+#tab_plugin_continuousprint .separator .line {
   content: '';
   flex: 1;
   border-bottom: 1px solid #000;
-}
-
-#tab_plugin_continuousprint_2 .separator:not(:empty)::before {
-  margin-right: .25em;
-}
-
-#tab_plugin_continuousprint_2 .separator:not(:empty)::after {
-  margin-left: .25em;
-}
-
-
-#tab_plugin_continuousprint_2 .cp-header {
-  margin-bottom: 50px;
+  margin-left: 5px;
+  margin-right: 5px;
 }
 
 /* ======== */

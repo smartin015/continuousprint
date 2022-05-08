@@ -2,8 +2,8 @@
 // If you see something here you want, open a FR to expose it: https://github.com/smartin015/continuousprint/issues
 class CPAPI {
   BASE = "plugin/continuousprint"
-  SET = "set"
   JOB = "job"
+  SET = "set"
 
   init(loading_vm) {
     console.log("API init");
@@ -43,8 +43,12 @@ class CPAPI {
     this._call(`${this.BASE}/${type}/add`, data, cb);
   }
 
-  update(type, data, cb) {
-    this._call(`${this.BASE}/${type}/update`, data, cb);
+  edit(type, data, cb) {
+    this._call(`${this.BASE}/${type}/edit/begin`, data, cb);
+  }
+
+  commit(type, data, cb) {
+    this._call(`${this.BASE}/${type}/edit/end`, data, cb);
   }
 
   mv(type, data, cb) {
@@ -77,6 +81,10 @@ class CPAPI {
 
   commitQueues(data, cb) {
     this._call(`${this.BASE}/queues/commit`, data, cb);
+  }
+
+  submitJob(data, cb) {
+    this._call(`${this.BASE}/job/submit`, data, cb);
   }
 
   getSpoolManagerState(cb) {

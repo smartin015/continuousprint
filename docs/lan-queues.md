@@ -23,6 +23,13 @@ On this page, you can click the "Add Queue" button to add network queues. Fill i
 
 When you've finished configuring your queues, click `Save`. You'll see the changes reflected in the queues on the Continuous Print tab.
 
-## Usage
+To add and remove jobs from the network queues, simply drag them from the local queue down to the queue of choice. You can also bulk add/remove queue items by selecting multiple (via the checkbox) and clicking the appropriate arrow button.
 
-TODO
+## Queue Strategies
+
+Each queue you add is bound by a particular strategy:
+
+*  **In-Order** prints linearly down the queue from top to bottom, one job / set at a time.
+*  **Least Manual** avoids excessive filament changes and other manual actions.
+
+Note that the overall strategy *between* queues is in-order, i.e. all prints in the topmost queue will be executed before moving onto the next queue, and so on.

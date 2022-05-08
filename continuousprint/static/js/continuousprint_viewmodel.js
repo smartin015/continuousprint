@@ -10,70 +10,58 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   ko = require('knockout');
   CPJob = require('./continuousprint_job');
   CPAPI = require('./continuousprint_api');
+  CPHistoryRow = require('./continuousprint_history_row');
   log = {
     "getLogger": () => {return console;}
   };
 }
 
-function CPViewModel(parameters) {
-    var self = this;
-    self.PLUGIN_ID = "octoprint.plugins.continuousprint";
-    self.log = log.getLogger(self.PLUGIN_ID);
-    // Due to minification, it's very difficult to find and fix errors reported by users
-    // due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
-    // function name and args, and prints the error to the console with hopefully enough info
-    // to properly debug.
-    var _ecatch = function(name, fn) {
-      if (typeof(name) !== 'string') {
-        throw Error("_ecatch not passed string as first argument (did you forget the function name?)");
+function CPHistoryDivider(job, set) {
+  var self = this;
+  self.divider = true;
+  if (job === '') {
+    job = 'untitled job';
+  }
+  self.job = job;
+  self.set = set;
+}
+
+
+// Due to minification, it's very difficult to find and fix errors reported by users
+// due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
+// function name and args, and prints the error to the console with hopefully enough info
+// to properly debug.
+var _ecatch = function(name, fn) {
+  if (typeof(name) !== 'string') {
+    throw Error("_ecatch not passed string as first argument (did you forget the function name?)");
+  }
+  return function() {
+    try {
+      var args = [];
+      for (var i = 0; i < arguments.length; i++) {
+        args.push(arguments[i]);
       }
-      return function() {
-        try {
-          var args = [];
-          for (var i = 0; i < arguments.length; i++) {
-            args.push(arguments[i]);
-          }
-          fn.apply(undefined, args);
-        } catch(err) {
-          let args_json = "<not json-able>";
-          try {
-            let args_json = JSON.stringify(arguments);
-          } catch(e2) {}
-          self.log.error(`[${self.PLUGIN_ID}]: error when calling ${name} with args ${args_json}: ${err}`);
-        }
-      };
-    };
+      fn.apply(undefined, args);
+    } catch(err) {
+      let args_json = "<not json-able>";
+      try {
+        let args_json = JSON.stringify(arguments);
+      } catch(e2) {}
+      self.log.error(`[${self.PLUGIN_ID}]: error when calling ${name} with args ${args_json}: ${err}`);
+    }
+  };
+};
 
-    self.TAB_ID = "#tab_plugin_continuousprint";
-    self.printerState = parameters[0];
-    self.loginState = parameters[1];
-    self.files = parameters[2];
-    self.printerProfiles = parameters[3];
-    self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
-    // These are used in the jinja template
-    self.loading = ko.observable(false);
-    self.active = ko.observable(false);
-    self.active_set = ko.observable(null);
-    self.status = ko.observable("Initializing...");
+function CPQueue(data, api) {
+    var self = this;
+    self.api = api;
+    self.name = data.name;
+    self.strategy = data.strategy;
+    self.addr = data.addr;
     self.jobs = ko.observableArray([]);
-    self.selected = ko.observable(null);
-    self.materials = ko.observable([]);
-
-    self.api = parameters[4] || new CPAPI();
-    self.api.init(self.loading);
-
-    self.isSelected = function(j=null, q=null) {
-      j = self._resolve(j);
-      q = self._resolve(q);
-      return ko.computed(function() {
-        let s = self.selected();
-        if (s === null) {
-          return false;
-        }
-        let r =  (j === null || j === s[0]) && (q === null || q === s[1]);
-        return r;
-      });
-    };
+    for (let j of data.jobs) {
+      self.jobs.push(new CPJob(j, api));
+    }
 
     self.batchSelectBase = function(mode) {
       switch (mode) {
@@ -126,30 +114,6 @@ function CPViewModel(parameters) {
             }
           }
           break;
-        case "Unstarted Sets":
-          for (let j of self.jobs()) {
-            j.selected(false);
-            for (let s of j.sets()) {
-              s.selected(s.length_completed() == 0);
-            }
-          }
-          break;
-        case "Incomplete Sets":
-          for (let j of self.jobs()) {
-            j.selected(false);
-            for (let s of j.sets()) {
-              s.selected(s.length_completed() > 0 && s.length_completed() < (s.length() * j.count()));
-            }
-          }
-          break;
-        case "Completed Sets":
-          for (let j of self.jobs()) {
-            j.selected(false);
-            for (let s of j.sets()) {
-              s.selected(s.length_completed() >= (s.length() * j.count()));
-            }
-          }
-          break;
         default:
           console.error("Unknown batch select mode: " + mode);
       }
@@ -168,6 +132,7 @@ function CPViewModel(parameters) {
         numsel += j.checkFraction();
       }
       return numsel / js.length;
+      return 0;
     });
     self.onChecked = function(v, e) {
       let c = self.checkFraction();
@@ -178,54 +143,6 @@ function CPViewModel(parameters) {
       }
 
     }
-
-    // Patch the files panel to allow for adding to queue
-    self.files.add = _ecatch("files.add", function(data) {
-        if (self.loading()) {return;}
-        let now = Date.now();
-        let jobs = self.jobs();
-        let job = jobs[jobs.length-1];
-        let jobname = (job !== undefined) ? job.name() : "";
-        self.api.add(self.api.SET, {
-            name: data.name,
-            path: data.path,
-            sd: (data.origin !== "local"),
-            count: 1,
-            hash_: "", // TODO
-            material: "",
-            job: jobname,
-        }, (response) => {
-          // Take the updated job ID and set and merge it into the nested arrays
-          for (let j of self.jobs()) {
-            if (j.id() === response.job_id) {
-              return j.onSetModified(response.set_);
-            }
-          }
-          return self.jobs.push(new CPJob({id: response.job_id, name: jobname, count: 1, sets: [response.set_]}, self.api));
-        });
-    });
-
-    self._loadState = _ecatch("_loadState", function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] loading state...`);
-        self.api.getState(self._setState);
-    });
-
-    self._updateJobs = _ecatch("_updateJobs", function(jobs) {
-      let result = [];
-      for (let j of jobs) {
-        result.push(new CPJob(j, self.api)); //{name, count, sets:[...]}));
-      }
-      self.jobs(result);
-    });
-
-    self._setState = function(state) {
-        //self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
-        self._updateJobs(state.jobs);
-        self.active(state.active);
-        self.active_set(state.active_set);
-        self.status(state.status);
-        //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
-    };
 
     // *** ko template methods ***
     self.setActive = _ecatch("setActive", function(active) {
@@ -284,6 +201,35 @@ function CPViewModel(parameters) {
         });
     });
 
+    self.addFile = _ecatch("addFile", function(data) {
+        let now = Date.now();
+        let jobs = self.jobs();
+        let job = null;
+        for (let j of self.jobs()) {
+          if (j.draft()) {
+            job = j._name();
+            break;
+          }
+        }
+        self.api.add(self.api.SET, {
+            name: data.name,
+            path: data.path,
+            sd: (data.origin !== "local"),
+            count: 1,
+            hash_: "", // TODO
+            material: "",
+            job,
+        }, (response) => {
+          // Take the updated job ID and set and merge it into the nested arrays
+          for (let j of self.jobs()) {
+            if (j.id() === response.job_id) {
+              return j.onSetModified(response.set_);
+            }
+          }
+          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, self.api));
+        });
+    });
+
     self._resolve = function(observable) {
       if (typeof(observable) === 'undefined') {
         return null;
@@ -296,17 +242,12 @@ function CPViewModel(parameters) {
     self.setSelected = _ecatch("setSelected", function(job, set) {
         job = self._resolve(job);
         set = self._resolve(set);
-        if (self.loading()) return;
         let s = self.selected();
         if (s !== null && s[0] == job && s[1] == set) {
           self.selected(null);
         } else {
           self.selected([job, set]);
         }
-    });
-
-    self.refreshQueue = _ecatch("refreshQueue", function() {
-      self._loadState();
     });
 
     self.setJobName = _ecatch("setJobName", function(job, evt) {
@@ -324,6 +265,70 @@ function CPViewModel(parameters) {
     self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
       vm.set_material(idx, mat);
     });
+}
+
+function CPViewModel(parameters) {
+    var self = this;
+    self.PLUGIN_ID = "octoprint.plugins.continuousprint";
+    self.log = log.getLogger(self.PLUGIN_ID);
+    self.TAB_ID = "#tab_plugin_continuousprint";
+    self.printerState = parameters[0];
+    self.loginState = parameters[1];
+    self.files = parameters[2];
+    self.printerProfiles = parameters[3];
+    self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
+    self.status = ko.observable("Initializing...");
+    self.active = ko.observable(false);
+    self.active_set = ko.observable(null);
+    self.loading = ko.observable(false);
+    self.materials = ko.observable([]);
+    self.queues = ko.observableArray([]);
+    self.defaultQueue = null;
+    self.expanded = ko.observable(null);
+
+    self.api = parameters[4] || new CPAPI();
+    self.api.init(self.loading);
+
+    // Patch the files panel to allow for adding to queue
+    self.files.add = _ecatch("files.add", function(data) {
+      self.defaultQueue.addFile(data);
+    });
+
+    self._loadState = _ecatch("_loadState", function(state) {
+        self.log.info(`[${self.PLUGIN_ID}] loading state...`);
+        self.api.getState(self._setState);
+    });
+
+    self._updateQueues = _ecatch("_updateQueues", function(queues) {
+      let result = [];
+      for (let q of queues) {
+        let cpq = new CPQueue(q, self.api);
+        result.push(cpq);
+        if (cpq.name === 'local') {
+          self.defaultQueue = cpq;
+        }
+      }
+      self.queues(result);
+    });
+
+    self._setState = function(state) {
+        //self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
+        self._updateQueues(state.queues);
+        self.active(state.active);
+        self.active_set(state.active_set);
+        self.status(state.status);
+        //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
+    };
+
+    self.expand = function(vm) {
+      if (self.expanded() === vm) {
+        vm.expanded(false);
+        self.expanded(null);
+      } else {
+        vm.expanded(true);
+        self.expanded(vm);
+      }
+    };
 
     self.sortStart = _ecatch("sortStart", function(evt) {
       // Faking server disconnect allows us to disable the default whole-page
@@ -334,30 +339,14 @@ function CPViewModel(parameters) {
     self.sortEnd = _ecatch("sortEnd", function(evt, e) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
-      let jobs = self.jobs();
+      // Sadly there's no "destination job" information, so we have to
+      // infer the index of the job based on the rendered HTML given by evt.to
       if (e.constructor.name === "CPJob") {
+        let jobs = self.defaultQueue.jobs();
         let dest_idx = jobs.indexOf(e);
         self.api.mv(self.api.JOB, {
             id: e.id,
             after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
-        }, (result) => {
-          console.log(result);
-        });
-      } else if (e.constructor.name === "CPSet") {
-        // Sadly there's no "destination job" information, so we have to
-        // infer the index of the job based on the rendered HTML given by evt.to
-        let to = evt.to;
-        while (to.className !== "accordion-group job" && to !== undefined) {
-          to = to.parentElement;
-        }
-        let dest_job_idx = Array.from(to.parentNode.children).indexOf(to);
-        let dest_job = jobs[dest_job_idx].id;
-        let qss = jobs[dest_job_idx].sets();
-        let dest_idx = qss.indexOf(e);
-        self.api.mv(self.api.SET, {
-          id: e.id,
-          dest_job,
-          after_id: (dest_idx > 0) ? qss[dest_idx-1].id : -1,
         }, (result) => {
           console.log(result);
         });
@@ -366,7 +355,19 @@ function CPViewModel(parameters) {
 
     self.sortMove = function(evt) {
       // Like must move to like (e.g. no dragging a set out of a job)
-      return (evt.from.id === evt.to.id);
+      if (evt.from.id !== evt.to.id) {
+        return false;
+      }
+      // Sets must only be dragged among draft jobs
+      if (evt.from.id === "queue_sets" && evt.to.className.indexOf("draft") === -1) {
+        return false;
+      }
+      // Draft jobs can only be dragged within the local queue
+      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
+        return false;
+      }
+
+      return true;
     };
 
     // This also fires on initial load
@@ -377,6 +378,7 @@ function CPViewModel(parameters) {
       } else if (current !== self.TAB_ID && next === self.TAB_ID) {
         // Reload in case other things added
         self._loadState();
+        self.refreshHistory();
       }
     });
 
@@ -423,6 +425,44 @@ function CPViewModel(parameters) {
       }
       self.materials(Object.values(result));
     });
+
+    self.submitJob = function(vm) {
+      for (let id of self.defaultQueue._getSelections().job_ids) {
+        self.api.submitJob({id, queue: vm.name}, () => {
+          console.log(`Submitted ${id} to ${vm.name}`);
+        });
+      }
+    }
+
+
+    /* ===== History Tab ===== */
+    self.history = ko.observableArray();
+    self.isDivider = function(data) {
+      return data instanceof CPHistoryDivider;
+    };
+
+    self._setHistory = function(data) {
+      let result = [];
+      let job = null;
+      let set = null;
+      for (let r of data) {
+        if (job !== r.job_name || set !== r.set_path) {
+          result.push(new CPHistoryDivider(r.job_name, r.set_path));
+          job = r.job_name;
+          set = r.set_path;
+        }
+        result.push(new CPHistoryRow(r));
+      }
+      self.history(result);
+    };
+    self.refreshHistory = function() {
+      self.api.history(self._setHistory);
+    };
+    self.clearHistory = function() {
+      self.api.clearHistory(() => {
+        self.entries([]);
+      });
+    };
 }
 
 

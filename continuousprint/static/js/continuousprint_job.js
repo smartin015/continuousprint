@@ -19,26 +19,62 @@ function CPJob(obj, api) {
     throw Error("API must be provided when creating CPJob");
   }
   var self = this;
-  obj = {...{sets: [], name: "", count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
+  obj = {...{sets: [], name: "", draft: false, count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
-  self.name = ko.observable(obj.name);
+  self._name = ko.observable(obj.name);
+  self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
-  self.countInput = ko.observable(obj.count);
   self.remaining = ko.observable(obj.remaining);
 
   self.sets = ko.observableArray([]);
   for (let s of obj.sets) {
-    self.sets.push(new CPSet(s, api, self));
+    self.sets.push(new CPSet(s, self));
   }
 
+  self.as_object = function() {
+    let data = {
+        name: self._name(),
+        count: self.count(),
+        remaining: self.remaining(),
+        id: self.id(),
+        sets: []
+    };
+    console.log(self.sets());
+    for (let s of self.sets()) {
+      data.sets.push(s.as_object());
+    }
+    return data;
+  }
+
+  self.editStart = function() {
+    api.edit(api.JOB, {id: self.id()}, () => {
+      self.draft(true);
+    });
+  }
   self.onSetModified = function(s) {
-    let newqs = new CPSet(s, api, self);
+    let newqs = new CPSet(s, self);
     for (let qs of self.sets()) {
+      console.log(qs.id, "vs", s.id);
       if (qs.id === s.id) {
         return self.sets.replace(qs, newqs);
       }
     }
     self.sets.push(newqs);
+ }
+  self.editEnd = function() {
+    let data = self.as_object();
+    data.draft = false;
+    api.commit(api.JOB, {json: JSON.stringify(data)}, (result) => {
+      self.draft(false);
+      self.count(result.count);
+      self.remaining(result.remaining); // Adjusted when count is mutated
+      self.id(result.id); // May change if no id to start with
+      let cpss = [];
+      for (let qsd of result.sets) {
+        cpss.push(new CPSet(qsd, self));
+      }
+      self.sets(cpss);
+    });
   }
 
   self.length = ko.computed(function() {
@@ -75,23 +111,6 @@ function CPJob(obj, api) {
   });
   self.onChecked = function() {
     self.selected(!self.selected());
-  }
-
-  // ==== Mutation methods =====
-
-  self.set_count = function(count) {
-    api.update(api.JOB, {id: self.id, count}, (result) => {
-      self.count(result.count);
-      self.countInput(result.count);
-      self.remaining(result.remaining); // Adjusted when count is mutated
-      self.id(result.id); // May change if no id to start with
-    });
-  }
-  self.set_name = function(name) {
-    api.update(api.JOB, {id: obj.id, name}, (result) => {
-      self.name(result.name);
-      self.id(result.id); // May change if no id to start with
-    });
   }
 }
 

@@ -4,20 +4,59 @@ from datetime import datetime
 import time
 import base64
 
-from .database import Queue, Job, Set, Run, DB
+from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 
 
 def getQueues():
-    return Queue.select()
+    return Queue.select().order_by(Queue.lexRank.asc())
 
 
-def upsertQueue(name, strategy, addr=None):
-    q = Queue.replace(name=name, strategy=strategy, addr=addr).execute()
-    return q
+def assignQueues(queues):
+    # Default/archive queues should never be removed
+    names = set([qdata["name"] for qdata in queues] + [DEFAULT_QUEUE, ARCHIVE_QUEUE])
+    with DB.queues.atomic():
+        qq = getQueues()
+        qq_names = set([q.name for q in qq])
+        absent = [(q.id, q.name) for q in qq if q.name not in names]
+        if len(absent) > 0:
+            (absent_ids, absent_names) = zip(*absent)
+            print("Delete", absent_ids)
+            Queue.delete().where(Queue.id.in_(absent_ids))
+        else:
+            absent_names = []
+        added = [q for q in queues if q["name"] not in qq_names]
+        added_names = set([q.name for q in added])
+        for lex, qdata in enumerate(queues):
+            if qdata["name"] in added_names:
+                print("Create", qdata)
+                Queue.create(
+                    name=qdata["name"],
+                    strategy=qdata["strategy"],
+                    addr=qdata["addr"],
+                    lexRank=lex,
+                )
+            else:
+                print("Update", qdata)
+                Queue.update(
+                    strategy=qdata["strategy"], addr=qdata["addr"], lexRank=lex
+                ).where(Queue.name == qdata["name"]).execute()
+    return (absent_names, added)
 
 
-def removeQueue(qid):
-    Queue.get(qid).delete_instance(recursive=True)
+def getQueuesJobsAndSets():
+    cursor = (
+        Queue.select()
+        .join(Job, JOIN.LEFT_OUTER)
+        .join(Set, JOIN.LEFT_OUTER)
+        .where(Queue.name != "archive")
+        .group_by(Queue.id)
+        .order_by(Queue.lexRank.asc())
+    )
+    return cursor.execute()
+
+
+def getJob(jid):
+    return Job.get(id=jid)
 
 
 def getJobsAndSets(q=None, lexOrder=False):
@@ -43,38 +82,48 @@ def decrementJobRemaining(j):
         return False
 
 
-def getNextSetInQueue(q=None):
+def getNextJobInQueue(q=None):
     # Need to loop over jobs first to maintain job order
     for job in getJobsAndSets(q=q, lexOrder=True):
         for set_ in job.sets:
             if set_.remaining > 0:
-                return set_
+                return job
 
         # If we've looped through all sets in the job and all are complete,
         # decrement the job. Pick its first set if there's still more work to be done.
         if job.remaining > 0 and decrementJobRemaining(job):
-            return job.sets[0]
+            return job
 
 
-def updateJob(job_id, data, json_safe=False, queue="default"):
-    try:
-        j = Job.get(id=job_id)
-    except Job.DoesNotExist:
-        q = Queue.get(name=queue)
-        j = newEmptyJob(q)
-    for k, v in data.items():
-        if k in ("id", "count", "remaining"):  # ignored or handled separately
-            continue
-        setattr(j, k, v)
+def updateJob(job_id, data, queue=DEFAULT_QUEUE):
+    with DB.queues.atomic():
+        try:
+            j = Job.get(id=job_id)
+        except Job.DoesNotExist:
+            q = Queue.get(name=queue)
+            j = newEmptyJob(q)
+        for k, v in data.items():
+            if k in (
+                "id",
+                "count",
+                "remaining",
+                "sets",
+            ):  # ignored or handled separately
+                continue
+            setattr(j, k, v)
 
-    if data.get("count") is not None:
-        newCount = int(data["count"])
-        inc = newCount - j.count
-        j.remaining = min(newCount, j.remaining + max(inc, 0))
-        j.count = newCount
+        if data.get("count") is not None:
+            newCount = int(data["count"])
+            inc = newCount - j.count
+            j.remaining = min(newCount, j.remaining + max(inc, 0))
+            j.count = newCount
 
-    j.save()
-    return j.as_dict(json_safe)
+        j.save()
+
+        if data.get("sets") is not None:
+            for s in data["sets"]:
+                _updateSet(s["id"], s, j)
+        return Job.get(id=job_id).as_dict()
 
 
 MAX_LEX = 1000000.0  # Arbitrary
@@ -87,11 +136,11 @@ def genLex(n):
         yield i
 
 
-def lexBalance(cls):
+def lexBalance():
     with DB.queues.atomic():
         # TODO discriminate by queue - may case weirdness with archived jobs
-        lexer = genLex(cls.select().count())
-        for (l, c) in zip(lexer, cls.select().order_by(cls.lexRank)):
+        lexer = genLex(Job.select().count())
+        for (l, c) in zip(lexer, Job.select().order_by(Job.lexRank)):
             c.lexRank = l
             c.save()
 
@@ -100,33 +149,17 @@ def lexEnd():
     return time.time()
 
 
-def moveSet(src_id: int, dest_id: int, job_id: int, upsert_queue="default"):
-    s = Set.get(id=src_id)
-    if s.job.id != job_id:
-        if job_id == -1:
-            j = newEmptyJob(upsert_queue).id
-        else:
-            j = Job.get(id=job_id)
-        s.job = j
-        s.save()
-    return moveCls(Set, src_id, dest_id)
-
-
-def moveJob(src_id, dest_id):
-    return moveCls(Job, src_id, dest_id)
-
-
-def moveCls(cls, src_id: int, dest_id: int, retried=False):
+def moveJob(src_id: int, dest_id: int, retried=False):
     if dest_id == -1:
         destRank = 0
     else:
-        destRank = cls.get(id=dest_id).lexRank
+        destRank = Job.get(id=dest_id).lexRank
     # Get the next object/set having a lexRank beyond the destination rank,
     # so we can then split the difference
     # Note the unary '&' operator and the expressions wrapped in parens (a limitation of peewee)
     postRank = (
-        cls.select(cls.lexRank)
-        .where((cls.lexRank > destRank) & (cls.id != src_id))
+        Job.select(Job.lexRank)
+        .where((Job.lexRank > destRank) & (Job.id != src_id))
         .limit(1)
         .execute()
     )
@@ -141,12 +174,12 @@ def moveCls(cls, src_id: int, dest_id: int, retried=False):
     # rows and try again
     if candidate <= destRank or candidate >= postRank:
         if not retried:
-            lexBalance(cls)
-            moveCls(cls, src_id, dest_id, retried=True)
+            lexBalance()
+            moveJob(src_id, dest_id, retried=True)
         else:
             raise Exception("Could not rebalance job lexRank to move job")
     else:
-        c = cls.get(id=src_id)
+        c = Job.get(id=src_id)
         c.lexRank = candidate
         c.save()
 
@@ -169,60 +202,53 @@ def importJob(q, data, lex=lexEnd):
     with DB.queues.atomic():
         j = Job.create(
             queue=q,
+            draft=False,
             lexRank=lex(),
             name=data["name"],
             count=data["count"],
             remaining=data["count"],
         )
         for s in data["sets"]:
-            # Note: hash is used in place of path here. This MUST be resolved before starting the job.
             Set.create(
-                path=f"md5://{s['hash_']}",
+                path=s["path"],
                 sd=False,
                 job=j,
                 lexRank=lex(),
                 count=s["count"],
                 remaining=s["count"],
-                material_keys=(",".join(["material_keys"])),
+                material_keys=(",".join(s["materials"])),
             )
     return j
 
 
-def appendSet(queue: str, job: str, data: dict, lex=lexEnd):
+def appendSet(queue: str, job, data: dict, lex=lexEnd):
     q = Queue.get(name=queue)
-    try:
-        j = Job.get(queue=q, name=job)
-    except Job.DoesNotExist:
+    if job == "":
         j = newEmptyJob(q)
-        j.name = job
-        j.save()
+    else:
+        j = Job.get(queue=q, name=job)
 
     count = int(data["count"])
-    try:
-        s = Set.get(path=data["path"], job=j)
-        s.count += count
-        s.remaining += count
-        s.save()
-    except Set.DoesNotExist:
-        s = Set.create(
-            path=data["path"],
-            sd=data["sd"] == "true",
-            lexRank=lex(),
-            material_keys=",".join(data["material"]),
-            count=count,
-            remaining=count,
-            job=j,
-        )
+    s = Set.create(
+        path=data["path"],
+        sd=data["sd"] == "true",
+        lexRank=lex(),
+        material_keys=",".join(data["material"]),
+        count=count,
+        remaining=count,
+        job=j,
+    )
 
-    return dict(job_id=j.id, set_=s.as_dict(json_safe=True))
+    return dict(job_id=j.id, set_=s.as_dict())
 
 
-def updateSet(set_id, data, json_safe=False):
+def _updateSet(set_id, data, job):
     s = Set.get(id=set_id)
     for k, v in data.items():
         if k in ("id", "count", "remaining"):  # ignored or handled below
             continue
         setattr(s, k, v)
+    s.job = job
 
     if data.get("count") is not None:
         newCount = int(data["count"])
@@ -235,11 +261,7 @@ def updateSet(set_id, data, json_safe=False):
             job_remaining = 1
             s.job.remaining = 1
             s.job.save()
-
     s.save()
-    result = s.as_dict(json_safe=json_safe)
-    result["job_remaining"] = job_remaining
-    return result
 
 
 def removeQueues(queue_ids: list):
