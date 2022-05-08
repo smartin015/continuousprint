@@ -145,12 +145,6 @@ function CPQueue(data, api) {
     }
 
     // *** ko template methods ***
-    self.setActive = _ecatch("setActive", function(active) {
-        self.api.setActive(active, () => {
-          self.active(active);
-        });
-    });
-
     self._getSelections = function() {
       let jobs = [];
       let job_ids = [];
@@ -288,6 +282,12 @@ function CPViewModel(parameters) {
 
     self.api = parameters[4] || new CPAPI();
     self.api.init(self.loading);
+
+    self.setActive = _ecatch("setActive", function(active) {
+        self.api.setActive(active, () => {
+          self.active(active);
+        });
+    });
 
     // Patch the files panel to allow for adding to queue
     self.files.add = _ecatch("files.add", function(data) {

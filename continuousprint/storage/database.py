@@ -65,6 +65,17 @@ class Job(Model):
     class Meta:
         database = DB.queues
 
+    def decrement(self):
+        self.remaining = max(self.remaining - 1, 0)
+        if self.remaining > 0:
+            for s in self.sets:
+                s.remaining = s.count
+
+    @classmethod
+    def from_dict(self, data):
+        data["sets"] = [Set(**s) for s in data["sets"]]
+        return Job(**data)
+
     def as_dict(self):
         sets = list(self.sets)
         sets.sort(key=lambda s: s.lexRank)

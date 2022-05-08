@@ -43,14 +43,15 @@ def assignQueues(queues):
     return (absent_names, added)
 
 
-def getQueuesJobsAndSets():
+def getJobsAndSets(queue):
+    if type(queue) == str:
+        queue = Queue.get(id=queue)
     cursor = (
-        Queue.select()
-        .join(Job, JOIN.LEFT_OUTER)
+        Job.select()
         .join(Set, JOIN.LEFT_OUTER)
-        .where(Queue.name != "archive")
-        .group_by(Queue.id)
-        .order_by(Queue.lexRank.asc())
+        .where(Job.queue == q)
+        .group_by(Job.id)
+        .order_by(Job.lexRank.asc())
     )
     return cursor.execute()
 

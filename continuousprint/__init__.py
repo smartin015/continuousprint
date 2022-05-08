@@ -6,6 +6,7 @@ import json
 import yaml
 import os
 import time
+from pathlib import Path
 from io import BytesIO
 
 import octoprint.plugin
@@ -18,12 +19,10 @@ from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 from octoprint.printer import InvalidFileLocation, InvalidFileType
-from peerprint.server import Server as PeerPrintServer
-from peerprint.adapter import Adapter as PeerPrintAdapter
 
 from .driver import Driver, Action as DA, Printer as DP
-from .supervisor import SuperSupervisor, LocalSupervisor, LANSupervisor, Strategy
-from .storage.database import init as init_db, DEFAULT_QUEUE
+from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
+from .storage.database import init as init_db, DEFAULT_QUEUE, ARCHIVE_QUEUE
 from .storage import queries
 
 QUEUE_KEY = "cp_queue"
@@ -41,25 +40,6 @@ BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
 BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
 BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
 MATERIAL_SELECTION_KEY = "cp_material_selection_enabled"
-
-
-class OctoPrintAdapter(PeerPrintAdapter):
-    def __init__(self, namespace, addr):
-        self.ns = namespace
-        self.addr = addr
-
-    def get_namespace(self):
-        return self.ns
-
-    def get_host_addr(self):
-        return self.addr
-
-    def upsert_job(self, data):
-        job = queries.importJob(self.ns, data)
-        return job.id
-
-    def remove_job(self, local_id):
-        queries.removeJobsAndSets(job_ids=[local_id], set_ids=[])
 
 
 class ContinuousprintPlugin(
@@ -151,12 +131,10 @@ class ContinuousprintPlugin(
 
         self._settings.save()
 
-        storage_init_path = os.path.join(
-            os.path.dirname(__file__), "data/storage_init.yaml"
-        )
-        plugin_data_dir = self.get_plugin_data_folder()
+        storage_init_path = Path(os.path.dirname(__file__)) / "data/storage_init.yaml"
+        self.plugin_data_dir = Path(self.get_plugin_data_folder())
         init_db(
-            db_path=os.path.join(plugin_data_dir, "queue.sqlite3"),
+            db_path=self.plugin_data_dir / "queue.sqlite3",
             initial_data_path=storage_init_path,
         )
 
@@ -173,28 +151,31 @@ class ContinuousprintPlugin(
                 )
                 break
 
-        self.s = SuperSupervisor(queries, Strategy.IN_ORDER)  # TODO set strategy
-        peerprint_dir = os.path.join(plugin_data_dir, "peerprint")
-        self.peer_server = PeerPrintServer(peerprint_dir, self._logger)
+        self.q = MultiQueue(
+            Strategy.IN_ORDER
+        )  # TODO set strategy for this and all other queue creations
         for q in queries.getQueues():
             if q.addr is not None:
                 try:
-                    self.peer_server.join(OctoPrintAdapter(q.name, q.addr))
-                    self.s.add(
-                        LANSupervisor(
-                            queries, q.name, Strategy.IN_ORDER, self.peer_server
-                        )
-                    )  # TODO specify strategy
+                    self.q.add(
+                        q.name,
+                        LANQueue(
+                            q.name,
+                            q.addr,
+                            self.plugin_data_dir,
+                            self._logger,
+                            Strategy.IN_ORDER,
+                        ),
+                    )
                 except ValueError:
                     self._logger.error(
                         f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
                     )
+            elif q.name != ARCHIVE_QUEUE:
+                self.q.add(q.name, LocalQueue(queries, q.name, Strategy.IN_ORDER))
 
-        self.s.add(
-            LocalSupervisor(queries, DEFAULT_QUEUE, Strategy.IN_ORDER)
-        )  # TODO specify strategy
         self.d = Driver(
-            supervisor=self.s,
+            queue=self.q,
             script_runner=self,
             logger=self._logger,
         )
@@ -208,18 +189,6 @@ class ContinuousprintPlugin(
         self.watchdog = RepeatedTimer(5.0, lambda: self.update(DA.TICK))
         self.watchdog.start()
         self._logger.info("Continuous Print Plugin started")
-
-    def _on_db_change(
-        self,
-        upserted_jobs: list = [],
-        upserted_queues: list = [],
-        removed_sets: list = [],
-        removed_jobs: list = [],
-        removed_queues=[],
-    ):
-        self._logger.info(
-            "TODO _on_db_change", upsert, removed_sets, removed_jobs, removed_queues
-        )
 
     def update(self, a: DA):
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
@@ -248,12 +217,10 @@ class ContinuousprintPlugin(
         if self.d.action(a, p, path, materials):
             self._msg(type="reload")  # Reload UI when new state is added
 
-        # Send our updates to PeerPrint (if configured)
-        if self.peer_server is not None:
-            # elapsed = self.s.elapsed()
-            # estTime = 1000  # TODO
-            # self.peer_server.updatePeer(PeerData(status=pstate, secondsUntilIdle=(estTime-elapsed)))
-            pass
+        # TODO Send our updates to PeerPrint (if configured)
+        # elapsed = self.s.elapsed()
+        # estTime = 1000  # TODO
+        # self.q.updatePeer(PeerData(status=pstate, secondsUntilIdle=(estTime-elapsed)))
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -389,30 +356,13 @@ class ContinuousprintPlugin(
     def state_json(self):
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
         # (e.g. 1.4.1 -> 2.0.0).
-        orderedQueues = queries.getQueuesJobsAndSets()
-
-        active_set = None
-        # Only annotate active jobs/sets if we've started a run
-        if self._active() and self.s.run is not None:
-            assigned = self.s.get_assignment()
-            if assigned is not None:
-                active_set = assigned.id
-
-        queues = []
-        for q in orderedQueues:
-            qdata = q.as_dict()
-            qdata["jobs"] = [j.as_dict() for j in q.jobs]
-            queues.append(qdata)
-
         resp = {
             "active": self._active(),
-            "active_set": active_set,
             "status": "Initializing" if not hasattr(self, "d") else self.d.status,
-            "queues": queues,
+            "queues": [
+                q.as_dict() for name, q in self.q.queues.items() if name != "archive"
+            ],
         }
-
-        # This may be a bit query-inefficient, but it's simple. Can optimize later if needed.
-
         return json.dumps(resp)
 
     # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
@@ -492,7 +442,6 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
     def mv_set(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         queries.moveSet(
             int(flask.request.form["id"]),
             int(
@@ -505,16 +454,9 @@ class ContinuousprintPlugin(
         return json.dumps("ok")
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/set/update", methods=["POST"])
-    @restricted_access
-    def update_set(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
-
-    # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
     @restricted_access
     def mv_job(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         queries.moveJob(
             int(flask.request.form["id"]),
             int(
@@ -527,7 +469,6 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/job/submit", methods=["POST"])
     @restricted_access
     def submit_job(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         j = queries.getJob(int(flask.request.form["id"]))
         queue_name = flask.request.form["queue"]
         filepaths = dict(
@@ -539,7 +480,8 @@ class ContinuousprintPlugin(
                 for s in j.sets
             ]
         )
-        self.peer_server.submitJob(queue_name, j.as_dict(), filepaths)
+        # TODO less invasive structuring
+        self.q.queues[queue_name].lan.q.submitJob(j.as_dict(), filepaths)
 
         # Remove the job now that it's been submitted
         queries.removeJobsAndSets(job_ids=[j.id], set_ids=[])
@@ -549,7 +491,6 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/job/edit/begin", methods=["POST"])
     @restricted_access
     def edit_job_start(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         queries.updateJob(flask.request.form["id"], {"draft": True})
         return json.dumps("ok")
 
@@ -557,7 +498,6 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/job/edit/end", methods=["POST"])
     @restricted_access
     def edit_job_end(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         data = json.loads(flask.request.form.get("json"))
         return json.dumps(queries.updateJob(data["id"], data))
 
@@ -565,7 +505,6 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/multi/rm", methods=["POST"])
     @restricted_access
     def rm_multi(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         jids = flask.request.form.getlist("job_ids[]")
         sids = flask.request.form.getlist("set_ids[]")
         qids = flask.request.form.getlist("queue_ids[]")
@@ -579,7 +518,6 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/multi/reset", methods=["POST"])
     @restricted_access
     def reset_multi(self):
-        self.s.clear_cache()  # API call affects runs; assignment may have changed
         jids = flask.request.form.getlist("job_ids[]")
         sids = flask.request.form.getlist("set_ids[]")
         return json.dumps(queries.replenish(jids, sids))
@@ -590,9 +528,9 @@ class ContinuousprintPlugin(
     def get_history(self):
         h = queries.getHistory()
 
-        if self.s.run is not None:
+        if self.q.run is not None:
             for row in h:
-                if row["run_id"] == self.s.run:
+                if row["run_id"] == self.q.run:
                     row["active"] = True
                     break
         return json.dumps(h)
@@ -618,14 +556,19 @@ class ContinuousprintPlugin(
             json.loads(flask.request.form.get("queues"))
         )
         for name in absent_names:
-            self.peer_server.leave(name)
-            self.supervisor.remove(name)
+            self.q.remove(name)
         for a in added:
             try:
-                self.peer_server.join(OctoPrintAdapter(a["name"], a["addr"]))
-                self.s.add(
-                    LANSupervisor(queries, q.name, Strategy.IN_ORDER, self.peer_server)
-                )  # TODO specify strategy
+                self.q.add(
+                    a["name"],
+                    LANQueue(
+                        a["name"],
+                        a["addr"],
+                        self.plugin_data_dir,
+                        self._logger,
+                        Strategy.IN_ORDER,
+                    ),  # TODO specify strategy
+                )
             except ValueError:
                 self._logger.error(
                     f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"

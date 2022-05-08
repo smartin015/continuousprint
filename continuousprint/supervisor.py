@@ -66,19 +66,20 @@ class LocalSupervisor(AbstractSupervisor):
 
 
 class LANSupervisor(AbstractSupervisor):
-    def __init__(self, queries, queueName, strategy: Strategy, server):
+    def __init__(self, lanqueue, queueName, strategy: Strategy):
         super().__init__(queries)
         self.strategy = strategy
+        self.lanqueue = lanqueue
         self.queue = queueName
         self.server = server
 
     def peek_job(self):
         if self.strategy != Strategy.IN_ORDER:
             raise NotImplementedError
-        return self.queries.getNextJobInQueue(self.queue)
+        return self.lanqueue.getNextJobInQueue(self.queue)
 
     def acquire_job(self, job):
-        self.server.acquireJob(job.id)
+        self.lanqueue.acquireJob(job.id)
         return job
 
 

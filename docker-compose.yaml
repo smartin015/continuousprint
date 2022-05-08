@@ -2,8 +2,7 @@ services:
   dev:
     image: continuousprint-dev
     build: .
-    ports:
-      - "5000:5000"
+    network_mode: host
     volumes:
       - ".:/continuousprint"
       - "../peerprint:/peerprint"

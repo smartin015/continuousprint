@@ -31,14 +31,14 @@ def timeAgo(elapsed):
 class Driver:
     def __init__(
         self,
-        supervisor,
+        queue,
         script_runner,
         logger,
     ):
         self._logger = logger
         self.status = None
         self._set_status("Initializing")
-        self.s = supervisor
+        self.q = queue
         self.state = self._state_unknown
         self.retries = 0
         self.retry_on_pause = False
@@ -94,7 +94,7 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        item = self.s.get_assignment()
+        item = self.q.get_assignment()
         if item is None:
             self._set_status("No work to do; going inactive")
             return self._state_inactive
@@ -110,7 +110,7 @@ class Driver:
                 )
                 return
 
-        self.s.begin_run()
+        self.q.begin_run()
         if self._runner.start_print(item):
             return self._state_printing
 
@@ -120,7 +120,7 @@ class Driver:
         elif a == Action.FAILURE:
             return self._state_failure
         elif a == Action.SPAGHETTI:
-            elapsed = self.s.elapsed()
+            elapsed = self.q.elapsed()
             if self.retry_on_pause and elapsed < self.retry_threshold_seconds:
                 return self._state_spaghetti_recovery
             else:
@@ -129,14 +129,14 @@ class Driver:
                 )
                 return self._state_paused
         elif a == Action.SUCCESS:
-            item = self.s.get_assignment()
+            item = self.q.get_assignment()
             if item.path == self._cur_path:
                 return self._state_success
             else:
                 return self._state_start_clearing
 
         if p == Printer.BUSY:
-            item = self.s.get_assignment()
+            item = self.q.get_assignment()
             if item is not None:
                 self._set_status(f"Printing {item.path}")
         elif p == Printer.PAUSED:
@@ -165,18 +165,18 @@ class Driver:
             self.retries += 1
             return self._state_start_clearing
         else:
-            self.s.end_run("failure")
+            self.q.end_run("failure")
             return self._state_inactive
 
     def _state_success(self, a: Action, p: Printer):
         # Complete prior queue item if that's what we just finished.
         # Note that end_run fails silently if there's no active run
         # (e.g. if we start managing mid-print)
-        self.s.end_run("success")
+        self.q.end_run("success")
         self.retries = 0
 
         # Clear bed if we have a next queue item, otherwise run finishing script
-        item = self.s.get_assignment()
+        item = self.q.get_assignment()
         if item is not None:
             return self._state_start_clearing
         else:
@@ -242,5 +242,5 @@ class Driver:
         )
 
     def current_path(self):
-        item = self.s.get_assignment()
+        item = self.q.get_assignment()
         return None if item is None else item.path
