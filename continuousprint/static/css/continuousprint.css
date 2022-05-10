@@ -60,6 +60,11 @@
   width: 40px;
   text-align: center;
 }
+#tab_plugin_continuousprint .queue-row-container .remove {
+  width: 12px;
+  height: 20px;
+  text-align: center;
+}
 #tab_plugin_continuousprint .loading {
   opacity: 0.3;
   cursor: default !important;

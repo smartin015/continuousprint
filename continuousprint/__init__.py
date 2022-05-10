@@ -55,6 +55,17 @@ class ContinuousprintPlugin(
             self._identifier, dict(type=type, msg=msg)
         )
 
+    def _refresh_ui_state(self):
+        # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
+        self._logger.info("Refereshing UI state")
+        self._plugin_manager.send_plugin_message(
+            self._identifier, dict(type="setstate", state=self.state_json())
+        )
+
+    def _on_queue_update(self, name):
+        self._logger.info("Handling update from " + name)
+        self._refresh_ui_state()
+
     def _update_driver_settings(self):
         self.d.set_retry_on_pause(
             self._settings.get([RESTART_ON_PAUSE_KEY]),
@@ -136,6 +147,7 @@ class ContinuousprintPlugin(
         init_db(
             db_path=self.plugin_data_dir / "queue.sqlite3",
             initial_data_path=storage_init_path,
+            logger=self._logger,
         )
 
         profname = self._settings.get([PRINTER_PROFILE_KEY])
@@ -165,6 +177,7 @@ class ContinuousprintPlugin(
                             self.plugin_data_dir,
                             self._logger,
                             Strategy.IN_ORDER,
+                            self._on_queue_update,
                         ),
                     )
                 except ValueError:
@@ -215,12 +228,10 @@ class ContinuousprintPlugin(
             ]
 
         if self.d.action(a, p, path, materials):
-            self._msg(type="reload")  # Reload UI when new state is added
+            self._refresh_ui_state()
 
-        # TODO Send our updates to PeerPrint (if configured)
-        # elapsed = self.s.elapsed()
-        # estTime = 1000  # TODO
-        # self.q.updatePeer(PeerData(status=pstate, secondsUntilIdle=(estTime-elapsed)))
+        elapsed = self.q.elapsed()
+        self.q.update_peer_state(dict(status=p.name, elapsed=elapsed))
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -341,7 +352,6 @@ class ContinuousprintPlugin(
 
     def start_print(self, item):
         self._msg(f"Job {item.job.name}: printing {item.path}")
-        self._msg(type="reload")
         try:
             self._logger.info(f"Attempting to print {item.path} (sd={item.sd})")
             self._printer.select_file(item.path, item.sd, printAfterSelect=True)
@@ -351,6 +361,7 @@ class ContinuousprintPlugin(
         except InvalidFileType as e:
             self._logger.error(e)
             self._msg("File not gcode: " + item.path, type="error")
+        self._refresh_ui_state()
         return True
 
     def state_json(self):
@@ -365,18 +376,19 @@ class ContinuousprintPlugin(
         }
         return json.dumps(resp)
 
+    # Public API method returning the full state of the plugin in JSON format.
+    # See `state_json()` for return values.
+    @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
+    @restricted_access
+    def get_state(self):
+        return self.state_json()
+
     # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
         if not action == "queuego":
             return
         self.update(DA.ACTIVATE)
-
-    # Public API method returning the full state of the plugin in JSON format.
-    # See `state_json()` for return values.
-    @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
-    @restricted_access
-    def state(self):
-        return self.state_json()
+        self._refresh_ui_state()
 
     # Public method - enables/disables management and returns the current state
     # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
@@ -485,8 +497,7 @@ class ContinuousprintPlugin(
 
         # Remove the job now that it's been submitted
         queries.removeJobsAndSets(job_ids=[j.id], set_ids=[])
-
-        return json.dumps("ok")
+        return self.state_json()
 
     @octoprint.plugin.BlueprintPlugin.route("/job/edit/begin", methods=["POST"])
     @restricted_access
@@ -567,12 +578,17 @@ class ContinuousprintPlugin(
                         self.plugin_data_dir,
                         self._logger,
                         Strategy.IN_ORDER,
+                        self._on_queue_update,
                     ),  # TODO specify strategy
                 )
             except ValueError:
                 self._logger.error(
                     f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
                 )
+
+        # We trigger state update rather than returning it here, because this is called by the settings viewmodel
+        # (not the main viewmodel that displays the queues)
+        self._refresh_ui_state(self)
         return json.dumps("OK")
 
     # part of TemplatePlugin

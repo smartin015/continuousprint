@@ -47,7 +47,9 @@ function CPSet(data, job) {
     }
     return result;
   });
-  self.selected = ko.observable(false);
+  self.remove = function() {
+    throw Error("TODO");
+  }
   self.expanded = ko.observable(false);
   self._textColorFromBackground = function(rrggbb) {
     // https://stackoverflow.com/a/12043228

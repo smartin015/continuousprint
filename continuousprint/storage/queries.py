@@ -25,7 +25,7 @@ def assignQueues(queues):
         else:
             absent_names = []
         added = [q for q in queues if q["name"] not in qq_names]
-        added_names = set([q.name for q in added])
+        added_names = set([q["name"] for q in added])
         for lex, qdata in enumerate(queues):
             if qdata["name"] in added_names:
                 print("Create", qdata)

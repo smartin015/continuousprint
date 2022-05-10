@@ -62,56 +62,47 @@ function CPQueue(data, api) {
     for (let j of data.jobs) {
       self.jobs.push(new CPJob(j, api));
     }
+    self.details = "";
+    self.fullDetails = "";
+    if (data.peers !== undefined) {
+      let pkeys = Object.keys(data.peers);
+      self.details = `(${pkeys.length-1} peers)`;
+      for (let p of pkeys) {
+        self.fullDetails = self.fullDetails + `\n${p}: ${data.peers[p].status}`;
+      }
+    }
 
     self.batchSelectBase = function(mode) {
       switch (mode) {
         case "All":
           for (let j of self.jobs()) {
             j.selected(true);
-            for (let s of j.sets()) {
-              s.selected(true);
-            }
           }
           break;
         case "None":
           for (let j of self.jobs()) {
             j.selected(false);
-            for (let s of j.sets()) {
-              s.selected(false);
-            }
           }
           break;
         case "Empty Jobs":
           for (let j of self.jobs()) {
             j.selected(j.sets().length === 0);
-            for (let s of j.sets()) {
-              s.selected(false);
-            }
           }
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
             j.selected(j.sets().length !== 0 && j.length_completed() === 0);
-            for (let s of j.sets()) {
-              s.selected(false);
-            }
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
             let lc = j.length_completed();
             j.selected(lc > 0 && lc < j.length());
-            for (let s of j.sets()) {
-              s.selected(false);
-            }
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
             j.selected(j.sets().length !== 0 && j.length_completed() >= j.length());
-            for (let s of j.sets()) {
-              s.selected(false);
-            }
           }
           break;
         default:
@@ -155,14 +146,8 @@ function CPQueue(data, api) {
           jobs.push(j);
           job_ids.push(j.id());
         }
-        for (let s of j.sets()) {
-          if (s.selected()) {
-            sets.push(s);
-            set_ids.push(s.id);
-          }
-        }
       }
-      return {jobs, job_ids, sets, set_ids};
+      return {jobs, job_ids};
     }
 
     self.deleteSelected = _ecatch("remove", function(e) {
@@ -233,17 +218,6 @@ function CPQueue(data, api) {
       return observable;
     };
 
-    self.setSelected = _ecatch("setSelected", function(job, set) {
-        job = self._resolve(job);
-        set = self._resolve(set);
-        let s = self.selected();
-        if (s !== null && s[0] == job && s[1] == set) {
-          self.selected(null);
-        } else {
-          self.selected([job, set]);
-        }
-    });
-
     self.setJobName = _ecatch("setJobName", function(job, evt) {
       job.set_name(evt.target.value);
     });
@@ -312,13 +286,17 @@ function CPViewModel(parameters) {
     });
 
     self._setState = function(state) {
-        //self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.jobs.length})`);
+        //self.log.info(`[${self.PLUGIN_ID}] updating queues (len ${state.queues.length})`);
         self._updateQueues(state.queues);
         self.active(state.active);
         self.active_set(state.active_set);
         self.status(state.status);
         //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
+
+    self._setPeerState = function(state) {
+      console.log("TODO PeerState", state);
+    }
 
     self.expand = function(vm) {
       if (self.expanded() === vm) {
@@ -397,10 +375,9 @@ function CPViewModel(parameters) {
                 theme = 'success';
                 self._loadState();
                 break;
-            case "reload":
-                theme = 'success'
-                self._loadState();
-                break;
+            case "setstate":
+                console.log("got setstate", data);
+                return self._setState(JSON.parse(data["state"]));
             default:
                 theme = "info";
                 break;
@@ -428,9 +405,7 @@ function CPViewModel(parameters) {
 
     self.submitJob = function(vm) {
       for (let id of self.defaultQueue._getSelections().job_ids) {
-        self.api.submitJob({id, queue: vm.name}, () => {
-          console.log(`Submitted ${id} to ${vm.name}`);
-        });
+        self.api.submitJob({id, queue: vm.name}, self._setState);
       }
     }
 

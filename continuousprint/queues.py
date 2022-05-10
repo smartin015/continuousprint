@@ -1,6 +1,7 @@
 import time
 from enum import Enum, auto
 from peerprint.lan_queue import LANPrintQueue
+from .storage.database import Job
 from pathlib import Path
 import os
 import json
@@ -32,10 +33,16 @@ class AbstractQueue:
         raise NotImplementedError
 
     def get_assignment(self):
+        return self.assigned
+
+    def assign(self):
         if self.assigned is None:
             peek = self.peek_job()
             if peek is not None:
-                self.assigned = self.acquire_job(peek)
+                if self.acquire_job(peek):
+                    self.assigned = peek
+                else:
+                    print("TODO handle acquire_job failure")
                 return self.get_assignment()
         else:
             for set_ in self.assigned.sets:
@@ -93,26 +100,47 @@ class LocalQueue(AbstractQueue):
 
 
 class LANQueue(AbstractQueue):
-    def __init__(self, ns, addr, basedir, logger, strategy: Strategy):
+    def __init__(self, ns, addr, basedir, logger, strategy: Strategy, update_cb):
         super().__init__()
+        self._logger = logger
         self.strategy = strategy
         path = Path(basedir) / ns
         os.makedirs(path, exist_ok=True)
-        self.lan = LANPrintQueue(ns, addr, path, logger)
+        self.ns = ns
+        self.update_cb = update_cb
+        self.lan = LANPrintQueue(ns, addr, path, self._on_ready, logger)
+        self.lastState = None
+
+    def _on_ready(self):
+        self._logger.info(f"Queue {self.ns} ready")
+        self.update_cb(self.ns)
+
+    def update_peer_state(self, state):
+        if self.lastState == state:
+            return
+        if self.lan.q is not None:
+            self.lan.q.syncPeer(state)
+            self._logger.info(f"Updated peer state for queue {self.ns}: {state}")
+            self.lastState = state
 
     def peek_job(self):
-        for k, j in self.lan.q.jobs.items():
-            j = Job.from_dict(j)
-            for s in j.sets:
+        if self.lan.q is None:
+            return None
+        for k, addr_man in self.lan.q.jobs.items():
+            job = Job.from_dict(addr_man[1])  # j = (address, manifest)
+            job.hash = k
+            for s in job.sets:
                 if s.remaining > 0:
-                    return j
-            if j.remaining > 0 and j.decrement():
-                self.lan.q.jobs[k] = j.as_dict()
-                return j
+                    return job
+            if job.remaining > 0 and job.decrement():
+                print(f"TODO set jobs[{k}] = {j.as_dict()}")
+                # self.lan.q.jobs[k] = j.as_dict()
+                return job
 
     def acquire_job(self, job):
-        if self.lan.q.acquireJob(job["hash"]):
-            return
+        if self.lan.q is None:
+            return False
+        return self.lan.q.acquireJob(job.hash)
 
     def begin_run(self):
         raise NotImplementedError
@@ -126,17 +154,20 @@ class LANQueue(AbstractQueue):
         if assigned is not None:
             active_set = assigned.id
         jobs = []
+        peers = {}
         if self.lan.q is not None:
             for (hash_, v) in self.lan.q.jobs.items():
                 (peer, manifest) = v
                 manifest["peer"] = peer
                 manifest["hash"] = hash_
                 jobs.append(manifest)
+            peers = dict(self.lan.q.peers)
 
         return dict(
             name=self.lan.ns,
             strategy=self.strategy.name,
             jobs=jobs,
+            peers=peers,
             active_set=active_set,
         )
 
@@ -151,6 +182,12 @@ class MultiQueue(AbstractQueue):
         self.strategy = strategy
         self.queues = {}
         self.run = None
+        self.cur = None
+
+    def update_peer_state(self, state):
+        for q in self.queues.values():
+            if hasattr(q, "update_peer_state"):
+                q.update_peer_state(state)
 
     def add(self, name: str, q: AbstractQueue):
         self.queues[name] = q

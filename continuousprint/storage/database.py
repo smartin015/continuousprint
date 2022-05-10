@@ -32,6 +32,13 @@ DEFAULT_QUEUE = "local"
 ARCHIVE_QUEUE = "archive"
 
 
+class StorageDetails(Model):
+    schemaVersion = CharField(unique=True)
+
+    class Meta:
+        database = DB.queues
+
+
 class Queue(Model):
     name = CharField(unique=True)
     created = DateTimeField(default=datetime.datetime.now)
@@ -72,9 +79,10 @@ class Job(Model):
                 s.remaining = s.count
 
     @classmethod
-    def from_dict(self, data):
-        data["sets"] = [Set(**s) for s in data["sets"]]
-        return Job(**data)
+    def from_dict(self, data: dict):
+        j = Job(**data)
+        j.sets = [Set(**s) for s in data["sets"]]
+        return j
 
     def as_dict(self):
         sets = list(self.sets)
@@ -153,7 +161,7 @@ def file_exists(path: str) -> bool:
         return False
 
 
-def init(db_path="queues.sqlite3", initial_data_path="init.yaml"):
+def init(db_path="queues.sqlite3", initial_data_path="init.yaml", logger=None):
     db = DB.queues
     needs_init = not file_exists(db_path)
     db.init(None)
@@ -161,6 +169,16 @@ def init(db_path="queues.sqlite3", initial_data_path="init.yaml"):
     db.connect()
 
     if needs_init:
-        DB.queues.create_tables([Queue, Job, Set, Run])
+        DB.queues.create_tables([Queue, Job, Set, Run, StorageDetails])
+        StorageDetails.create(schemaVersion="0.0.1")
         Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", lexRank=0)
         Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", lexRank=-1)
+    else:
+        try:
+            details = StorageDetails.select().limit(1).execute()[0]
+            if logger is not None:
+                logger.info("Storage schema version: " + details.schemaVersion)
+            if details.schemaVersion != "0.0.1":
+                raise Exception("Unknown DB schema version: " + details.schemaVersion)
+        except:
+            raise Exception("Failed to fetch storage schema details!")

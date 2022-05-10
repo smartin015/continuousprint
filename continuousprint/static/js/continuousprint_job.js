@@ -94,17 +94,7 @@ function CPJob(obj, api) {
   });
   self.selected = ko.observable(false);
   self.checkFraction = ko.computed(function() {
-    let ss = self.sets();
-    let numsel = (self.selected()) ? 0.1 : 0;
-    if (ss.length === 0) {
-      return numsel;
-    }
-    for (let qs of ss) {
-      if (qs.selected()) {
-        numsel++;
-      }
-    }
-    return numsel / ss.length;
+    return (self.selected()) ? 1 : 0;
   });
   self.pct_complete = ko.computed(function() {
     return Math.round(100 * (self.count() - self.remaining())/(self.count())) + '%';
