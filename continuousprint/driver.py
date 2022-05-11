@@ -94,7 +94,7 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        item = self.q.get_assignment()
+        item = self.q.get_set_or_acquire()
         if item is None:
             self._set_status("No work to do; going inactive")
             return self._state_inactive
@@ -120,7 +120,8 @@ class Driver:
         elif a == Action.FAILURE:
             return self._state_failure
         elif a == Action.SPAGHETTI:
-            elapsed = self.q.elapsed()
+            run = self.q.get_run()
+            elapsed = time.time() - run.started
             if self.retry_on_pause and elapsed < self.retry_threshold_seconds:
                 return self._state_spaghetti_recovery
             else:
@@ -129,14 +130,15 @@ class Driver:
                 )
                 return self._state_paused
         elif a == Action.SUCCESS:
-            item = self.q.get_assignment()
+            item = self.q.get_set()
+            print(item.path, "vs", self._cur_path)
             if item.path == self._cur_path:
                 return self._state_success
             else:
                 return self._state_start_clearing
 
         if p == Printer.BUSY:
-            item = self.q.get_assignment()
+            item = self.q.get_set()
             if item is not None:
                 self._set_status(f"Printing {item.path}")
         elif p == Printer.PAUSED:
@@ -176,7 +178,7 @@ class Driver:
         self.retries = 0
 
         # Clear bed if we have a next queue item, otherwise run finishing script
-        item = self.q.get_assignment()
+        item = self.q.get_set_or_acquire()
         if item is not None:
             return self._state_start_clearing
         else:
@@ -242,5 +244,5 @@ class Driver:
         )
 
     def current_path(self):
-        item = self.q.get_assignment()
+        item = self.q.get_set()
         return None if item is None else item.path

@@ -137,6 +137,8 @@ class Set(Model):
 
 
 class Run(Model):
+    queueName = CharField()
+    jobName = CharField()
     job = ForeignKeyField(Job, backref="runs", on_delete="CASCADE")
     path = CharField()
     start = DateTimeField(default=datetime.datetime.now)

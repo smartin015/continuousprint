@@ -11,6 +11,10 @@ def getQueues():
     return Queue.select().order_by(Queue.lexRank.asc())
 
 
+def getAcquired():
+    # TODO fetch job, set, and run
+    return (None, None, None)
+
 def assignQueues(queues):
     # Default/archive queues should never be removed
     names = set([qdata["name"] for qdata in queues] + [DEFAULT_QUEUE, ARCHIVE_QUEUE])

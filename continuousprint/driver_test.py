@@ -1,64 +1,31 @@
 import unittest
-from unittest.mock import MagicMock
+import time
+from unittest.mock import MagicMock, ANY
 from .driver import Driver, Action as DA, Printer as DP
 import logging
 
-# logging.basicConfig(level=logging.DEBUG)
-
-
-class MockItem:
-    def __init__(self, path, mats=[]):
-        self.mats = mats
-        self.path = path
-
-    def materials(self):
-        return self.mats
-
-
-Q = [MockItem("/foo.gcode"), MockItem("/bar.gco"), MockItem("baz", "/baz.gco")]
-
-
-class MockSupervisor:
-    def __init__(self):
-        self.q = Q[0]
-        self.begin_run = MagicMock()
-        self.end_run = MagicMock()
-
-    def get_assignment(self):
-        return self.q
-
-    def elapsed(self):
-        return 0
-
-
-class MockRunner:
-    def __init__(self):
-        self.run_finish_script = MagicMock()
-        self.start_print = MagicMock()
-        self.cancel_print = MagicMock()
-        self.clear_bed = MagicMock()
-
-
-def setupTestQueueAndDriver(self):
-    self.q = Q
-    self.d = Driver(
-        supervisor=MockSupervisor(),
-        script_runner=MockRunner(),
-        logger=logging.getLogger(),
-    )
-    self.d.set_retry_on_pause(True)
-    self.d.action(DA.DEACTIVATE, DP.IDLE)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TestFromInactive(unittest.TestCase):
     def setUp(self):
-        setupTestQueueAndDriver(self)
+        self.d = Driver(
+            queue=MagicMock(),
+            script_runner=MagicMock(),
+            logger=logging.getLogger(),
+        )
+        self.d.set_retry_on_pause(True)
+        self.d.action(DA.DEACTIVATE, DP.IDLE)
+        item = MagicMock(path="asdf")  # return same item by default every time
+        self.d.q.get_set_or_acquire.return_value = item
+        self.d.q.get_set.return_value = item
 
     def test_activate_not_printing(self):
         self.d.action(DA.ACTIVATE, DP.IDLE)
         self.d.action(DA.TICK, DP.IDLE)
-        self.d._runner.start_print.assert_called_once()
-        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[0])
+
+        self.d.q.begin_run.assert_called()
+        self.d._runner.start_print.assert_called_with(self.d.q.get_set.return_value)
         self.assertEqual(self.d.state, self.d._state_printing)
 
     def test_activate_already_printing(self):
@@ -89,12 +56,11 @@ class TestFromInactive(unittest.TestCase):
 
         # Non-queue print completion while the driver is active
         # should kick off a new print from the head of the queue
-        self.d._runner.start_print.assert_called_once()
-        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[0])
-        self.d.s.begin_run.assert_called_once()
+        self.d._runner.start_print.assert_called_with(self.d.q.get_set.return_value)
+        self.d.q.begin_run.assert_called_once()
 
         # Verify no end_run call anywhere in this process, since print was not in queue
-        self.d.s.end_run.assert_not_called()
+        self.d.q.end_run.assert_not_called()
 
     def test_start_clearing_waits_for_idle(self):
         self.d.state = self.d._state_start_clearing
@@ -143,8 +109,10 @@ class TestFromInactive(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
         self.d._runner.start_print.reset_mock()
 
-        self.d.action(DA.SUCCESS, DP.IDLE, path=self.d.s.q.path)  # -> success
-        self.d.s.q = None  # Nothing more in the queue
+        self.d.action(
+            DA.SUCCESS, DP.IDLE, path=self.d.q.get_set_or_acquire().path
+        )  # -> success
+        self.d.q.get_set_or_acquire.return_value = None  # Nothing more in the queue
         self.d.action(DA.TICK, DP.IDLE)  # -> start_finishing
         self.d.action(DA.TICK, DP.IDLE)  # -> finishing
         self.d._runner.run_finish_script.assert_called()
@@ -156,7 +124,16 @@ class TestFromInactive(unittest.TestCase):
 
 class TestFromStartPrint(unittest.TestCase):
     def setUp(self):
-        setupTestQueueAndDriver(self)
+        self.d = Driver(
+            queue=MagicMock(),
+            script_runner=MagicMock(),
+            logger=logging.getLogger(),
+        )
+        self.d.set_retry_on_pause(True)
+        item = MagicMock(path="asdf")  # return same item by default every time
+        self.d.q.get_set_or_acquire.return_value = item
+        self.d.q.get_set.return_value = item
+        self.d.action(DA.DEACTIVATE, DP.IDLE)
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print
 
     def test_success(self):
@@ -164,23 +141,28 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
         self.d._runner.start_print.reset_mock()
 
-        self.d.action(DA.SUCCESS, DP.IDLE, path=self.d.s.q.path)  # -> success
+        self.d.action(
+            DA.SUCCESS, DP.IDLE, path=self.d.q.get_set.return_value.path
+        )  # -> success
         self.d.action(DA.TICK, DP.IDLE)  # -> start_clearing
-        self.d.s.end_run.assert_called_once()
-        self.d.s.q = Q[1]  # manually move the supervisor forward in the queue
+        self.d.q.end_run.assert_called_once()
+        item2 = MagicMock(path="basdf")
+        self.d.q.get_set_or_acquire.return_value = (
+            item2  # manually move the supervisor forward in the queue
+        )
+        self.d.q.get_set.return_value = item2
 
         self.d.action(DA.TICK, DP.IDLE)  # -> clearing
         self.d._runner.clear_bed.assert_called_once()
 
         self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
-        self.d._runner.start_print.assert_called_once()
-        self.assertEqual(self.d._runner.start_print.call_args[0][0], self.q[1])
+        self.d._runner.start_print.assert_called_with(item2)
 
     def test_paused_with_spaghetti_early_triggers_cancel(self):
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
 
-        self.d.s.elapsed = lambda: 10
+        self.d.q.get_run.return_value = MagicMock(started=time.time() - 10)
         self.d.action(DA.SPAGHETTI, DP.BUSY)  # -> spaghetti_recovery
         self.d.action(DA.TICK, DP.PAUSED)  # -> cancel + failure
         self.d._runner.cancel_print.assert_called()
@@ -189,7 +171,9 @@ class TestFromStartPrint(unittest.TestCase):
     def test_paused_with_spaghetti_late_waits_for_user(self):
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
 
-        self.d.s.elapsed = lambda: self.d.retry_threshold_seconds + 1
+        self.d.q.get_run.return_value = MagicMock(
+            started=time.time() - self.d.retry_threshold_seconds - 1
+        )
         self.d.action(DA.SPAGHETTI, DP.BUSY)  # -> printing (ignore spaghetti)
         self.d.action(DA.TICK, DP.PAUSED)  # -> paused
         self.d._runner.cancel_print.assert_not_called()
@@ -198,7 +182,9 @@ class TestFromStartPrint(unittest.TestCase):
     def test_paused_manually_early_waits_for_user(self):
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
 
-        self.d.s.elapsed = lambda: 10
+        self.d.q.get_run.return_value = MagicMock(
+            started=time.time() - self.d.retry_threshold_seconds - 10
+        )
         self.d.action(DA.TICK, DP.PAUSED)  # -> paused
         self.d.action(DA.TICK, DP.PAUSED)  # stay in paused state
         self.d._runner.cancel_print.assert_not_called()
@@ -207,7 +193,7 @@ class TestFromStartPrint(unittest.TestCase):
     def test_paused_manually_late_waits_for_user(self):
         self.d.action(DA.TICK, DP.IDLE)  # -> printing
 
-        self.d.s.elapsed = lambda: 1000
+        self.d.q.get_run.return_value = MagicMock(started=time.time() - 1000)
         self.d.action(DA.TICK, DP.PAUSED)  # -> paused
         self.d.action(DA.TICK, DP.PAUSED)  # stay in paused state
         self.d._runner.cancel_print.assert_not_called()
@@ -231,15 +217,24 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.action(DA.DEACTIVATE, DP.IDLE)  # -> inactive
         self.assertEqual(self.d.state, self.d._state_inactive)
         self.d._runner.start_print.assert_not_called()
-        self.d.s.end_run.assert_not_called()
+        self.d.q.end_run.assert_not_called()
 
 
 class TestMaterialConstraints(unittest.TestCase):
     def setUp(self):
-        setupTestQueueAndDriver(self)
+        self.d = Driver(
+            queue=MagicMock(),
+            script_runner=MagicMock(),
+            logger=logging.getLogger(),
+        )
+        self.d.set_retry_on_pause(True)
+        self.d.action(DA.DEACTIVATE, DP.IDLE)
 
     def _setItemMaterials(self, m):
-        self.d.s.q = MockItem("foo.gcode", m)
+        item = MagicMock()
+        item.materials.return_value = m
+        self.d.q.get_set.return_value = item
+        self.d.q.get_set_or_acquire.return_value = item
 
     def test_empty(self):
         self._setItemMaterials([])
