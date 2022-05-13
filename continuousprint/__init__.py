@@ -6,6 +6,7 @@ import json
 import yaml
 import os
 import time
+import traceback
 from pathlib import Path
 from io import BytesIO
 
@@ -22,7 +23,12 @@ from octoprint.printer import InvalidFileLocation, InvalidFileType
 
 from .driver import Driver, Action as DA, Printer as DP
 from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
-from .storage.database import init as init_db, DEFAULT_QUEUE, ARCHIVE_QUEUE
+from .storage.database import (
+    migrateFromSettings,
+    init as init_db,
+    DEFAULT_QUEUE,
+    ARCHIVE_QUEUE,
+)
 from .storage import queries
 
 QUEUE_KEY = "cp_queue"
@@ -82,7 +88,7 @@ class ContinuousprintPlugin(
             self._gcode_scripts = yaml.safe_load(f.read())["GScript"]
 
         d = {}
-        d[QUEUE_KEY] = "[]"
+        d[QUEUE_KEY] = None
         d[CLEARING_SCRIPT_KEY] = ""
         d[FINISHED_SCRIPT_KEY] = ""
 
@@ -142,13 +148,22 @@ class ContinuousprintPlugin(
 
         self._settings.save()
 
-        storage_init_path = Path(os.path.dirname(__file__)) / "data/storage_init.yaml"
         self.plugin_data_dir = Path(self.get_plugin_data_folder())
         init_db(
             db_path=self.plugin_data_dir / "queue.sqlite3",
-            initial_data_path=storage_init_path,
             logger=self._logger,
         )
+
+        # Migrate from old JSON state if needed
+        state_data = self._settings.get([QUEUE_KEY])
+        try:
+            if state_data is not None and state_data != "[]":
+                settings_state = json.loads(state_data)
+                migrateFromSettings(settings_state)
+                self._settings.set([QUEUE_KEY], None)
+        except Exception:
+            self._logger.error(f"Could not migrate old json state: {state_data}")
+            self._logger.error(traceback.format_exc())
 
         profname = self._settings.get([PRINTER_PROFILE_KEY])
         for prof in self._printer_profiles:
@@ -164,7 +179,7 @@ class ContinuousprintPlugin(
                 break
 
         self.q = MultiQueue(
-            Strategy.IN_ORDER
+            queries, Strategy.IN_ORDER
         )  # TODO set strategy for this and all other queue creations
         for q in queries.getQueues():
             if q.addr is not None:
@@ -230,8 +245,10 @@ class ContinuousprintPlugin(
         if self.d.action(a, p, path, materials):
             self._refresh_ui_state()
 
-        elapsed = self.q.elapsed()
-        self.q.update_peer_state(dict(status=p.name, elapsed=elapsed))
+        run = self.q.get_run()
+        if run is not None:
+            run = run.as_dict()
+        self.q.update_peer_state(dict(status=p.name, run=run))
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -371,7 +388,9 @@ class ContinuousprintPlugin(
             "active": self._active(),
             "status": "Initializing" if not hasattr(self, "d") else self.d.status,
             "queues": [
-                q.as_dict() for name, q in self.q.queues.items() if name != "archive"
+                dict(q.as_dict())
+                for name, q in self.q.queues.items()
+                if name != "archive"
             ],
         }
         return json.dumps(resp)
@@ -496,7 +515,7 @@ class ContinuousprintPlugin(
         self.q.queues[queue_name].lan.q.submitJob(j.as_dict(), filepaths)
 
         # Remove the job now that it's been submitted
-        queries.removeJobsAndSets(job_ids=[j.id], set_ids=[])
+        queries.remove(job_ids=[j.id])
         return self.state_json()
 
     @octoprint.plugin.BlueprintPlugin.route("/job/edit/begin", methods=["POST"])
@@ -516,14 +535,13 @@ class ContinuousprintPlugin(
     @octoprint.plugin.BlueprintPlugin.route("/multi/rm", methods=["POST"])
     @restricted_access
     def rm_multi(self):
-        jids = flask.request.form.getlist("job_ids[]")
-        sids = flask.request.form.getlist("set_ids[]")
-        qids = flask.request.form.getlist("queue_ids[]")
-
-        result = queries.removeJobsAndSets(jids, sids)
-        if len(qids) > 0:
-            result["queues_deleted"] = queries.removeQueues(qids)
-        return json.dumps(result)
+        return json.dumps(
+            queries.remove(
+                job_ids=flask.request.form.getlist("job_ids[]"),
+                set_ids=flask.request.form.getlist("set_ids[]"),
+                queue_ids=flask.request.form.getlist("queue_ids[]"),
+            )
+        )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/multi/reset", methods=["POST"])

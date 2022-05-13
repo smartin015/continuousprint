@@ -18,6 +18,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.api = parameters[2] || new CPAPI();
     self.loading = ko.observable(false);
     self.api.init(self.loading);
+    self.dirtyQueues = ko.observable(false);
 
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)
     self.profiles = {};
@@ -72,13 +73,18 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
 
     self.newBlankQueue = function() {
       self.queues.push({name: "", addr: "", strategy: ""});
+      self.dirtyQueues(true);
     };
     self.rmQueue = function(q) {
       self.queues.remove(q);
+      self.dirtyQueues(true);
     }
 
     // Called automatically by SettingsViewModel
     self.onSettingsBeforeSave = function() {
+      if (!self.dirtyQueues()) {
+        return;
+      }
       // Sadly it appears flask doesn't have good parsing of nested POST structures,
       // So we pass it a JSON string instead.
       self.api.commitQueues({queues: JSON.stringify(self.queues())}, () => {
@@ -94,6 +100,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.sortEnd = function() {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
+      self.dirtyQueues(true);
     };
 }
 

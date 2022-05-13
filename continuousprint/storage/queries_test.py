@@ -8,64 +8,71 @@ import time
 
 # logging.basicConfig(level=logging.DEBUG)
 
-from .database import Job, Set, Run, Queue, init as init_db
+from .database import (
+    Job,
+    Set,
+    Run,
+    Queue,
+    init as init_db,
+    DEFAULT_QUEUE,
+    ARCHIVE_QUEUE,
+)
+from .database_test import DBTest
 from ..storage import queries as q
 
-QNAME = "default"
 
-
-class TestEmptyQueue(unittest.TestCase):
+class TestEmptyQueue(DBTest):
     def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        init_db(self.tmpdir.name + "queues.sqlite3", initial_data_path=None)
-
-    def tearDown(self):
-        # Trigger teardown of temp directory
-        with self.tmpdir as _:
-            pass
+        super().setUp()
 
     def testGettersReturnEmpty(self):
-        self.assertEqual(list(q.getJobsAndSets(QNAME)), [])
-        self.assertEqual(q.getNextSetInQueue(QNAME), None)
+        self.assertEqual(list(q.getJobsAndSets(DEFAULT_QUEUE)), [])
+        self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE), None)
+        self.assertEqual(q.getAcquired(), (None, None, None))
 
     def testAppendSet(self):
         # Initial append creates a job to live in
         self.assertEqual(
             q.appendSet(
-                QNAME, "", dict(path="a.gcode", sd=False, material="", count=1)
+                DEFAULT_QUEUE, "", dict(path="a.gcode", sd=False, material="", count=1)
             ),
             dict(job_id=1, set_=ANY),
         )
 
-        # Subsequent appends reuse this job since it has the same job name
+        # Subsequent append creates new job since name is still empty
         self.assertEqual(
             q.appendSet(
-                QNAME, "", dict(path="a.gcode", sd=False, material="", count=1)
+                DEFAULT_QUEUE, "", dict(path="a.gcode", sd=False, material="", count=1)
             ),
-            dict(job_id=1, set_=ANY),
-        )
-        self.assertEqual(
-            q.appendSet(
-                QNAME, "", dict(path="a.gcode", sd=False, material="", count=1)
-            ),
-            dict(job_id=1, set_=ANY),
+            dict(job_id=2, set_=ANY),
         )
 
         # Append with a different job name creates a new job
         self.assertEqual(
             q.appendSet(
-                QNAME, "j2", dict(path="a.gcode", sd=False, material="", count=1)
+                DEFAULT_QUEUE,
+                "j2",
+                dict(path="a.gcode", sd=False, material="", count=1),
             ),
-            dict(job_id=2, set_=ANY),
+            dict(job_id=3, set_=ANY),
+        )
+        # Append with that same job name appends to that job
+        self.assertEqual(
+            q.appendSet(
+                DEFAULT_QUEUE,
+                "j2",
+                dict(path="a.gcode", sd=False, material="", count=1),
+            ),
+            dict(job_id=3, set_=ANY),
         )
 
     def testNewEmptyJob(self):
-        q.newEmptyJob(QNAME)
-        self.assertEqual(len(q.getJobsAndSets(QNAME)), 1)
+        q.newEmptyJob(DEFAULT_QUEUE)
+        self.assertEqual(len(q.getJobsAndSets(DEFAULT_QUEUE)), 1)
 
     def testRemoveDoesNothing(self):
         self.assertEqual(
-            q.removeJobsAndSets(job_ids=[1, 2, 3], set_ids=[1, 2, 3]),
+            q.remove(job_ids=[1, 2, 3], set_ids=[1, 2, 3]),
             dict(jobs_deleted=0, sets_deleted=0),
         )
 
@@ -73,89 +80,88 @@ class TestEmptyQueue(unittest.TestCase):
         q.replenish([1, 2, 3], [4, 5, 6])
 
 
-class TestSingleItemQueue(unittest.TestCase):
+class TestSingleItemQueue(DBTest):
     def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        init_db(self.tmpdir.name + "queues.sqlite3", initial_data_path=None)
-        q.appendSet(QNAME, "j1", dict(path="a.gcode", sd=False, material="", count=1))
-
-    def tearDown(self):
-        # Trigger teardown of temp directory
-        with self.tmpdir as _:
-            pass
+        super().setUp()
+        q.appendSet(
+            DEFAULT_QUEUE, "j1", dict(path="a.gcode", sd=False, material="", count=1)
+        )
 
     def testGetJobsAndSets(self):
-        js = list(q.getJobsAndSets(QNAME))
+        js = list(q.getJobsAndSets(DEFAULT_QUEUE))
         self.assertEqual(len(js), 1)
         self.assertEqual(js[0].as_dict()["name"], "j1")
 
-    def testNextSetInQueue(self):
-        self.assertEqual(q.getNextSetInQueue(QNAME).as_dict()["path"], "a.gcode")
+    def testNextJobInQueue(self):
+        self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE).name, "j1")
 
     def testUpdateJob(self):
         q.updateJob(1, dict(name="jj", count=5))
-        j = q.getJobsAndSets(QNAME)[0]
+        j = q.getJobsAndSets(DEFAULT_QUEUE)[0]
         self.assertEqual(j.name, "jj")
         self.assertEqual(j.count, 5)
 
-    def testUpdateSet(self):
-        q.updateSet(1, dict(count=500))
-        s = q.getJobsAndSets(QNAME)[0].sets[0]
-        self.assertEqual(s.count, 500)
+    def testUpdateJobSet(self):
+        q.updateJob(1, dict(sets=[dict(id=1, count=500)]))
+        self.assertEqual(Set.get(id=1).count, 500)
 
     def testRemoveJob(self):
-        q.removeJobsAndSets([1], [])
-        self.assertEqual(len(q.getJobsAndSets(QNAME)), 0)  # No jobs or sets
+        q.remove(job_ids=[1])
+        self.assertEqual(len(q.getJobsAndSets(DEFAULT_QUEUE)), 0)  # No jobs or sets
 
     def testJobIdsConsistent(self):
-        q.removeJobsAndSets([1], [])
-        j = q.newEmptyJob("default")
+        q.remove(job_ids=[1])
+        j = q.newEmptyJob(DEFAULT_QUEUE)
         self.assertNotEqual(
             j.id, 1
         )  # Original job ID is not reused even when it's deleted
 
     def testRemoveSet(self):
-        q.removeJobsAndSets([], [1])
-        j = q.getJobsAndSets(QNAME)[0]
+        q.remove(set_ids=[1])
+        j = q.getJobsAndSets(DEFAULT_QUEUE)[0]
         # Job persists, but no set
         self.assertEqual(j.name, "j1")
         self.assertEqual(j.sets, [])
 
     def testRunBeginEnd(self):
-        s = q.getNextSetInQueue(QNAME)
         self.assertEqual(Run.select().count(), 0)
+        j = Job.get(id=1)
+        s = Set.get(id=1)
         r = q.beginRun(s)
         self.assertEqual(r.path, "a.gcode")
         self.assertEqual(r.job, s.job)
+        self.assertEqual(q.getAcquired(), (j, s, r))
+
         q.endRun(s, r, "success")
         self.assertEqual(r.result, "success")
 
         # Since single job count with single set count, both should be 0 when set is completed
         self.assertEqual(s.remaining, 0)
         self.assertEqual(s.job.remaining, 0)
+        self.assertEqual(q.getAcquired(), (None, None, None))
 
     def testRunEndFailureKeepsRemaining(self):
-        s1 = q.getNextSetInQueue(QNAME)
+        s1 = Set.get(id=1)
         rem = s1.remaining
         r = q.beginRun(s1)
         q.endRun(s1, r, "failure")
 
-        s2 = q.getNextSetInQueue(QNAME)
+        s2 = q.getNextJobInQueue(DEFAULT_QUEUE)
         self.assertEqual(s2.id, s1.id)
         self.assertEqual(s2.remaining, rem)
 
-    def testGetNextSetInQueueParameterized(self):
+    def testGetNextJobInQueueParameterized(self):
         cases = [  # set/job remaining before and after retrieval, plus whether a result is retrieved
             [(1, 1), (1, 1), True],
             [(0, 1), (0, 0), False],
             [(0, 2), (1, 1), True],
             [(1, 0), (1, 0), True],
         ]
-        s = q.getNextSetInQueue(QNAME)
-        j = s.job
+        j = Job.get(id=1)
+        s = Set.get(id=1)
         for before, after, notNone in cases:
             with self.subTest(
-                f"with set.remaining={before[0]}, job.remaining={before[1]}"
+                f"with set.remaining={before[0]}, job.remaining={before[1]} (expect result set={after[0]}, job={after[1]})"
             ):
                 s.remaining = before[0]
                 s.count = max(before[0], 1)
@@ -164,10 +170,11 @@ class TestSingleItemQueue(unittest.TestCase):
                 j.count = max(before[1], 1)
                 j.save()
 
-                result = q.getNextSetInQueue(QNAME)
+                result = q.getNextJobInQueue(DEFAULT_QUEUE)
                 if notNone:
-                    self.assertEqual(result.remaining, after[0])
-                    self.assertEqual(result.job.remaining, after[1])
+                    self.assertNotEqual(result, None)
+                    self.assertEqual(result.sets[0].remaining, after[0])
+                    self.assertEqual(result.remaining, after[1])
                 else:
                     self.assertEqual(result, None)
 
@@ -179,8 +186,8 @@ class TestSingleItemQueue(unittest.TestCase):
             [(0, 1), (0, 0)],
             [(1, 0), (0, 0)],
         ]
-        s = q.getNextSetInQueue(QNAME)
-        j = s.job
+        j = Job.get(id=1)
+        s = Set.get(id=1)
         for before, after in cases:
             with self.subTest(
                 f"with set.remaining={before[0]}, job.remaining={before[1]}"
@@ -201,9 +208,8 @@ class TestSingleItemQueue(unittest.TestCase):
                 self.assertEqual(j.remaining, after[1])
 
     def testReplenish(self):
-        s = q.getNextSetInQueue(QNAME)
-        j = s.job
-
+        j = q.getNextJobInQueue(DEFAULT_QUEUE)
+        s = j.sets[0]
         s.remaining = 0
         j.remaining = 0
         q.replenish([j.id], [s.id])
@@ -250,17 +256,16 @@ class TestSingleItemQueue(unittest.TestCase):
                 j.count = max(before[2], 1)
                 j.save()
 
-                q.updateSet(s.id, dict(count=after[0]))
+                q.updateJob(j.id, dict(sets=[dict(id=s.id, count=after[0])]))
                 s2 = Set.get(id=s.id)
                 self.assertEqual(s2.count, after[0])
                 self.assertEqual(s2.remaining, after[1])
                 self.assertEqual(s2.job.remaining, after[2])
 
 
-class TestMultiItemQueue(unittest.TestCase):
+class TestMultiItemQueue(DBTest):
     def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        init_db(self.tmpdir.name + "queues.sqlite3", initial_data_path=None)
+        super().setUp()
 
         def testLex():
             t = time.time()
@@ -269,85 +274,63 @@ class TestMultiItemQueue(unittest.TestCase):
                 yield (t + 100 * i)
                 i += 1
 
-        lexGen = testLex()
+        rankGen = testLex()
 
-        def lex():
-            return next(lexGen)
+        def rank():
+            return next(rankGen)
 
         for jname, path in [
-            ("j1", "a.gcode"),
-            ("j1", "b.gcode"),
-            ("j2", "c.gcode"),
-            ("j2", "d.gcode"),
+            ("j1", "a.gcode"),  # id=1
+            ("j1", "b.gcode"),  # id=2
+            ("j2", "c.gcode"),  # id=3
+            ("j2", "d.gcode"),  # id=4
         ]:
             q.appendSet(
-                QNAME, jname, dict(path=path, sd=False, material="", count=1), lex=lex
+                DEFAULT_QUEUE,
+                jname,
+                dict(path=path, sd=False, material="", count=1),
+                rank=rank,
             )
 
-    def tearDown(self):
-        # Trigger teardown of temp directory
-        with self.tmpdir as _:
-            pass
+    def testMoveJob(self):
+        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, -1), [2, 1])]:
+            with self.subTest(f"moveJob({moveArgs}) -> want {want}"):
+                q.moveJob(*moveArgs)
+                self.assertEqual([j.id for j in q.getJobsAndSets(DEFAULT_QUEUE)], want)
 
-    def testMoveJobFirstToLast(self):
-        q.moveJob(1, 2)
-        self.assertEqual([j.id for j in q.getJobsAndSets(QNAME, lexOrder=True)], [2, 1])
+    def testMoveSet(self):
+        for (desc, moveArgs, want) in [
+            ("FirstToLast", (1, 2, 1), [2, 1, 3, 4]),
+            ("LastToFirst", (2, -1, 1), [2, 1, 3, 4]),
+            ("DiffJob", (1, 3, 2), [2, 3, 1, 4]),
+            ("NewJob", (1, -1, -1), [2, 3, 4, 1]),
+        ]:
+            with self.subTest(f"{desc}: moveSet({moveArgs})"):
+                q.moveSet(*moveArgs)
+                set_order = [
+                    (s["id"], s["rank"])
+                    for j in q.getJobsAndSets(DEFAULT_QUEUE)
+                    for s in j.as_dict()["sets"]
+                ]
+                self.assertEqual(set_order, [(w, ANY) for w in want])
 
-    def testMoveJobLastToFirst(self):
-        q.moveJob(2, -1)
-        self.assertEqual([j.id for j in q.getJobsAndSets(QNAME, lexOrder=True)], [2, 1])
-
-    def testMoveSetFirstToLast(self):
-        q.moveSet(1, 2, 1)
-        set_order = [
-            s["id"]
-            for j in q.getJobsAndSets(QNAME, lexOrder=True)
-            for s in j.as_dict()["sets"]
-        ]
-        self.assertEqual(set_order, [2, 1, 3, 4])
-
-    def testMoveSetLastToFirst(self):
-        q.moveSet(2, -1, 1)
-        set_order = [
-            s["id"]
-            for j in q.getJobsAndSets(QNAME, lexOrder=True)
-            for s in j.as_dict()["sets"]
-        ]
-        self.assertEqual(set_order, [2, 1, 3, 4])
-
-    def testMoveSetDiffJob(self):
-        q.moveSet(1, 3, 2)
-        set_order = [
-            s["id"]
-            for j in q.getJobsAndSets(QNAME, lexOrder=True)
-            for s in j.as_dict()["sets"]
-        ]
-        self.assertEqual(set_order, [2, 3, 1, 4])
-
-    def testMoveSetNewJob(self):
-        q.moveSet(1, -1, -1)
-        set_order = [
-            s["id"]
-            for j in q.getJobsAndSets(QNAME, lexOrder=True)
-            for s in j.as_dict()["sets"]
-        ]
-        self.assertEqual(set_order, [2, 3, 4, 1])
-
-    def testGetNextSetAfterSuccess(self):
-        s = q.getNextSetInQueue(QNAME)
+    def testGetNextJobAfterSuccess(self):
+        j = q.getNextJobInQueue(DEFAULT_QUEUE)
+        s = j.sets[0]
         r = q.beginRun(s)
         q.endRun(s, r, "success")
-        s2 = q.getNextSetInQueue(QNAME)
-        self.assertNotEqual(s2.id, s.id)
+        j2 = q.getNextJobInQueue(DEFAULT_QUEUE)
+        self.assertEqual(j2.id, j.id)
+        self.assertEqual(j2.sets[0].remaining, 0)
 
     def testGetHistoryNoRuns(self):
         self.assertEqual(q.getHistory(), [])
 
     def testGetHistory(self):
-        s = q.getNextSetInQueue(QNAME)
+        s = Set.get(id=1)
         r = q.beginRun(s)
         q.endRun(s, r, "success")
-        s = q.getNextSetInQueue(QNAME)
+        s = Set.get(id=2)
         r = q.beginRun(s)
         self.assertEqual(
             q.getHistory(),
@@ -375,8 +358,7 @@ class TestMultiItemQueue(unittest.TestCase):
         )
 
     def testClearHistory(self):
-        s = q.getNextSetInQueue(QNAME)
-        q.beginRun(s)
+        q.beginRun(Set.get(id=1))
         self.assertNotEqual(Run.select().count(), 0)
         q.clearHistory()
         self.assertEqual(Run.select().count(), 0)

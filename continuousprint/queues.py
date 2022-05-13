@@ -2,7 +2,7 @@ import time
 from typing import Optional
 from enum import Enum, auto
 from peerprint.lan_queue import LANPrintQueue
-from dataclasses import dataclass, field
+import dataclasses
 from .storage.database import Job, Set, Run
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -15,14 +15,14 @@ class Strategy(Enum):
     LEAST_MANUAL = auto()  # Choose the job which produces the least manual changes
 
 
-@dataclass
+@dataclasses.dataclass
 class QueueData:
     name: str
     strategy: str
     jobs: list[dict]
     active_set: int
     addr: Optional[str] = None
-    peers: list[dict] = field(default_factory=list)
+    peers: list[dict] = dataclasses.field(default_factory=list)
 
 
 class AbstractQueue(ABC):
@@ -58,7 +58,7 @@ class AbstractQueue(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def as_dict(self) -> QueueData:
+    def as_dict(self) -> dict:
         raise NotImplementedError
 
 
@@ -94,12 +94,14 @@ class LocalQueue(AbstractQueue):
         if self.job is not None:
             self.queries.decrement(self.job, self.set)
 
-    def as_dict(self) -> QueueData:
-        return QueueData(
-            name=self.queue,
-            strategy=self.strategy.name,
-            jobs=[j.as_dict() for j in self.queries.getJobsAndSets(self.queue)],
-            active_set=None,  # TODO?
+    def as_dict(self) -> dict:
+        return dataclasses.asdict(
+            QueueData(
+                name=self.queue,
+                strategy=self.strategy.name,
+                jobs=[j.as_dict() for j in self.queries.getJobsAndSets(self.queue)],
+                active_set=None,  # TODO?
+            )
         )
 
 
@@ -181,7 +183,7 @@ class LANQueue(AbstractQueue):
             j.decrement()
             self.lan.q.jobs[self.job.hash] = j.as_dict()
 
-    def as_dict(self) -> QueueData:
+    def as_dict(self) -> dict:
         active_set = None
         assigned = self.get_assignment()
         if assigned is not None:
@@ -196,13 +198,15 @@ class LANQueue(AbstractQueue):
                 jobs.append(manifest)
             peers = dict(self.lan.q.peers)
 
-        return QueueData(
-            name=self.lan.ns,
-            addr=self.addr,
-            strategy=self.strategy.name,
-            jobs=jobs,
-            peers=peers,
-            active_set=active_set,
+        return dataclasses.asdict(
+            QueueData(
+                name=self.lan.ns,
+                addr=self.addr,
+                strategy=self.strategy.name,
+                jobs=jobs,
+                peers=peers,
+                active_set=active_set,
+            )
         )
 
 
@@ -247,6 +251,9 @@ class MultiQueue(AbstractQueue):
                 self.active_queue.get_job(), self.active_queue.get_set()
             )
 
+    def get_run(self) -> Optional[Run]:
+        return self.run
+
     def end_run(self, result) -> None:
         if self.active_queue is not None:
             self.queries.endRun(
@@ -279,10 +286,12 @@ class MultiQueue(AbstractQueue):
         if self.active_queue is not None:
             return self.active_queue.decrement()
 
-    def as_dict(self) -> QueueData:
-        return QueueData(
-            name=self.name,
-            strategy=self.strategy.name,
-            jobs=[],
-            active_set=None,  # TODO?
+    def as_dict(self) -> dict:
+        return dataclasses.asdict(
+            QueueData(
+                name=self.name,
+                strategy=self.strategy.name,
+                jobs=[],
+                active_set=None,  # TODO?
+            )
         )
