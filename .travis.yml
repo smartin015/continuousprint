@@ -9,7 +9,7 @@ jobs:
           - pip install OctoPrint # Need OctoPrint to satisfy req's of `__init__.py`
           - pip install -r requirements.txt
       script:
-        - python -m unittest discover -s continuousprint -p "*_test.py"
+        - python3 -m unittest discover -p "*_test.py"
 notifications:
   email:
     - smartin015@gmail.com

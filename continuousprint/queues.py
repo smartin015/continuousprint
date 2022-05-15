@@ -114,7 +114,6 @@ class LANQueue(AbstractQueue):
         self.basedir = basedir
         self.addr = addr
         self.update_cb = update_cb
-        self.lastState = None
         self.lan = None
 
     # ---------- LAN queue methods ---------
@@ -122,22 +121,18 @@ class LANQueue(AbstractQueue):
     def connect(self):
         path = Path(self.basedir) / self.ns
         os.makedirs(path, exist_ok=True)
-        self.lan = LANPrintQueue(ns, addr, path, self._on_ready, logger)
+        self.lan = LANPrintQueue(self.ns, self.addr, path, self._on_ready, self._logger)
 
-    def _on_ready(self):
+    def _on_ready(self, _):
         self._logger.info(f"Queue {self.ns} ready")
         self.update_cb(self.ns)
 
     def destroy(self):
         self.lan.destroy()
 
-    def update_peer_state(self, state):
-        if self.lastState == state:
-            return
+    def update_peer_state(self, status, run):
         if self.lan is not None and self.lan.q is not None:
-            self.lan.q.syncPeer(state)
-            self._logger.info(f"Updated peer state for queue {self.ns}: {state}")
-            self.lastState = state
+            self.lan.q.syncPeer(status, run)
 
     # --------- AbstractQueue implementation --------
 
@@ -185,18 +180,14 @@ class LANQueue(AbstractQueue):
 
     def as_dict(self) -> dict:
         active_set = None
-        assigned = self.get_assignment()
+        assigned = self.get_set()
         if assigned is not None:
             active_set = assigned.id
         jobs = []
         peers = {}
         if self.lan.q is not None:
-            for (hash_, v) in self.lan.q.jobs.items():
-                (peer, manifest) = v
-                manifest["peer"] = peer
-                manifest["hash"] = hash_
-                jobs.append(manifest)
-            peers = dict(self.lan.q.peers)
+            jobs = self.lan.q.getJobs()
+            peers = self.lan.q.getPeers()
 
         return dataclasses.asdict(
             QueueData(
@@ -222,10 +213,10 @@ class MultiQueue(AbstractQueue):
         self.run = None
         self.active_queue = None
 
-    def update_peer_state(self, state):
+    def update_peer_state(self, status, run):
         for q in self.queues.values():
             if hasattr(q, "update_peer_state"):
-                q.update_peer_state(state)
+                q.update_peer_state(status, run)
 
     def add(self, name: str, q: AbstractQueue):
         if hasattr(q, "connect"):

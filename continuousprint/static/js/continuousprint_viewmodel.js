@@ -62,14 +62,20 @@ function CPQueue(data, api) {
     for (let j of data.jobs) {
       self.jobs.push(new CPJob(j, api));
     }
-    self.details = "";
-    self.fullDetails = "";
-    if (data.peers !== undefined) {
+    self.details = ko.observable("");
+    self.fullDetails = ko.observable("");
+    if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);
-      self.details = `(${pkeys.length-1} peers)`;
-      for (let p of pkeys) {
-        self.fullDetails = self.fullDetails + `\n${p}: ${data.peers[p].status}`;
+      if (pkeys.length === 0) {
+        self.details(`(connecting...)`);
+      } else {
+        self.details(`(${pkeys.length-1} peers)`);
       }
+      let fd = '';
+      for (let p of pkeys) {
+        fd += `\n${p}: ${data.peers[p].status}`;
+      }
+      self.fullDetails(fd);
     }
 
     self.batchSelectBase = function(mode) {

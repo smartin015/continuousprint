@@ -248,7 +248,7 @@ class ContinuousprintPlugin(
         run = self.q.get_run()
         if run is not None:
             run = run.as_dict()
-        self.q.update_peer_state(dict(status=p.name, run=run))
+        self.q.update_peer_state(p.name, run)
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):

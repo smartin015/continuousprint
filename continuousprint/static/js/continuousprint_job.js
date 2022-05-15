@@ -22,6 +22,7 @@ function CPJob(obj, api) {
   obj = {...{sets: [], name: "", draft: false, count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
   self._name = ko.observable(obj.name);
+  self.acquiredBy = ko.observable(obj.acquired_by_);
   self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
   self.remaining = ko.observable(obj.remaining);

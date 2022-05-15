@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 logging.basicConfig(level=logging.DEBUG)
 
-class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
 
+class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
     def setUp(self):
         queries = MagicMock()
         queries.getAcquired.return_value = (None, None, None)
@@ -17,11 +17,11 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
     def test_acquire_success(self):
         self.q.queries.getNextJobInQueue.return_value = "testjob"
         self.q.queries.acquireJob.return_value = True
-        self.q.queries.getAcquired.return_value = (1,2,3)
+        self.q.queries.getAcquired.return_value = (1, 2, 3)
         self.assertEqual(self.q.acquire(), True)
         self.assertEqual(self.q.get_job(), 1)
         self.assertEqual(self.q.get_set(), 2)
-        
+
     def test_acquire_failed(self):
         self.q.queries.getNextJobInQueue.return_value = "testjob"
         self.q.queries.acquireJob.return_value = False
@@ -33,16 +33,25 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
         self.assertEqual(self.q.acquire(), False)
 
     def test_as_dict(self):
-        self.assertEqual(self.q.as_dict(), QueueData(name="testQueue", strategy="IN_ORDER", jobs=[], active_set=None))
+        self.assertEqual(
+            self.q.as_dict(),
+            dict(
+                name="testQueue",
+                strategy="IN_ORDER",
+                jobs=[],
+                active_set=None,
+                addr=None,
+                peers=[],
+            ),
+        )
 
 
 class TestLocalQueueInOrderInitial(unittest.TestCase):
-
     def setUp(self):
         queries = MagicMock()
-        queries.getAcquired.return_value = (1,2,None)
+        queries.getAcquired.return_value = (1, 2, None)
         self.q = LocalQueue(queries, "testQueue", Strategy.IN_ORDER)
-    
+
     def test_init_already_acquired(self):
         self.assertEqual(self.q.get_job(), 1)
         self.assertEqual(self.q.get_set(), 2)
@@ -57,33 +66,51 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
 
     def test_release(self):
         self.q.release()
-        self.q.queries.release.assert_called_with(1,2)
+        self.q.queries.release.assert_called_with(1, 2)
         self.assertEqual([self.q.get_job(), self.q.get_set()], [None, None])
 
     def test_decrement(self):
         self.q.decrement()
-        self.q.queries.decrement.assert_called_with(1,2)
+        self.q.queries.decrement.assert_called_with(1, 2)
 
     def as_dict(self):
         self.q.queries.begin_run.return_value = 4
-        self.q.begin_run() # Trigger active_set
+        self.q.begin_run()  # Trigger active_set
         self.q.queries.getJobsAndSets.return_value = []
         self.q.set = Mock(id=2)
-        self.assertEqual(self.q.as_dict(), QueueData(name="testQueue", strategy="IN_ORDER", jobs=[], active_set=2))
+        self.assertEqual(
+            self.q.as_dict(),
+            QueueData(name="testQueue", strategy="IN_ORDER", jobs=[], active_set=2),
+        )
 
 
 class TestLANQueueNoConnection(unittest.TestCase):
     def setUp(self):
         self.ucb = MagicMock()
-        self.q = LANQueue("ns", "localhost:1234", "basedir", logging.getLogger(), Strategy.IN_ORDER, self.ucb)
+        self.q = LANQueue(
+            "ns",
+            "localhost:1234",
+            "basedir",
+            logging.getLogger(),
+            Strategy.IN_ORDER,
+            self.ucb,
+        )
 
     def test_update_peer_state(self):
-        self.q.update_peer_state("hi") # No explosions? Good
+        self.q.update_peer_state("HI", {})  # No explosions? Good
+
 
 class TestLANQueueConnected(unittest.TestCase):
     def setUP(self):
         self.ucb = MagicMock()
-        self.q = LANQueue("ns", "localhost:1234", "basedir", logging.getLogger(), Strategy.IN_ORDER, self.ucb)
+        self.q = LANQueue(
+            "ns",
+            "localhost:1234",
+            "basedir",
+            logging.getLogger(),
+            Strategy.IN_ORDER,
+            self.ucb,
+        )
         self.q.lan = MagicMock()
         self.q.lan.q = MagicMock()
 
@@ -123,4 +150,3 @@ class TestMultiQueue(unittest.TestCase):
         self.q.end_run("result")
         self.q.queries.endRun.assert_called()
         self.q.queries.release.assert_not_called()
-

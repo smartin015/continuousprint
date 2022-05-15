@@ -125,6 +125,7 @@
 
           <div class="accordion-body collapse in">
             <div class="accordion-inner">
+              <div data-bind="visible: acquiredBy, text: 'Acquired by ' + acquiredBy()"></div>
               <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft}" class="sets accordion">
                 <div class="accordion-group">
                   <div class="accordion-heading">
