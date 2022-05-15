@@ -4,7 +4,7 @@ jobs:
     - language: node_js
       node_js: node
     - language: python
-      python: 3.6
+      python: 3.7
       install:
           - pip install OctoPrint # Need OctoPrint to satisfy req's of `__init__.py`
           - pip install -r requirements.txt
