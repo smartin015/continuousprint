@@ -242,7 +242,7 @@ def appendSet(queue: str, job, data: dict, rank=_rankEnd):
     return dict(job_id=j.id, set_=s.as_dict())
 
 
-def remove(queue_ids: list[int] = [], job_ids: list[int] = [], set_ids: list[int] = []):
+def remove(queue_ids: list = [], job_ids: list = [], set_ids: list = []):
     result = {}
     with DB.queues.atomic():
         if len(queue_ids) > 0:

@@ -19,10 +19,10 @@ class Strategy(Enum):
 class QueueData:
     name: str
     strategy: str
-    jobs: list[dict]
+    jobs: list
     active_set: int
     addr: Optional[str] = None
-    peers: list[dict] = dataclasses.field(default_factory=list)
+    peers: list = dataclasses.field(default_factory=list)
 
 
 class AbstractQueue(ABC):
