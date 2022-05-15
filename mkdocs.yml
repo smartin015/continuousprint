@@ -24,6 +24,7 @@ nav:
   - GCODE Scripting: gcode-scripting.md
   - Advanced Queuing: advanced-queuing.md
   - Failure Recovery: failure-recovery.md
+  - LAN Queues: lan-queues.md
   - Material Selection: material-selection.md
   - Contributing: contributing.md
   - API: api.md
