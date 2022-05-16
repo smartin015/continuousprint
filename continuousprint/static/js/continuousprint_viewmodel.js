@@ -113,10 +113,6 @@ function CPViewModel(parameters) {
         //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
-    self._setPeerState = function(state) {
-      console.log("TODO PeerState", state);
-    }
-
     self.expand = function(vm) {
       if (self.expanded() === vm) {
         vm.expanded(false);
@@ -195,8 +191,9 @@ function CPViewModel(parameters) {
                 self._loadState();
                 break;
             case "setstate":
+                data = JSON.parse(data["state"]);
                 console.log("got setstate", data);
-                return self._setState(JSON.parse(data["state"]));
+                return self._setState(data);
             default:
                 theme = "info";
                 break;

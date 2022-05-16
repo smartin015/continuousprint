@@ -63,13 +63,13 @@ class ContinuousprintPlugin(
 
     def _refresh_ui_state(self):
         # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
-        self._logger.info("Refereshing UI state")
+        self._logger.info("Refreshing UI state")
         self._plugin_manager.send_plugin_message(
             self._identifier, dict(type="setstate", state=self.state_json())
         )
 
-    def _on_queue_update(self, name):
-        self._logger.info("Handling update from " + name)
+    def _on_queue_update(self, q):
+        self._logger.info("Update from queue:" + q.ns)
         self._refresh_ui_state()
 
     def _update_driver_settings(self):
@@ -384,14 +384,18 @@ class ContinuousprintPlugin(
     def state_json(self):
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
         # (e.g. 1.4.1 -> 2.0.0).
+        db_qs = dict([(q.name, q.rank) for q in queries.getQueues()])
+        qs = [
+            dict(q.as_dict(), rank=db_qs[name])
+            for name, q in self.q.queues.items()
+            if name != "archive"
+        ]
+        qs.sort(key=lambda q: q["rank"])
+
         resp = {
             "active": self._active(),
             "status": "Initializing" if not hasattr(self, "d") else self.d.status,
-            "queues": [
-                dict(q.as_dict())
-                for name, q in self.q.queues.items()
-                if name != "archive"
-            ],
+            "queues": qs,
         }
         return json.dumps(resp)
 
@@ -606,7 +610,7 @@ class ContinuousprintPlugin(
 
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)
-        self._refresh_ui_state(self)
+        self._refresh_ui_state()
         return json.dumps("OK")
 
     # part of TemplatePlugin

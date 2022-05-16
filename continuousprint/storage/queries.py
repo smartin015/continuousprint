@@ -32,7 +32,7 @@ def assignQueues(queues):
         if len(absent) > 0:
             (absent_ids, absent_names) = zip(*absent)
             print("Delete", absent_ids)
-            Queue.delete().where(Queue.id.in_(absent_ids))
+            Queue.delete().where(Queue.id.in_(absent_ids)).execute()
         else:
             absent_names = []
         added = [q for q in queues if q["name"] not in qq_names]

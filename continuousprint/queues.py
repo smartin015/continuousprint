@@ -113,19 +113,21 @@ class LANQueue(AbstractQueue):
         self.ns = ns
         self.basedir = basedir
         self.addr = addr
-        self.update_cb = update_cb
         self.lan = None
+        self.update_cb = update_cb
 
     # ---------- LAN queue methods ---------
 
     def connect(self):
         path = Path(self.basedir) / self.ns
         os.makedirs(path, exist_ok=True)
-        self.lan = LANPrintQueue(self.ns, self.addr, path, self._on_ready, self._logger)
+        self.lan = LANPrintQueue(
+            self.ns, self.addr, path, self._on_update, self._logger
+        )
 
-    def _on_ready(self, _):
-        self._logger.info(f"Queue {self.ns} ready")
-        self.update_cb(self.ns)
+    def _on_update(self):
+        self._logger.info(f"Queue {self.ns} update")
+        self.update_cb(self)
 
     def destroy(self):
         self.lan.destroy()
@@ -224,8 +226,11 @@ class MultiQueue(AbstractQueue):
         self.queues[name] = q
 
     def remove(self, name: str):
-        if hasattr(self.queues[name], "destroy"):
-            self.queues[name].destroy()
+        q = self.queues.get(name)
+        if q is None:
+            return
+        if hasattr(q, "destroy"):
+            q.destroy()
         del self.queues[name]
 
     def get_set_or_acquire(self) -> Optional[Set]:

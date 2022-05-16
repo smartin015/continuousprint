@@ -18,7 +18,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.api = parameters[2] || new CPAPI();
     self.loading = ko.observable(false);
     self.api.init(self.loading);
-    self.dirtyQueues = ko.observable(false);
 
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)
     self.profiles = {};
@@ -35,6 +34,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
 
     // Queues are stored in the DB; we must fetch them.
     self.queues = ko.observableArray();
+    self.queue_fingerprint = null;
     self.api.queues((result) => {
       let queues = []
       for (let r of result) {
@@ -44,6 +44,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
         queues.push(r);
       }
       self.queues(queues);
+      self.queue_fingerprint = JSON.stringify(queues);
     });
 
     self.selected_make = ko.observable();
@@ -73,21 +74,20 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
 
     self.newBlankQueue = function() {
       self.queues.push({name: "", addr: "", strategy: ""});
-      self.dirtyQueues(true);
     };
     self.rmQueue = function(q) {
       self.queues.remove(q);
-      self.dirtyQueues(true);
     }
 
     // Called automatically by SettingsViewModel
     self.onSettingsBeforeSave = function() {
-      if (!self.dirtyQueues()) {
-        return;
+      let queues = JSON.stringify(self.queues());
+      if (queues === self.queue_fingerprint) {
+        return; // Don't call out to API if we haven't changed anything
       }
       // Sadly it appears flask doesn't have good parsing of nested POST structures,
       // So we pass it a JSON string instead.
-      self.api.commitQueues({queues: JSON.stringify(self.queues())}, () => {
+      self.api.commitQueues({queues}, () => {
         console.log("Queues committed");
       });
     }
@@ -100,7 +100,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.sortEnd = function() {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
-      self.dirtyQueues(true);
     };
 }
 
