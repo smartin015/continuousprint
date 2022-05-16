@@ -26,6 +26,7 @@ function CPJob(obj, api) {
   self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
   self.remaining = ko.observable(obj.remaining);
+  self.selected = ko.observable(false);
 
   self.sets = ko.observableArray([]);
   for (let s of obj.sets) {
@@ -40,7 +41,6 @@ function CPJob(obj, api) {
         id: self.id(),
         sets: []
     };
-    console.log(self.sets());
     for (let s of self.sets()) {
       data.sets.push(s.as_object());
     }
@@ -55,7 +55,6 @@ function CPJob(obj, api) {
   self.onSetModified = function(s) {
     let newqs = new CPSet(s, self);
     for (let qs of self.sets()) {
-      console.log(qs.id, "vs", s.id);
       if (qs.id === s.id) {
         return self.sets.replace(qs, newqs);
       }
@@ -71,8 +70,10 @@ function CPJob(obj, api) {
       self.remaining(result.remaining); // Adjusted when count is mutated
       self.id(result.id); // May change if no id to start with
       let cpss = [];
-      for (let qsd of result.sets) {
-        cpss.push(new CPSet(qsd, self));
+      if (typeof(result.sets) === Array) {
+        for (let qsd of result.sets) {
+          cpss.push(new CPSet(qsd, self));
+        }
       }
       self.sets(cpss);
     });
@@ -93,7 +94,6 @@ function CPJob(obj, api) {
     }
     return r;
   });
-  self.selected = ko.observable(false);
   self.checkFraction = ko.computed(function() {
     return (self.selected()) ? 1 : 0;
   });

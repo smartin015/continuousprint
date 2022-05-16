@@ -640,6 +640,7 @@ class ContinuousprintPlugin(
                 "js/continuousprint_history_row.js",
                 "js/continuousprint_set.js",
                 "js/continuousprint_job.js",
+                "js/continuousprint_queue.js",
                 "js/continuousprint_viewmodel.js",
                 "js/continuousprint_settings.js",
                 "js/continuousprint.js",

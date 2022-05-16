@@ -43,7 +43,6 @@ function CPHistoryRow(data) {
         current = (new Date()).getTime()/1000;
       }
       var elapsed = current - previous;
-      console.log("timeago", previous, current, "=>", elapsed);
       if (elapsed < sPerHour) {
            return pluralize(elapsed/sPerMinute, 'minute');
       }

@@ -107,7 +107,7 @@ function CPSet(data, job) {
       mats.push('');
     }
     mats[t] = v;
-    self.mats(result.materials);
+    self.mats(mats);
   }
 }
 

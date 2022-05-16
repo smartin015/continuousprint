@@ -18,13 +18,14 @@ function sets(nsets = 2) {
 
 function api() {
   return {
-    update: (_, obj, cb) => cb({...obj, id: 1, remaining: (obj.count || 1)}),
+    edit: jest.fn((_, obj, cb) => cb()),
+    commit: jest.fn((_, obj, cb) => cb(obj)),
   }
 }
 
 test('basic observables', () => {
   let j = new Job({name: 'bob', sets: sets()}, api());
-  expect(j.name()).toBe('bob');
+  expect(j._name()).toBe('bob');
   expect(j.sets().length).not.toBe(0);
 });
 
@@ -56,9 +57,6 @@ test('checkFraction', () => {
   expect(j.checkFraction()).toBe(0);
   j.selected(true);
   expect(j.checkFraction()).not.toBe(0);
-  j.sets()[0].selected(true);
-  j.selected(false);
-  expect(j.checkFraction()).not.toBe(0);
 });
 
 test('pct_complete', () => {
@@ -68,15 +66,23 @@ test('pct_complete', () => {
   expect(j.pct_complete()).toBe('40%');
 });
 
-test('set_count', () => {
-  let j = new Job({sets: sets()}, api());
-  j.set_count(5);
-  expect(j.count()).toBe(5);
-  expect(j.remaining()).toBe(5);
+test('editStart', () =>{
+  let a = api();
+  let j = new Job({}, a);
+  j.editStart();
+  expect(a.edit).toHaveBeenCalled();
+  expect(j.draft()).toBe(true);
 });
 
-test('set_name', () => {
-  let j = new Job({}, api());
-  j.set_name('bob');
-  expect(j.name()).toBe('bob');
+test('editEnd', () => {
+  let a = api();
+  let j = new Job({}, a);
+  j.draft(true);
+  j._name('bob');
+  j.count(2);
+  j.editEnd();
+  let call = JSON.parse(a.commit.mock.calls[0][1].json);
+  expect(call.name).toEqual('bob');
+  expect(call.count).toEqual(2);
+  expect(call.draft).toEqual(false);
 });

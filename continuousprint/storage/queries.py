@@ -274,10 +274,11 @@ def replenish(job_ids: list, set_ids: list):
             updated += (
                 Job.update(remaining=Job.count).where(Job.id.in_(job_ids)).execute()
             )
-        if len(set_ids) > 0:
-            updated += (
-                Set.update(remaining=Set.count).where(Set.id.in_(set_ids)).execute()
-            )
+        updated += (
+            Set.update(remaining=Set.count)
+            .where(Set.id.in_(set_ids) | Set.job.in_(job_ids))
+            .execute()
+        )
         return dict(num_updated=updated)
 
 

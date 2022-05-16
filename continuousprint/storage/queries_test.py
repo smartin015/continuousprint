@@ -207,12 +207,26 @@ class TestSingleItemQueue(DBTest):
                 self.assertEqual(s.remaining, after[0])
                 self.assertEqual(j.remaining, after[1])
 
-    def testReplenish(self):
+    def testReplenishSet(self):
         j = q.getNextJobInQueue(DEFAULT_QUEUE)
         s = j.sets[0]
         s.remaining = 0
         j.remaining = 0
-        q.replenish([j.id], [s.id])
+        s.save()
+        j.save()
+        q.replenish([], [s.id])
+        self.assertEqual(Set.get(id=s.id).remaining, 1)
+        self.assertEqual(Job.get(id=j.id).remaining, 0)
+
+    def testReplenishJob(self):
+        j = q.getNextJobInQueue(DEFAULT_QUEUE)
+        s = j.sets[0]
+        s.remaining = 0
+        j.remaining = 0
+        s.save()
+        j.save()
+        q.replenish([j.id], [])
+        # Replenishing the job replenishes all sets
         self.assertEqual(Set.get(id=s.id).remaining, 1)
         self.assertEqual(Job.get(id=j.id).remaining, 1)
 

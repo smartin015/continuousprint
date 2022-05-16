@@ -9,6 +9,7 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   // In the testing environment, dependencies must be manually imported
   ko = require('knockout');
   CPJob = require('./continuousprint_job');
+  CPQueue = require('./continuousprint_queue');
   CPAPI = require('./continuousprint_api');
   CPHistoryRow = require('./continuousprint_history_row');
   log = {
@@ -47,199 +48,10 @@ var _ecatch = function(name, fn) {
       try {
         let args_json = JSON.stringify(arguments);
       } catch(e2) {}
-      self.log.error(`[${self.PLUGIN_ID}]: error when calling ${name} with args ${args_json}: ${err}`);
+      console.error(`Error when calling ${name} with args ${args_json}: ${err}`);
     }
   };
 };
-
-function CPQueue(data, api) {
-    var self = this;
-    self.api = api;
-    self.name = data.name;
-    self.strategy = data.strategy;
-    self.addr = data.addr;
-    self.jobs = ko.observableArray([]);
-    for (let j of data.jobs) {
-      self.jobs.push(new CPJob(j, api));
-    }
-    self.details = ko.observable("");
-    self.fullDetails = ko.observable("");
-    if (self.addr !== null && data.peers !== undefined) {
-      let pkeys = Object.keys(data.peers);
-      if (pkeys.length === 0) {
-        self.details(`(connecting...)`);
-      } else {
-        self.details(`(${pkeys.length-1} peers)`);
-      }
-      let fd = '';
-      for (let p of pkeys) {
-        fd += `\n${p}: ${data.peers[p].status}`;
-      }
-      self.fullDetails(fd);
-    }
-
-    self.batchSelectBase = function(mode) {
-      switch (mode) {
-        case "All":
-          for (let j of self.jobs()) {
-            j.selected(true);
-          }
-          break;
-        case "None":
-          for (let j of self.jobs()) {
-            j.selected(false);
-          }
-          break;
-        case "Empty Jobs":
-          for (let j of self.jobs()) {
-            j.selected(j.sets().length === 0);
-          }
-          break;
-        case "Unstarted Jobs":
-          for (let j of self.jobs()) {
-            j.selected(j.sets().length !== 0 && j.length_completed() === 0);
-          }
-          break;
-        case "Incomplete Jobs":
-          for (let j of self.jobs()) {
-            let lc = j.length_completed();
-            j.selected(lc > 0 && lc < j.length());
-          }
-          break;
-        case "Completed Jobs":
-          for (let j of self.jobs()) {
-            j.selected(j.sets().length !== 0 && j.length_completed() >= j.length());
-          }
-          break;
-        default:
-          console.error("Unknown batch select mode: " + mode);
-      }
-    }
-    self.batchSelect = function(_, e) {
-      return self.batchSelectBase(e.target.innerText);
-    }
-
-    self.checkFraction = ko.computed(function() {
-      let js = self.jobs();
-      if (js.length === 0) {
-        return 0;
-      }
-      let numsel = 0;
-      for (let j of js) {
-        numsel += j.checkFraction();
-      }
-      return numsel / js.length;
-      return 0;
-    });
-    self.onChecked = function(v, e) {
-      let c = self.checkFraction();
-      self.batchSelectBase((c == 0) ? "All" : "None");
-      e.cancelBubble = true;
-      if (e.stopPropagation) {
-        e.stopPropagation();
-      }
-
-    }
-
-    // *** ko template methods ***
-    self._getSelections = function() {
-      let jobs = [];
-      let job_ids = [];
-      let sets = [];
-      let set_ids = [];
-      for (let j of self.jobs()) {
-        if (j.selected()) {
-          jobs.push(j);
-          job_ids.push(j.id());
-        }
-      }
-      return {jobs, job_ids};
-    }
-
-    self.deleteSelected = _ecatch("remove", function(e) {
-      let d = self._getSelections();
-      self.api.rm({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
-          for (let s of d.sets) {
-            s.job.sets.remove(s);
-          }
-          for (let j of d.jobs) {
-            self.jobs.remove(j);
-          }
-      });
-    });
-
-    self.resetSelected = _ecatch("resetSelected", function() {
-      let d = self._getSelections();
-      self.api.reset({job_ids: d.job_ids, set_ids: d.set_ids}, () => {
-        for (let j of d.jobs) {
-          j.remaining(j.count());
-        }
-        for (let s of d.sets) {
-          s.remaining(s.count());
-        }
-      });
-    });
-
-    self.newEmptyJob = _ecatch("newEmptyJob", function() {
-        self.api.add(self.api.JOB, {}, (result) => {
-          self.jobs.push(new CPJob(result, self.api));
-        });
-    });
-
-    self.addFile = _ecatch("addFile", function(data) {
-        let now = Date.now();
-        let jobs = self.jobs();
-        let job = null;
-        for (let j of self.jobs()) {
-          if (j.draft()) {
-            job = j._name();
-            break;
-          }
-        }
-        self.api.add(self.api.SET, {
-            name: data.name,
-            path: data.path,
-            sd: (data.origin !== "local"),
-            count: 1,
-            hash_: "", // TODO
-            material: "",
-            job,
-        }, (response) => {
-          // Take the updated job ID and set and merge it into the nested arrays
-          for (let j of self.jobs()) {
-            if (j.id() === response.job_id) {
-              return j.onSetModified(response.set_);
-            }
-          }
-          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, self.api));
-        });
-    });
-
-    self._resolve = function(observable) {
-      if (typeof(observable) === 'undefined') {
-        return null;
-      } else if (typeof(observable) === 'function') {
-        return observable();
-      }
-      return observable;
-    };
-
-    self.setJobName = _ecatch("setJobName", function(job, evt) {
-      job.set_name(evt.target.value);
-    });
-
-    self.setCount = _ecatch("setCount", function(vm, e) {
-      let v = parseInt(e.target.value, 10);
-      if (isNaN(v) || v < 1) {
-        return;
-      }
-      vm.set_count(v);
-    });
-
-    self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
-      vm.set_material(idx, mat);
-    });
-}
 
 function CPViewModel(parameters) {
     var self = this;
@@ -283,6 +95,7 @@ function CPViewModel(parameters) {
       let result = [];
       for (let q of queues) {
         let cpq = new CPQueue(q, self.api);
+        console.log(cpq.name);
         result.push(cpq);
         if (cpq.name === 'local') {
           self.defaultQueue = cpq;
@@ -343,7 +156,7 @@ function CPViewModel(parameters) {
         return false;
       }
       // Sets must only be dragged among draft jobs
-      if (evt.from.id === "queue_sets" && evt.to.className.indexOf("draft") === -1) {
+      if (evt.from.id === "queue_sets" && !evt.to.classList.contains("draft")) {
         return false;
       }
       // Draft jobs can only be dragged within the local queue
