@@ -7,6 +7,7 @@ import yaml
 import os
 import time
 import traceback
+import tempfile
 from pathlib import Path
 from io import BytesIO
 
@@ -16,11 +17,12 @@ from octoprint.server.util.flask import restricted_access
 from octoprint.events import Events
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 import octoprint.filemanager
-from octoprint.filemanager.util import StreamWrapper
+from octoprint.filemanager.util import StreamWrapper, DiskFileWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 
+from peerprint.filesharing import pack_job
 from .driver import Driver, Action as DA, Printer as DP
 from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
 from .storage.database import (
@@ -536,6 +538,39 @@ class ContinuousprintPlugin(
         return json.dumps(queries.updateJob(data["id"], data))
 
     # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/job/export", methods=["POST"])
+    @restricted_access
+    def export_job(self):
+        jobs = [
+            queries.getJob(int(jid)) for jid in flask.request.form.getlist("job_ids[]")
+        ]
+        results = []
+        for j in jobs:
+            filepaths = dict(
+                [
+                    (
+                        s.path,
+                        self._file_manager.path_on_disk(FileDestinations.LOCAL, s.path),
+                    )
+                    for s in j.sets
+                ]
+            )
+            name = f"cprint_{j.name}_{int(time.time())}.gjob"
+            with tempfile.NamedTemporaryFile(suffix=".gjob") as tf:
+                pack_job(j.as_dict(), filepaths, tf.name)
+                print(
+                    f"Packed job {j.id} with files {filepaths} into {tf.name}; moving into filemanager as /{name}"
+                )
+                results.append(
+                    self._file_manager.add_file(
+                        FileDestinations.LOCAL,
+                        f"/{name}",
+                        DiskFileWrapper(name, tf.name, move=False),
+                    )
+                )
+        return json.dumps(results)
+
+    # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/multi/rm", methods=["POST"])
     @restricted_access
     def rm_multi(self):
@@ -716,6 +751,9 @@ class ContinuousprintPlugin(
             ),
         ]
 
+    def support_gjob_format(*args, **kwargs):
+        return dict(machinecode=dict(gjob=["gjob"]))
+
 
 __plugin_name__ = "Continuous Print"
 __plugin_pythoncompat__ = ">=3.7,<4"
@@ -730,5 +768,6 @@ def __plugin_load__():
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
         "octoprint.access.permissions": __plugin_implementation__.add_permissions,
         "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
+        "octoprint.filemanager.extension_tree": __plugin_implementation__.support_gjob_format,
         # register to listen for "M118 //action:" commands
     }

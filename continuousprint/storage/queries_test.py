@@ -105,6 +105,12 @@ class TestSingleItemQueue(DBTest):
         q.updateJob(1, dict(sets=[dict(id=1, count=500)]))
         self.assertEqual(Set.get(id=1).count, 500)
 
+    def testUpdateJobSetMaterials(self):
+        raise NotImplementedError
+
+    def testUpdateJobSetProfiles(self):
+        raise NotImplementedError
+
     def testRemoveJob(self):
         q.remove(job_ids=[1])
         self.assertEqual(len(q.getJobsAndSets(DEFAULT_QUEUE)), 0)  # No jobs or sets

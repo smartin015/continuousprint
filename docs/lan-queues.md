@@ -33,7 +33,7 @@ The overall strategy *between* queues is currently in-order, i.e. all prints in 
 
 3D print slicers generate a `*.gcode` file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).
 
-The current LAN queue implementation is bound by this limitation - **your LAN queue must only have the same make and model of printer as members**. [Design work is underway](https://github.com/smartin015/continuousprint/issues/54) to allow for multiple printer types to pull from the same queue, but that work is secondary to providing a stable first implementation that works for the simpler case where all printers in the queue are identical.
+The current LAN queue implementation is bound by this limitation - **your LAN queue must only have the same make and model of printer as members**, or else configure the correct profiles for individual prints.
 
 ## Setup
 

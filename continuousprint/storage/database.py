@@ -140,12 +140,21 @@ class Set(Model):
     # This is a CSV of material key strings referencing SpoolManager entities
     # (makes it easier to manage material keys as a single field)
     # It's intentionally NOT a foreign key for this reason.
-    material_keys = CharField()
+    material_keys = CharField(default="")
+
+    # A CSV of printer profiles (names as defined in printer_profiles.yaml)
+    profile_keys = CharField(default="")
+
+    def _csv2list(self, v):
+        if v == "":
+            return []
+        return v.split(",")
 
     def materials(self):
-        if self.material_keys == "":
-            return []
-        return self.material_keys.split(",")
+        return self._csv2list(self.material_keys)
+
+    def profiles(self):
+        return self._csv2list(self.profile_keys)
 
     class Meta:
         database = DB.queues
@@ -164,6 +173,7 @@ class Set(Model):
             path=self.path,
             count=self.count,
             materials=self.materials(),
+            profiles=self.profiles(),
             id=self.id,
             rank=self.rank,
             sd=self.sd,

@@ -87,6 +87,10 @@ class CPAPI {
     this._call(`${this.BASE}/job/submit`, data, cb);
   }
 
+  exportJobs(data, cb) {
+    this._call(`${this.BASE}/job/export`, data, cb);
+  }
+
   getSpoolManagerState(cb) {
     this._call("plugin/SpoolManager/loadSpoolsByQuery?from=0&to=1000000&sortColumn=displayName&sortOrder=desc&filterName=&materialFilter=all&vendorFilter=all&colorFilter=all", undefined, cb, false);
   }

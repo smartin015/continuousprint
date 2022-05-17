@@ -82,10 +82,19 @@ def _updateSet(set_id, data, job):
     # Called internally from updateJob
     s = Set.get(id=set_id)
     for k, v in data.items():
-        if k in ("id", "count", "remaining"):  # ignored or handled below
+        if k in (
+            "id",
+            "count",
+            "remaining",
+            "materials",
+            "profiles",
+        ):  # ignored or handled below
             continue
         setattr(s, k, v)
     s.job = job
+
+    s.material_keys = ",".join(data.get("materials", ""))
+    s.profile_keys = ",".join(data.get("profiles", ""))
 
     if data.get("count") is not None:
         newCount = int(data["count"])

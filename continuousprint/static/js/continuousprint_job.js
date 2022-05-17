@@ -69,8 +69,9 @@ function CPJob(obj, api) {
       self.count(result.count);
       self.remaining(result.remaining); // Adjusted when count is mutated
       self.id(result.id); // May change if no id to start with
+      self._name(result.name);
       let cpss = [];
-      if (typeof(result.sets) === Array) {
+      if (result.sets !== undefined) {
         for (let qsd of result.sets) {
           cpss.push(new CPSet(qsd, self));
         }

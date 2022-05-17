@@ -62,6 +62,7 @@ function CPViewModel(parameters) {
     self.loginState = parameters[1];
     self.files = parameters[2];
     self.printerProfiles = parameters[3];
+    self.cpPrinterProfiles = CP_PRINTER_PROFILES;
     self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
     self.status = ko.observable("Initializing...");
     self.active = ko.observable(false);

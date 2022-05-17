@@ -21,6 +21,18 @@ function CPSet(data, job) {
   self.count = ko.observable(data.count);
   self.remaining = ko.observable(data.remaining);
   self.mats = ko.observable(data.materials);
+  self.profiles = ko.observableArray(data.profiles);
+
+  self.addProfile = function(_, e) {
+    let v = e.target.value;
+    if (self.profiles.indexOf(v) === -1) {
+      self.profiles.push(v);
+    }
+    e.target.value = ''; // Reset to empty since user has chosen
+  };
+  self.rmProfile = function(v, e) {
+    self.profiles.remove(v);
+  };
 
   self.as_object = function() {
     return {
@@ -30,6 +42,7 @@ function CPSet(data, job) {
       count: self.count(),
       remaining: self.remaining(),
       materials: self.mats(),
+      profiles: self.profiles(),
     };
   }
   self.length = ko.computed(function() {

@@ -164,6 +164,13 @@ function CPQueue(data, api) {
       });
     });
 
+    self.exportSelected = _ecatch("exportSelected", function() {
+      let d = self._getSelections();
+      self.api.exportJobs({job_ids: d.job_ids}, () => {
+        console.log("Export done - TODO blink exported files");
+      });
+    });
+
     self.newEmptyJob = _ecatch("newEmptyJob", function() {
         self.api.add(self.api.JOB, {}, (result) => {
           self.jobs.push(new CPJob(result, self.api));
@@ -173,7 +180,7 @@ function CPQueue(data, api) {
     self.addFile = _ecatch("addFile", function(data) {
         let now = Date.now();
         let jobs = self.jobs();
-        let job = null;
+        let job = "";
         for (let j of self.jobs()) {
           if (j.draft()) {
             job = j._name();

@@ -61,6 +61,9 @@
           <button class="btn" data-bind="visible: checkFraction() > 0 && name === 'local', click: resetSelected" title="Reset selected progress">
             <i style="cursor: pointer" class="fas fa-redo"></i>
             </button>
+          <button class="btn" data-bind="visible: checkFraction() > 0 && name === 'local', click: exportSelected" title="Export as .gjob to files list">
+            <i style="cursor: pointer" class="fas fa-file-export"></i>
+            </button>
         </div>
         <div class="dropdown">
             <a class="btn dropdown-toggle" data-toggle="dropdown" data-bind="visible: checkFraction() > 0" title="Submit selected jobs to another queue">
@@ -170,6 +173,22 @@
                               </select>
                             </div>
                           </div>
+                        </div>
+                        <div>
+                          <select data-bind="event: {change: addProfile}, visible: job.draft">
+                              <option key=""></option>
+                              <!-- ko foreach: $root.cpPrinterProfiles -->
+                              <option data-bind="value: name, text: name"></option>
+                              <!-- /ko -->
+                          </select>
+                          <span>Profiles:</span>
+                          <span data-bind="foreach: set.profiles">
+                            <span class="label label-info">
+                              <span data-bind="text:$data"></span>
+                              <i style="cursor: pointer", class="fas fa-times" data-bind="click: set.rmProfile, visible: job.draft"></i>
+
+                            </span>
+                          </span>
                         </div>
                         <div class="hint" data-bind="hidden: $root.materials().length > 0">
                           Hint: Install SpoolManager, add spools, then reload the page to select material types.
