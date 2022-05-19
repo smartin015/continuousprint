@@ -3,7 +3,8 @@ from typing import Optional
 from enum import Enum, auto
 from peerprint.lan_queue import LANPrintQueue
 import dataclasses
-from .storage.database import Job, Set, Run
+from .storage.database import JobView, SetView, Run
+from .storage.lan import LANJobView
 from pathlib import Path
 from abc import ABC, abstractmethod
 import os
@@ -39,10 +40,10 @@ class AbstractQueue(ABC):
         self.job = None
         self.set = None
 
-    def get_job(self) -> Optional[Job]:
+    def get_job(self) -> Optional[JobView]:
         return self.job
 
-    def get_set(self) -> Optional[Set]:
+    def get_set(self) -> Optional[SetView]:
         return self.set
 
     @abstractmethod
@@ -132,11 +133,15 @@ class LANQueue(AbstractQueue):
 
     # ---------- LAN queue methods ---------
 
-    def connect(self):
-        path = Path(self.basedir) / self.ns
-        os.makedirs(path, exist_ok=True)
+    def connect(self, testing=False):
+        if self.basedir is not None:
+            path = Path(self.basedir) / self.ns
+            os.makedirs(path, exist_ok=True)
+        else:
+            path = None
+        print("TEEST", testing)
         self.lan = LANPrintQueue(
-            self.ns, self.addr, path, self._on_update, self._logger
+            self.ns, self.addr, path, self._on_update, self._logger, testing=testing
         )
 
     def _on_update(self):
@@ -152,31 +157,23 @@ class LANQueue(AbstractQueue):
 
     # --------- AbstractQueue implementation --------
 
-    def _peekSet(self, job) -> Optional[Set]:
-        for s in job.sets:
-            if s.remaining > 0:
-                return s
-        if job.remaining > 0 and job.decrement():
-            print(f"TODO set jobs[{k}] = {j.as_dict()}")
-            # self.lan.q.jobs[k] = j.as_dict()
-            return self._peekJobSet(job)
-
     def _peek(self):
         if self.lan is None or self.lan.q is None:
             return (None, None)
         for k, addr_man in self.lan.q.jobs.items():
-            job = Job.from_dict(addr_man[1])  # j = (address, manifest)
-            job.hash = k
-            s = self._peekSet(job)
-            if s is not None:
-                return (job, s)
+            job = LANJobView(addr_man[1], k, self.lan.q)
+            has_work = job.normalize()
+            if has_work:
+                s = job.next_set()
+                if s is not None:
+                    return (job, s)
         return (None, None)
 
     def acquire(self) -> bool:
         if self.lan is None or self.lan.q is None:
             return False
         (job, s) = self._peek()
-        if job is not None and s is not None and self.lan.q.acquireJob(job.hash):
+        if job is not None and s is not None and self.lan.q.acquireJob(job.id):
             self.job = job
             self.set = s
             return True
@@ -184,23 +181,21 @@ class LANQueue(AbstractQueue):
 
     def release(self) -> None:
         if self.job is not None:
-            self.lan.q.releaseJob(self.job.hash)
+            self.lan.q.releaseJob(self.job.id)
             self.job = None
             self.set = None
 
-    def get_job(self):
-        if self.job is not None:
-            return Job.from_dict(self.job)
-
-    def get_set(self):
-        raise NotImplementedError
-
     def decrement(self) -> None:
         if self.job is not None:
-            j = Job.from_dict(self.job)
-            j.decrement()
-            self.lan.q.jobs[self.job.hash] = j.as_dict()
-            raise Exception("TODO return true/false based on release of job")
+            has_work = self.set.decrement(save=True)
+            if has_work:
+                print("Still has work, going for next set")
+                self.set = self.job.next_set()
+                return True
+            else:
+                print("No more work; releasing")
+                self.release()
+                return False
 
     def as_dict(self) -> dict:
         active_set = None
@@ -243,9 +238,9 @@ class MultiQueue(AbstractQueue):
             if hasattr(q, "update_peer_state"):
                 q.update_peer_state(status, run)
 
-    def add(self, name: str, q: AbstractQueue):
+    def add(self, name: str, q: AbstractQueue, testing=False):
         if hasattr(q, "connect"):
-            q.connect()
+            q.connect(testing=testing)
         self.queues[name] = q
 
     def remove(self, name: str):
@@ -264,7 +259,7 @@ class MultiQueue(AbstractQueue):
         if self.active_queue is not None:
             return self.active_queue.get_set()
 
-    def get_set_or_acquire(self) -> Optional[Set]:
+    def get_set_or_acquire(self) -> Optional[SetView]:
         s = self.get_set()
         if s is not None:
             return s

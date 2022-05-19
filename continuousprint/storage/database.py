@@ -59,22 +59,10 @@ class Queue(Model):
         return q
 
 
-class Job(Model):
-    queue = ForeignKeyField(Queue, backref="jobs", on_delete="CASCADE")
-    name = CharField()
-    rank = FloatField()
-    count = IntegerField(default=1, constraints=[Check("count > 0")])
-    remaining = IntegerField(
-        default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
-    )
-    created = DateTimeField(default=datetime.datetime.now)
+class JobView:
+    """The job view contains functions used to manipulate an underlying Job model.
 
-    # These members relate to status of the job in the UI / driver
-    draft = BooleanField(default=True)
-    acquired = BooleanField(default=False)
-
-    class Meta:
-        database = DB.queues
+    This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)"""
 
     def normalize(self):
         # Return True if there's valid work
@@ -114,9 +102,7 @@ class Job(Model):
 
     @classmethod
     def from_dict(self, data: dict):
-        j = Job(**data)
-        j.sets = [Set.from_dict(s) for s in data["sets"]]
-        return j
+        raise NotImplementedError
 
     def as_dict(self):
         sets = list(self.sets)
@@ -137,7 +123,71 @@ class Job(Model):
         return d
 
 
-class Set(Model):
+class Job(Model, JobView):
+    queue = ForeignKeyField(Queue, backref="jobs", on_delete="CASCADE")
+    name = CharField()
+    rank = FloatField()
+    count = IntegerField(default=1, constraints=[Check("count > 0")])
+    remaining = IntegerField(
+        default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
+    )
+    created = DateTimeField(default=datetime.datetime.now)
+
+    # These members relate to status of the job in the UI / driver
+    draft = BooleanField(default=True)
+    acquired = BooleanField(default=False)
+
+    class Meta:
+        database = DB.queues
+
+    @classmethod
+    def from_dict(self, data: dict):
+        j = Job(**data)
+        j.sets = [Set.from_dict(s) for s in data["sets"]]
+        return j
+
+
+class SetView:
+    """See JobView for rationale for this class."""
+
+    def _csv2list(self, v):
+        if v == "":
+            return []
+        return v.split(",")
+
+    def materials(self):
+        return self._csv2list(self.material_keys)
+
+    def profiles(self):
+        return self._csv2list(self.profile_keys)
+
+    def decrement(self, save=False):
+        self.remaining = max(0, self.remaining - 1)
+        if save:
+            self.save()  # Save must occur before job is observed
+        if not self.job.has_incomplete_sets():
+            return self.job.decrement(save=save)
+        else:
+            return True
+
+    @classmethod
+    def from_dict(self, s):
+        raise NotImplementedError
+
+    def as_dict(self):
+        return dict(
+            path=self.path,
+            count=self.count,
+            materials=self.materials(),
+            profiles=self.profiles(),
+            id=self.id,
+            rank=self.rank,
+            sd=self.sd,
+            remaining=self.remaining,
+        )
+
+
+class Set(Model, SetView):
     path = CharField()
     sd = BooleanField()
     job = ForeignKeyField(Job, backref="sets", on_delete="CASCADE")
@@ -155,28 +205,8 @@ class Set(Model):
     # A CSV of printer profiles (names as defined in printer_profiles.yaml)
     profile_keys = CharField(default="")
 
-    def _csv2list(self, v):
-        if v == "":
-            return []
-        return v.split(",")
-
-    def materials(self):
-        return self._csv2list(self.material_keys)
-
-    def profiles(self):
-        return self._csv2list(self.profile_keys)
-
     class Meta:
         database = DB.queues
-
-    def decrement(self, save=False):
-        self.remaining = max(0, self.remaining - 1)
-        if save:
-            self.save()  # Save must occur before job is observed
-        if not self.job.has_incomplete_sets():
-            return self.job.decrement(save=save)
-        else:
-            return True
 
     @classmethod
     def from_dict(self, s):
@@ -188,18 +218,6 @@ class Set(Model):
                 s[csvform] = ",".join(s[listform])
                 del s[listform]
         return Set(**s)
-
-    def as_dict(self):
-        return dict(
-            path=self.path,
-            count=self.count,
-            materials=self.materials(),
-            profiles=self.profiles(),
-            id=self.id,
-            rank=self.rank,
-            sd=self.sd,
-            remaining=self.remaining,
-        )
 
 
 class Run(Model):

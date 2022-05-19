@@ -280,11 +280,12 @@ class TestMaterialConstraints(unittest.TestCase):
 from .storage.database_test import DBTest
 from .storage.database import DEFAULT_QUEUE
 from .storage import queries
-from .queues import MultiQueue, LocalQueue, Strategy
+from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
 
 
 class IntegrationTest(DBTest):
-    """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
+    def newQueue(self):
+        raise NotImplementedError
 
     def setUp(self):
         super().setUp()
@@ -292,9 +293,9 @@ class IntegrationTest(DBTest):
         def onupdate():
             pass
 
-        self.lq = LocalQueue(queries, DEFAULT_QUEUE, Strategy.IN_ORDER)
+        self.lq = self.newQueue()
         self.mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
-        self.mq.add(DEFAULT_QUEUE, self.lq)
+        self.mq.add(self.lq.ns, self.lq, testing=True)
         self.d = Driver(
             queue=self.mq,
             script_runner=MagicMock(),
@@ -340,7 +341,14 @@ class IntegrationTest(DBTest):
                 f"Expecting start_print={want_path}, finishing={finishing}"
             ) from e
 
-    def test_local_queue_retries_failure(self):
+
+class LocalQueueIntegrationTest(IntegrationTest):
+    """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
+
+    def newQueue(self):
+        return LocalQueue(queries, DEFAULT_QUEUE, Strategy.IN_ORDER)
+
+    def test_retries_failure(self):
         queries.appendSet(
             DEFAULT_QUEUE, "", dict(path="j1.gcode", sd=False, material="", count=1)
         )
@@ -350,7 +358,7 @@ class IntegrationTest(DBTest):
         self.d._runner.cancel_print.assert_called()
         self.assertEqual(self.d.state.__name__, self.d._state_failure.__name__)
 
-    def test_local_queue_multi_job(self):
+    def test_multi_job(self):
         queries.appendSet(
             DEFAULT_QUEUE, "", dict(path="j1.gcode", sd=False, material="", count=1)
         )
@@ -364,7 +372,7 @@ class IntegrationTest(DBTest):
         self.assert_from_printing_state("j1.gcode")
         self.assert_from_printing_state("j2.gcode", finishing=True)
 
-    def test_local_queue_completes_job_in_order(self):
+    def test_completes_job_in_order(self):
         queries.appendSet(
             DEFAULT_QUEUE, "", dict(path="a.gcode", sd=False, material="", count=2)
         )
@@ -374,6 +382,70 @@ class IntegrationTest(DBTest):
 
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.assert_from_printing_state("a.gcode")
+        self.assert_from_printing_state("a.gcode")
+        self.assert_from_printing_state("b.gcode", finishing=True)
+
+
+class IntegrationTestLANQueue(IntegrationTest):
+    """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
+
+    def newQueue(self):
+        def onupdate():
+            pass
+
+        lq = LANQueue(
+            "LAN",
+            "asdf:12345",
+            None,
+            logging.getLogger("lantest"),
+            Strategy.IN_ORDER,
+            onupdate,
+        )
+        return lq
+
+    def setUp(self):
+        super().setUp()
+        mlock = MagicMock()
+        mlock.tryAcquire.return_value = True  # Always successfully acquire the job
+        self.lq.lan.q.locks = mlock
+
+    def test_completes_job_in_order(self):
+        self.lq.lan.q.setJob(
+            "bsdf",
+            dict(
+                name="j1",
+                sets=[
+                    dict(path="a.gcode", count=1, remaining=1),
+                    dict(path="b.gcode", count=1, remaining=1),
+                ],
+                count=1,
+                remaining=1,
+            ),
+        )
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
+        self.assert_from_printing_state("a.gcode")
+        self.assert_from_printing_state("b.gcode", finishing=True)
+
+    def test_multi_job(self):
+        self.lq.lan.q.setJob(
+            "bsdf",
+            dict(
+                name="j1",
+                sets=[dict(path="a.gcode", count=1, remaining=1)],
+                count=1,
+                remaining=1,
+            ),
+        )
+        self.lq.lan.q.setJob(
+            "csdf",
+            dict(
+                name="j2",
+                sets=[dict(path="b.gcode", count=1, remaining=1)],
+                count=1,
+                remaining=1,
+            ),
+        )
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("b.gcode", finishing=True)
 
