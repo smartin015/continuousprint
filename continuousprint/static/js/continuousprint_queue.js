@@ -50,6 +50,7 @@ function CPQueue(data, api) {
       self.jobs.push(new CPJob(j, api));
     }
     self.details = ko.observable("");
+    self.active_set = ko.observable(data.active_set);
     self.fullDetails = ko.observable("");
     if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);
@@ -166,8 +167,14 @@ function CPQueue(data, api) {
 
     self.exportSelected = _ecatch("exportSelected", function() {
       let d = self._getSelections();
-      self.api.exportJobs({job_ids: d.job_ids}, () => {
-        console.log("Export done - TODO blink exported files");
+      self.api.exportJobs({job_ids: d.job_ids}, (result) => {
+          new PNotify({
+              title: 'Continuous Print',
+              text: `Exported jobs to 'files' panel: \n - ${result.join('\n - ')}`,
+              type: 'success',
+              hide: true,
+              buttons: {closer: true, sticker: false}
+          });
       });
     });
 
@@ -177,13 +184,24 @@ function CPQueue(data, api) {
         });
     });
 
+    self.importJob = function(path) {
+      self.api.importJob({path, queue: self.name}, (result) => {
+        console.log("TODO", result);
+      });
+    }
+
     self.addFile = _ecatch("addFile", function(data) {
+        if (data.path.endsWith('.gjob')) {
+          // .gjob import has a different API path
+          return self.importJob(data.path);
+        }
+
         let now = Date.now();
         let jobs = self.jobs();
-        let job = "";
+        let job = null;
         for (let j of self.jobs()) {
           if (j.draft()) {
-            job = j._name();
+            job = j.id();
             break;
           }
         }
@@ -192,8 +210,6 @@ function CPQueue(data, api) {
             path: data.path,
             sd: (data.origin !== "local"),
             count: 1,
-            hash_: "", // TODO
-            material: "",
             job,
         }, (response) => {
           // Take the updated job ID and set and merge it into the nested arrays

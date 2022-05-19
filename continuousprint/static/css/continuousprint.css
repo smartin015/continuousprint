@@ -19,6 +19,9 @@
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
 }
+#tab_plugin_continuousprint .job.acquired .job-name {
+  font-weight: bold;
+}
 .themeify.discorded #tab_plugin_continuousprint .job-header,
 .themeify.cyborg #tab_plugin_continuousprint .job-header,
 .themeify.discoranged #tab_plugin_continuousprint .job-header,

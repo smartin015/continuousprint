@@ -21,16 +21,17 @@ function CPJob(obj, api) {
   var self = this;
   obj = {...{sets: [], name: "", draft: false, count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
-  self._name = ko.observable(obj.name);
-  self.acquiredBy = ko.observable(obj.acquired_by_);
+  self._name = ko.observable(obj.name || "");
+  self.acquiredBy = ko.observable((obj.acquired) ? 'local' : obj.acquired_by_);
   self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
   self.remaining = ko.observable(obj.remaining);
+  self.completed = ko.observable(obj.count - obj.remaining);
   self.selected = ko.observable(false);
 
   self.sets = ko.observableArray([]);
   for (let s of obj.sets) {
-    self.sets.push(new CPSet(s, self));
+    self.sets.push(new CPSet(s, self, api));
   }
 
   self.as_object = function() {
@@ -53,7 +54,7 @@ function CPJob(obj, api) {
     });
   }
   self.onSetModified = function(s) {
-    let newqs = new CPSet(s, self);
+    let newqs = new CPSet(s, self, api);
     for (let qs of self.sets()) {
       if (qs.id === s.id) {
         return self.sets.replace(qs, newqs);
@@ -68,12 +69,13 @@ function CPJob(obj, api) {
       self.draft(false);
       self.count(result.count);
       self.remaining(result.remaining); // Adjusted when count is mutated
+      self.completed(result.count - result.remaining); // Adjusted when count is mutated
       self.id(result.id); // May change if no id to start with
       self._name(result.name);
       let cpss = [];
       if (result.sets !== undefined) {
         for (let qsd of result.sets) {
-          cpss.push(new CPSet(qsd, self));
+          cpss.push(new CPSet(qsd, self, api));
         }
       }
       self.sets(cpss);
@@ -99,7 +101,10 @@ function CPJob(obj, api) {
     return (self.selected()) ? 1 : 0;
   });
   self.pct_complete = ko.computed(function() {
-    return Math.round(100 * (self.count() - self.remaining())/(self.count())) + '%';
+    return Math.round(100 * self.completed()/self.count()) + '%';
+  });
+  self.pct_active = ko.computed(function() {
+    return Math.round(100 / self.count()) + '%';
   });
   self.onChecked = function() {
     self.selected(!self.selected());

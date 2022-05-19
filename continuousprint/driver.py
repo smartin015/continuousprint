@@ -78,13 +78,19 @@ class Driver:
             if p != Printer.IDLE:
                 return self._state_printing
             else:
-                # TODO "clear bed on startup" setting
-                return self._state_start_print
+                return self._enter_start_print(a, p)
 
         if p == Printer.IDLE:
             self._set_status("Inactive (click Start Managing)")
         else:
             self._set_status("Inactive (active print continues unmanaged)")
+
+    def _enter_start_print(self, a: Action, p: Printer):
+        # TODO "clear bed on startup" setting
+
+        # Pre-call start_print on entry to eliminate tick delay
+        nxt = self._state_start_print(a, p)
+        return nxt if nxt is not None else self._state_start_print
 
     def _state_start_print(self, a: Action, p: Printer):
         if a == Action.DEACTIVATE:
@@ -121,17 +127,16 @@ class Driver:
             return self._state_failure
         elif a == Action.SPAGHETTI:
             run = self.q.get_run()
-            elapsed = time.time() - run.started
+            elapsed = time.time() - run.start.timestamp()
             if self.retry_on_pause and elapsed < self.retry_threshold_seconds:
                 return self._state_spaghetti_recovery
             else:
                 self._set_status(
-                    f"Print paused {timeAgo(elapsed)} into print (over auto-restart threshold of {timeAgo(self.retry_threshold_seconds)}); awaiting user input"
+                    f"Paused after {timeAgo(elapsed)} (>{timeAgo(self.retry_threshold_seconds)}); awaiting user"
                 )
                 return self._state_paused
         elif a == Action.SUCCESS:
             item = self.q.get_set()
-            print(item.path, "vs", self._cur_path)
             if item.path == self._cur_path:
                 return self._state_success
             else:
@@ -140,7 +145,7 @@ class Driver:
         if p == Printer.BUSY:
             item = self.q.get_set()
             if item is not None:
-                self._set_status(f"Printing {item.path}")
+                self._set_status("Printing")
         elif p == Printer.PAUSED:
             return self._state_paused
         elif p == Printer.IDLE:  # Idle state without event; assume success
@@ -198,13 +203,13 @@ class Driver:
         if a == Action.DEACTIVATE:
             return self._state_inactive
         elif a == Action.SUCCESS:
-            return self._state_start_print
+            return self._enter_start_print(a, p)
         elif a == Action.FAILURE:
             self._set_status("Error occurred clearing bed - aborting")
             return self._state_inactive  # Skip past failure state to inactive
 
         if p == Printer.IDLE:  # Idle state without event; assume success
-            return self._state_start_print
+            return self._enter_start_print(a, p)
         else:
             self._set_status("Clearing bed")
 

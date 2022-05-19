@@ -11,15 +11,19 @@ if (typeof ko === "undefined" || ko === null) {
 
 // Sets are a sequence of the same queue item repated a number of times.
 // This is an abstraction on top of the actual queue maintained by the server.
-function CPSet(data, job) {
+function CPSet(data, job, api) {
   var self = this;
   self.id = data.id;
   self.job = job;
 
   self.sd = ko.observable(data.sd);
   self.path = ko.observable(data.path);
+  self.shortName = ko.computed(() => {
+    return self.path().split(/[\\/]/).pop();
+  });
   self.count = ko.observable(data.count);
   self.remaining = ko.observable(data.remaining);
+  self.completed = ko.observable(data.count - data.remaining); // Not computed to allow for edits without changing
   self.mats = ko.observable(data.materials);
   self.profiles = ko.observableArray(data.profiles);
 
@@ -49,19 +53,17 @@ function CPSet(data, job) {
     return self.job.count() * self.count();
   });
   self.length_completed = ko.computed(function() {
-    let c = self.count()
-    let jc = self.job.count()
-    let job_completed = (jc - self.job.remaining());
-    let result = c - self.remaining();
-    if (job_completed !== jc) {
-      result += c*job_completed;
-    } else { // Prevent double-counting the end of the job
-      result += c*(job_completed-1);
+    let job_completed = self.job.completed();
+    if (job_completed === self.job.count()) {
+      job_completed -= 1; // Prevent double-counting the end of the job
     }
+    return self.completed() + self.count()*job_completed;
     return result;
   });
   self.remove = function() {
-    throw Error("TODO");
+    api.rm({set_ids: [self.id]}, () =>{
+      job.sets.remove(self);
+    });
   }
   self.expanded = ko.observable(false);
   self._textColorFromBackground = function(rrggbb) {
@@ -106,7 +108,7 @@ function CPSet(data, job) {
     return result;
   });
   self.pct_complete = ko.computed(function() {
-    return Math.max(1, Math.round(100 * (self.count() - self.remaining())/(self.count()))) + '%';
+    return Math.max(1, Math.round(100 * self.completed()/self.count())) + '%';
   });
   self.pct_active = ko.computed(function() {
     return Math.max(1, Math.round(100 / self.count())) + '%';

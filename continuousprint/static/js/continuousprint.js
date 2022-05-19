@@ -18,8 +18,11 @@ $(function() {
         $("#files_template_machinecode").text(function () {
             var return_value = $(this).text();
             return_value = return_value.replace(regex, '<div class="btn-group action-buttons">$1    ' + template + '></div>');
-            return return_value
+            return return_value;
         });
+
+        // Managed by PrinterStateViewModel
+        $("#state .accordion-inner").prepend('<div title="Continuous Print Queue State">Queue: <strong data-bind="text: continuousPrintStateString"></strong></div>');
     });
 
     OCTOPRINT_VIEWMODELS.push({

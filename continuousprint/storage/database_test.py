@@ -12,7 +12,7 @@ from .database import (
 )
 import tempfile
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class DBTest(unittest.TestCase):
@@ -190,7 +190,8 @@ class TestSet(DBTest):
             rank=0,
             count=5,
             remaining=5,
-            material_keys="",
+            material_keys="m1,m2",
+            profile_keys="p1,p2",
         )
 
     def testDecrementWithRemaining(self):
@@ -217,7 +218,16 @@ class TestSet(DBTest):
         self.assertEqual(self.j.remaining, 0)
         self.assertEqual(self.s.remaining, 0)
 
+    def testFromDict(self):
+        d = self.s.as_dict()
+        s = Set.from_dict(d)
+        self.assertEqual(s.path, self.s.path)
+        self.assertEqual(s.count, self.s.count)
+        self.assertEqual(s.materials(), self.s.materials())
+        self.assertEqual(s.profiles(), self.s.profiles())
+
     def test_materials_none(self):
+        self.s.material_keys = ""
         self.assertEqual(self.s.materials(), [])
 
     def test_materials_one(self):

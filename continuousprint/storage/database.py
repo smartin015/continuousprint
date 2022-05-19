@@ -62,13 +62,16 @@ class Queue(Model):
 class Job(Model):
     queue = ForeignKeyField(Queue, backref="jobs", on_delete="CASCADE")
     name = CharField()
-    draft = BooleanField(default=True)
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count > 0")])
     remaining = IntegerField(
         default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
     )
     created = DateTimeField(default=datetime.datetime.now)
+
+    # These members relate to status of the job in the UI / driver
+    draft = BooleanField(default=True)
+    acquired = BooleanField(default=False)
 
     class Meta:
         database = DB.queues
@@ -94,9 +97,7 @@ class Job(Model):
         return self.has_work()
 
     def has_incomplete_sets(self) -> bool:
-        print("has_incomplete_sets")
         for s in self.sets:
-            print(s.remaining)
             if s.remaining > 0:
                 return True
         return False
@@ -104,10 +105,17 @@ class Job(Model):
     def has_work(self) -> bool:
         return self.has_incomplete_sets() or self.remaining > 0
 
+    def next_set(self):
+        if not self.normalize():
+            return None
+        for s in self.sets:
+            if s.remaining > 0:
+                return s
+
     @classmethod
     def from_dict(self, data: dict):
         j = Job(**data)
-        j.sets = [Set(**s) for s in data["sets"]]
+        j.sets = [Set.from_dict(s) for s in data["sets"]]
         return j
 
     def as_dict(self):
@@ -122,8 +130,10 @@ class Job(Model):
             created=self.created,
             id=self.id,
             remaining=self.remaining,
+            acquired=self.acquired,
         )
-        d["created"] = int(d["created"].timestamp())
+        if type(d["created"]) != int:
+            d["created"] = int(d["created"].timestamp())
         return d
 
 
@@ -164,9 +174,20 @@ class Set(Model):
         if save:
             self.save()  # Save must occur before job is observed
         if not self.job.has_incomplete_sets():
-            self.job.decrement(save=save)
+            return self.job.decrement(save=save)
         else:
-            print("job still has incomplete sets")
+            return True
+
+    @classmethod
+    def from_dict(self, s):
+        for listform, csvform in [
+            ("materials", "material_keys"),
+            ("profiles", "profile_keys"),
+        ]:
+            if s.get(listform) is not None:
+                s[csvform] = ",".join(s[listform])
+                del s[listform]
+        return Set(**s)
 
     def as_dict(self):
         return dict(
@@ -182,10 +203,12 @@ class Set(Model):
 
 
 class Run(Model):
+    # Runs are totally decoupled from queues, jobs, and sets - this ensures that
+    # the run history persists even if the other items are deleted
     queueName = CharField()
     jobName = CharField()
-    job = ForeignKeyField(Job, backref="runs", on_delete="CASCADE")
     path = CharField()
+
     start = DateTimeField(default=datetime.datetime.now)
     end = DateTimeField(null=True)
     result = CharField(null=True)
@@ -199,7 +222,6 @@ class Run(Model):
             end=self.end,
             result=self.result,
             id=self.id,
-            job_id=self.job.id,
             path=self.path,
             jobName=self.jobName,
             queueName=self.queueName,
@@ -226,7 +248,7 @@ def init(db_path="queues.sqlite3", logger=None):
 
     if needs_init:
         if logger is not None:
-            logger.info("DB needs init")
+            logger.debug("DB needs init")
         DB.queues.create_tables([Queue, Job, Set, Run, StorageDetails])
         StorageDetails.create(schemaVersion="0.0.1")
         Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
@@ -235,7 +257,7 @@ def init(db_path="queues.sqlite3", logger=None):
         try:
             details = StorageDetails.select().limit(1).execute()[0]
             if logger is not None:
-                logger.info("Storage schema version: " + details.schemaVersion)
+                logger.debug("Storage schema version: " + details.schemaVersion)
             if details.schemaVersion != "0.0.1":
                 raise Exception("Unknown DB schema version: " + details.schemaVersion)
         except Exception:

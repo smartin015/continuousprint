@@ -54,7 +54,9 @@ class AbstractQueue(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def decrement(self) -> None:
+    def decrement(
+        self,
+    ) -> bool:  # Returns true if the job has more work, false if job complete+released
         raise NotImplementedError
 
     @abstractmethod
@@ -65,10 +67,10 @@ class AbstractQueue(ABC):
 class LocalQueue(AbstractQueue):
     def __init__(self, queries, queueName, strategy: Strategy):
         super().__init__()
-        self.queue = queueName
-        (j, s, r) = queries.getAcquired()
+        self.ns = queueName
+        j = queries.getAcquiredJob()
         self.job = j
-        self.set = s
+        self.set = j.next_set() if j is not None else None
         self.strategy = strategy
         self.queries = queries
 
@@ -77,30 +79,42 @@ class LocalQueue(AbstractQueue):
             return True
         if self.strategy != Strategy.IN_ORDER:
             raise NotImplementedError
-        p = self.queries.getNextJobInQueue(self.queue)
+        p = self.queries.getNextJobInQueue(self.ns)
         if p is not None and self.queries.acquireJob(p):
-            (j, s, r) = self.queries.getAcquired()
-            self.job = j
-            self.set = s
+            self.job = p
+            self.set = p.next_set()
             return True
         return False
 
     def release(self) -> None:
-        self.queries.release(self.job, self.set)
+        if self.job is not None:
+            self.queries.releaseJob(self.job)
         self.job = None
         self.set = None
 
-    def decrement(self) -> None:
-        if self.job is not None:
-            self.queries.decrement(self.job, self.set)
+    def decrement(self) -> bool:
+        if self.set is None or self.job is None:
+            self.release()
+            return False
+
+        has_work = self.set.decrement(save=True)
+        if has_work:
+            self.set = self.job.next_set()
+            return True
+        else:
+            self.release()
+            return False
 
     def as_dict(self) -> dict:
+        active_set = self.get_set()
+        if active_set is not None:
+            active_set = active_set.id
         return dataclasses.asdict(
             QueueData(
-                name=self.queue,
+                name=self.ns,
                 strategy=self.strategy.name,
-                jobs=[j.as_dict() for j in self.queries.getJobsAndSets(self.queue)],
-                active_set=None,  # TODO?
+                jobs=[j.as_dict() for j in self.queries.getJobsAndSets(self.ns)],
+                active_set=active_set,
             )
         )
 
@@ -174,11 +188,19 @@ class LANQueue(AbstractQueue):
             self.job = None
             self.set = None
 
+    def get_job(self):
+        if self.job is not None:
+            return Job.from_dict(self.job)
+
+    def get_set(self):
+        raise NotImplementedError
+
     def decrement(self) -> None:
         if self.job is not None:
             j = Job.from_dict(self.job)
             j.decrement()
             self.lan.q.jobs[self.job.hash] = j.as_dict()
+            raise Exception("TODO return true/false based on release of job")
 
     def as_dict(self) -> dict:
         active_set = None
@@ -207,13 +229,14 @@ class LANQueue(AbstractQueue):
 # Note that runs are implemented at this level and not lower queue levels,
 # so that history can be appropriately preserved for all queue types
 class MultiQueue(AbstractQueue):
-    def __init__(self, queries, strategy):
+    def __init__(self, queries, strategy, update_cb):
         super().__init__()
         self.queries = queries
         self.strategy = strategy
         self.queues = {}
         self.run = None
         self.active_queue = None
+        self.update_cb = update_cb
 
     def update_peer_state(self, status, run):
         for q in self.queues.values():
@@ -233,29 +256,40 @@ class MultiQueue(AbstractQueue):
             q.destroy()
         del self.queues[name]
 
+    def get_job(self):
+        if self.active_queue is not None:
+            return self.active_queue.get_job()
+
+    def get_set(self):
+        if self.active_queue is not None:
+            return self.active_queue.get_set()
+
     def get_set_or_acquire(self) -> Optional[Set]:
         s = self.get_set()
         if s is not None:
             return s
         if self.acquire():
-            return self.get_set()
+            r = self.get_set()
+            return r
         return None
 
     def begin_run(self) -> Optional[Run]:
         if self.active_queue is not None:
             self.run = self.queries.beginRun(
-                self.active_queue.get_job(), self.active_queue.get_set()
+                self.active_queue.ns,
+                self.get_job().name,
+                self.get_set().path,
             )
+            self.update_cb()
 
     def get_run(self) -> Optional[Run]:
         return self.run
 
     def end_run(self, result) -> None:
-        if self.active_queue is not None:
-            self.queries.endRun(
-                self.active_queue.get_job(), self.active_queue.get_set(), self.run
-            )
-            self.active_queue.decrement()
+        if self.run is not None:
+            self.queries.endRun(self.run, result)
+            self.decrement()
+            self.update_cb()
 
     # ---------- AbstractQueue Implementation -----------
 
@@ -263,12 +297,15 @@ class MultiQueue(AbstractQueue):
         if self.strategy != Strategy.IN_ORDER:
             raise Exception("Unimplemented strategy " + self.strategy.name)
         if self.active_queue is not None:
+            print(
+                "Already acquired - TODO need to somehow repopulate set when queue already acquired but last set of a job is completed"
+            )
             return True
         for k, q in self.queues.items():
             if q.acquire():
                 self.active_queue = q
-                self.run = queries.getActiveRun(
-                    self.active_queue.get_job(), self.active_queue.get_set()
+                self.run = self.queries.getActiveRun(
+                    self.active_queue.ns, self.get_job().name, self.get_set().path
                 )
                 return True
         return False
@@ -278,9 +315,12 @@ class MultiQueue(AbstractQueue):
             self.active_queue.release()
             self.active_queue = None
 
-    def decrement(self) -> None:
+    def decrement(self) -> bool:
         if self.active_queue is not None:
-            return self.active_queue.decrement()
+            continue_job = self.active_queue.decrement()
+            if not continue_job:
+                self.active_queue = None
+            return continue_job
 
     def as_dict(self) -> dict:
         return dataclasses.asdict(

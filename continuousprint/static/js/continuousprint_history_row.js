@@ -9,13 +9,28 @@ if (typeof ko === "undefined" || ko === null) {
   ko = require('knockout');
 }
 
+function CPHistoryDivider(queue, job, set) {
+    var self = this;
+    self.divider = true;
+    if (job === '') {
+          job = 'untitled job';
+        }
+    self.queue_name = queue;
+    self.job_name = job;
+    if (self.job_name.length > 24) {
+      self.job_name = self.job_name.substr(0, 13) + '..';
+    }
+    self.set_path = set.split("/").pop();
+    if (self.set_path.length > 36) {
+      self.set_path = self.set_path.substr(0, 13) + '..';
+    }
+}
+
 // see QueueItem in print_queue.py for matching python object
 function CPHistoryRow(data) {
   var self = this;
   self.start = ko.observable(data.start || null);
   self.end = ko.observable(data.end || null);
-  self.job_name = data.job_name;
-  self.set_path = data.set_path;
   self._result = ko.observable(data.result || null);
   self.result = ko.computed(function() {
     let result = self._result();
@@ -81,5 +96,5 @@ function CPHistoryRow(data) {
 }
 
 try {
-  module.exports = CPHistoryRow;
+  module.exports = {CPHistoryRow, CPHistoryDivider};
 } catch {}

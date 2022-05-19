@@ -11,20 +11,12 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   CPJob = require('./continuousprint_job');
   CPQueue = require('./continuousprint_queue');
   CPAPI = require('./continuousprint_api');
-  CPHistoryRow = require('./continuousprint_history_row');
+  cphr = require('./continuousprint_history_row');
+  CPHistoryRow = cphr.CPHistoryRow;
+  CPHistoryDivider = cphr.CPHistoryDivider;
   log = {
     "getLogger": () => {return console;}
   };
-}
-
-function CPHistoryDivider(job, set) {
-  var self = this;
-  self.divider = true;
-  if (job === '') {
-    job = 'untitled job';
-  }
-  self.job = job;
-  self.set = set;
 }
 
 
@@ -87,6 +79,9 @@ function CPViewModel(parameters) {
       self.defaultQueue.addFile(data);
     });
 
+    // Patch the printer state view model to display current status
+    self.printerState.continuousPrintStateString = ko.observable("");
+
     self._loadState = _ecatch("_loadState", function(state) {
         self.log.info(`[${self.PLUGIN_ID}] loading state...`);
         self.api.getState(self._setState);
@@ -111,6 +106,7 @@ function CPViewModel(parameters) {
         self.active(state.active);
         self.active_set(state.active_set);
         self.status(state.status);
+        self.printerState.continuousPrintStateString(state.status);
         //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
@@ -195,6 +191,10 @@ function CPViewModel(parameters) {
                 data = JSON.parse(data["state"]);
                 console.log("got setstate", data);
                 return self._setState(data);
+            case "sethistory":
+                data = JSON.parse(data["history"]);
+                console.log("got sethistory", data);
+                return self._setHistory(data);
             default:
                 theme = "info";
                 break;
@@ -239,7 +239,7 @@ function CPViewModel(parameters) {
       let set = null;
       for (let r of data) {
         if (job !== r.job_name || set !== r.set_path) {
-          result.push(new CPHistoryDivider(r.job_name, r.set_path));
+          result.push(new CPHistoryDivider(r.queue_name, r.job_name, r.set_path));
           job = r.job_name;
           set = r.set_path;
         }

@@ -4,6 +4,7 @@ from datetime import datetime
 import time
 import base64
 
+from pathlib import Path
 from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 
 
@@ -11,15 +12,66 @@ def getQueues():
     return Queue.select().order_by(Queue.rank.asc())
 
 
-def getAcquired():
-    r = Run.select().where(Run.end.is_null()).limit(1).execute()
-    if len(r) > 0:
-        r = r[0]
-        j = r.job
-        for s in j.sets:
-            if s.remaining > 0 and s.path == r.path:
-                return (j, s, r)
-    return (None, None, None)
+def acquireJob(j) -> bool:
+    Job.update(acquired=True).where(Job.id == j.id).execute()
+    return True
+
+
+def releaseJob(j) -> bool:
+    Job.update(acquired=False).where(Job.id == j.id).execute()
+    return True
+
+
+def importJob(qname, manifest, dirname: Path):
+    q = Queue.get(name=qname)
+
+    # Manifest may have "remaining" values set incorrectly for new job; ensure
+    # these are set to the whole count for both job and sets.
+    j = Job.from_dict(manifest)
+    j.remaining = j.count
+    j.id = None
+    j.queue = q
+    j.rank = _rankEnd()
+    j.save()
+    for s in j.sets:
+        # Prepend new folder as initial path is relative to root
+        s.path = str(dirname / s.path)
+        s.remaining = s.count
+        s.sd = False
+        s.id = None
+        s.job = j.id
+        s.rank = _rankEnd()
+        s.save()
+    return j
+
+
+def getAcquiredJob():
+    j = (
+        Job.select()
+        .where((Job.acquired) & (Job.queue.name != ARCHIVE_QUEUE))
+        .limit(1)
+        .execute()
+    )
+    if len(j) == 0:  # No jobs acquired
+        return None
+    return j[0]
+
+
+def getActiveRun(qname, jname, spath):
+    r = (
+        Run.select()
+        .where(
+            (Run.end.is_null())
+            & (Run.queueName == qname)
+            & (Run.jobName == jname)
+            & (Run.path == spath)
+        )
+        .limit(1)
+        .execute()
+    )
+    if len(r) == 0:
+        return None
+    return r[0]
 
 
 def assignQueues(queues):
@@ -31,7 +83,6 @@ def assignQueues(queues):
         absent = [(q.id, q.name) for q in qq if q.name not in names]
         if len(absent) > 0:
             (absent_ids, absent_names) = zip(*absent)
-            print("Delete", absent_ids)
             Queue.delete().where(Queue.id.in_(absent_ids)).execute()
         else:
             absent_names = []
@@ -39,7 +90,6 @@ def assignQueues(queues):
         added_names = set([q["name"] for q in added])
         for rank, qdata in enumerate(queues):
             if qdata["name"] in added_names:
-                print("Create", qdata)
                 Queue.create(
                     name=qdata["name"],
                     strategy=qdata["strategy"],
@@ -47,7 +97,6 @@ def assignQueues(queues):
                     rank=rank,
                 )
             else:
-                print("Update", qdata)
                 Queue.update(
                     strategy=qdata["strategy"], addr=qdata["addr"], rank=rank
                 ).where(Queue.name == qdata["name"]).execute()
@@ -227,22 +276,22 @@ def newEmptyJob(q, name="", rank=_rankEnd):
     return j
 
 
-def appendSet(queue: str, job, data: dict, rank=_rankEnd):
+def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
     q = Queue.get(name=queue)
-    if job == "":
+    try:
+        if jid != "":
+            j = Job.get(id=int(jid))
+        else:
+            j = newEmptyJob(q)
+    except Job.DoesNotExist:
         j = newEmptyJob(q)
-    else:
-        try:
-            j = Job.get(queue=q, name=job)
-        except Job.DoesNotExist:
-            j = newEmptyJob(q, name=job)
 
     count = int(data["count"])
     s = Set.create(
         path=data["path"],
         sd=data["sd"] == "true",
         rank=rank(),
-        material_keys=",".join(data["material"]),
+        material_keys=",".join(data.get("material", "")),
         count=count,
         remaining=count,
         job=j,
@@ -291,45 +340,27 @@ def replenish(job_ids: list, set_ids: list):
         return dict(num_updated=updated)
 
 
-def beginRun(s):
-    # Abort any unfinished runs before beginning a new run in the set
+def beginRun(qname, jname, spath):
+    # Abort any unfinished runs before beginning a new run in the job
     Run.update({Run.end: datetime.now(), Run.result: "aborted"}).where(
-        (Run.job == s.job) & (Run.end.is_null())
+        (Run.jobName == jname) & (Run.end.is_null())
     ).execute()
-    j = s.job
     return Run.create(
-        queueName=j.queue.name, jobName=j.name, job=s.job, path=s.path
+        queueName=qname, jobName=jname, path=spath
     )  # start defaults to now()
 
 
-def endRun(s, r, result: str, txn=None):
-    with DB.queues.atomic():
-        r.end = datetime.now()
-        r.result = result
-        r.save()
-
-        if result == "success":
-            # Decrement set remainder
-            s.remaining = max(s.remaining - 1, 0)
-            s.save()
-
-            # If we've tapped out the set remaining amounts for the job, decrement job remaining (and refresh sets)
-            if s.remaining <= 0:
-                j = s.job
-                totalRemaining = (
-                    Set.select(fn.SUM(Set.remaining).alias("count"))
-                    .where(Set.job == j)
-                    .execute()[0]
-                    .count
-                )
-                if totalRemaining == 0:
-                    j.decrement(save=True)
+def endRun(r, result: str, txn=None):
+    r.end = datetime.now()
+    r.result = result
+    r.save()
 
 
 def getHistory():
     cur = (
-        Run.select(Run.start, Run.end, Run.result, Run.path, Job.name, Job.id, Run.id)
-        .join_from(Run, Job)
+        Run.select(
+            Run.start, Run.end, Run.result, Run.queueName, Run.jobName, Run.path, Run.id
+        )
         .order_by(Run.start.desc())
         .limit(1000)
     ).execute()
@@ -339,9 +370,9 @@ def getHistory():
             start=int(c.start.timestamp()),
             end=int(c.end.timestamp()) if c.end is not None else None,
             result=c.result,
+            queue_name=c.queueName,
+            job_name=c.jobName,
             set_path=c.path,
-            job_name=c.job.name,
-            job_id=c.job.id,
             run_id=c.id,
         )
         for c in cur

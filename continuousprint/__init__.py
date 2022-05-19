@@ -22,7 +22,7 @@ from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 
-from peerprint.filesharing import pack_job
+from peerprint.filesharing import pack_job, unpack_job, packed_name
 from .driver import Driver, Action as DA, Printer as DP
 from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
 from .storage.database import (
@@ -68,6 +68,11 @@ class ContinuousprintPlugin(
         self._logger.info("Refreshing UI state")
         self._plugin_manager.send_plugin_message(
             self._identifier, dict(type="setstate", state=self.state_json())
+        )
+
+    def _refresh_ui_history(self):
+        self._plugin_manager.send_plugin_message(
+            self._identifier, dict(type="sethistory", history=self.history_json())
         )
 
     def _on_queue_update(self, q):
@@ -181,7 +186,7 @@ class ContinuousprintPlugin(
                 break
 
         self.q = MultiQueue(
-            queries, Strategy.IN_ORDER
+            queries, Strategy.IN_ORDER, self._refresh_ui_history
         )  # TODO set strategy for this and all other queue creations
         for q in queries.getQueues():
             if q.addr is not None:
@@ -538,6 +543,22 @@ class ContinuousprintPlugin(
         return json.dumps(queries.updateJob(data["id"], data))
 
     # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/job/import", methods=["POST"])
+    @restricted_access
+    def import_job(self):
+        path = Path(flask.request.form.get("path"))
+        dirname = Path(
+            self._file_manager.add_folder(FileDestinations.LOCAL, "/" + str(path.stem))
+        )
+        manifest, filepaths = unpack_job(
+            self._file_manager.path_on_disk(FileDestinations.LOCAL, str(path)),
+            self._file_manager.path_on_disk(FileDestinations.LOCAL, str(dirname)),
+        )
+
+        queueName = flask.request.form.get("queue")
+        return json.dumps(queries.importJob(queueName, manifest, dirname).as_dict())
+
+    # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/export", methods=["POST"])
     @restricted_access
     def export_job(self):
@@ -555,9 +576,9 @@ class ContinuousprintPlugin(
                     for s in j.sets
                 ]
             )
-            name = f"cprint_{j.name}_{int(time.time())}.gjob"
             with tempfile.NamedTemporaryFile(suffix=".gjob") as tf:
                 pack_job(j.as_dict(), filepaths, tf.name)
+                name = packed_name(j.name)
                 print(
                     f"Packed job {j.id} with files {filepaths} into {tf.name}; moving into filemanager as /{name}"
                 )
@@ -590,10 +611,7 @@ class ContinuousprintPlugin(
         sids = flask.request.form.getlist("set_ids[]")
         return json.dumps(queries.replenish(jids, sids))
 
-    # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/history", methods=["GET"])
-    @restricted_access
-    def get_history(self):
+    def history_json(self):
         h = queries.getHistory()
 
         if self.q.run is not None:
@@ -602,6 +620,12 @@ class ContinuousprintPlugin(
                     row["active"] = True
                     break
         return json.dumps(h)
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/history", methods=["GET"])
+    @restricted_access
+    def get_history(self):
+        return self.history_json()
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/clearHistory", methods=["POST"])
