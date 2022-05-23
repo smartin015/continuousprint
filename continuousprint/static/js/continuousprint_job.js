@@ -25,8 +25,8 @@ function CPJob(obj, api) {
   self.acquiredBy = ko.observable((obj.acquired) ? 'local' : obj.acquired_by_);
   self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
-  self.remaining = ko.observable(obj.remaining);
-  self.completed = ko.observable(obj.count - obj.remaining);
+  self.remaining = ko.observable((obj.remaining !== undefined) ? obj.remaining : obj.count);
+  self.completed = ko.observable(obj.count - self.remaining());
   self.selected = ko.observable(false);
 
   self.sets = ko.observableArray([]);

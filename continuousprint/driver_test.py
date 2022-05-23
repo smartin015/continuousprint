@@ -278,9 +278,11 @@ class TestMaterialConstraints(unittest.TestCase):
 
 
 from .storage.database_test import DBTest
-from .storage.database import DEFAULT_QUEUE
+from .storage.database import DEFAULT_QUEUE, MODELS, populate as populate_db
 from .storage import queries
 from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
+from peewee import SqliteDatabase
+from collections import defaultdict
 
 
 class IntegrationTest(DBTest):
@@ -386,6 +388,28 @@ class LocalQueueIntegrationTest(IntegrationTest):
         self.assert_from_printing_state("b.gcode", finishing=True)
 
 
+class LocalLockManager:
+    def __init__(self, locks, ns):
+        self.locks = locks
+        self.selfID = ns
+
+    def getPeerLocks(self):
+        result = defaultdict(list)
+        for lk, p in self.locks.items():
+            result[p].append(lk)
+        print("getPeerLocks", result)
+        return result
+
+    def tryAcquire(self, k, sync=None, timeout=None):
+        if self.locks.get(k) is not None and self.locks[k] != self.selfID:
+            return False
+        self.locks[k] = self.selfID
+        return True
+
+    def release(self, k):
+        self.locks.pop(k, None)
+
+
 class IntegrationTestLANQueue(IntegrationTest):
     """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
 
@@ -405,9 +429,7 @@ class IntegrationTestLANQueue(IntegrationTest):
 
     def setUp(self):
         super().setUp()
-        mlock = MagicMock()
-        mlock.tryAcquire.return_value = True  # Always successfully acquire the job
-        self.lq.lan.q.locks = mlock
+        self.lq.lan.q.locks = LocalLockManager(dict(), "lq")
 
     def test_completes_job_in_order(self):
         self.lq.lan.q.setJob(
@@ -427,27 +449,107 @@ class IntegrationTestLANQueue(IntegrationTest):
         self.assert_from_printing_state("b.gcode", finishing=True)
 
     def test_multi_job(self):
-        self.lq.lan.q.setJob(
-            "bsdf",
-            dict(
-                name="j1",
-                sets=[dict(path="a.gcode", count=1, remaining=1)],
-                count=1,
-                remaining=1,
-            ),
-        )
-        self.lq.lan.q.setJob(
-            "csdf",
-            dict(
-                name="j2",
-                sets=[dict(path="b.gcode", count=1, remaining=1)],
-                count=1,
-                remaining=1,
-            ),
-        )
+        for name in ("j1", "j2"):
+            self.lq.lan.q.setJob(
+                f"{name}_hash",
+                dict(
+                    name=name,
+                    sets=[dict(path=f"{name}.gcode", count=1, remaining=1)],
+                    count=1,
+                    remaining=1,
+                ),
+            )
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
-        self.assert_from_printing_state("a.gcode")
-        self.assert_from_printing_state("b.gcode", finishing=True)
+        self.assert_from_printing_state("j1.gcode")
+        self.assert_from_printing_state("j2.gcode", finishing=True)
+
+
+class IntegrationTestMultiDriverLANQueue(unittest.TestCase):
+    def setUp(self):
+        NPEERS = 2
+        self.dbs = [SqliteDatabase(":memory:") for i in range(NPEERS)]
+
+        def onupdate():
+            pass
+
+        self.locks = {}
+        self.peers = []
+        for i, db in enumerate(self.dbs):
+            with db.bind_ctx(MODELS):
+                populate_db()
+            lq = LANQueue(
+                "LAN",
+                f"peer{i}:{12345+i}",
+                None,
+                logging.getLogger(f"peer{i}:LAN"),
+                Strategy.IN_ORDER,
+                onupdate,
+            )
+            mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
+            mq.add(lq.ns, lq, testing=True)
+            d = Driver(
+                queue=mq,
+                script_runner=MagicMock(),
+                logger=logging.getLogger(f"peer{i}:Driver"),
+            )
+            d.set_retry_on_pause(True)
+            d.action(DA.DEACTIVATE, DP.IDLE)
+            lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
+            if i > 0:
+                lq.lan.q.peers = self.peers[0][2].lan.q.peers
+                lq.lan.q.jobs = self.peers[0][2].lan.q.jobs
+            self.peers.append((d, mq, lq, db))
+
+    def test_ordered_acquisition(self):
+        logging.info("============ BEGIN TEST ===========")
+        self.assertEqual(len(self.peers), 2)
+        (d1, _, lq1, db1) = self.peers[0]
+        (d2, _, lq2, db2) = self.peers[1]
+        for name in ("j1", "j2", "j3"):
+            lq1.lan.q.setJob(
+                f"{name}_hash",
+                dict(
+                    name=name,
+                    sets=[
+                        dict(path=f"{name}.gcode", count=1, remaining=1),
+                    ],
+                    count=1,
+                    remaining=1,
+                ),
+            )
+
+        # Activating peer0 causes it to acquire j1 and begin printing its file
+        with db1.bind_ctx(MODELS):
+            d1.action(DA.ACTIVATE, DP.IDLE)  # -> start_printing -> printing
+            d1._runner.start_print.assert_called()
+            self.assertEqual(d1._runner.start_print.call_args[0][0].path, "j1.gcode")
+            self.assertEqual(self.locks["j1_hash"], "peer0")
+            d1._runner.start_print.reset_mock()
+
+        # Activating peer1 causes it to skip j1, acquire j2 and begin printing its file
+        with db2.bind_ctx(MODELS):
+            d2.action(DA.ACTIVATE, DP.IDLE)  # -> start_printing -> printing
+            d2._runner.start_print.assert_called()
+            self.assertEqual(d2._runner.start_print.call_args[0][0].path, "j2.gcode")
+            d2._runner.start_print.reset_mock()
+
+        # When peer0 finishes it decrements the job and releases it, then acquires j3 and begins work
+        with db1.bind_ctx(MODELS):
+            d1.action(DA.SUCCESS, DP.IDLE, path="j1.gcode")  # -> success
+            d1.action(DA.TICK, DP.IDLE)  # -> start_clearing
+            d1.action(DA.TICK, DP.IDLE)  # -> clearing
+            d1.action(DA.TICK, DP.IDLE)  # -> start_print
+            self.assertEqual(d1._runner.start_print.call_args[0][0].path, "j3.gcode")
+            self.assertEqual(self.locks["j3_hash"], "peer0")
+            d1._runner.start_print.reset_mock()
+
+        # When peer1 finishes it decrements j2 and releases it, then goes idle as j3 is already acquired
+        with db2.bind_ctx(MODELS):
+            d2.action(DA.SUCCESS, DP.IDLE, path="j2.gcode")  # -> success
+            d2.action(DA.TICK, DP.IDLE)  # -> start_finishing
+            d2.action(DA.TICK, DP.IDLE)  # -> finishing
+            d2.action(DA.TICK, DP.IDLE)  # -> active
+            self.assertEqual(d2.state.__name__, d2._state_inactive.__name__)
 
 
 if __name__ == "__main__":

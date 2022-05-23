@@ -137,9 +137,17 @@ class Driver:
                 return self._state_paused
         elif a == Action.SUCCESS:
             item = self.q.get_set()
-            if item.path == self._cur_path:
+            if hasattr(item, "resolve"):
+                path = item.resolve()
+            else:
+                path = item.path
+
+            if path == self._cur_path:
                 return self._state_success
             else:
+                self._logger.info(
+                    f"Completed print {self._cur_path} not matching current queue item {path} - clearing it in prep to start queue item"
+                )
                 return self._state_start_clearing
 
         if p == Printer.BUSY:

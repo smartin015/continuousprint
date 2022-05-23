@@ -7,6 +7,20 @@ from random import random
 logging.basicConfig(level=logging.DEBUG)
 
 
+class IdlePeer:
+    def __init__(self, ns, addr, port):
+        self._logger = logging.getLogger(addr)
+        self.q = LANPrintQueue(ns, addr, None, self.ready, self._logger)
+
+    def ready(self, q):
+        logging.info(f"Setting base peer state for {q.ns}")
+        q.q.syncPeer(status="IDLE", run=None)
+
+    def spinForWork(self):
+        while True:
+            time.sleep((1 + random.random()) * 5)
+
+
 class SimPeer:
     def __init__(self, ns, addr, port):
         self._logger = logging.getLogger(addr)
@@ -23,12 +37,9 @@ class SimPeer:
 
 if __name__ == "__main__":
     ns = sys.argv[1]
-    npeers = int(sys.argv[2])
-    port_start = int(sys.argv[3])
+    port = int(sys.argv[3])
 
-    input(
-        f"Making {npeers} peers for ns '{ns}', ports starting at {port_start}. Press any key to begin."
-    )
+    print(f"Connecting to '{ns}', port {port_start}")
 
     qs = []
     for port in range(port_start, port_start + npeers):

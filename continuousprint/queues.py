@@ -121,7 +121,9 @@ class LocalQueue(AbstractQueue):
 
 
 class LANQueue(AbstractQueue):
-    def __init__(self, ns, addr, basedir, logger, strategy: Strategy, update_cb):
+    def __init__(
+        self, ns, addr, basedir, logger, strategy: Strategy, update_cb, fileshare
+    ):
         super().__init__()
         self._logger = logger
         self.strategy = strategy
@@ -130,6 +132,7 @@ class LANQueue(AbstractQueue):
         self.addr = addr
         self.lan = None
         self.update_cb = update_cb
+        self._fileshare = fileshare
 
     # ---------- LAN queue methods ---------
 
@@ -145,23 +148,53 @@ class LANQueue(AbstractQueue):
         )
 
     def _on_update(self):
-        self._logger.info(f"Queue {self.ns} update")
         self.update_cb(self)
 
     def destroy(self):
         self.lan.destroy()
 
-    def update_peer_state(self, status, run):
+    def update_peer_state(self, name, status, run):
         if self.lan is not None and self.lan.q is not None:
-            self.lan.q.syncPeer(status, run)
+            self.lan.q.syncPeer(
+                dict(
+                    name=name,
+                    status=status,
+                    run=run,
+                    fs_addr=f"{self._fileshare.host}:{self._fileshare.port}",
+                )
+            )
+
+    def set_job(self, hash_: str, manifest: dict):
+        return self.lan.q.setJob(hash_, manifest)
+
+    def resolve_set(self, peer, hash_, path) -> str:
+        # Get fileshare address from the peer
+        peerstate = self.lan.q.getPeers().get(peer)
+        if peerstate is None:
+            raise Exception(
+                "Cannot resolve set {path} within job hash {hash_}; peer state is None"
+            )
+
+        # fetch unpacked job from fileshare (may be cached) and return the real path
+        gjob_dirpath = self._fileshare.fetch(peerstate["fs_addr"], hash_, unpack=True)
+        return str(Path(gjob_dirpath) / path)
 
     # --------- AbstractQueue implementation --------
 
     def _peek(self):
         if self.lan is None or self.lan.q is None:
             return (None, None)
-        for k, addr_man in self.lan.q.jobs.items():
-            job = LANJobView(addr_man[1], k, self.lan.q)
+        jobs = self.lan.q.getJobs()
+        jobs.sort(
+            key=lambda j: j["created"]
+        )  # Always creation order - there is no reordering in lan queue
+        for data in jobs:
+            self._logger.debug(data)
+            acq = data.get("acquired_by_")
+            if acq is not None and acq != self.addr:
+                self._logger.debug(f"Skipping job; acquired by {acq}")
+                continue  # Acquired by somebody else, so don't consider for scheduling
+            job = LANJobView(data, self)
             has_work = job.normalize()
             if has_work:
                 s = job.next_set()
@@ -206,6 +239,9 @@ class LANQueue(AbstractQueue):
         peers = {}
         if self.lan.q is not None:
             jobs = self.lan.q.getJobs()
+            jobs.sort(
+                key=lambda j: j["created"]
+            )  # Always creation order - there is no reordering in lan queue
             peers = self.lan.q.getPeers()
 
         return dataclasses.asdict(
@@ -233,10 +269,10 @@ class MultiQueue(AbstractQueue):
         self.active_queue = None
         self.update_cb = update_cb
 
-    def update_peer_state(self, status, run):
+    def update_peer_state(self, name, status, run):
         for q in self.queues.values():
             if hasattr(q, "update_peer_state"):
-                q.update_peer_state(status, run)
+                q.update_peer_state(name, status, run)
 
     def add(self, name: str, q: AbstractQueue, testing=False):
         if hasattr(q, "connect"):

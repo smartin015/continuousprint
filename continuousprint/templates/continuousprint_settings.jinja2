@@ -166,6 +166,16 @@
           Note that all jobs and members of the queue are tied to the queue name - renaming a queue will cause the old queue to be deleted and an new
           one to be created.
         </p>
+        <fieldset>
+          <div class="control-group">
+            <label class="control-label">This printer's name when viewed over the network:</label>
+            <div class="controls">
+              <div class="input-append">
+                <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.continuousprint.cp_network_name"/>
+              </div>
+            </div>
+          </div>
+        </fieldset>
 
         <div class="queue-header">
           <div style="text-align: center; flex: 1">Name</div>

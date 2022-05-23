@@ -22,8 +22,8 @@ function CPSet(data, job, api) {
     return self.path().split(/[\\/]/).pop();
   });
   self.count = ko.observable(data.count);
-  self.remaining = ko.observable(data.remaining);
-  self.completed = ko.observable(data.count - data.remaining); // Not computed to allow for edits without changing
+  self.remaining = ko.observable((data.remaining !== undefined) ? data.remaining : data.count);
+  self.completed = ko.observable(data.count - self.remaining()); // Not computed to allow for edits without changing
   self.mats = ko.observable(data.materials);
   self.profiles = ko.observableArray(data.profiles);
 

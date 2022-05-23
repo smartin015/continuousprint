@@ -78,7 +78,7 @@ class JobView:
             self.save()
         if self.remaining > 0:
             if save:
-                Set.update(remaining=Set.count).where(Set.job == self).execute()
+                self.refresh_sets()
             else:
                 for s in self.sets:
                     s.remaining = s.count
@@ -145,6 +145,9 @@ class Job(Model, JobView):
         j = Job(**data)
         j.sets = [Set.from_dict(s) for s in data["sets"]]
         return j
+
+    def refresh_sets(self):
+        Set.update(remaining=Set.count).where(Set.job == self).execute()
 
 
 class SetView:
@@ -257,6 +260,16 @@ def file_exists(path: str) -> bool:
         return False
 
 
+MODELS = [Queue, Job, Set, Run, StorageDetails]
+
+
+def populate():
+    DB.queues.create_tables(MODELS)
+    StorageDetails.create(schemaVersion="0.0.1")
+    Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
+    Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
+
+
 def init(db_path="queues.sqlite3", logger=None):
     db = DB.queues
     needs_init = not file_exists(db_path)
@@ -267,10 +280,7 @@ def init(db_path="queues.sqlite3", logger=None):
     if needs_init:
         if logger is not None:
             logger.debug("DB needs init")
-        DB.queues.create_tables([Queue, Job, Set, Run, StorageDetails])
-        StorageDetails.create(schemaVersion="0.0.1")
-        Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
-        Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
+        populate()
     else:
         try:
             details = StorageDetails.select().limit(1).execute()[0]

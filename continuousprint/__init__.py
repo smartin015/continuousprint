@@ -22,7 +22,7 @@ from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 
-from peerprint.filesharing import pack_job, unpack_job, packed_name
+from peerprint.filesharing import pack_job, unpack_job, packed_name, Fileshare
 from .driver import Driver, Action as DA, Printer as DP
 from .queues import MultiQueue, LocalQueue, LANQueue, Strategy
 from .storage.database import (
@@ -48,6 +48,8 @@ BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
 BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
 BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
 MATERIAL_SELECTION_KEY = "cp_material_selection_enabled"
+NETWORK_NAME_KEY = "cp_network_name"
+PRINT_FILE_DIR = "ContinuousPrint"
 
 
 class ContinuousprintPlugin(
@@ -115,6 +117,7 @@ class ContinuousprintPlugin(
         d[BED_COOLDOWN_TIMEOUT_KEY] = 60
         d[MATERIAL_SELECTION_KEY] = False
         d[PRINTER_PROFILE_KEY] = "Generic"
+        d[NETWORK_NAME_KEY] = d[PRINTER_PROFILE_KEY]
         return d
 
     def _active(self):
@@ -161,6 +164,12 @@ class ContinuousprintPlugin(
             logger=self._logger,
         )
 
+        fileshare_dir = self._file_manager.path_on_disk(
+            FileDestinations.LOCAL, f"{PRINT_FILE_DIR}/fileshare/"
+        )
+        self._fileshare = Fileshare("0.0.0.0:0", fileshare_dir, self._logger)
+        self._fileshare.connect()
+
         # Migrate from old JSON state if needed
         state_data = self._settings.get([QUEUE_KEY])
         try:
@@ -200,6 +209,7 @@ class ContinuousprintPlugin(
                             self._logger,
                             Strategy.IN_ORDER,
                             self._on_queue_update,
+                            self._fileshare,
                         ),
                     )
                 except ValueError:
@@ -230,6 +240,10 @@ class ContinuousprintPlugin(
         # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
         # Avoid using payload.get('path') as some events may not express path info.
         path = self._printer.get_current_job().get("file", {}).get("name")
+        # Fileshare paths are fully resolved
+        if path is not None and path.startswith(f"{PRINT_FILE_DIR}/fileshare/"):
+            path = self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
+
         pstate = self._printer.get_state_id()
         p = DP.BUSY
         if pstate == "OPERATIONAL":
@@ -255,7 +269,8 @@ class ContinuousprintPlugin(
         run = self.q.get_run()
         if run is not None:
             run = run.as_dict()
-        self.q.update_peer_state(p.name, run)
+        netname = self._settings.get([NETWORK_NAME_KEY])
+        self.q.update_peer_state(netname, p.name, run)
 
     # part of EventHandlerPlugin
     def on_event(self, event, payload):
@@ -376,15 +391,26 @@ class ContinuousprintPlugin(
 
     def start_print(self, item):
         self._msg(f"Job {item.job.name}: printing {item.path}")
+
+        path = item.path
+        # LAN set objects may not link directly to the path of the print file.
+        # In this case, we have to resolve the path by syncing files / extracting
+        # gcode files from .gjob. This works without any extra FileManager changes
+        # only becaue self._fileshare was configured with a basedir in the OctoPrint
+        # file structure
+        if hasattr(item, "resolve"):
+            path = item.resolve()
+            self._logger.info(f"Resolved LAN print path to {path}")
+
         try:
-            self._logger.info(f"Attempting to print {item.path} (sd={item.sd})")
-            self._printer.select_file(item.path, item.sd, printAfterSelect=True)
+            self._logger.info(f"Attempting to print {path} (sd={item.sd})")
+            self._printer.select_file(path, item.sd, printAfterSelect=True)
         except InvalidFileLocation as e:
             self._logger.error(e)
-            self._msg("File not found: " + item.path, type="error")
+            self._msg("File not found: " + path, type="error")
         except InvalidFileType as e:
             self._logger.error(e)
-            self._msg("File not gcode: " + item.path, type="error")
+            self._msg("File not gcode: " + path, type="error")
         self._refresh_ui_state()
         return True
 
@@ -522,8 +548,14 @@ class ContinuousprintPlugin(
                 for s in j.sets
             ]
         )
-        # TODO less invasive structuring
-        self.q.queues[queue_name].lan.q.submitJob(j.as_dict(), filepaths)
+
+        manifest = j.as_dict()
+        if manifest.get("created") is None:
+            manifest["created"] = int(time.time())
+
+        # Note: postJob strips fields from manifest in-place
+        hash_ = self._fileshare.post(manifest, filepaths)
+        self.q.queues[queue_name].set_job(hash_, manifest)
 
         # Remove the job now that it's been submitted
         queries.remove(job_ids=[j.id])
@@ -660,6 +692,7 @@ class ContinuousprintPlugin(
                         self._logger,
                         Strategy.IN_ORDER,
                         self._on_queue_update,
+                        self._fileshare,
                     ),  # TODO specify strategy
                 )
             except ValueError:
