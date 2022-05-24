@@ -18,7 +18,7 @@ GScript:
       G28 ; home
   - name: "Prusa Mini"
     description: >
-      This script example assumes a box style printer with a vertical Z axis and a 200mm x 235mm XY build area.
+      This script example assumes a Prusa Mini printer with a vertical Z axis and a 180mm x 180mm XY build area.
       It uses the printer's extruder to push the part off the build plate."
     version: 0.0.1
     gcode: |
