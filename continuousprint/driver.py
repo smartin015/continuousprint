@@ -44,6 +44,7 @@ class Driver:
         self.retry_on_pause = False
         self.max_retries = 0
         self.retry_threshold_seconds = 0
+        self.max_startup_attempts = 3
         self.first_print = True
         self._runner = script_runner
         self._update_ui = False
@@ -89,6 +90,7 @@ class Driver:
         # TODO "clear bed on startup" setting
 
         # Pre-call start_print on entry to eliminate tick delay
+        self.start_failures = 0
         nxt = self._state_start_print(a, p)
         return nxt if nxt is not None else self._state_start_print
 
@@ -119,6 +121,16 @@ class Driver:
         self.q.begin_run()
         if self._runner.start_print(item):
             return self._state_printing
+        else: 
+            # TODO bail out of the job and mark it as bad rather than dropping into inactive state
+            self.start_failures += 1
+            if self.start_failures >= self.max_startup_attempts:
+                self._set_status(f"Failed to start; too many attempts")
+                return self._state_inactive
+            else:
+                self._set_status(f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})")
+
+
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
         if a == Action.DEACTIVATE:

@@ -84,6 +84,18 @@ class JobView:
                     s.remaining = s.count
         return self.has_work()
 
+    def is_compatible(self, profile) -> bool:
+        set_profs = set([p for s in self.sets for p in s.profiles()])
+
+        # Un-constrained jobs are always considered compatible,
+        # although it's up to the user to ensure this is correct
+        if len(set_profs) == 0:
+            return True
+
+        # Otherwise, we want our profile present in at least one of the sets
+        return (profile['name'] in set_profs)
+
+
     def has_incomplete_sets(self) -> bool:
         for s in self.sets:
             if s.remaining > 0:
@@ -93,11 +105,12 @@ class JobView:
     def has_work(self) -> bool:
         return self.has_incomplete_sets() or self.remaining > 0
 
-    def next_set(self):
+    def next_set(self, profile):
         if not self.normalize():
             return None
         for s in self.sets:
-            if s.remaining > 0:
+            profs = s.profiles()
+            if s.remaining > 0 and (len(profs) == 0 or profile['name'] in profs):
                 return s
 
     @classmethod

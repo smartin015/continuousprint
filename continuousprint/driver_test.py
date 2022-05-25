@@ -212,6 +212,39 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.q.end_run.assert_not_called()
 
 
+
+class TestProfileConstraints(unittest.TestCase):
+    def setUp(self):
+        self.d = Driver(
+            queue=MagicMock(),
+            profiles=["A", "B"],
+            script_runner=MagicMock(),
+            logger=logging.getLogger(),
+        )
+        self.d.set_retry_on_pause(True)
+        self.d.action(DA.DEACTIVATE, DP.IDLE)
+
+    def _setItemProfiles(self, m):
+        item = MagicMock()
+        item.profiles.return_value = m
+        self.d.q.get_set.return_value = item
+        self.d.q.get_set_or_acquire.return_value = item
+
+    def test_empty(self):
+        self._setItemProfiles([])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+
+    def test_incompatible(self):
+        self._setItemProfiles(['C'])
+        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+
+
+
+
 class TestMaterialConstraints(unittest.TestCase):
     def setUp(self):
         self.d = Driver(

@@ -119,11 +119,11 @@ def getJob(jid):
     return Job.get(id=jid)
 
 
-def getNextJobInQueue(q=None):
+def getNextJobInQueue(q, profile):
     # Need to loop over jobs first to maintain job order
     for job in getJobsAndSets(q):
         has_work = job.normalize()
-        if has_work:
+        if has_work and job.is_compatible(profile):
             return job
 
 

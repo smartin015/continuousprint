@@ -101,6 +101,33 @@ class TestJob(DBTest):
     def tearDown(self):
         self.tmp.close()
 
+    def testIsCompatibleNoSets(self):
+        self.assertEqual(self.j.is_compatible(dict(name="foo")), True)
+
+    def testIsCompatibleSetWithDifferentProfile(self):
+        Set.create(
+            path="a",
+            sd=False,
+            job=self.j,
+            rank=0,
+            count=5,
+            remaining=5,
+            profile_keys="bar",
+        )
+        self.assertEqual(self.j.is_compatible(dict(name="foo")), False)
+
+    def testIsCompatibleSetWithSameProfile(self):
+        Set.create(
+            path="a",
+            sd=False,
+            job=self.j,
+            rank=0,
+            count=5,
+            remaining=5,
+            profile_keys="foo",
+        )
+        self.assertEqual(self.j.is_compatible(dict(name="foo")), True)
+
     def testDecrementNoSet(self):
         self.j.decrement(save=True)
         self.assertEqual(self.j.remaining, 4)

@@ -1,4 +1,5 @@
 from .database import JobView, SetView
+from requests.exceptions import HTTPError
 
 
 class LANJobView(JobView):
@@ -23,6 +24,9 @@ class LANJobView(JobView):
         self.save()
 
 
+class ResolveError(Exception):
+    pass
+
 class LANSetView(SetView):
     def __init__(self, data, job, rank, lq):
         self.lq = lq
@@ -39,7 +43,10 @@ class LANSetView(SetView):
 
     def resolve(self) -> str:
         if self._resolved is None:
-            self._resolved = self.lq.resolve_set(self.job.peer, self.job.id, self.path)
+            try:
+                self._resolved = self.lq.resolve_set(self.job.peer, self.job.id, self.path)
+            except HTTPError as e:
+                raise ResolveError(f"Failed to resolve {self.path}") from e
         return self._resolved
 
     def save(self):
