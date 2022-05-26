@@ -61,7 +61,7 @@ function CPSet(data, job, api) {
     return result;
   });
   self.remove = function() {
-    api.rm({set_ids: [self.id]}, () =>{
+    api.rm(self.api.SET, {set_ids: [self.id]}, () =>{
       job.sets.remove(self);
     });
   }

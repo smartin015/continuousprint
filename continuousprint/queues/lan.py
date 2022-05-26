@@ -4,10 +4,20 @@ from ..storage.database import JobView
 from pathlib import Path
 import os
 from .abstract import AbstractJobQueue, QueueData, Strategy
+import dataclasses
+
 
 class LANQueue(AbstractJobQueue):
     def __init__(
-        self, ns, addr, basedir, logger, strategy: Strategy, update_cb, fileshare, profile
+        self,
+        ns,
+        addr,
+        basedir,
+        logger,
+        strategy: Strategy,
+        update_cb,
+        fileshare,
+        profile,
     ):
         super().__init__()
         self._logger = logger
@@ -110,7 +120,9 @@ class LANQueue(AbstractJobQueue):
                 else:
                     self._logger.debug(f"Skipping job {job.name}; no runnable sets")
             else:
-                self._logger.debug(f"Skipping job {job.name}; has_work={has_work}, is_compatible={compatible}")
+                self._logger.debug(
+                    f"Skipping job {job.name}; has_work={has_work}, is_compatible={compatible}"
+                )
         return (None, None)
 
     def acquire(self) -> bool:
@@ -121,10 +133,10 @@ class LANQueue(AbstractJobQueue):
         if job is not None and s is not None and self.lan.q.acquireJob(job.id):
             self.job = job
             self.set = s
-            self._logger.debug(f"acquire() success")
+            self._logger.debug("acquire() success")
             return True
         else:
-            self._logger.debug(f"acquire() failed or job/set not given")
+            self._logger.debug("acquire() failed or job/set not given")
             return False
 
     def release(self) -> None:

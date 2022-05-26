@@ -49,7 +49,7 @@ function CPJob(obj, api) {
   }
 
   self.editStart = function() {
-    api.edit(api.JOB, {id: self.id()}, () => {
+    api.edit(api.JOB, {id: self.id(), draft: true}, () => {
       self.draft(true);
     });
   }
@@ -65,7 +65,7 @@ function CPJob(obj, api) {
   self.editEnd = function() {
     let data = self.as_object();
     data.draft = false;
-    api.commit(api.JOB, {json: JSON.stringify(data)}, (result) => {
+    api.edit(api.JOB, data, (result) => {
       self.draft(false);
       self.count(result.count);
       self.remaining(result.remaining); // Adjusted when count is mutated

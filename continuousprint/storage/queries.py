@@ -324,7 +324,7 @@ def remove(queue_ids: list = [], job_ids: list = [], set_ids: list = []):
     return result
 
 
-def replenish(job_ids: list, set_ids: list):
+def resetJobs(job_ids: list):
     with DB.queues.atomic():
         # Update the "remaining" counters to reflect the lack of runs
         updated = 0
@@ -332,11 +332,7 @@ def replenish(job_ids: list, set_ids: list):
             updated += (
                 Job.update(remaining=Job.count).where(Job.id.in_(job_ids)).execute()
             )
-        updated += (
-            Set.update(remaining=Set.count)
-            .where(Set.id.in_(set_ids) | Set.job.in_(job_ids))
-            .execute()
-        )
+        updated += Set.update(remaining=Set.count).where(Set.job.in_(job_ids)).execute()
         return dict(num_updated=updated)
 
 
@@ -380,5 +376,5 @@ def getHistory():
     return result
 
 
-def clearHistory():
+def resetHistory():
     Run.delete().execute()

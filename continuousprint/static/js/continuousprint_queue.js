@@ -146,7 +146,7 @@ function CPQueue(data, api) {
 
     self.deleteSelected = _ecatch("remove", function(e) {
       let d = self._getSelections();
-      self.api.rm({job_ids: d.job_ids}, () => {
+      self.api.rm(self.api.JOB, {job_ids: d.job_ids}, () => {
           for (let j of d.jobs) {
             self.jobs.remove(j);
           }
@@ -155,7 +155,7 @@ function CPQueue(data, api) {
 
     self.resetSelected = _ecatch("resetSelected", function() {
       let d = self._getSelections();
-      self.api.reset({job_ids: d.job_ids}, () => {
+      self.api.reset(self.api.JOB, {job_ids: d.job_ids}, () => {
         for (let j of d.jobs) {
           j.remaining(j.count());
           for (let s of j.sets()) {
@@ -167,7 +167,7 @@ function CPQueue(data, api) {
 
     self.exportSelected = _ecatch("exportSelected", function() {
       let d = self._getSelections();
-      self.api.exportJobs({job_ids: d.job_ids}, (result) => {
+      self.api.export(self.api.JOB, {job_ids: d.job_ids}, (result) => {
           new PNotify({
               title: 'Continuous Print',
               text: `Exported jobs to 'files' panel: \n - ${result.join('\n - ')}`,
@@ -185,7 +185,7 @@ function CPQueue(data, api) {
     });
 
     self.importJob = function(path) {
-      self.api.importJob({path, queue: self.name}, (result) => {
+      self.api.import(self.api.JOB, {path, queue: self.name}, (result) => {
         console.log("TODO", result);
       });
     }

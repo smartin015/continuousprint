@@ -2,13 +2,9 @@
 from __future__ import absolute_import
 
 import json
-import yaml
-import os
 import time
 import traceback
-import tempfile
 from pathlib import Path
-from enum import Enum
 import octoprint.plugin
 import octoprint.util
 from octoprint.events import Events
@@ -17,7 +13,7 @@ from octoprint.filemanager.util import DiskFileWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 
-from peerprint.filesharing import pack_job, unpack_job, packed_name, Fileshare
+from peerprint.filesharing import Fileshare
 from .driver import Driver, Action as DA, Printer as DP
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
@@ -25,47 +21,22 @@ from .queues.local import LocalQueue
 from .storage.database import (
     migrateFromSettings,
     init as init_db,
-    DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
+)
+from .data import (
+    PRINTER_PROFILES,
+    GCODE_SCRIPTS,
+    Keys,
+    PRINT_FILE_DIR,
+    TEMP_FILES,
+    ASSETS,
+    TEMPLATES,
+    update_info,
 )
 from .storage import queries
 from .script_runner import ScriptRunner
-from .api import ContinuousPrintAPI, PERMISSIONS as API_PERMISSIONS
+from .api import ContinuousPrintAPI, Permission as CPQPermission
 
-# Import YAML data
-base = os.path.dirname(__file__)
-with open(os.path.join(base, "data/printer_profiles.yaml"), "r") as f:
-    PRINTER_PROFILES = dict((d['name'], d) for d in yaml.safe_load(f.read())["PrinterProfile"])
-with open(os.path.join(base, "data/gcode_scripts.yaml"), "r") as f:
-    GCODE_SCRIPTS = dict((d['name'], d) for d in yaml.safe_load(f.read())["GScript"])
-
-class Keys(Enum):
-    # TODO migrate old setting names to enum names
-    QUEUE = ("cp_queue", None)
-    PRINTER_PROFILE = ("cp_printer_profile", "Generic")
-    CLEARING_SCRIPT = ("cp_bed_clearing_script", "Pause")
-    FINISHED_SCRIPT = ("cp_queue_finished_script", "Generic Off")
-    RESTART_MAX_RETRIES = ("cp_restart_on_pause_max_restarts", 3)
-    RESTART_ON_PAUSE = ("cp_restart_on_pause_enabled", False)
-    RESTART_MAX_TIME = ("cp_restart_on_pause_max_seconds", 60*60)
-    BED_COOLDOWN_ENABLED = ("bed_cooldown_enabled", False)
-    BED_COOLDOWN_SCRIPT = ("cp_bed_cooldown_script", "; Put script to run before bed cools here\n")
-    BED_COOLDOWN_THRESHOLD = ("bed_cooldown_threshold", 30)
-    BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
-    MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
-    NETWORK_NAME = ("cp_network_name", "Generic")
-
-    def __init__(self, setting, default):
-        self.setting = setting
-        if setting.endswith("_script") and not default.startswith(";"):
-            self.default = GCODE_SCRIPTS[default]["gcode"]
-        else:
-            self.default = default
-
-PRINT_FILE_DIR = "ContinuousPrint"
-TEMP_FILES = dict(
-    [(k, f"{k}.gcode") for k in [Keys.FINISHED_SCRIPT.setting, Keys.CLEARING_SCRIPT.setting]]
-)
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -75,26 +46,9 @@ class ContinuousprintPlugin(
     octoprint.plugin.EventHandlerPlugin,
     ContinuousPrintAPI,
 ):
-    def _msg(self, msg="", type="popup"):
-        self._plugin_manager.send_plugin_message(
-            self._identifier, dict(type=type, msg=msg)
-        )
-
-    def _refresh_ui_state(self):
-        # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
-        self._logger.info("Refreshing UI state")
-        self._plugin_manager.send_plugin_message(
-            self._identifier, dict(type="setstate", state=self._state_json())
-        )
-
-    def _refresh_ui_history(self):
-        self._plugin_manager.send_plugin_message(
-            self._identifier, dict(type="sethistory", history=self.history_json())
-        )
-
     def _on_queue_update(self, q, now=time.time()):
-        if getattr(self, '_last_queue_update', 0) < now - 1:
-            self._refresh_ui_state()
+        if getattr(self, "_last_queue_update", 0) < now - 1:
+            self.sync_state()
         self._last_queue_update = now
 
     def _on_settings_updated(self):
@@ -116,13 +70,6 @@ class ContinuousprintPlugin(
     def _get_key(self, k, default=None):
         v = self._settings.get([k.setting])
         return v if v is not None else default
-
-    # ---------------------- Begin SettingsPlugin --------------------
-
-    def get_settings_defaults(self):
-        return dict([(member.setting, member.default) for member in Keys.__members__.values()])
-
-    # --------------------- End SettingsPlugin ----------------------
 
     # --------------------- Begin StartupPlugin ---------------------
 
@@ -153,7 +100,6 @@ class ContinuousprintPlugin(
             self._set_key(Keys.MATERIAL_SELECTION, True)
         self._settings.save()
 
-
         # Try to fetch plugin-specific events, defaulting to None otherwise
 
         # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
@@ -177,9 +123,7 @@ class ContinuousprintPlugin(
             logger=self._logger,
         )
 
-        fileshare_dir = self._file_manager.path_on_disk(
-            FileDestinations.LOCAL, f"{PRINT_FILE_DIR}/fileshare/"
-        )
+        fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
         self._fileshare = Fileshare("0.0.0.0:0", fileshare_dir, self._logger)
         self._fileshare.connect()
 
@@ -194,9 +138,11 @@ class ContinuousprintPlugin(
             self._logger.error(f"Could not migrate old json state: {state_data}")
             self._logger.error(traceback.format_exc())
 
-        self._printer_profile = PRINTER_PROFILES[self._get_key(Keys.PRINTER_PROFILE)]
+        self._printer_profile = PRINTER_PROFILES[
+            self._get_key(data.Keys.PRINTER_PROFILE)
+        ]
         self.q = MultiQueue(
-            queries, queues.abstract.Strategy.IN_ORDER, self._refresh_ui_history
+            queries, queues.abstract.Strategy.IN_ORDER, self.sync_history
         )  # TODO set strategy for this and all other queue creations
         for q in queries.getQueues():
             if q.addr is not None:
@@ -219,10 +165,27 @@ class ContinuousprintPlugin(
                         f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
                     )
             elif q.name != ARCHIVE_QUEUE:
-                self.q.add(q.name, LocalQueue(queries, q.name, queues.abstract.Strategy.IN_ORDER, self._printer_profile))
+                self.q.add(
+                    q.name,
+                    LocalQueue(
+                        queries,
+                        q.name,
+                        queues.abstract.Strategy.IN_ORDER,
+                        self._printer_profile,
+                        self._path_on_disk,
+                    ),
+                )
 
-
-        self._runner = ScriptRunner(self._msg, self._get_key, self._file_manager, self._logger, self._printer, self._refresh_ui_state, KEYS, TEMP_FILES)
+        self._runner = ScriptRunner(
+            self.popup,
+            self._get_key,
+            self._file_manager,
+            self._logger,
+            self._printer,
+            self.sync_state,
+            Keys,
+            data.TEMP_FILES,
+        )
         self.d = Driver(
             queue=self.q,
             script_runner=self._runner,
@@ -250,7 +213,6 @@ class ContinuousprintPlugin(
 
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
-
 
         if event == Events.METADATA_ANALYSIS_FINISHED:
             # OctoPrint analysis writes to the printing file - we must remove
@@ -291,14 +253,22 @@ class ContinuousprintPlugin(
             and self._printer.get_state_id() == "OPERATIONAL"
         ):
             self._update(DA.TICK)
-        elif event == Events.UPDATED_FILES:
-            self._msg(type="updatefiles")
         elif event == Events.SETTINGS_UPDATED:
             self._on_settings_updated()
 
     # ----------------------- End EventHandlerPlugin --------------------
 
     #  ---------------------- Begin ContinuousPrintAPI -------------------
+
+    def _msg(self, data):
+        # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
+        self._plugin_manager.send_plugin_message(self._identifier, data)
+
+    def _path_on_disk(self, path):
+        return self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
+
+    def _path_in_storage(self, path):
+        return self._file_manager.path_in_storage(path)
 
     def _update(self, a: DA):
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
@@ -307,7 +277,7 @@ class ContinuousprintPlugin(
         path = self._printer.get_current_job().get("file", {}).get("name")
         # Fileshare paths are fully resolved
         if path is not None and path.startswith(f"{PRINT_FILE_DIR}/fileshare/"):
-            path = self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
+            path = self._path_on_disk(path)
 
         pstate = self._printer.get_state_id()
         p = DP.BUSY
@@ -329,7 +299,7 @@ class ContinuousprintPlugin(
             ]
 
         if self.d.action(a, p, path, materials):
-            self._refresh_ui_state()
+            self.sync_state()
 
         run = self.q.get_run()
         if run is not None:
@@ -355,6 +325,16 @@ class ContinuousprintPlugin(
             "queues": qs,
         }
         return json.dumps(resp)
+
+    def _history_json(self):
+        h = queries.getHistory()
+
+        if self.q.run is not None:
+            for row in h:
+                if row["run_id"] == self.q.run:
+                    row["active"] = True
+                    break
+        return json.dumps(h)
 
     def _get_queue(self, name):
         return self.q.get(name)
@@ -384,93 +364,51 @@ class ContinuousprintPlugin(
 
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)
-        self._refresh_ui_state()
+        self.sync_state()
 
     # ----------------------- End ContinuousPrintAPI -----------------
+
+    # ---------------------- Begin SettingsPlugin --------------------
+
+    def get_settings_defaults(self):
+        return dict(
+            [(member.setting, member.default) for member in Keys.__members__.values()]
+        )
+
+    # --------------------- End SettingsPlugin ----------------------
 
     # ---------------------- Begin TemplatePlugin -------------------
     def get_template_vars(self):
         return dict(
-            printer_profiles=list(PRINTER_PROFILES.values()), gcode_scripts=list(GCODE_SCRIPTS.values())
+            printer_profiles=list(PRINTER_PROFILES.values()),
+            gcode_scripts=list(GCODE_SCRIPTS.values()),
         )
 
     def get_template_configs(self):
-        return [
-            dict(
-                type="settings",
-                custom_bindings=True,
-                template="continuousprint_settings.jinja2",
-            ),
-            dict(
-                type="tab",
-                name="Continuous Print",
-                custom_bindings=False,
-                template="continuousprint_tab.jinja2",
-            ),
-        ]
+        return TEMPLATES
+
     # -------------------- End TemplatePlugin ----------------
 
     # -------------------- Begin AssetPlugin ----------------
-
-    # part of AssetPlugin
     def get_assets(self):
-        return dict(
-            js=[
-                "js/cp_modified_sortable.js",
-                "js/cp_modified_knockout-sortable.js",
-                "js/continuousprint_api.js",
-                "js/continuousprint_history_row.js",
-                "js/continuousprint_set.js",
-                "js/continuousprint_job.js",
-                "js/continuousprint_queue.js",
-                "js/continuousprint_viewmodel.js",
-                "js/continuousprint_settings.js",
-                "js/continuousprint.js",
-            ],
-            css=["css/continuousprint.css"],
-        )
+        return ASSETS
 
     # -------------------- End AssetPlugin
 
     # ---------------------------- Begin Plugin Hooks ------------------------------
 
     def get_update_information(self):
-        # Define the configuration for your plugin to use with the Software Update
-        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
-        # for details.
-        return dict(
-            continuousprint=dict(
-                displayName="Continuous Print Plugin",
-                displayVersion=self._plugin_version,
-                # version check: github repository
-                type="github_release",
-                user="smartin015",
-                repo="continuousprint",
-                current=self._plugin_version,
-                stable_branch=dict(
-                    name="Stable", branch="master", comittish=["master"]
-                ),
-                prerelease_branches=[
-                    dict(
-                        name="Release Candidate",
-                        branch="rc",
-                        comittish=["rc", "master"],
-                    )
-                ],
-                # update method: pip
-                pip="https://github.com/smartin015/continuousprint/archive/{target_version}.zip",
-            )
-        )
+        return update_info(self._plugin_version)
 
     def add_permissions(*args, **kwargs):
-        return API_PERMISSIONS
+        return [p.as_dict() for p in CPQPermission.__members__.values()]
 
     # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
         if not action == "queuego":
             return
         self._update(DA.ACTIVATE)
-        self._refresh_ui_state()
+        self.sync_state()
 
     def support_gjob_format(*args, **kwargs):
         return dict(machinecode=dict(gjob=["gjob"]))

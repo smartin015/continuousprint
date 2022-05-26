@@ -4,13 +4,16 @@ class CPAPI {
   BASE = "plugin/continuousprint"
   JOB = "job"
   SET = "set"
+  STATE = "state"
+  QUEUES = "queues"
+  HISTORY = "history"
 
   init(loading_vm) {
     console.log("API init");
     this.loading = loading_vm;
   }
 
-  _call(url, data, cb, blocking=true) {
+  _call_base(url, data, cb, blocking=true) {
     let self = this;
     if (blocking) {
       if (self.loading()) {
@@ -35,69 +38,55 @@ class CPAPI {
     });
   }
 
-  getState(cb) {
-    this._call(`${this.BASE}/state`, undefined, cb);
+  _call(type, method, data, cb, blocking=true) {
+    return this._call_base(`${this.BASE}/${type}/${method}`, data, cb, blocking);
+  }
+
+  get(type, cb) {
+    this._call(type, 'get', undefined, cb);
   }
 
   add(type, data, cb) {
-    this._call(`${this.BASE}/${type}/add`, data, cb);
+    this._call(type, 'add', data, cb);
   }
 
   edit(type, data, cb) {
-    this._call(`${this.BASE}/${type}/edit/begin`, data, cb);
-  }
-
-  commit(type, data, cb) {
-    this._call(`${this.BASE}/${type}/edit/end`, data, cb);
+    data = {json: JSON.stringify(data)};
+    this._call(type, 'edit', data, cb);
   }
 
   mv(type, data, cb) {
-    this._call(`${this.BASE}/${type}/mv`, data, cb);
+    this._call(type, 'mv', data, cb);
   }
 
-  rm(data, cb) {
-    this._call(`${this.BASE}/multi/rm`, data, cb);
+  rm(type, data, cb) {
+    this._call(type, 'rm', data, cb);
   }
 
-  reset(data, cb) {
-    this._call(`${this.BASE}/multi/reset`, data, cb);
+  reset(type, data, cb) {
+    this._call(type, 'reset', data, cb);
   }
 
-  setActive(active, cb) {
-    this._call(`${this.BASE}/set_active`, {active}, cb);
+  submit(type, data, cb) {
+    this._call(type, 'submit', data, cb);
   }
 
-  history(cb) {
-    this._call(`${this.BASE}/history`, undefined, cb, false);
+  export(type, data, cb) {
+    this._call(type, 'export', data, cb);
   }
 
-  clearHistory(cb) {
-    this._call(`${this.BASE}/clearHistory`, {}, cb, false);
-  }
-
-  queues(cb) {
-    this._call(`${this.BASE}/queues`, undefined, cb, false);
-  }
-
-  commitQueues(data, cb) {
-    this._call(`${this.BASE}/queues/commit`, data, cb);
-  }
-
-  submitJob(data, cb) {
-    this._call(`${this.BASE}/job/submit`, data, cb);
-  }
-
-  exportJobs(data, cb) {
-    this._call(`${this.BASE}/job/export`, data, cb);
-  }
-
-  importJob(data, cb) {
-    this._call(`${this.BASE}/job/import`, data, cb);
+  import(type, data, cb) {
+    this._call(type, 'import', data, cb);
   }
 
   getSpoolManagerState(cb) {
-    this._call("plugin/SpoolManager/loadSpoolsByQuery?from=0&to=1000000&sortColumn=displayName&sortOrder=desc&filterName=&materialFilter=all&vendorFilter=all&colorFilter=all", undefined, cb, false);
+    this._call_base("plugin/SpoolManager/loadSpoolsByQuery?from=0&to=1000000&sortColumn=displayName&sortOrder=desc&filterName=&materialFilter=all&vendorFilter=all&colorFilter=all", undefined, cb, false);
   }
+
+  setActive(active, cb) {
+    this._call_base(`${this.BASE}/set_active`, {active}, cb);
+  }
+
 }
 
 try {

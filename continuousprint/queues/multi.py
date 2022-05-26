@@ -1,6 +1,8 @@
 from typing import Optional
 from ..storage.database import Run, SetView
 from .abstract import AbstractQueue, Strategy
+import dataclasses
+
 
 # This class treats one or more queues as a unified queue of sorts.
 # Note that runs are implemented at this level and not lower queue levels,
@@ -24,6 +26,9 @@ class MultiQueue(AbstractQueue):
         if hasattr(q, "connect"):
             q.connect(testing=testing)
         self.queues[name] = q
+
+    def get(self, name: str):
+        return self.queues.get(name)
 
     def remove(self, name: str):
         q = self.queues.get(name)

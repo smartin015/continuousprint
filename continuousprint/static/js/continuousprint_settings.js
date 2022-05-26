@@ -35,7 +35,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     // Queues are stored in the DB; we must fetch them.
     self.queues = ko.observableArray();
     self.queue_fingerprint = null;
-    self.api.queues((result) => {
+    self.api.get(self.api.QUEUES, (result) => {
       let queues = []
       for (let r of result) {
         if (r.name === "archive") {
@@ -87,7 +87,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
       }
       // Sadly it appears flask doesn't have good parsing of nested POST structures,
       // So we pass it a JSON string instead.
-      self.api.commitQueues({queues}, () => {
+      self.api.edit(self.api.QUEUES, {queues}, () => {
         console.log("Queues committed");
       });
     }

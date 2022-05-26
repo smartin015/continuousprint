@@ -55,16 +55,9 @@ class AbstractQueue(ABC):
         pass
 
     @abstractmethod
-    def reset_jobs(self, job_ids) -> dict:
-        pass
-
-    @abstractmethod
-    def export_job(self, job_id):
-        pass
-
-    @abstractmethod
     def as_dict(self) -> dict:
         pass
+
 
 class AbstractJobQueue(AbstractQueue):
     """LAN queues (potentially others in the future) act on whole jobs and do not allow
@@ -73,6 +66,7 @@ class AbstractJobQueue(AbstractQueue):
     @abstractmethod
     def submit_job(self, j: JobView) -> bool:
         pass
+
     @abstractmethod
     def remove_job(self, job_ids) -> dict:
         pass
@@ -80,25 +74,39 @@ class AbstractJobQueue(AbstractQueue):
 
 class AbstractEditableQueue(AbstractQueue):
     """Some queues (e.g. local to a single printer) are directly editable."""
+
     @abstractmethod
     def add_job(self) -> JobView:
         pass
+
     @abstractmethod
     def add_set(self, job_id, data) -> SetView:
         pass
+
     @abstractmethod
     def mv_set(self, set_id, after_id, dest_job) -> SetView:
         pass
+
     @abstractmethod
     def mv_job(self, job_id, after_id):
         pass
+
     @abstractmethod
     def edit_job(self, job_id, data):
         pass
+
     @abstractmethod
     def rm_multi(self, job_ids, set_ids) -> dict:
         pass
+
     @abstractmethod
     def import_job(self, gjob_path, out_dir) -> dict:
         pass
 
+    @abstractmethod
+    def reset_jobs(self, job_ids) -> dict:
+        pass
+
+    @abstractmethod
+    def export_job(self, job_id):
+        pass

@@ -84,7 +84,7 @@ function CPViewModel(parameters) {
 
     self._loadState = _ecatch("_loadState", function(state) {
         self.log.info(`[${self.PLUGIN_ID}] loading state...`);
-        self.api.getState(self._setState);
+        self.api.get(self.api.STATE, self._setState);
     });
 
     self._updateQueues = _ecatch("_updateQueues", function(queues) {
@@ -222,7 +222,7 @@ function CPViewModel(parameters) {
 
     self.submitJob = function(vm) {
       for (let id of self.defaultQueue._getSelections().job_ids) {
-        self.api.submitJob({id, queue: vm.name}, self._setState);
+        self.api.submit(self.api.JOB, {id, queue: vm.name}, self._setState);
       }
     }
 
@@ -248,10 +248,10 @@ function CPViewModel(parameters) {
       self.history(result);
     };
     self.refreshHistory = function() {
-      self.api.history(self._setHistory);
+      self.api.get(self.api.HISTORY, self._setHistory);
     };
     self.clearHistory = function() {
-      self.api.clearHistory(() => {
+      self.api.reset(self.api.HISTORY, null, () => {
         self.entries([]);
       });
     };
