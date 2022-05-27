@@ -1,7 +1,9 @@
 from .abstract import Strategy, QueueData, AbstractEditableQueue
+import tempfile
 from ..storage.database import JobView, SetView
 import os
-from peerprint.filesharing import unpack_job
+from peerprint.filesharing import pack_job, unpack_job, packed_name
+from pathlib import Path
 import dataclasses
 
 
@@ -89,8 +91,8 @@ class LocalQueue(AbstractEditableQueue):
     def edit_job(self, job_id, data):
         return self.queries.updateJob(job_id, data)
 
-    def rm_multi(self, job_ids, set_ids) -> dict:
-        return self.queries.remove(job_ids, set_ids)
+    def rm_multi(self, job_ids=[], set_ids=[]) -> dict:
+        return self.queries.remove(job_ids=job_ids, set_ids=set_ids)
 
     def import_job(self, gjob_path: str) -> dict:
         out_dir = str(Path(gjob_path).stem)

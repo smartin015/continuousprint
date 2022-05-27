@@ -6,8 +6,19 @@ from octoprint.filemanager.destinations import FileDestinations
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 from .storage.lan import ResolveError
 
+
 class ScriptRunner:
-    def __init__(self, _msg, _get_key, _file_manager, _logger, _printer, _refresh_ui_state, keys, temp_files):
+    def __init__(
+        self,
+        _msg,
+        _get_key,
+        _file_manager,
+        _logger,
+        _printer,
+        _refresh_ui_state,
+        keys,
+        temp_files,
+    ):
         self._keys = keys
         self._temp_files = temp_files
         self._msg = _msg
@@ -19,10 +30,10 @@ class ScriptRunner:
 
     def execute_gcode(self, key):
         gcode = self._get_key(key)
-        file_wrapper = StreamWrapper(key, BytesIO(gcode.encode("utf-8")))
-        path = self._temp_files[key]
+        file_wrapper = StreamWrapper(key.setting, BytesIO(gcode.encode("utf-8")))
+        path = self._temp_files[key.setting]
         added_file = self._file_manager.add_file(
-            octoprint.filemanager.FileDestinations.LOCAL,
+            FileDestinations.LOCAL,
             path,
             file_wrapper,
             allow_overwrite=True,
@@ -49,17 +60,15 @@ class ScriptRunner:
         timeout = float(self._get_key(self._keys.BED_COOLDOWN_TIMEOUT))
         threshold = float(self._get_key(self._keys.BED_COOLDOWN_THRESHOLD))
 
-        while (time.time() - start_time) <= (60 * timeout):  # timeout converted to seconds
+        while (time.time() - start_time) <= (
+            60 * timeout
+        ):  # timeout converted to seconds
             bed_temp = self._printer.get_current_temperatures()["bed"]["actual"]
             if bed_temp <= threshold:
-                self._logger.info(
-                    f"Cooldown threshold of {threshold} has been met"
-                )
+                self._logger.info(f"Cooldown threshold of {threshold} has been met")
                 return
 
-        self._logger.info(
-            f"Timeout of {timeout} minutes exceeded"
-        )
+        self._logger.info(f"Timeout of {timeout} minutes exceeded")
         return
 
     def clear_bed(self):
@@ -98,4 +107,3 @@ class ScriptRunner:
             return False
         self._refresh_ui_state()
         return True
-

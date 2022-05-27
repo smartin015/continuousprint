@@ -2,15 +2,13 @@
   <li class="active"><a href="#continuousprint_tab_queues" data-toggle="tab">Queues</a></li>
   <li><a href="#continuousprint_tab_history" data-toggle="tab">History</a></li>
 
-  <div class="pull-right">
-    <button class="btn btn-secondary" data-bind="visible: active(), click: function() {setActive(false);}" title="Stop the print queue">
-      <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
-    </button>
-    <button class="btn btn-primary" data-bind="hidden: active(), click: function() {setActive(true);}" title="Start the print queue">
-      <i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing
-    </button>
-  </div>
-
+  <button class="btn btn-secondary pull-right" data-bind="visible: active(), click: function() {setActive(false);}" title="Stop the print queue">
+    <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
+  </button>
+  <button class="btn btn-primary pull-right" data-bind="hidden: active(), click: function() {setActive(true);}" title="Start the print queue">
+    <i class="fa fa-play"></i>&nbsp;&nbsp;Start Managing
+  </button>
+  <button class="btn pull-right" data-bind="click: newEmptyJob" title="Add a new job"><i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Job</button>
 </ul>
 <div class="tab-content">
   <div id="continuousprint_tab_history" class="tab-pane">
@@ -41,11 +39,8 @@
   </div>
   <div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
     <div class="cp-queue">
-      <div class="cp-header action-bar">
-        <div class="btn-group">
-          <button class="btn" data-bind="visible: name === 'local', click: newEmptyJob" title="Add a new job"><i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Job</button>
-        </div>
-        <div style="flex: 0">
+    <div class="cp-header action-bar">
+        <div>
           <span data-bind="text: name"></span>
           <span data-bind="text: details, attr: {title: fullDetails}" style="cursor: pointer; display: inline-block"></span>
         </div>
@@ -95,16 +90,20 @@
       </div>
       <!-- `cpsortable` is renamed from `sortable` - see https://github.com/smartin015/continuousprint/issues/14 -->
       <div class="accordion queue-list" data-bind="cpsortable: {foreach: jobs, as: 'job', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading(), 'local': name === 'local'}">
-        <div class="accordion-group job" data-bind="css: {acquired: acquiredBy() !== undefined}">
+      <div class="accordion-group job" data-bind="css: {acquired: acquiredBy() !== undefined}">
+          <!-- ko if: $parent.name === 'local' -->
+          <div class="floatedit">
+              <i style="cursor: pointer" class="far fa-check-square" data-bind="visible: draft, click: editEnd"></i>
+              <i style="cursor: pointer" class="fas fa-edit" data-bind="hidden: draft() || acquiredBy(), click: editStart"></i>
+          </div>
+          <!-- /ko -->
           <div class="accordion-heading job-header">
             <div class="queue-row-container">
               <i data-bind="name: 'local'" class="fas fa-grip-lines-vertical"></i>
+              <i style="cursor: pointer" data-bind="css: selected() ? 'fas fa-check-square' : 'far fa-square', click: onChecked"></i>
               <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
               <input class="job-name" type="text" data-bind="visible: draft, textInput: _name, attr: {'_vkenabled': false}"></input>
               <div class="job-name" data-bind="hidden: draft, text: _name"></div>
-              <i style="cursor: pointer" class="far fa-check-square" data-bind="visible: draft, click: editEnd"></i>
-              <i style="cursor: pointer" class="fas fa-edit" data-bind="hidden: draft() || acquiredBy() || $parent.name !== 'local', click: editStart"></i>
-
               <div class="progress" data-bind="css: { 'progress-striped active': $root.active() && acquiredBy() !== undefined }">
                 <div data-bind="style: { width: pct_complete() }" class="bar bar-success"></div>
                 <div data-bind="visible: $root.active() && acquiredBy() !== undefined, style: { width: pct_active() }" class="bar active"></div>
@@ -117,9 +116,6 @@
 
               </div>
               <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
-              <div class="accordion-heading-button pull-right" data-bind="click: onChecked">
-                <i style="cursor: pointer" data-bind="css: selected() ? 'fas fa-check-square' : 'far fa-square'"></i>
-              </div>
             </div>
           </div>
 
@@ -149,9 +145,6 @@
                           <span data-bind="hidden: job.draft, text: count"></span>
                         </div>
                         <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
-                        <div class="accordion-heading-button remove pull-right">
-                          <i style="cursor: pointer" class="far fa-trash-alt" title="delete set" data-bind="visible: job.draft, click: remove"></i>
-                        </div>
                       </div>
                       </div>
                   <div class="accordion-body collapse" data-bind="css: {'in': set.expanded}">
@@ -179,7 +172,7 @@
                               <option data-bind="value: name, text: name"></option>
                               <!-- /ko -->
                           </select>
-                          <span>Profiles:</span>
+                          <span data-bind="visible: set.profiles().length > 0">Profiles:</span>
                           <span data-bind="foreach: set.profiles">
                             <span class="label label-info">
                               <span data-bind="text:$data"></span>
@@ -191,6 +184,9 @@
                         <div class="hint" data-bind="hidden: $root.materials().length > 0">
                           Hint: Install SpoolManager, add spools, then reload the page to select material types.
                         </div>
+                        <button class="btn pull-right" data-bind="visible: job.draft, click: remove" title="delete set">
+                          <i style="cursor: pointer" class="far fa-trash-alt"></i> Delete
+                        </button>
                       </div>
                     </div>
                   </div>

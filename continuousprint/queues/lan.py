@@ -2,7 +2,6 @@ from peerprint.lan_queue import LANPrintQueue
 from ..storage.lan import LANJobView
 from ..storage.database import JobView
 from pathlib import Path
-import os
 from .abstract import AbstractJobQueue, QueueData, Strategy
 import dataclasses
 
@@ -12,7 +11,6 @@ class LANQueue(AbstractJobQueue):
         self,
         ns,
         addr,
-        basedir,
         logger,
         strategy: Strategy,
         update_cb,
@@ -24,7 +22,6 @@ class LANQueue(AbstractJobQueue):
         self._profile = profile
         self.strategy = strategy
         self.ns = ns
-        self.basedir = basedir
         self.addr = addr
         self.lan = None
         self.update_cb = update_cb
@@ -36,13 +33,8 @@ class LANQueue(AbstractJobQueue):
         return self.lan.q.is_ready()
 
     def connect(self, testing=False):
-        if self.basedir is not None:
-            path = Path(self.basedir) / self.ns
-            os.makedirs(path, exist_ok=True)
-        else:
-            path = None
         self.lan = LANPrintQueue(
-            self.ns, self.addr, path, self._on_update, self._logger, testing=testing
+            self.ns, self.addr, self._on_update, self._logger, testing=testing
         )
 
     def _on_update(self):

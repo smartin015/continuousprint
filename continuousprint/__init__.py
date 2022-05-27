@@ -37,6 +37,8 @@ from .storage import queries
 from .script_runner import ScriptRunner
 from .api import ContinuousPrintAPI, Permission as CPQPermission
 
+UPDATE_PD = 1
+
 
 class ContinuousprintPlugin(
     octoprint.plugin.SettingsPlugin,
@@ -47,9 +49,8 @@ class ContinuousprintPlugin(
     ContinuousPrintAPI,
 ):
     def _on_queue_update(self, q, now=time.time()):
-        if getattr(self, "_last_queue_update", 0) < now - 1:
-            self.sync_state()
-        self._last_queue_update = now
+        self._logger.debug("_on_queue_update")
+        self._sync_state()
 
     def _on_settings_updated(self):
         self.d.set_retry_on_pause(
@@ -117,9 +118,8 @@ class ContinuousprintPlugin(
     def on_after_startup(self):
         self._setup_thirdparty_plugin_integration()
 
-        self.plugin_data_dir = Path(self.get_plugin_data_folder())
         init_db(
-            db_path=self.plugin_data_dir / "queue.sqlite3",
+            db_path=Path(self.get_plugin_data_folder()) / "queue.sqlite3",
             logger=self._logger,
         )
 
@@ -142,7 +142,7 @@ class ContinuousprintPlugin(
             self._get_key(data.Keys.PRINTER_PROFILE)
         ]
         self.q = MultiQueue(
-            queries, queues.abstract.Strategy.IN_ORDER, self.sync_history
+            queries, queues.abstract.Strategy.IN_ORDER, self._sync_history
         )  # TODO set strategy for this and all other queue creations
         for q in queries.getQueues():
             if q.addr is not None:
@@ -152,7 +152,6 @@ class ContinuousprintPlugin(
                         LANQueue(
                             q.name,
                             q.addr,
-                            self.plugin_data_dir,
                             self._logger,
                             queues.abstract.Strategy.IN_ORDER,
                             self._on_queue_update,
@@ -182,7 +181,7 @@ class ContinuousprintPlugin(
             self._file_manager,
             self._logger,
             self._printer,
-            self.sync_state,
+            self._sync_state,
             Keys,
             data.TEMP_FILES,
         )
@@ -268,17 +267,13 @@ class ContinuousprintPlugin(
         return self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
 
     def _path_in_storage(self, path):
-        return self._file_manager.path_in_storage(path)
+        return self._file_manager.path_in_storage(FileDestinations.LOCAL, path)
 
     def _update(self, a: DA):
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
         # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
         # Avoid using payload.get('path') as some events may not express path info.
         path = self._printer.get_current_job().get("file", {}).get("name")
-        # Fileshare paths are fully resolved
-        if path is not None and path.startswith(f"{PRINT_FILE_DIR}/fileshare/"):
-            path = self._path_on_disk(path)
-
         pstate = self._printer.get_state_id()
         p = DP.BUSY
         if pstate == "OPERATIONAL":
@@ -299,7 +294,7 @@ class ContinuousprintPlugin(
             ]
 
         if self.d.action(a, p, path, materials):
-            self.sync_state()
+            self._sync_state()
 
         run = self.q.get_run()
         if run is not None:
@@ -349,7 +344,6 @@ class ContinuousprintPlugin(
                     LANQueue(
                         a["name"],
                         a["addr"],
-                        self.plugin_data_dir,
                         self._logger,
                         queues.abstract.Strategy.IN_ORDER,
                         self._on_queue_update,
@@ -364,7 +358,7 @@ class ContinuousprintPlugin(
 
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)
-        self.sync_state()
+        self._sync_state()
 
     # ----------------------- End ContinuousPrintAPI -----------------
 
@@ -408,7 +402,7 @@ class ContinuousprintPlugin(
         if not action == "queuego":
             return
         self._update(DA.ACTIVATE)
-        self.sync_state()
+        self._sync_state()
 
     def support_gjob_format(*args, **kwargs):
         return dict(machinecode=dict(gjob=["gjob"]))

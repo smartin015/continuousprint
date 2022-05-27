@@ -19,32 +19,6 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   };
 }
 
-
-// Due to minification, it's very difficult to find and fix errors reported by users
-// due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
-// function name and args, and prints the error to the console with hopefully enough info
-// to properly debug.
-var _ecatch = function(name, fn) {
-  if (typeof(name) !== 'string') {
-    throw Error("_ecatch not passed string as first argument (did you forget the function name?)");
-  }
-  return function() {
-    try {
-      var args = [];
-      for (var i = 0; i < arguments.length; i++) {
-        args.push(arguments[i]);
-      }
-      fn.apply(undefined, args);
-    } catch(err) {
-      let args_json = "<not json-able>";
-      try {
-        let args_json = JSON.stringify(arguments);
-      } catch(e2) {}
-      console.error(`Error when calling ${name} with args ${args_json}: ${err}`);
-    }
-  };
-};
-
 function CPViewModel(parameters) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
@@ -68,26 +42,26 @@ function CPViewModel(parameters) {
     self.api = parameters[4] || new CPAPI();
     self.api.init(self.loading);
 
-    self.setActive = _ecatch("setActive", function(active) {
+    self.setActive = function(active) {
         self.api.setActive(active, () => {
           self.active(active);
         });
-    });
+    };
 
     // Patch the files panel to allow for adding to queue
-    self.files.add = _ecatch("files.add", function(data) {
+    self.files.add = function(data) {
       self.defaultQueue.addFile(data);
-    });
+    };
 
     // Patch the printer state view model to display current status
     self.printerState.continuousPrintStateString = ko.observable("");
 
-    self._loadState = _ecatch("_loadState", function(state) {
+    self._loadState = function(state) {
         self.log.info(`[${self.PLUGIN_ID}] loading state...`);
         self.api.get(self.api.STATE, self._setState);
-    });
+    };
 
-    self._updateQueues = _ecatch("_updateQueues", function(queues) {
+    self._updateQueues = function(queues) {
       let result = [];
       for (let q of queues) {
         let cpq = new CPQueue(q, self.api);
@@ -98,7 +72,7 @@ function CPViewModel(parameters) {
         }
       }
       self.queues(result);
-    });
+    };
 
     self._setState = function(state) {
         //self.log.info(`[${self.PLUGIN_ID}] updating queues (len ${state.queues.length})`);
@@ -110,6 +84,10 @@ function CPViewModel(parameters) {
         //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
+    self.newEmptyJob = function() {
+      self.defaultQueue.newEmptyJob();
+    }
+
     self.expand = function(vm) {
       if (self.expanded() === vm) {
         vm.expanded(false);
@@ -120,13 +98,13 @@ function CPViewModel(parameters) {
       }
     };
 
-    self.sortStart = _ecatch("sortStart", function(evt) {
+    self.sortStart = function(evt) {
       // Faking server disconnect allows us to disable the default whole-page
       // file drag and drop behavior.
       self.files.onServerDisconnect();
-    });
+    };
 
-    self.sortEnd = _ecatch("sortEnd", function(evt, e) {
+    self.sortEnd = function(evt, e) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       // Sadly there's no "destination job" information, so we have to
@@ -141,7 +119,7 @@ function CPViewModel(parameters) {
           console.log(result);
         });
       }
-    });
+    };
 
     self.sortMove = function(evt) {
       // Like must move to like (e.g. no dragging a set out of a job)
@@ -161,7 +139,7 @@ function CPViewModel(parameters) {
     };
 
     // This also fires on initial load
-    self.onTabChange = _ecatch("onTabChange", function(next, current) {
+    self.onTabChange = function(next, current) {
       self.log.info(`[${self.PLUGIN_ID}] onTabChange - ${self.TAB_ID} == ${current} vs ${next}`);
       if (current === self.TAB_ID && next !== self.TAB_ID) {
         // Navigating away - TODO clear hellow highlights
@@ -170,9 +148,9 @@ function CPViewModel(parameters) {
         self._loadState();
         self.refreshHistory();
       }
-    });
+    }
 
-    self.onDataUpdaterPluginMessage = _ecatch("onDataUpdaterPluginMessage", function(plugin, data) {
+    self.onDataUpdaterPluginMessage = function(plugin, data) {
         if (plugin != "continuousprint") return;
         var theme;
         switch(data["type"]) {
@@ -209,7 +187,7 @@ function CPViewModel(parameters) {
                 buttons: {closer: true, sticker: false}
             });
         }
-    });
+    };
 
     self.api.getSpoolManagerState(function(resp) {
       let result = {};

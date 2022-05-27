@@ -121,16 +121,16 @@ class Driver:
         self.q.begin_run()
         if self._runner.start_print(item):
             return self._state_printing
-        else: 
+        else:
             # TODO bail out of the job and mark it as bad rather than dropping into inactive state
             self.start_failures += 1
             if self.start_failures >= self.max_startup_attempts:
-                self._set_status(f"Failed to start; too many attempts")
+                self._set_status("Failed to start; too many attempts")
                 return self._state_inactive
             else:
-                self._set_status(f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})")
-
-
+                self._set_status(
+                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})"
+                )
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
         if a == Action.DEACTIVATE:
@@ -149,16 +149,12 @@ class Driver:
                 return self._state_paused
         elif a == Action.SUCCESS:
             item = self.q.get_set()
-            if hasattr(item, "resolve"):
-                path = item.resolve()
-            else:
-                path = item.path
 
-            if path == self._cur_path:
+            if item.path == self._cur_path:
                 return self._state_success
             else:
                 self._logger.info(
-                    f"Completed print {self._cur_path} not matching current queue item {path} - clearing it in prep to start queue item"
+                    f"Completed print {self._cur_path} not matching current queue item {item.path} - clearing it in prep to start queue item"
                 )
                 return self._state_start_clearing
 

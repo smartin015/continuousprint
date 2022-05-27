@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.DEBUG)
 class IdlePeer:
     def __init__(self, ns, addr, port):
         self._logger = logging.getLogger(addr)
-        self.q = LANPrintQueue(ns, addr, None, self.ready, self._logger)
+        self.q = LANPrintQueue(ns, addr, self.ready, self._logger)
 
     def ready(self, q):
         logging.info(f"Setting base peer state for {q.ns}")
@@ -24,7 +24,7 @@ class IdlePeer:
 class SimPeer:
     def __init__(self, ns, addr, port):
         self._logger = logging.getLogger(addr)
-        self.q = LANPrintQueue(ns, addr, None, self.ready, self._logger)
+        self.q = LANPrintQueue(ns, addr, self.ready, self._logger)
 
     def ready(self, q):
         logging.info(f"Setting base peer state for {q.ns}")
@@ -45,6 +45,6 @@ if __name__ == "__main__":
     for port in range(port_start, port_start + npeers):
         addr = f"localhost:{port}"
         print(f"Creating peer {addr}")
-        qs.append(LANPrintQueue(ns, addr, None, peer_ready, logging.getLogger(addr)))
+        qs.append(LANPrintQueue(ns, addr, peer_ready, logging.getLogger(addr)))
 
     input("Press any key to end")

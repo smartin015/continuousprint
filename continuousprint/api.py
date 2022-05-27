@@ -237,15 +237,21 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/rm", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def rm_multi(self):
-        raise Exception(
-            "TODO if job_ids contains hashes, inspect ns param, get queue, and remove from there"
-        )
+    def rm_job(self):
         return json.dumps(
-            queries.remove(
-                job_ids=flask.request.form.getlist("job_ids[]"),
-                set_ids=flask.request.form.getlist("set_ids[]"),
-                queue_ids=flask.request.form.getlist("queue_ids[]"),
+            self._get_queue(DEFAULT_QUEUE).rm_multi(
+                job_ids=flask.request.form.getlist("job_ids[]")
+            )
+        )
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/set/rm", methods=["POST"])
+    @restricted_access
+    @cpq_permission(Permission.EDITJOB)
+    def rm_set(self):
+        return json.dumps(
+            self._get_queue(DEFAULT_QUEUE).rm_multi(
+                set_ids=flask.request.form.getlist("set_ids[]")
             )
         )
 

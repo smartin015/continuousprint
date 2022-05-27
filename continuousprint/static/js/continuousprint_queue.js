@@ -14,31 +14,6 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   };
 }
 
-// Due to minification, it's very difficult to find and fix errors reported by users
-// due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
-// function name and args, and prints the error to the console with hopefully enough info
-// to properly debug.
-var _ecatch = function(name, fn) {
-  if (typeof(name) !== 'string') {
-    throw Error("_ecatch not passed string as first argument (did you forget the function name?)");
-  }
-  return function() {
-    try {
-      var args = [];
-      for (var i = 0; i < arguments.length; i++) {
-        args.push(arguments[i]);
-      }
-      fn.apply(undefined, args);
-    } catch(err) {
-      let args_json = "<not json-able>";
-      try {
-        let args_json = JSON.stringify(arguments);
-      } catch(e2) {}
-      console.error(`Error when calling ${name} with args ${args_json}: ${err}`);
-    }
-  };
-};
-
 function CPQueue(data, api) {
     var self = this;
     self.api = api;
@@ -57,7 +32,7 @@ function CPQueue(data, api) {
       if (pkeys.length === 0) {
         self.details(`(connecting...)`);
       } else {
-        self.details(`(${pkeys.length-1} peers)`);
+        self.details(`(${pkeys.length-1} peer${(pkeys.length > 2) ? 's' : ''})`);
       }
       let fd = '';
       for (let p of pkeys) {
@@ -144,16 +119,16 @@ function CPQueue(data, api) {
       return {jobs, job_ids};
     }
 
-    self.deleteSelected = _ecatch("remove", function(e) {
+    self.deleteSelected = function(e) {
       let d = self._getSelections();
       self.api.rm(self.api.JOB, {job_ids: d.job_ids}, () => {
           for (let j of d.jobs) {
             self.jobs.remove(j);
           }
       });
-    });
+    };
 
-    self.resetSelected = _ecatch("resetSelected", function() {
+    self.resetSelected = function() {
       let d = self._getSelections();
       self.api.reset(self.api.JOB, {job_ids: d.job_ids}, () => {
         for (let j of d.jobs) {
@@ -163,9 +138,9 @@ function CPQueue(data, api) {
           }
         }
       });
-    });
+    };
 
-    self.exportSelected = _ecatch("exportSelected", function() {
+    self.exportSelected = function() {
       let d = self._getSelections();
       self.api.export(self.api.JOB, {job_ids: d.job_ids}, (result) => {
           new PNotify({
@@ -176,13 +151,13 @@ function CPQueue(data, api) {
               buttons: {closer: true, sticker: false}
           });
       });
-    });
+    };
 
-    self.newEmptyJob = _ecatch("newEmptyJob", function() {
+    self.newEmptyJob = function() {
         self.api.add(self.api.JOB, {}, (result) => {
           self.jobs.push(new CPJob(result, self.api));
         });
-    });
+    };
 
     self.importJob = function(path) {
       self.api.import(self.api.JOB, {path, queue: self.name}, (result) => {
@@ -190,7 +165,7 @@ function CPQueue(data, api) {
       });
     }
 
-    self.addFile = _ecatch("addFile", function(data) {
+    self.addFile = function(data) {
         if (data.path.endsWith('.gjob')) {
           // .gjob import has a different API path
           return self.importJob(data.path);
@@ -220,7 +195,7 @@ function CPQueue(data, api) {
           }
           return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, self.api));
         });
-    });
+    };
 
     self._resolve = function(observable) {
       if (typeof(observable) === 'undefined') {
@@ -231,21 +206,21 @@ function CPQueue(data, api) {
       return observable;
     };
 
-    self.setJobName = _ecatch("setJobName", function(job, evt) {
+    self.setJobName = function(job, evt) {
       job.set_name(evt.target.value);
-    });
+    };
 
-    self.setCount = _ecatch("setCount", function(vm, e) {
+    self.setCount = function(vm, e) {
       let v = parseInt(e.target.value, 10);
       if (isNaN(v) || v < 1) {
         return;
       }
       vm.set_count(v);
-    });
+    };
 
-    self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
+    self.setMaterial = function(vm, idx, mat) {
       vm.set_material(idx, mat);
-    });
+    };
 }
 
 try {
