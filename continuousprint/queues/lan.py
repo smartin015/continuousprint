@@ -79,13 +79,25 @@ class LANQueue(AbstractJobQueue):
 
         # Note: postJob strips fields from manifest in-place
         hash_ = self._fileshare.post(manifest, filepaths)
-        self.q.queues[queue_name].set_job(hash_, manifest)
+        self.lan.q.setJob(hash_, manifest)
 
-    def reset_job(self, job_ids) -> dict:
-        pass
+    def reset_jobs(self, job_ids) -> dict:
+        for jid in job_ids:
+            j = self.lan.q.jobs.get(jid)
+            if j is None:
+                continue
+            (addr, manifest) = j
 
-    def remove_job(self, job_ids) -> dict:
-        pass
+            manifest["remaining"] = manifest["count"]
+            for s in manifest.get("sets", []):
+                s["remaining"] = s["count"]
+            self.lan.q.setJob(jid, manifest, addr=addr)
+
+    def remove_jobs(self, job_ids) -> dict:
+        print("Popping the following loaves:", job_ids)
+        for jid in job_ids:
+            self.lan.q.removeJob(jid)
+            print("pop", jid)
 
     # --------- AbstractQueue implementation --------
 

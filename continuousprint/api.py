@@ -239,8 +239,8 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITJOB)
     def rm_job(self):
         return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).rm_multi(
-                job_ids=flask.request.form.getlist("job_ids[]")
+            self._get_queue(flask.request.form["queue"]).remove_jobs(
+                flask.request.form.getlist("job_ids[]")
             )
         )
 
@@ -261,7 +261,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITJOB)
     def reset_multi(self):
         return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).reset_jobs(
+            self._get_queue(flask.request.form["queue"]).reset_jobs(
                 flask.request.form.getlist("job_ids[]")
             )
         )

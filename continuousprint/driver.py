@@ -73,6 +73,7 @@ class Driver:
             return self._state_inactive
 
     def _state_inactive(self, a: Action, p: Printer):
+        self.q.release()
         self.retries = 0
 
         if a == Action.ACTIVATE:

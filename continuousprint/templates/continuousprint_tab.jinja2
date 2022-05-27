@@ -99,14 +99,14 @@
           <!-- /ko -->
           <div class="accordion-heading job-header">
             <div class="queue-row-container">
-              <i data-bind="name: 'local'" class="fas fa-grip-lines-vertical"></i>
-              <i style="cursor: pointer" data-bind="css: selected() ? 'fas fa-check-square' : 'far fa-square', click: onChecked"></i>
+              <i class="fas fa-grip-lines-vertical"></i>
+              <i style="cursor: pointer" data-bind="hidden: acquiredBy() && $root.active(), css: selected() ? 'fas fa-check-square' : 'far fa-square', click: onChecked"></i>
               <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
               <input class="job-name" type="text" data-bind="visible: draft, textInput: _name, attr: {'_vkenabled': false}"></input>
               <div class="job-name" data-bind="hidden: draft, text: _name"></div>
-              <div class="progress" data-bind="css: { 'progress-striped active': $root.active() && acquiredBy() !== undefined }">
+              <div class="progress" data-bind="css: { 'progress-striped active': $root.active() && queue.active_set() && acquiredBy() !== undefined }">
                 <div data-bind="style: { width: pct_complete() }" class="bar bar-success"></div>
-                <div data-bind="visible: $root.active() && acquiredBy() !== undefined, style: { width: pct_active() }" class="bar active"></div>
+                <div data-bind="visible: $root.active() && queue.active_set() && acquiredBy() !== undefined, style: { width: pct_active() }" class="bar active"></div>
               </div>
               <div class="repeats">
                 <span data-bind="hidden: draft, text: completed() + ' /'">/</span>
@@ -121,7 +121,7 @@
 
           <div class="accordion-body collapse in">
             <div class="accordion-inner">
-              <div data-bind="visible: acquiredBy, text: 'Acquired by ' + acquiredBy()"></div>
+            <div data-bind="visible: acquiredBy, text: 'Acquired by ' + acquiredBy()"></div>
               <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft}" class="sets accordion">
                 <div class="accordion-group">
                   <div class="accordion-heading">

@@ -58,6 +58,14 @@ class AbstractQueue(ABC):
     def as_dict(self) -> dict:
         pass
 
+    @abstractmethod
+    def remove_jobs(self, job_ids) -> dict:
+        pass
+
+    @abstractmethod
+    def reset_jobs(self, job_ids) -> dict:
+        pass
+
 
 class AbstractJobQueue(AbstractQueue):
     """LAN queues (potentially others in the future) act on whole jobs and do not allow
@@ -65,10 +73,6 @@ class AbstractJobQueue(AbstractQueue):
 
     @abstractmethod
     def submit_job(self, j: JobView) -> bool:
-        pass
-
-    @abstractmethod
-    def remove_job(self, job_ids) -> dict:
         pass
 
 
@@ -101,10 +105,6 @@ class AbstractEditableQueue(AbstractQueue):
 
     @abstractmethod
     def import_job(self, gjob_path, out_dir) -> dict:
-        pass
-
-    @abstractmethod
-    def reset_jobs(self, job_ids) -> dict:
         pass
 
     @abstractmethod

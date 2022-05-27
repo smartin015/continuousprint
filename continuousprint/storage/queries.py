@@ -120,16 +120,18 @@ def getJob(jid):
 
 
 def getNextJobInQueue(q, profile):
-    # Need to loop over jobs first to maintain job order
     for job in getJobsAndSets(q):
-        has_work = job.normalize()
-        if has_work and job.is_compatible(profile):
+        ns = job.next_set(profile)  # Only return a job which has a compatible next set
+        if ns is not None:
             return job
 
 
-def _updateSet(set_id, data, job):
+def _upsertSet(set_id, data, job):
     # Called internally from updateJob
-    s = Set.get(id=set_id)
+    try:
+        s = Set.get(id=set_id)
+    except Set.DoesNotExist:
+        s = Set(id=set_id)
     for k, v in data.items():
         if k in (
             "id",
@@ -185,8 +187,14 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
         j.save()
 
         if data.get("sets") is not None:
+            # Remove any missing sets
+            set_ids = set([s["id"] for s in data["sets"]])
+            for s in j.sets:
+                if s.id not in set_ids:
+                    s.delete_instance()
+            # Update new sets
             for s in data["sets"]:
-                _updateSet(s["id"], s, j)
+                _upsertSet(s["id"], s, j)
         return Job.get(id=job_id).as_dict()
 
 

@@ -22,7 +22,7 @@ function CPQueue(data, api) {
     self.addr = data.addr;
     self.jobs = ko.observableArray([]);
     for (let j of data.jobs) {
-      self.jobs.push(new CPJob(j, api));
+      self.jobs.push(new CPJob(j, data.peers, self.api));
     }
     self.details = ko.observable("");
     self.active_set = ko.observable(data.active_set);
@@ -32,11 +32,11 @@ function CPQueue(data, api) {
       if (pkeys.length === 0) {
         self.details(`(connecting...)`);
       } else {
-        self.details(`(${pkeys.length-1} peer${(pkeys.length > 2) ? 's' : ''})`);
+        self.details(`(${pkeys.length-1} peer${(pkeys.length != 2) ? 's' : ''})`);
       }
       let fd = '';
       for (let p of pkeys) {
-        fd += `\n${p}: ${data.peers[p].status}`;
+        fd += `\n${data.peers[p].name} (${p}): ${data.peers[p].status}`;
       }
       self.fullDetails(fd);
     }
@@ -121,7 +121,7 @@ function CPQueue(data, api) {
 
     self.deleteSelected = function(e) {
       let d = self._getSelections();
-      self.api.rm(self.api.JOB, {job_ids: d.job_ids}, () => {
+      self.api.rm(self.api.JOB, {queue: self.name, job_ids: d.job_ids}, () => {
           for (let j of d.jobs) {
             self.jobs.remove(j);
           }
@@ -130,7 +130,7 @@ function CPQueue(data, api) {
 
     self.resetSelected = function() {
       let d = self._getSelections();
-      self.api.reset(self.api.JOB, {job_ids: d.job_ids}, () => {
+      self.api.reset(self.api.JOB, {queue: self.name, job_ids: d.job_ids}, () => {
         for (let j of d.jobs) {
           j.remaining(j.count());
           for (let s of j.sets()) {
@@ -155,7 +155,7 @@ function CPQueue(data, api) {
 
     self.newEmptyJob = function() {
         self.api.add(self.api.JOB, {}, (result) => {
-          self.jobs.push(new CPJob(result, self.api));
+          self.jobs.push(new CPJob(result, data.peers, self.api));
         });
     };
 
@@ -193,7 +193,7 @@ function CPQueue(data, api) {
               return j.onSetModified(response.set_);
             }
           }
-          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, self.api));
+          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, data.peers, self.api));
         });
     };
 

@@ -14,7 +14,7 @@ if (typeof CPSet === "undefined" || CPSet === null) {
 
 // jobs and sets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
-function CPJob(obj, api) {
+function CPJob(obj, peers, api) {
   if (api === undefined) {
     throw Error("API must be provided when creating CPJob");
   }
@@ -22,12 +22,24 @@ function CPJob(obj, api) {
   obj = {...{sets: [], name: "", draft: false, count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
   self._name = ko.observable(obj.name || "");
-  self.acquiredBy = ko.observable((obj.acquired) ? 'local' : obj.acquired_by_);
+
+  if (obj.acquired) {
+    self.acquiredBy = ko.observable('local');
+  } else if (obj.acquired_by_) {
+    let peer = peers[obj.acquired_by_];
+    if (peer !== undefined) {
+      self.acquiredBy = ko.observable(peer.name);
+    } else {
+      self.acquiredBy = ko.observable(obj.acquired_by_)
+    }
+  } else {
+    self.acquiredBy = ko.observable();
+  }
   self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
   self.remaining = ko.observable((obj.remaining !== undefined) ? obj.remaining : obj.count);
   self.completed = ko.observable(obj.count - self.remaining());
-  self.selected = ko.observable(false);
+  self.selected = ko.observable(obj.selected || false);
 
   self.sets = ko.observableArray([]);
   for (let s of obj.sets) {

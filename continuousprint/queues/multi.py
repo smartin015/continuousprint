@@ -113,3 +113,9 @@ class MultiQueue(AbstractQueue):
                 active_set=None,  # TODO?
             )
         )
+
+    def remove_jobs(self, job_ids):
+        raise Exception("Call contained queue to remove jobs")
+
+    def reset_jobs(self, job_ids):
+        raise Exception("Call contained queue to reset jobs")

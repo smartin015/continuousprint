@@ -72,6 +72,12 @@ class LocalQueue(AbstractEditableQueue):
             )
         )
 
+    def remove_jobs(self, job_ids):
+        return self.rm_multi(job_ids=job_ids)
+
+    def reset_jobs(self, job_ids):
+        return self.queries.resetJobs(job_ids)
+
     # -------------- end AbstractQueue ------------------
 
     # -------------- begin AbstractEditableQueue -----------
@@ -112,8 +118,5 @@ class LocalQueue(AbstractEditableQueue):
             path = str(Path(dest_dir) / packed_name(j.name))
             os.rename(tf.name, path)
             return path
-
-    def reset_jobs(self, job_ids):
-        return self.queries.resetJobs(job_ids)
 
     # ------------------- end AbstractEditableQueue ---------------

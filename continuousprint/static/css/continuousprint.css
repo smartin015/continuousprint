@@ -61,11 +61,12 @@
   opacity: 0.0;
   z-index: 1000;
   padding: 8px;
-  border-radius: 2px;
+  border-radius: 8px;
+  border: 1px #e5e5e5 solid;
   background-color: white;
 }
 #tab_plugin_continuousprint .job:hover .floatedit {
-  opacity: 0.6;
+  opacity: 0.8;
 }
 #tab_plugin_continuousprint .job:hover .floatedit:hover {
   opacity: 1.0;

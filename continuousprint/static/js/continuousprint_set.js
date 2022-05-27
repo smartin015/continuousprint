@@ -13,7 +13,7 @@ if (typeof ko === "undefined" || ko === null) {
 // This is an abstraction on top of the actual queue maintained by the server.
 function CPSet(data, job, api) {
   var self = this;
-  self.id = data.id;
+  self.id = (data.id !== undefined) ? data.id : -1;
   self.job = job;
 
   self.sd = ko.observable(data.sd);

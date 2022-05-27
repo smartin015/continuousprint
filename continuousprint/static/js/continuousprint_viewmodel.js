@@ -53,6 +53,22 @@ function CPViewModel(parameters) {
       self.defaultQueue.addFile(data);
     };
 
+    // Patch the files panel to prevent selecting/printing .gjob files
+    let oldEnableSelect = self.files.enableSelect;
+    self.files.enableSelect = function(data) {
+      if (data['path'].endsWith('.gjob')) {
+        return false;
+      }
+      return oldEnableSelect(data);
+    }
+    let oldEnableSelectAndPrint = self.files.enableSelectAndPrint;
+    self.files.enableSelectAndPrint = function(data) {
+      if (data['path'].endsWith('.gjob')) {
+        return false;
+      }
+      return oldEnableSelectAndPrint(data);
+    }
+
     // Patch the printer state view model to display current status
     self.printerState.continuousPrintStateString = ko.observable("");
 
@@ -63,7 +79,21 @@ function CPViewModel(parameters) {
 
     self._updateQueues = function(queues) {
       let result = [];
+
+      // Preserve selections by traversing all jobs before
+      // replacing them
+      let selections = {}
+      for (let q of self.queues()) {
+        for (let j of q.jobs()) {
+          if (j.selected()) {
+            selections[j.id().toString()] = true;
+          }
+        }
+      }
       for (let q of queues) {
+        for (let j of q.jobs) {
+          j.selected = selections[j.id.toString()];
+        }
         let cpq = new CPQueue(q, self.api);
         console.log(cpq.name);
         result.push(cpq);
