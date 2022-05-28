@@ -12,16 +12,14 @@ function mocks(filename="test.gcode") {
     {currentProfileData: () => {return {extruder: {count: () => 1}}}},
     {
       init: jest.fn(),
-      getState: jest.fn(),
       setActive: jest.fn(),
       getSpoolManagerState: jest.fn(),
       add: jest.fn(),
+      get: jest.fn(),
       rm: jest.fn(),
       mv: jest.fn(),
       update: jest.fn(),
       reset: jest.fn(),
-      clearHistory: jest.fn(),
-      history: jest.fn(),
     },
   ];
 }
@@ -66,13 +64,13 @@ function init(njobs = 1, filename="test.gcode") {
 test('onTabChange to continuous print tab triggers state reload', () => {
   let v = new VM(mocks());
   v.onTabChange('#tab_plugin_continuousprint', null);
-  expect(v.api.getState).toHaveBeenCalled();
+  expect(v.api.get).toHaveBeenCalled();
 
   v = new VM(mocks());
   v.onTabChange('#a_random_tab', null);
-  expect(v.api.getState).not.toHaveBeenCalled();
+  expect(v.api.get).not.toHaveBeenCalled();
   v.onTabChange('#a_random_tab', '#tab_plugin_continuousprint'); // Not on nav away
-  expect(v.api.getState).not.toHaveBeenCalled();
+  expect(v.api.get).not.toHaveBeenCalled();
 });
 
 test('setActive notifies server', () => {
@@ -168,13 +166,13 @@ test('sortEnd job to end', () => {
 test('refreshHistory', () => {
   let v = new VM(mocks());
   v.refreshHistory();
-  expect(v.api.history).toHaveBeenCalled();
+  expect(v.api.get).toHaveBeenCalled();
 });
 
 test('clearHistory', () => {
   let v = new VM(mocks());
   v.clearHistory();
-  expect(v.api.clearHistory).toHaveBeenCalled();
+  expect(v.api.reset).toHaveBeenCalled();
 });
 
 test('_setHistory', () => {

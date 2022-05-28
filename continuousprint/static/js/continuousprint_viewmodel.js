@@ -12,6 +12,7 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   CPQueue = require('./continuousprint_queue');
   CPAPI = require('./continuousprint_api');
   cphr = require('./continuousprint_history_row');
+  CP_PRINTER_PROFILES = [];
   CPHistoryRow = cphr.CPHistoryRow;
   CPHistoryDivider = cphr.CPHistoryDivider;
   log = {

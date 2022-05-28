@@ -1,18 +1,20 @@
 import unittest
 import logging
 from unittest.mock import MagicMock
-from .queues import AbstractQueue, LocalQueue, LANQueue, MultiQueue, Strategy, QueueData
-from .storage.database import Job, Set, Run
+from .abstract import Strategy, QueueData
+from .local import LocalQueue
 from dataclasses import dataclass, asdict
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
     def setUp(self):
         queries = MagicMock()
         queries.getAcquiredJob.return_value = None
-        self.q = LocalQueue(queries, "testQueue", Strategy.IN_ORDER)
+        self.q = LocalQueue(
+            queries, "testQueue", Strategy.IN_ORDER, dict(name="profile"), MagicMock()
+        )
 
     def test_acquire_success(self):
         j = MagicMock()
@@ -56,7 +58,9 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         self.ns = MagicMock(name="ns")
         self.j.next_set.side_effect = [self.s, self.ns]
         queries.getAcquiredJob.return_value = self.j
-        self.q = LocalQueue(queries, "testQueue", Strategy.IN_ORDER)
+        self.q = LocalQueue(
+            queries, "testQueue", Strategy.IN_ORDER, dict(name="profile"), MagicMock()
+        )
 
     def test_init_already_acquired(self):
         self.assertEqual(self.q.get_job(), self.j)
@@ -78,7 +82,7 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
     def test_decrement_more_work(self):
         self.s.decrement.return_value = True
         self.q.decrement()
-        self.s.decrement.assert_called_with(save=True)
+        self.s.decrement.assert_called()
         self.assertEqual(self.q.get_set(), self.ns)
 
     def test_decrement_no_more_work(self):
@@ -98,74 +102,3 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
                 QueueData(name="testQueue", strategy="IN_ORDER", jobs=[], active_set=2)
             ),
         )
-
-
-class TestLANQueueNoConnection(unittest.TestCase):
-    def setUp(self):
-        self.ucb = MagicMock()
-        self.q = LANQueue(
-            "ns",
-            "localhost:1234",
-            "basedir",
-            logging.getLogger(),
-            Strategy.IN_ORDER,
-            self.ucb,
-        )
-
-    def test_update_peer_state(self):
-        self.q.update_peer_state("HI", {})  # No explosions? Good
-
-
-class TestLANQueueConnected(unittest.TestCase):
-    def setUP(self):
-        self.ucb = MagicMock()
-        self.q = LANQueue(
-            "ns",
-            "localhost:1234",
-            "basedir",
-            logging.getLogger(),
-            Strategy.IN_ORDER,
-            self.ucb,
-        )
-        self.q.lan = MagicMock()
-        self.q.lan.q = MagicMock()
-
-
-class TestMultiQueue(unittest.TestCase):
-    def setUp(self):
-        def onupdate():
-            pass
-
-        self.q = MultiQueue(MagicMock(), Strategy.IN_ORDER, onupdate)
-
-    def test_begin_run(self):
-        self.q.active_queue = MagicMock()
-        self.q.begin_run()
-        self.q.queries.beginRun.assert_called()
-
-    def test_begin_run_not_acquired(self):
-        self.assertEqual(self.q.begin_run(), None)
-        self.q.queries.beginRun.assert_not_called()
-
-    def test_end_run_not_acquired(self):
-        self.assertEqual(self.q.end_run("result"), None)
-        self.q.queries.endRun.assert_not_called()
-
-    def test_end_run_no_begin(self):
-        self.q.end_run("result")
-        self.q.queries.endRun.assert_not_called()
-
-    def test_end_run_different_next(self):
-        self.q.run = 4
-        self.q.active_queue = MagicMock()
-        self.q.end_run("result")
-        self.q.queries.endRun.assert_called()
-        self.q.active_queue.decrement.assert_called()
-
-    def test_end_run_same_next(self):
-        self.q.run = 4
-        self.q.active_queue = MagicMock()
-        self.q.queries.getNextJobInQueue.return_value = self.q.job
-        self.q.end_run("result")
-        self.q.queries.endRun.assert_called()
-        self.q.queries.release.assert_not_called()

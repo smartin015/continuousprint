@@ -52,8 +52,8 @@ function mocks() {
     },
     {
       init: jest.fn(),
-      queues: jest.fn((cb) => cb([])),
-      commitQueues: jest.fn(),
+      get: jest.fn((_, cb) => cb([])),
+      edit: jest.fn(),
     },
   ];
 }
@@ -87,7 +87,7 @@ test('invalid model change is ignored', () => {
 
 test('load queues', () => {
   m = mocks();
-  m[2].queues = (cb) => cb([
+  m[2].get = (_, cb) => cb([
     {name: "archive"},
     {name: "local", addr: "", strategy:"IN_ORDER"},
     {name: "LAN", addr: "a:1", strategy:"IN_ORDER"},
@@ -97,14 +97,13 @@ test('load queues', () => {
 });
 test('dirty exit commits queues', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
-  v.dirtyQueues(true);
+  v.queues.push({name: 'asdf'});
   v.onSettingsBeforeSave();
-  expect(v.api.commitQueues).toHaveBeenCalled();
+  expect(v.api.edit).toHaveBeenCalled();
 });
 test('non-dirty exit does not call commitQueues', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
-  v.dirtyQueues(false);
   v.onSettingsBeforeSave();
-  expect(v.api.commitQueues).not.toHaveBeenCalled();
+  expect(v.api.edit).not.toHaveBeenCalled();
 
 });

@@ -21,6 +21,8 @@ from .database import (
 from .database_test import DBTest
 from ..storage import queries as q
 
+PROFILE = dict(name="profile")
+
 
 class TestEmptyQueue(DBTest):
     def setUp(self):
@@ -28,7 +30,7 @@ class TestEmptyQueue(DBTest):
 
     def testGettersReturnEmpty(self):
         self.assertEqual(list(q.getJobsAndSets(DEFAULT_QUEUE)), [])
-        self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE), None)
+        self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE), None)
         self.assertEqual(q.getAcquiredJob(), None)
 
     def testImportJob(self):
@@ -80,7 +82,7 @@ class TestEmptyQueue(DBTest):
         )
 
     def testReplenishSilentOnFailedLookup(self):
-        q.replenish([1, 2, 3], [4, 5, 6])
+        q.resetJobs([1, 2, 3])
 
 
 class TestSingleItemQueue(DBTest):
@@ -89,7 +91,7 @@ class TestSingleItemQueue(DBTest):
         q.appendSet(
             DEFAULT_QUEUE, "", dict(path="a.gcode", sd=False, material="", count=1)
         )
-        Job.update(name="j1").where(Job.id == 1).execute()
+        Job.update(name="j1", draft=False).where(Job.id == 1).execute()
 
     def testGetJobsAndSets(self):
         js = list(q.getJobsAndSets(DEFAULT_QUEUE))
@@ -97,7 +99,7 @@ class TestSingleItemQueue(DBTest):
         self.assertEqual(js[0].as_dict()["name"], "j1")
 
     def testNextJobInQueue(self):
-        self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE).name, "j1")
+        self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE).name, "j1")
 
     def testUpdateJob(self):
         q.updateJob(1, dict(name="jj", count=5))
@@ -170,7 +172,7 @@ class TestSingleItemQueue(DBTest):
                 j.count = max(before[1], 1)
                 j.save()
 
-                result = q.getNextJobInQueue(DEFAULT_QUEUE)
+                result = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)
                 if notNone:
                     self.assertNotEqual(result, None)
                     self.assertEqual(result.sets[0].remaining, after[0])
@@ -199,32 +201,21 @@ class TestSingleItemQueue(DBTest):
                 j.count = max(before[1], 1)
                 j.save()
 
-                s.decrement(save=True)
+                s.decrement()
 
                 s = Set.get(id=s.id)
                 j = Job.get(id=j.id)
                 self.assertEqual(s.remaining, after[0])
                 self.assertEqual(j.remaining, after[1])
 
-    def testReplenishSet(self):
-        j = q.getNextJobInQueue(DEFAULT_QUEUE)
+    def testResetJob(self):
+        j = Job.get(id=1)
         s = j.sets[0]
         s.remaining = 0
         j.remaining = 0
         s.save()
         j.save()
-        q.replenish([], [s.id])
-        self.assertEqual(Set.get(id=s.id).remaining, 1)
-        self.assertEqual(Job.get(id=j.id).remaining, 0)
-
-    def testReplenishJob(self):
-        j = q.getNextJobInQueue(DEFAULT_QUEUE)
-        s = j.sets[0]
-        s.remaining = 0
-        j.remaining = 0
-        s.save()
-        j.save()
-        q.replenish([j.id], [])
+        q.resetJobs([j.id])
         # Replenishing the job replenishes all sets
         self.assertEqual(Set.get(id=s.id).remaining, 1)
         self.assertEqual(Job.get(id=j.id).remaining, 1)
@@ -293,6 +284,9 @@ class TestMultiItemQueue(DBTest):
             return next(rankGen)
 
         js = [q.newEmptyJob(DEFAULT_QUEUE, f"j{i}") for i in (1, 2)]
+        for j in js:
+            j.draft = False
+            j.save()
 
         for j, path in [
             (js[0], "a.gcode"),
@@ -330,10 +324,10 @@ class TestMultiItemQueue(DBTest):
                 self.assertEqual(set_order, [(w, ANY) for w in want])
 
     def testGetNextJobAfterDecrement(self):
-        j = q.getNextJobInQueue(DEFAULT_QUEUE)
+        j = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)
         s = j.sets[0]
-        s.decrement(save=True)
-        j2 = q.getNextJobInQueue(DEFAULT_QUEUE)
+        s.decrement()
+        j2 = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)
         self.assertEqual(j2.id, j.id)
         self.assertEqual(j2.sets[0].remaining, 0)
 
@@ -371,9 +365,9 @@ class TestMultiItemQueue(DBTest):
             ],
         )
 
-    def testClearHistory(self):
+    def testResetHistory(self):
         s = Set.get(id=1)
         q.beginRun(DEFAULT_QUEUE, s.job.name, s.path)
         self.assertNotEqual(Run.select().count(), 0)
-        q.clearHistory()
+        q.resetHistory()
         self.assertEqual(Run.select().count(), 0)

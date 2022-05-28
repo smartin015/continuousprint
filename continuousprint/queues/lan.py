@@ -26,16 +26,15 @@ class LANQueue(AbstractJobQueue):
         self.lan = None
         self.update_cb = update_cb
         self._fileshare = fileshare
+        self.lan = LANPrintQueue(self.ns, self.addr, self._on_update, self._logger)
 
     # ---------- LAN queue methods ---------
 
     def is_ready(self) -> bool:
         return self.lan.q.is_ready()
 
-    def connect(self, testing=False):
-        self.lan = LANPrintQueue(
-            self.ns, self.addr, self._on_update, self._logger, testing=testing
-        )
+    def connect(self):
+        self.lan.connect()
 
     def _on_update(self):
         self.update_cb(self)
@@ -115,18 +114,11 @@ class LANQueue(AbstractJobQueue):
                 self._logger.debug(f"Skipping job; acquired by {acq}")
                 continue  # Acquired by somebody else, so don't consider for scheduling
             job = LANJobView(data, self)
-            has_work = job.normalize()
-            compatible = job.is_compatible(self._profile)
-            if has_work and compatible:
-                s = job.next_set(self._profile)
-                if s is not None:
-                    return (job, s)
-                else:
-                    self._logger.debug(f"Skipping job {job.name}; no runnable sets")
+            s = job.next_set(self._profile)
+            if s is not None:
+                return (job, s)
             else:
-                self._logger.debug(
-                    f"Skipping job {job.name}; has_work={has_work}, is_compatible={compatible}"
-                )
+                self._logger.debug(f"Skipping job {job.name}; no compatible sets")
         return (None, None)
 
     def acquire(self) -> bool:
@@ -151,13 +143,13 @@ class LANQueue(AbstractJobQueue):
 
     def decrement(self) -> None:
         if self.job is not None:
-            has_work = self.set.decrement(save=True)
+            has_work = self.set.decrement()
             if has_work:
-                print("Still has work, going for next set")
+                self._logger.debug("Still has work, going for next set")
                 self.set = self.job.next_set(self._profile)
                 return True
             else:
-                print("No more work; releasing")
+                self._logger.debug("No more work; releasing")
                 self.release()
                 return False
 

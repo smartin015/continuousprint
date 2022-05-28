@@ -70,18 +70,13 @@ class JobView:
             return self.has_incomplete_sets()
         if self.has_incomplete_sets():
             return True
-        self.decrement(save=True)
+        self.decrement()
 
-    def decrement(self, save=False) -> bool:
+    def decrement(self) -> bool:
         self.remaining = max(self.remaining - 1, 0)
-        if save:
-            self.save()
+        self.save()
         if self.remaining > 0:
-            if save:
-                self.refresh_sets()
-            else:
-                for s in self.sets:
-                    s.remaining = s.count
+            self.refresh_sets()
         return self.has_work()
 
     def has_incomplete_sets(self) -> bool:
@@ -166,12 +161,11 @@ class SetView:
     def profiles(self):
         return self._csv2list(self.profile_keys)
 
-    def decrement(self, save=False):
+    def decrement(self):
         self.remaining = max(0, self.remaining - 1)
-        if save:
-            self.save()  # Save must occur before job is observed
+        self.save()  # Save must occur before job is observed
         if not self.job.has_incomplete_sets():
-            return self.job.decrement(save=save)
+            return self.job.decrement()
         else:
             return True
 

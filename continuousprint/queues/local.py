@@ -51,7 +51,7 @@ class LocalQueue(AbstractEditableQueue):
             self.release()
             return False
 
-        has_work = self.set.decrement(save=True)
+        has_work = self.set.decrement()
         if has_work:
             self.set = self.job.next_set(self._profile)
             return True

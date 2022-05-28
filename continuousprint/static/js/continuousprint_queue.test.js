@@ -75,9 +75,10 @@ describe('batchSelect', () => {
   v.jobs()[0].sets([]); // job 1 is empty
   // job 2 is unstarted; no action needed
   v.jobs()[2].sets()[0].count(3); // Job 3 is incomplete, set 5 is incomplete
+  v.jobs()[2].sets()[0].completed(1);
   v.jobs()[3].remaining(0); // job 4 is complete
-  v.jobs()[3].sets()[0].remaining(0); // job 4 is complete
-  v.jobs()[3].sets()[1].remaining(0); // job 4 is complete
+  v.jobs()[3].sets()[0].completed(1); // job 4 is complete
+  v.jobs()[3].sets()[1].completed(1); // job 4 is complete
 
   let cases = [ // mode, jobids
     ['None', []],
@@ -104,9 +105,9 @@ describe('batchSelect', () => {
 test('deleteSelected', () => {
   let v = init(njobs=2);
   v.jobs()[0].selected(true);
-  v.api.rm.mockImplementationOnce((_, cb) => cb());
+  v.api.rm.mockImplementationOnce((_1, _2, cb) => cb());
   v.deleteSelected();
-  expect(v.api.rm).toHaveBeenCalledWith({job_ids: [1]}, expect.any(Function));
+  expect(v.api.rm).toHaveBeenCalledWith(undefined, {queue: 'test', job_ids: [1]}, expect.any(Function));
   expect(v.jobs().length).toBe(1);
 });
 
@@ -115,9 +116,9 @@ test('resetSelected', () => {
   v.jobs()[0].selected(true);
   v.jobs()[0].remaining(0);
   v.jobs()[0].sets()[0].remaining(0);
-  v.api.reset.mockImplementationOnce((_, cb) => cb());
+  v.api.reset.mockImplementationOnce((_1, _2, cb) => cb());
   v.resetSelected();
-  expect(v.api.reset).toHaveBeenCalledWith({job_ids: [1]}, expect.any(Function));
+  expect(v.api.reset).toHaveBeenCalledWith(undefined, {queue: 'test', job_ids: [1]}, expect.any(Function));
   expect(v.jobs()[0].remaining()).toBe(1);
   expect(v.jobs()[0].sets()[0].remaining()).toBe(1);
 });

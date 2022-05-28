@@ -22,9 +22,7 @@ class MultiQueue(AbstractQueue):
             if hasattr(q, "update_peer_state"):
                 q.update_peer_state(name, status, run)
 
-    def add(self, name: str, q: AbstractQueue, testing=False):
-        if hasattr(q, "connect"):
-            q.connect(testing=testing)
+    def add(self, name: str, q: AbstractQueue):
         self.queues[name] = q
 
     def get(self, name: str):

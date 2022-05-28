@@ -12,7 +12,7 @@ from .database import (
 )
 import tempfile
 
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.INFO)
 
 
 class DBTest(unittest.TestCase):
@@ -93,7 +93,7 @@ class TestMigration(DBTest):
         self.assertEqual(s.remaining, 1)
 
 
-class TestJob(DBTest):
+class TestEmptyJob(DBTest):
     def setUp(self):
         super().setUp()
         self.j = Job.create(queue=self.q, name="a", rank=0, count=5, remaining=5)
@@ -101,82 +101,65 @@ class TestJob(DBTest):
     def tearDown(self):
         self.tmp.close()
 
-    def testIsCompatibleNoSets(self):
-        self.assertEqual(self.j.is_compatible(dict(name="foo")), True)
-
-    def testIsCompatibleSetWithDifferentProfile(self):
-        Set.create(
-            path="a",
-            sd=False,
-            job=self.j,
-            rank=0,
-            count=5,
-            remaining=5,
-            profile_keys="bar",
-        )
-        self.assertEqual(self.j.is_compatible(dict(name="foo")), False)
-
-    def testIsCompatibleSetWithSameProfile(self):
-        Set.create(
-            path="a",
-            sd=False,
-            job=self.j,
-            rank=0,
-            count=5,
-            remaining=5,
-            profile_keys="foo",
-        )
-        self.assertEqual(self.j.is_compatible(dict(name="foo")), True)
+    def testNextSetNoSets(self):
+        self.assertEqual(self.j.next_set(dict(name="foo")), None)
 
     def testDecrementNoSet(self):
-        self.j.decrement(save=True)
+        self.j.decrement()
         self.assertEqual(self.j.remaining, 4)
 
-    def testDecrementFullSet(self):
-        Set.create(
+
+class TestJobWithSet(DBTest):
+    def setUp(self):
+        super().setUp()
+        self.j = Job.create(
+            queue=self.q, name="a", rank=0, count=5, remaining=5, draft=False
+        )
+        self.s = Set.create(
             path="a",
             sd=False,
             job=self.j,
             rank=0,
             count=5,
             remaining=5,
-            material_keys="",
+            profile_keys="foo,baz",
         )
-        self.j.decrement(save=True)
+
+    def tearDown(self):
+        self.tmp.close()
+
+    def testNextSetDraft(self):
+        self.j.draft = True
+        self.assertEqual(self.j.next_set(dict(name="baz")), None)
+
+    def testNextSetWithDifferentProfile(self):
+        self.assertEqual(self.j.next_set(dict(name="bar")), None)
+
+    def testNextSetWithSameProfile(self):
+        self.assertEqual(self.j.next_set(dict(name="baz")), self.s)
+
+    def testDecrementUnstartedSet(self):
+        self.j.decrement()
         self.assertEqual(self.j.remaining, 4)
         self.assertEqual(self.j.sets[0].remaining, 5)
 
-    def testDecrementEmptySet(self):
-        Set.create(
-            path="a",
-            sd=False,
-            job=self.j,
-            rank=0,
-            count=5,
-            remaining=0,
-            material_keys="",
-        )
-        self.j.decrement(save=True)
+    def testDecrementCompletedSet(self):
+        self.s.remaining = 0
+        self.s.save()
+        self.j.decrement()
         self.assertEqual(self.j.remaining, 4)
         self.assertEqual(self.j.sets[0].remaining, 5)
 
     def testDecrementPartialSet(self):
-        Set.create(
-            path="a",
-            sd=False,
-            job=self.j,
-            rank=0,
-            count=5,
-            remaining=3,
-            material_keys="",
-        )
-        self.j.decrement(save=True)
+        self.s.remaining = 3
+        self.s.save()
+        self.j.decrement()
         self.assertEqual(self.j.remaining, 4)
         self.assertEqual(self.j.sets[0].remaining, 5)
 
     def testDecrementNoRemaining(self):
         self.j.remaining = 0
-        self.j.decrement(save=True)
+        self.j.decrement()
         self.assertEqual(self.j.remaining, 0)
 
     def testFromDict(self):
@@ -222,13 +205,13 @@ class TestSet(DBTest):
         )
 
     def testDecrementWithRemaining(self):
-        self.s.decrement(save=True)
+        self.s.decrement()
         self.assertEqual(self.s.remaining, 4)
         self.assertEqual(self.j.remaining, 5)
 
     def testDecrementToZeroDecrementsJob(self):
         self.s.remaining = 0
-        self.s.decrement(save=True)
+        self.s.decrement()
         self.s = Set.get(id=self.s.id)
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.s.remaining, 5)
@@ -239,7 +222,7 @@ class TestSet(DBTest):
         # consider the job done.
         self.s.remaining = 0
         self.j.remaining = 1
-        self.s.decrement(save=True)
+        self.s.decrement()
         self.s = Set.get(id=self.s.id)
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.j.remaining, 0)

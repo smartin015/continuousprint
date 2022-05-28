@@ -147,18 +147,17 @@ class ContinuousprintPlugin(
         for q in queries.getQueues():
             if q.addr is not None:
                 try:
-                    self.q.add(
+                    lq = LANQueue(
                         q.name,
-                        LANQueue(
-                            q.name,
-                            q.addr,
-                            self._logger,
-                            queues.abstract.Strategy.IN_ORDER,
-                            self._on_queue_update,
-                            self._fileshare,
-                            self._printer_profile,
-                        ),
+                        q.addr,
+                        self._logger,
+                        queues.abstract.Strategy.IN_ORDER,
+                        self._on_queue_update,
+                        self._fileshare,
+                        self._printer_profile,
                     )
+                    lq.connect()
+                    self.q.add(q.name, lq)
                 except ValueError:
                     self._logger.error(
                         f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
@@ -339,18 +338,17 @@ class ContinuousprintPlugin(
             self.q.remove(name)
         for a in added:
             try:
-                self.q.add(
+                lq = LANQueue(
                     a["name"],
-                    LANQueue(
-                        a["name"],
-                        a["addr"],
-                        self._logger,
-                        queues.abstract.Strategy.IN_ORDER,
-                        self._on_queue_update,
-                        self._fileshare,
-                        self._printer_profile,
-                    ),  # TODO specify strategy
-                )
+                    a["addr"],
+                    self._logger,
+                    queues.abstract.Strategy.IN_ORDER,
+                    self._on_queue_update,
+                    self._fileshare,
+                    self._printer_profile,
+                )  # TODO specify strategy
+                lq.connect()
+                self.q.add(a["name"], lq)
             except ValueError:
                 self._logger.error(
                     f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
