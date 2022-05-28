@@ -41,7 +41,7 @@
     <div class="cp-queue">
     <div class="cp-header action-bar">
         <div>
-          <span data-bind="text: name"></span>
+          <span data-bind="visible: $root.queues().length > 1, text: name"></span>
           <span data-bind="text: details, attr: {title: fullDetails}" style="cursor: pointer; display: inline-block"></span>
         </div>
         <div style="display: flex; flex-direction: row; justify-content: right">
@@ -61,7 +61,9 @@
               <i style="cursor: pointer" class="fas fa-paper-plane"></i>
             </a>
             <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu" data-bind="foreach: $root.queues">
-            <li><a tabindex="-1" data-bind="click: $root.submitJob">Send to <span data-bind="text:name"></span></a></li>
+            <li data-bind="visible: name !== queue.name">
+              <a tabindex="-1" data-bind="click: $root.submitJob">Send to <span data-bind="text:name"></span></a>
+            </li>
             </ul>
         </div>
         <div class="dropdown">
@@ -91,7 +93,7 @@
       <!-- `cpsortable` is renamed from `sortable` - see https://github.com/smartin015/continuousprint/issues/14 -->
       <div class="accordion queue-list" data-bind="cpsortable: {foreach: jobs, as: 'job', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading(), 'local': name === 'local'}">
       <div class="accordion-group job" data-bind="css: {acquired: acquiredBy() !== undefined}">
-          <!-- ko if: $parent.name === 'local' -->
+          <!-- ko if: $parent.name === 'local' && acquiredBy() === undefined -->
           <div class="floatedit">
               <i style="cursor: pointer" class="far fa-check-square" data-bind="visible: draft, click: editEnd"></i>
               <i style="cursor: pointer" class="fas fa-edit" data-bind="hidden: draft() || acquiredBy(), click: editStart"></i>
@@ -101,6 +103,7 @@
             <div class="queue-row-container">
               <i class="fas fa-grip-lines-vertical"></i>
               <i style="cursor: pointer" data-bind="hidden: acquiredBy() && $root.active(), css: selected() ? 'fas fa-check-square' : 'far fa-square', click: onChecked"></i>
+              <i data-bind="visible: acquiredBy(), attr: {title: 'Acquired by: ' + acquiredBy()}" class="fas fa-cube"></i>
               <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
               <input class="job-name" type="text" data-bind="visible: draft, textInput: _name, attr: {'_vkenabled': false}"></input>
               <div class="job-name" data-bind="hidden: draft, text: _name"></div>
@@ -121,7 +124,6 @@
 
           <div class="accordion-body collapse in">
             <div class="accordion-inner">
-            <div data-bind="visible: acquiredBy, text: 'Acquired by ' + acquiredBy()"></div>
               <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft}" class="sets accordion">
                 <div class="accordion-group">
                   <div class="accordion-heading">
@@ -134,7 +136,10 @@
                           </span>
                           <span data-bind="text: shortName"/>
                         </p>
-                        <div class="progress" data-bind="css: { 'progress-striped active': $root.active() && queue.active_set() == id }">
+                        <div style="width: 150px; text-align: center;" data-bind="hidden: profile_matches" title="Set profile does not match this printer">
+                          <i class="far fa-sticky-note"  style="margin-top: 3px; opacity: 0.5;"></i>
+                        </div>
+                        <div class="progress" data-bind="visible: profile_matches, css: { 'progress-striped active': $root.active() && queue.active_set() == id }">
                           <div data-bind="style: { width: pct_complete() }" class="bar bar-success"></div>
                           <div data-bind="visible: $root.active() && queue.active_set() == id, style: { width: pct_active() }" class="bar active"></div>
                         </div>

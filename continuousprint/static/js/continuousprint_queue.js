@@ -14,15 +14,16 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   };
 }
 
-function CPQueue(data, api) {
+function CPQueue(data, api, files, profile) {
     var self = this;
     self.api = api;
+    self.files = files;
     self.name = data.name;
     self.strategy = data.strategy;
     self.addr = data.addr;
     self.jobs = ko.observableArray([]);
     for (let j of data.jobs) {
-      self.jobs.push(new CPJob(j, data.peers, self.api));
+      self.jobs.push(new CPJob(j, data.peers, self.api, profile));
     }
     self.details = ko.observable("");
     self.active_set = ko.observable(data.active_set);
@@ -133,8 +134,10 @@ function CPQueue(data, api) {
       self.api.reset(self.api.JOB, {queue: self.name, job_ids: d.job_ids}, () => {
         for (let j of d.jobs) {
           j.remaining(j.count());
+          j.completed(0);
           for (let s of j.sets()) {
             s.remaining(s.count());
+            s.completed(0);
           }
         }
       });
@@ -150,12 +153,14 @@ function CPQueue(data, api) {
               hide: true,
               buttons: {closer: true, sticker: false}
           });
+          // Reload the file panel to show the new file
+          self.files.requestData({force: true});
       });
     };
 
     self.newEmptyJob = function() {
         self.api.add(self.api.JOB, {}, (result) => {
-          self.jobs.push(new CPJob(result, data.peers, self.api));
+          self.jobs.push(new CPJob(result, data.peers, self.api, profile));
         });
     };
 
@@ -193,7 +198,7 @@ function CPQueue(data, api) {
               return j.onSetModified(response.set_);
             }
           }
-          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, data.peers, self.api));
+          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, data.peers, self.api, profile));
         });
     };
 

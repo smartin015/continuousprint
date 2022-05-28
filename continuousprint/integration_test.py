@@ -183,7 +183,7 @@ class TestLANQueue(IntegrationTest):
         super().setUp()
         # Manually construct and mock out the base implementation
         self.lq.lan.q = LANPrintQueueBase(
-            self.lq.ns, self.lq.addr, [], MagicMock(), logging.getLogger("lantestbase")
+            self.lq.ns, self.lq.addr, MagicMock(), logging.getLogger("lantestbase")
         )
         self.lq.lan.q.locks = LocalLockManager(dict(), "lq")
         self.lq.lan.q.jobs = LocalJobDict()
@@ -256,7 +256,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d.set_retry_on_pause(True)
             d.action(DA.DEACTIVATE, DP.IDLE)
             lq.lan.q = LANPrintQueueBase(
-                lq.ns, lq.addr, [], MagicMock(), logging.getLogger("lantestbase")
+                lq.ns, lq.addr, MagicMock(), logging.getLogger("lantestbase")
             )
             lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
             lq.lan.q.jobs = LocalJobDict()

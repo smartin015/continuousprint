@@ -14,7 +14,7 @@ if (typeof CPSet === "undefined" || CPSet === null) {
 
 // jobs and sets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
-function CPJob(obj, peers, api) {
+function CPJob(obj, peers, api, profile) {
   if (api === undefined) {
     throw Error("API must be provided when creating CPJob");
   }
@@ -43,7 +43,7 @@ function CPJob(obj, peers, api) {
 
   self.sets = ko.observableArray([]);
   for (let s of obj.sets) {
-    self.sets.push(new CPSet(s, self, api));
+    self.sets.push(new CPSet(s, self, api, profile));
   }
 
   self.as_object = function() {
@@ -66,7 +66,7 @@ function CPJob(obj, peers, api) {
     });
   }
   self.onSetModified = function(s) {
-    let newqs = new CPSet(s, self, api);
+    let newqs = new CPSet(s, self, api, profile);
     for (let qs of self.sets()) {
       if (qs.id === s.id) {
         return self.sets.replace(qs, newqs);
@@ -87,7 +87,7 @@ function CPJob(obj, peers, api) {
       let cpss = [];
       if (result.sets !== undefined) {
         for (let qsd of result.sets) {
-          cpss.push(new CPSet(qsd, self, api));
+          cpss.push(new CPSet(qsd, self, api, profile));
         }
       }
       self.sets(cpss);

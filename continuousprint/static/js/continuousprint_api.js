@@ -29,7 +29,7 @@ class CPAPI {
         data: data,
         headers: {"X-Api-Key":UI_API_KEY},
         success: (result) => {
-          console.log("success", result);
+          console.log("CPQ call success:", result);
           cb(result);
           if (blocking) {
             self.loading(false);
@@ -43,7 +43,9 @@ class CPAPI {
   }
 
   get(type, cb) {
-    this._call(type, 'get', undefined, cb);
+    // History fetching doesn't mess with mutability
+    let blocking = (type !== this.HISTORY);
+    this._call(type, 'get', undefined, cb, blocking);
   }
 
   add(type, data, cb) {

@@ -311,10 +311,12 @@ class ContinuousprintPlugin(
             if name != "archive"
         ]
         qs.sort(key=lambda q: q["rank"])
+        print([(q["name"], q["rank"]) for q in qs])
 
         active = self.d.state != self.d._state_inactive if hasattr(self, "d") else False
         resp = {
             "active": active,
+            "profile": self._get_key(Keys.PRINTER_PROFILE),
             "status": "Initializing" if not hasattr(self, "d") else self.d.status,
             "queues": qs,
         }

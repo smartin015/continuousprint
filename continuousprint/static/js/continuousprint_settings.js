@@ -48,10 +48,9 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     });
 
     self.selected_make = ko.observable();
-    let makes = Object.keys(self.profiles);
-    makes.unshift("Select one");
-    self.printer_makes = ko.observable(makes);
     self.selected_model = ko.observable();
+    let makes = Object.keys(self.profiles);
+    self.printer_makes = ko.observable(makes);
     self.printer_models = ko.computed(function() {
       let models = self.profiles[self.selected_make()];
       if (models === undefined) {
@@ -70,6 +69,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
       let cpset = self.settings.settings.plugins.continuousprint;
       cpset.cp_bed_clearing_script(self.scripts[profile.defaults.clearBed]);
       cpset.cp_queue_finished_script(self.scripts[profile.defaults.finished]);
+      cpset.cp_printer_profile(profile.name);
     };
 
     self.newBlankQueue = function() {
@@ -80,15 +80,27 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     }
 
     // Called automatically by SettingsViewModel
+    self.onSettingsShown = function() {
+      for (let prof of profiles) {
+        if (self.settings.settings.plugins.continuousprint.cp_printer_profile() === prof.name) {
+          self.selected_make(prof.make);
+          self.selected_model(prof.model);
+          console.log("Updated selected make & model", prof);
+          return;
+        }
+      }
+    };
+
+    // Called automatically by SettingsViewModel
     self.onSettingsBeforeSave = function() {
-      let queues = JSON.stringify(self.queues());
-      if (queues === self.queue_fingerprint) {
+      let queues = self.queues()
+      if (JSON.stringify(queues) === self.queue_fingerprint) {
         return; // Don't call out to API if we haven't changed anything
       }
       // Sadly it appears flask doesn't have good parsing of nested POST structures,
       // So we pass it a JSON string instead.
-      self.api.edit(self.api.QUEUES, {queues}, () => {
-        console.log("Queues committed");
+      self.api.edit(self.api.QUEUES, queues, () => {
+        // Editing queues causes a UI refresh to the main viewmodel; no work is needed here
       });
     }
 

@@ -11,7 +11,7 @@ if (typeof ko === "undefined" || ko === null) {
 
 // Sets are a sequence of the same queue item repated a number of times.
 // This is an abstraction on top of the actual queue maintained by the server.
-function CPSet(data, job, api) {
+function CPSet(data, job, api, profile) {
   var self = this;
   self.id = (data.id !== undefined) ? data.id : -1;
   self.job = job;
@@ -26,6 +26,13 @@ function CPSet(data, job, api) {
   self.completed = ko.observable(data.count - self.remaining()); // Not computed to allow for edits without changing
   self.mats = ko.observable(data.materials || []);
   self.profiles = ko.observableArray(data.profiles || []);
+  self.profile_matches = ko.computed(function() {
+    let profs = self.profiles();
+    if (profs.length === 0) {
+      return true;
+    }
+    return (profs.indexOf(profile()) !== -1);
+  }); // TODO
 
   self.addProfile = function(_, e) {
     let v = e.target.value;

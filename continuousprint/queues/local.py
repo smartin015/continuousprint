@@ -102,9 +102,9 @@ class LocalQueue(AbstractEditableQueue):
 
     def import_job(self, gjob_path: str) -> dict:
         out_dir = str(Path(gjob_path).stem)
-        os.makedirs(dirname, exist_ok=True)
+        os.makedirs(out_dir, exist_ok=True)
         manifest, filepaths = unpack_job(
-            self._path_on_disk(gjob_path), self._path_on_disk(dirname)
+            self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
         )
         return self.queries.importJob(self.ns, manifest, out_dir)
 

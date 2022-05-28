@@ -111,7 +111,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         return self._msg(dict(type=type, msg=msg))
 
     def _sync(self, attr, data):
-        self._logger.info(f"Refreshing UI {attr}")
+        self._logger.debug(f"Refreshing UI {attr}")
         msg = dict(type=f"set{attr}")
         msg[attr] = data
         self._msg(msg)
@@ -195,7 +195,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def submit_job(self):
         j = queries.getJob(int(flask.request.form["id"]))
         # Submit to the queue and remove from its origin
-        self._get_queue(flask.request.form["queue"]).submit_job(j, filepaths)
+        self._get_queue(flask.request.form["queue"]).submit_job(j)
         self._get_queue(DEFAULT_QUEUE).remove(job_ids=[j.id])
         return self._state_json()
 
@@ -292,9 +292,8 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/queues/edit", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITQUEUES)
-    def commit_queues(self):
-        (absent_names, added) = queries.assignQueues(
-            json.loads(flask.request.form.get("queues"))
-        )
+    def edit_queues(self):
+        queues = json.loads(flask.request.form.get("json"))
+        (absent_names, added) = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)
         return json.dumps("OK")

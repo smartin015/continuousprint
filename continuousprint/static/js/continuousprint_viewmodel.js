@@ -39,6 +39,7 @@ function CPViewModel(parameters) {
     self.queues = ko.observableArray([]);
     self.defaultQueue = null;
     self.expanded = ko.observable(null);
+    self.profile = ko.observable('');
 
     self.api = parameters[4] || new CPAPI();
     self.api.init(self.loading);
@@ -95,7 +96,7 @@ function CPViewModel(parameters) {
         for (let j of q.jobs) {
           j.selected = selections[j.id.toString()];
         }
-        let cpq = new CPQueue(q, self.api);
+        let cpq = new CPQueue(q, self.api, self.files, self.profile);
         console.log(cpq.name);
         result.push(cpq);
         if (cpq.name === 'local') {
@@ -111,6 +112,7 @@ function CPViewModel(parameters) {
         self.active(state.active);
         self.active_set(state.active_set);
         self.status(state.status);
+        self.profile(state.profile);
         self.printerState.continuousPrintStateString(state.status);
         //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
@@ -257,6 +259,7 @@ function CPViewModel(parameters) {
       self.history(result);
     };
     self.refreshHistory = function() {
+      console.log("Loading history...");
       self.api.get(self.api.HISTORY, self._setHistory);
     };
     self.clearHistory = function() {

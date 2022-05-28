@@ -4,18 +4,10 @@
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
-  text-align: center;
 }
 #tab_plugin_continuousprint .action-bar > * {
   flex: 1;
 }
-#tab_plugin_continuousprint .action-bar :first-child {
-  text-align: left;
-}
-#tab_plugin_continuousprint .action-bar :last-child {
-  text-align: right;
-}
-
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
 }
