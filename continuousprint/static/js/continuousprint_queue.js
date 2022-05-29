@@ -25,6 +25,7 @@ function CPQueue(data, api, files, profile) {
     for (let j of data.jobs) {
       self.jobs.push(new CPJob(j, data.peers, self.api, profile));
     }
+    self.shiftsel = ko.observable(-1);
     self.details = ko.observable("");
     self.active_set = ko.observable(data.active_set);
     self.fullDetails = ko.observable("");
@@ -46,33 +47,33 @@ function CPQueue(data, api, files, profile) {
       switch (mode) {
         case "All":
           for (let j of self.jobs()) {
-            j.selected(true);
+            j.onChecked(true);
           }
           break;
         case "None":
           for (let j of self.jobs()) {
-            j.selected(false);
+            j.onChecked(false);
           }
           break;
         case "Empty Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.sets().length === 0);
+            j.onChecked(j.sets().length === 0);
           }
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.sets().length !== 0 && j.length_completed() === 0);
+            j.onChecked(j.sets().length !== 0 && j.length_completed() === 0);
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
             let lc = j.length_completed();
-            j.selected(lc > 0 && lc < j.length());
+            j.onChecked(lc > 0 && lc < j.length());
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
-            j.selected(j.sets().length !== 0 && j.length_completed() >= j.length());
+            j.onChecked(j.sets().length !== 0 && j.length_completed() >= j.length());
           }
           break;
         default:
@@ -95,14 +96,34 @@ function CPQueue(data, api, files, profile) {
       return numsel / js.length;
       return 0;
     });
-    self.onChecked = function(v, e) {
-      let c = self.checkFraction();
-      self.batchSelectBase((c == 0) ? "All" : "None");
-      e.cancelBubble = true;
-      if (e.stopPropagation) {
-        e.stopPropagation();
+    self.onChecked = function(vm, e) {
+      if (vm === self) {
+        let c = self.checkFraction();
+        self.batchSelectBase((c == 0) ? "All" : "None");
+        e.cancelBubble = true;
+        if (e.stopPropagation) {
+          e.stopPropagation();
+        }
+        return;
       }
 
+      let idx = self.shiftsel()
+      if (e.shiftKey && idx !== -1) {
+        console.log(vm, e);
+        let target_idx = self.jobs.indexOf(vm);
+        let sel = !vm.selected();
+        let start = Math.min(idx, target_idx);
+        let end = Math.max(idx, target_idx);
+        let jobs = self.jobs();
+        for (let i = start; i <= end; i++) {
+          jobs[i].onChecked(sel);
+        }
+        self.shiftsel(target_idx);
+      } else {
+        vm.onChecked();
+        self.shiftsel(self.jobs.indexOf(vm));
+      }
+      e.preventDefault();
     }
 
     // *** ko template methods ***
@@ -221,10 +242,6 @@ function CPQueue(data, api, files, profile) {
         return;
       }
       vm.set_count(v);
-    };
-
-    self.setMaterial = function(vm, idx, mat) {
-      vm.set_material(idx, mat);
     };
 }
 

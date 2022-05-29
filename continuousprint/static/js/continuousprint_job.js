@@ -19,6 +19,7 @@ function CPJob(obj, peers, api, profile) {
     throw Error("API must be provided when creating CPJob");
   }
   var self = this;
+
   obj = {...{sets: [], name: "", draft: false, count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
   self.id = ko.observable(obj.id);
   self._name = ko.observable(obj.name || "");
@@ -45,6 +46,22 @@ function CPJob(obj, peers, api, profile) {
   for (let s of obj.sets) {
     self.sets.push(new CPSet(s, self, api, profile));
   }
+
+  self._update = function(result) {
+    self.draft(result.draft);
+    self.count(result.count);
+    self.remaining(result.remaining); // Adjusted when count is mutated
+    self.completed(result.count - result.remaining); // Adjusted when count is mutated
+    self.id(result.id); // May change if no id to start with
+    self._name(result.name);
+    let cpss = [];
+    if (result.sets !== undefined) {
+      for (let qsd of result.sets) {
+        cpss.push(new CPSet(qsd, self, api, profile));
+      }
+    }
+    self.sets(cpss);
+  };
 
   self.as_object = function() {
     let data = {
@@ -74,24 +91,13 @@ function CPJob(obj, peers, api, profile) {
     }
     self.sets.push(newqs);
  }
+  self.editCancel = function() {
+    api.edit(api.JOB, {id: self.id(), draft: false}, self._update);
+  }
   self.editEnd = function() {
     let data = self.as_object();
     data.draft = false;
-    api.edit(api.JOB, data, (result) => {
-      self.draft(false);
-      self.count(result.count);
-      self.remaining(result.remaining); // Adjusted when count is mutated
-      self.completed(result.count - result.remaining); // Adjusted when count is mutated
-      self.id(result.id); // May change if no id to start with
-      self._name(result.name);
-      let cpss = [];
-      if (result.sets !== undefined) {
-        for (let qsd of result.sets) {
-          cpss.push(new CPSet(qsd, self, api, profile));
-        }
-      }
-      self.sets(cpss);
-    });
+    api.edit(api.JOB, data, self._update);
   }
 
   self.length = ko.computed(function() {
@@ -118,8 +124,15 @@ function CPJob(obj, peers, api, profile) {
   self.pct_active = ko.computed(function() {
     return Math.round(100 / self.count()) + '%';
   });
-  self.onChecked = function() {
-    self.selected(!self.selected());
+  self.onChecked = function(sel) {
+    if (self.draft()) {
+      return;
+    }
+    if (sel !== undefined) {
+      self.selected(sel);
+    } else {
+      self.selected(!self.selected());
+    }
   }
 }
 

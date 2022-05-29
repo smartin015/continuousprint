@@ -23,6 +23,7 @@ function CPSet(data, job, api, profile) {
   self.count = ko.observable(data.count);
   self.remaining = ko.observable((data.remaining !== undefined) ? data.remaining : data.count);
   self.completed = ko.observable(data.count - self.remaining()); // Not computed to allow for edits without changing
+  self.expanded = ko.observable(data.expanded);
   self.mats = ko.observable(data.materials || []);
   self.profiles = ko.observableArray(data.profiles || []);
   self.profile_matches = ko.computed(function() {
@@ -67,11 +68,9 @@ function CPSet(data, job, api, profile) {
     return result;
   });
   self.remove = function() {
-    api.rm(self.api.SET, {set_ids: [self.id]}, () =>{
-      job.sets.remove(self);
-    });
+    // Just remove from UI - actual removal happens when saving the job
+    job.sets.remove(self);
   }
-  self.expanded = ko.observable(false);
   self._textColorFromBackground = function(rrggbb) {
     // https://stackoverflow.com/a/12043228
     var rgb = parseInt(rrggbb.substr(1), 16);   // convert rrggbb to decimal
@@ -103,8 +102,9 @@ function CPSet(data, job, api, profile) {
       }
       let split = i.split("_");
       let bg = split[2] || "";
+      let title = split[0] + ' (' + split[1] + ')';
       result.push({
-        title: i.replaceAll("_", " "),
+        title: title,
         shortName: self._materialShortName(split[0]),
         color: self._textColorFromBackground(bg),
         bgColor: bg,

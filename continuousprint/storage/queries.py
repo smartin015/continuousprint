@@ -147,8 +147,13 @@ def _upsertSet(set_id, data, job):
             continue
         setattr(s, k, v)
     s.job = job
-    s.material_keys = ",".join(data.get("materials", ""))
-    s.profile_keys = ",".join(data.get("profiles", ""))
+
+    s.material_keys = ",".join(
+        ["" if m is None else m for m in data.get("materials", [])]
+    )
+    s.profile_keys = ",".join(
+        ["" if p is None else p for p in data.get("profiles", [])]
+    )
 
     if data.get("count") is not None:
         newCount = int(data["count"])

@@ -82,19 +82,28 @@ function CPViewModel(parameters) {
     self._updateQueues = function(queues) {
       let result = [];
 
-      // Preserve selections by traversing all jobs before
+      // Preserve selections and expansions by traversing all queues before
       // replacing them
-      let selections = {}
+      let selections = {};
+      let expansions = {};
       for (let q of self.queues()) {
         for (let j of q.jobs()) {
           if (j.selected()) {
             selections[j.id().toString()] = true;
+          }
+          for (let s of j.sets()) {
+            if (s.expanded()) {
+              expansions[s.id.toString()] = true;
+            }
           }
         }
       }
       for (let q of queues) {
         for (let j of q.jobs) {
           j.selected = selections[j.id.toString()];
+          for (let s of j.sets) {
+            s.expanded = expansions[s.id.toString()];
+          }
         }
         let cpq = new CPQueue(q, self.api, self.files, self.profile);
         console.log(cpq.name);
@@ -222,13 +231,20 @@ function CPViewModel(parameters) {
         }
     };
 
+    self.badMaterialCount = ko.observable(0);
     self.api.getSpoolManagerState(function(resp) {
       let result = {};
+      let nbad = 0;
       for (let spool of resp.allSpools) {
+        if (spool.material === null) {
+          nbad++;
+          continue;
+        }
         let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
         result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
       }
       self.materials(Object.values(result));
+      self.badMaterialCount(nbad);
     });
 
     self.submitJob = function(vm) {
@@ -236,7 +252,6 @@ function CPViewModel(parameters) {
         self.api.submit(self.api.JOB, {id, queue: vm.name}, self._setState);
       }
     }
-
 
     /* ===== History Tab ===== */
     self.history = ko.observableArray();

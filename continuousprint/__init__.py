@@ -98,7 +98,7 @@ class ContinuousprintPlugin(
             self._set_key(Keys.MATERIAL_SELECTION, True)
         else:
             self._spool_manager = None
-            self._set_key(Keys.MATERIAL_SELECTION, True)
+            self._set_key(Keys.MATERIAL_SELECTION, False)
         self._settings.save()
 
         # Try to fetch plugin-specific events, defaulting to None otherwise

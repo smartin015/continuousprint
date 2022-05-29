@@ -7,16 +7,18 @@
 
 <ul class="nav nav-pills">
   <li class="active"><a href="#settings_continuousprint_gcode" data-toggle="tab">Scripts</a></li>
-  <li><a href="#settings_continuousprint_behaviors" data-toggle="tab">Behaviors</a></li>
+  <li><a href="#settings_continuousprint_integrations" data-toggle="tab">Integrations</a></li>
   <li><a href="#settings_continuousprint_queues" data-toggle="tab">Queues</a></li>
+  <li><a href="#settings_continuousprint_networking" data-toggle="tab">Networking</a></li>
 </ul>
 <div class="tab-content">
   <div id="settings_continuousprint_gcode" class="tab-pane active">
     <form class="form-horizontal">
-      <legend>Printer Profiles</legend>
-      <p>Load <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">community-contributed</a> bed clearing scripts for your printer:</p>
+      <legend>Printer Profile</legend>
+      <p>Load <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">community-contributed</a> bed clearing scripts for your printer.</p>
+      <p>If you tag queue items with <a href="https://smartin015.github.io/continuousprint/printer-profiles/">profiles</a>, they will be skipped unless they match this profile.</p>
       <fieldset>
-        <div class="control-group">
+        <div class="control-group" title="The manufacturer of the printer">
           <label class="control-label">Manufacturer</label>
           <div class="controls">
             <select data-bind="foreach: printer_makes, value:selected_make">
@@ -24,7 +26,7 @@
             </select>
           </div>
         </div>
-        <div class="control-group">
+        <div class="control-group" title="The model of the printer">
           <label class="control-label">Model</label>
           <div class="controls">
             <select data-bind="foreach: printer_models, value: selected_model, event:{ change: modelChanged }">
@@ -33,7 +35,6 @@
           </div>
         </div>
       </fieldset>
-      <p>Click "Save" to keep the changes, or "Close" to discard them.</p>
 
       <legend>Customize</legend>
       <p>
@@ -42,14 +43,14 @@
 
       <fieldset>
       <h5>Bed clearing & Finishing</h5>
-        <div class="control-group">
-          <label class="control-label">Bed cleaning script</label>
+        <div class="control-group" title="This script executes after every print completes when the queue is enabled (including prints started *before* the queue was enabled)">
+          <label class="control-label">Clearing script</label>
           <div class="controls">
             <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_bed_clearing_script"></textarea>
           </div>
         </div>
-        <div class="control-group">
-          <label class="control-label">Queue finished script</label>
+        <div class="control-group" title="This script runs after the last job runnable by this printer has been completed">
+          <label class="control-label">Finished script</label>
           <div class="controls">
           <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_queue_finished_script"></textarea>
           </div>
@@ -57,37 +58,50 @@
 
       <h5>Bed Cooldown Settings</h5>
         <p>
-            If enabled, when print in queue is finished OctoPrint will run <b>Bed Cooldown Script</b>,
-            turn the heated bed off and monitor the bed temperature.
-            After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
-            met, the bed clearing routine will continue.
+          Some printers do not respect the <a target="_blank" href="https://marlinfw.org/docs/gcode/M190.html">M190</a> (Wait for Bed Temperature) command (see <a target="_blank" href="https://github.com/smartin015/continuousprint/issues/6">this bug</a>).
         </p>
+        <p>Enable this if you use M190 commands in the <b>Clearing script</b> but your printer isn't properly waiting.</p>
 
-        <div class="control-group">
-            <label class="control-label">Enable Managed Bed Cooldown</label>
+        <div class="control-group" title="This enables Bed Cooldown and exposes additional config options">
+            <label class="control-label">Enable Bed Cooldown</label>
             <div class="controls">
                     <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
             </div>
         </div>
 
-        <div id="cooldownSettings">
-            <div class="control-group">
+        <div id="cooldownSettings" data-bind="visible: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
+            <p>
+                When the print is finished, OctoPrint will run <b>Bed Cooldown Script</b>,
+                turn the heated bed off and monitor the bed temperature.
+            </p>
+            <p>
+                After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
+                met, the <b>Clearing script</b> will begin.
+            </p>
+
+            <div class="control-group" title="This script runs before the Clearing script above">
                 <label class="control-label">Bed Cooldown Script</label>
                 <div class="controls">
                     <textarea rows="8" class="input-block-level" data-bind="value: settings.settings.plugins.continuousprint.cp_bed_cooldown_script"></textarea>
                 </div>
             </div>
 
-            <div class="control-group">
-                <label class="control-label">Bed Cooldown Threshold  (Celsius)</label>
+            <div class="control-group" title="Bed temperature target to reach before moving on">
+                <label class="control-label">Threshold</label>
                 <div class="controls">
-                    <textarea rows="1" class="temperature-input" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_threshold"></textarea>
+                    <div class="input-append">
+                    <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_threshold"></input>
+                    <span class="add-on">°C</span>
+                    </div>
                 </div>
             </div>
-            <div class="control-group">
-                <label class="control-label">Bed Cooldown Timeout (Minutes)</label>
+            <div class="control-group" title="Number of seconds to wait before moving on">
+                <label class="control-label">Timeout</label>
                 <div class="controls">
-                    <textarea rows="1" class="temperature-input" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_timeout"></textarea>
+                  <div class="input-append">
+                    <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_timeout"></input>
+                    <span class="add-on">min</span>
+                  </div>
                 </div>
             </div>
         </div>
@@ -97,12 +111,12 @@
     </form>
   </div> <!-- /settings_continuousprint_gcode -->
 
-  <div id="settings_continuousprint_behaviors" class="tab-pane">
+  <div id="settings_continuousprint_integrations" class="tab-pane">
     <form class="form-horizontal">
       <fieldset>
         <legend>Failure Recovery</legend>
-        <div class="alert" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
-          <p>Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
+        <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+          <p><strong>Plugin Needed:</strong> Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
           <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
         </div>
         <div data-bind="visible: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
@@ -135,8 +149,8 @@
 
       <fieldset>
         <legend>Material Selection</legend>
-        <div class="alert" data-bind="hidden: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
-          <p>Material selection requires <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a>, but the plugin does not appear to be installed or enabled.<p>
+        <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
+          <p><strong>Plugin Needed:</strong> Material selection requires <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a>, but the plugin does not appear to be installed or enabled.<p>
           <p>Read more about this feature in the <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">Material Selection guide</a>.</p>
         </div>
         <div data-bind="visible: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
@@ -152,58 +166,62 @@
   </div> <!-- continuousprint_settings_behaviors -->
 
 
-  <div id="settings_continuousprint_queues" class="tab-pane">
-  <form class="form-horizontal">
-      <legend>Queues (Alpha Feature)</legend>
-        <p>
-            This is an unproven feature for sharing one or more Continuous Print queues across multiple octoprint instances
-            (and thus multiple printers).
-        </p>
-        <p>
-        Configure your LAN queues below, then go back to the Continuous Print tab to see them. If you're unsure how to configure queues, see <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">this guide</a>.
-        </p>
-        <p>
-          Note that all jobs and members of the queue are tied to the queue name - renaming a queue will cause the old queue to be deleted and an new
-          one to be created.
-        </p>
-        <fieldset>
-          <div class="control-group">
-            <label class="control-label">This printer's name when viewed over the network:</label>
-            <div class="controls">
-              <div class="input-append">
-                <input type="text" class="input-mini" data-bind="value: settings.settings.plugins.continuousprint.cp_network_name"/>
-              </div>
-            </div>
+  <div id="settings_continuousprint_networking" class="tab-pane">
+    <form class="form-horizontal">
+      <fieldset>
+        <legend>Network</legend>
+        <div class="control-group" title="Name of this printer when viewed from other OctoPrint instances">
+          <label class="control-label">Network name</label>
+          <div class="controls">
+          <textarea rows="1" data-bind="value: settings.settings.plugins.continuousprint.cp_network_name"></textarea>
           </div>
-        </fieldset>
+        </div>
+      </fieldset>
+    </form>
+  </div> <!-- settings_continuousprint_networking -->
 
-        <div class="queue-header">
-          <div style="text-align: center; flex: 1">Name</div>
-          <div style="text-align: center; width: 180px">Hostname:Port</div>
-          <div style="text-align: center; width: 180px">Strategy</div>
-          <div style="width:30px"></div>
+  <div id="settings_continuousprint_queues" class="tab-pane">
+    <form class="form-horizontal">
+      <legend>Queues</legend>
+      <div class="alert alert-info">
+        <p>
+        <strong>IMPORTANT:</strong> These settings are <strong>early Alpha</strong> and not yet proven.
+        </p>
+        <p>Expect sharp edges - please report feedback and bugs to <a href="https://github.com/smartin015/continuousprint/issues/35" target="_blank">this issue</a>.
+        </p>
+      </div>
+      <p>
+        <strong>Renaming a queue will delete the original queue and create a new one</strong> - jobs will not transfer over.
+      </p>
+      <p>
+        Read <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">this guide</a> to learn how to best configure network queues.
+      </p>
+      <div class="queue-header">
+        <div style="text-align: center; flex: 1">Name</div>
+        <div style="text-align: center; width: 180px">Hostname:Port</div>
+        <div style="text-align: center; width: 180px">Strategy</div>
+        <div style="width:30px"></div>
+      </div>
+      <div class="queue-list" data-bind="cpsortable: {foreach: queues, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}">
+        <div class="queue-row-container">
+            <i class="fas fa-grip-lines-vertical"></i>
+            <div style="flex:1">
+              <input type="text" style="width:90%" data-bind="value: name, disable: name === 'local'" placeholder="e.g. LAN"></input>
+            </div>
+            <div style="width: 180px">
+              <input type="text" style="width:90%" data-bind="value: addr, hidden: name === 'local'" placeholder="e.g. 0.0.0.0:6789"></input>
+            </div>
+            <div style="width: 180px">
+              <select data-bind="value: strategy" style="width: 100%">
+                <option>In-Order</option>
+              </select>
+            </div>
+            <div style="width: 30px">
+              <div data-bind="visible: name !== 'local', click: $root.rmQueue"><i class="far fa-trash-alt"></i></div>
+            </div>
         </div>
-        <div class="queue-list" data-bind="cpsortable: {foreach: queues, options: {handle: '.fa-grip-lines-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}">
-          <div class="queue-row-container">
-              <i class="fas fa-grip-lines-vertical"></i>
-              <div style="flex:1">
-                <input type="text" style="width:90%" data-bind="value: name, disable: name === 'local'"></input>
-              </div>
-              <div style="width: 180px">
-                <input type="text" style="width:90%" data-bind="value: addr, disable: name === 'local'"></input>
-              </div>
-              <div style="width: 180px">
-                <select data-bind="value: strategy" style="width: 100%">
-                  <option>In-Order</option>
-                  <option>Least Manual</option>
-                </select>
-              </div>
-              <div style="width: 30px">
-                <div data-bind="visible: name !== 'local', click: $root.rmQueue"><i class="far fa-trash-alt"></i></div>
-              </div>
-          </div>
-        </div>
-        <button class="btn pull-right" data-bind="click: newBlankQueue"><i class="fas fa-plus"></i> Add Queue</button>
+      </div>
+      <button style="margin-top: 25px" class="btn pull-right" data-bind="click: newBlankQueue"><i class="fas fa-plus"></i> Add Queue</button>
     </form>
   </div> <!-- settings_continuousprint_lan -->
 </div>

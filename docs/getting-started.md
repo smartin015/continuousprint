@@ -27,9 +27,9 @@ You can also enable settings here for compatibility with [The Spaghetti Detectiv
 1. Add it to the print queue by clicking the `+` button to the right of the file name.
    * If you want to print more than one, you can click multiple times to add more copies, or set a specific count in the `Continuous Print` tab.
 
-### Use Jobs to group your print files
+### Use Sets and Jobs to group your print files
 
-The queue is actually made up of two levels: sets and jobs.
+The queue is made up of two levels: sets and jobs.
 
 **Sets** are a single print file, printed one or more times. You created a set by following the "Add prints to the queue" step above.
 

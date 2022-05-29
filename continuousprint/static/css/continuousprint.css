@@ -1,5 +1,6 @@
 :root {
-    --cpq-pad: 10px;
+    /* Small padding roughly matches the spacing between Print/Pause/Cancel buttons in the State panel */
+    --cpq-pad: 6px;
     --cpq-pad2: 20px;
 }
 
@@ -12,15 +13,17 @@
 #files .cpq-gjob.fa-archive {
   margin-right: 4px;
 }
+#tab_plugin_continuousprint .cpq-leftpad {
+  margin-left: var(--cpq-pad);
+}
+#continuousprint_tab_queues > div {
+  margin-bottom: 50px;
+}
 #tab_plugin_continuousprint .cp-header {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   align-items: center;
   font-weight: bold;
-}
-#tab_plugin_continuousprint .action-bar > * {
-  flex: 1;
 }
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
@@ -44,10 +47,14 @@
 }
 #tab_plugin_continuousprint .queue-list {
   border-radius: var(--cpq-pad);
-  min-height: 100px;
+  min-height: 70px;
   border-top: 1px #e5e5e5 solid;
   border-bottom: 1px #e5e5e5 solid;
   padding: var(--cpq-pad) 0px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 #tab_plugin_continuousprint .accordion-heading, {
   width:100%;
@@ -68,14 +75,18 @@
 #tab_plugin_continuousprint .job {
   position: relative;
 }
+#tab_plugin_continuousprint .job.shiftsel {
+  border-left: 3px solid #CCC !important;
+}
 #tab_plugin_continuousprint .job.draft {
   border: 3px solid #e5e5e5;
 }
-#tab_plugin_continuousprint .job.draft .job_gutter {
+#tab_plugin_continuousprint .job.draft .job-gutter {
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
   padding-right: var(--cpq-pad);
+  padding-top: var(--cpq-pad);
 }
 #tab_plugin_continuousprint .job .floatedit {
   position: absolute;
@@ -83,13 +94,9 @@
   right: var(--cpq-pad2);
   opacity: 0.0;
   z-index: 1000;
-  padding: 8px;
-  border-radius: var(--cpq-pad);
-  border: 1px #e5e5e5 solid;
-  background-color: white;
 }
 #tab_plugin_continuousprint .job:hover .floatedit {
-  opacity: 0.8;
+  opacity: 0.5;
 }
 #tab_plugin_continuousprint .job:hover .floatedit:hover {
   opacity: 1.0;
@@ -172,14 +179,6 @@
 #tab_plugin_continuousprint .label {
   border: 1px gray solid;
 }
-#tab_plugin_continuousprint div.material_select {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1vh;
-}
-
 #tab_plugin_continuousprint ::placeholder {
   font-weight: italic;
   opacity: 0.7;
@@ -196,56 +195,23 @@
   opacity: 0.7;
 }
 #tab_plugin_continuousprint .queue-set-list {
-  max-height: 200px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
-#tab_plugin_continuousprint .queue-set-list table {
-  table-layout:auto;
+#tab_plugin_continuousprint .queue-set-list h4 {
+  border-bottom: 1px #e5e5e5 solid;
+}
+#tab_plugin_continuousprint .queue-set-list .full {
   width: 100%;
-  border-collapse: collapse;
 }
-#tab_plugin_continuousprint .queue-set-list th {
-  position: sticky;
-  background: #eee;
-  top: 0;
-  text-align: left;
-  padding: 0 3px;
-  /* position:sticky doesn't work with regular borders, so we use box shadow */
-  box-shadow: inset 0 -1px 0 black;
-  font-weight: normal;
-}
-.themeify.discorded #tab_plugin_continuousprint .queue-set-list th,
-.themeify.cyborg #tab_plugin_continuousprint .queue-set-list th,
-.themeify.discoranged #tab_plugin_continuousprint .queue-set-list th,
-.themeify.nighttime #tab_plugin_continuousprint .queue-set-list th {
-  background-color: #222 !important;
-}
-
-#tab_plugin_continuousprint .queue-set-list th::after {
-  content: ' ';
-  position: absolute;
-  left: 0;
-  width: 100%;
-  bottom: -1px;
-  border-bottom: 1px gray solid;
-}
-#tab_plugin_continuousprint i.fa-grip-lines-vertical {
-  cursor: grab;
-}
-#tab_plugin_continuousprint .queue-set-list td {
-  padding: 0 3px;
-}
-#tab_plugin_continuousprint .queue-set-list tr :first-child {
-  border-right: 1px gray solid;
-}
-#tab_plugin_continuousprint .queue-set-list tr.run-alt {
-  background-color: #e5e5e5;
-}
-.themeify.discorded #tab_plugin_continuousprint tr.run-alt,
-.themeify.cyborg #tab_plugin_continuousprint tr.run-alt,
-.themeify.discoranged #tab_plugin_continuousprint tr.run-alt,
-.themeify.nighttime #tab_plugin_continuousprint tr.run-alt {
-  background-color: #282828 !important;
+#tab_plugin_continuousprint .queue-set-list .gutter {
+  border-top: 1px #e5e5e5 solid;
+  padding-top: var(--cpq-pad);
+  display: flex;
+  justify-content: space-between;
 }
 
 #tab_plugin_continuousprint .count-box{
