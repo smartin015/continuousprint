@@ -14,7 +14,6 @@ if (typeof ko === "undefined" || ko === null) {
 function CPSet(data, job, api, profile) {
   var self = this;
   self.id = (data.id !== undefined) ? data.id : -1;
-  self.job = job;
 
   self.sd = ko.observable(data.sd);
   self.path = ko.observable(data.path);
@@ -57,11 +56,11 @@ function CPSet(data, job, api, profile) {
     };
   }
   self.length = ko.computed(function() {
-    return self.job.count() * self.count();
+    return job.count() * self.count();
   });
   self.length_completed = ko.computed(function() {
-    let job_completed = self.job.completed();
-    if (job_completed === self.job.count()) {
+    let job_completed = job.completed();
+    if (job_completed === job.count()) {
       job_completed -= 1; // Prevent double-counting the end of the job
     }
     return self.completed() + self.count()*job_completed;
@@ -115,10 +114,10 @@ function CPSet(data, job, api, profile) {
     return result;
   });
   self.pct_complete = ko.computed(function() {
-    return Math.max(1, Math.round(100 * self.completed()/self.count())) + '%';
+    return Math.max(0, Math.round(100 * self.completed()/self.count())) + '%';
   });
   self.pct_active = ko.computed(function() {
-    return Math.max(1, Math.round(100 / self.count())) + '%';
+    return Math.max(0, Math.round(100 / self.count())) + '%';
   });
 
   // ==== Mutation methods ====

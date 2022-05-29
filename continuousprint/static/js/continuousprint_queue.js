@@ -166,7 +166,7 @@ function CPQueue(data, api, files, profile) {
 
     self.importJob = function(path) {
       self.api.import(self.api.JOB, {path, queue: self.name}, (result) => {
-        console.log("TODO", result);
+        self.jobs.push(new CPJob(result, data.peers, self.api, profile));
       });
     }
 

@@ -33,7 +33,7 @@ plugin_url = "https://github.com/smartin015/continuousprint"
 plugin_license = "AGPLv3"
 
 # Any additional requirements besides OctoPrint should be listed here
-plugin_requires = ["peewee<4", "peerprint==0.0.6"]
+plugin_requires = ["peewee<4", "peerprint==0.0.7"]
 
 ### --------------------------------------------------------------------------------------------------------------------
 ### More advanced options that you usually shouldn't have to touch follow after this point

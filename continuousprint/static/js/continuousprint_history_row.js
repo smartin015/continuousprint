@@ -39,6 +39,19 @@ function CPHistoryRow(data) {
     }
     return "started";
   });
+  self.icon_class = ko.computed(function() {
+    let r = self.result();
+    switch (r) {
+      case "started":
+        return "fas fa-cube";
+      case "aborted":
+        return "fa fa-exclamation-triangle";
+      case "success":
+        return "fas fa-check";
+      default:
+        return "";
+    }
+  });
 
   function pluralize(num, unit) {
     num = Math.round(num);

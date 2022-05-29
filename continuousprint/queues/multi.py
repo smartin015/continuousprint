@@ -77,9 +77,6 @@ class MultiQueue(AbstractQueue):
         if self.strategy != Strategy.IN_ORDER:
             raise Exception("Unimplemented strategy " + self.strategy.name)
         if self.active_queue is not None:
-            print(
-                "Already acquired - TODO need to somehow repopulate set when queue already acquired but last set of a job is completed"
-            )
             return True
         for k, q in self.queues.items():
             if q.acquire():

@@ -16,6 +16,7 @@ class LANQueue(AbstractJobQueue):
         update_cb,
         fileshare,
         profile,
+        path_on_disk_fn,
     ):
         super().__init__()
         self._logger = logger
@@ -26,6 +27,7 @@ class LANQueue(AbstractJobQueue):
         self.lan = None
         self.update_cb = update_cb
         self._fileshare = fileshare
+        self._path_on_disk = path_on_disk_fn
         self.lan = LANPrintQueue(self.ns, self.addr, self._on_update, self._logger)
 
     # ---------- LAN queue methods ---------
@@ -93,10 +95,8 @@ class LANQueue(AbstractJobQueue):
             self.lan.q.setJob(jid, manifest, addr=addr)
 
     def remove_jobs(self, job_ids) -> dict:
-        print("Popping the following loaves:", job_ids)
         for jid in job_ids:
             self.lan.q.removeJob(jid)
-            print("pop", jid)
 
     # --------- AbstractQueue implementation --------
 

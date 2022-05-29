@@ -1,3 +1,17 @@
+:root {
+    --cpq-pad: 10px;
+    --cpq-pad2: 20px;
+}
+
+#files .cpq-gjob div[title="Load"] {
+  display: none !important;
+}
+#files .cpq-gjob div[title="Load and Print"] {
+  display: none !important;
+}
+#files .cpq-gjob.fa-archive {
+  margin-right: 4px;
+}
 #tab_plugin_continuousprint .cp-header {
   display: flex;
   flex-direction: row;
@@ -14,6 +28,14 @@
 #tab_plugin_continuousprint .job.acquired .job-name {
   font-weight: bold;
 }
+#tab_plugin_continuousprint .fa-grip-vertical {
+  opacity: 0.0;
+  margin-left: 1px !important;
+}
+#tab_plugin_continuousprint *:hover > .fa-grip-vertical {
+  opacity: 0.5;
+  cursor: grab;
+}
 .themeify.discorded #tab_plugin_continuousprint .job-header,
 .themeify.cyborg #tab_plugin_continuousprint .job-header,
 .themeify.discoranged #tab_plugin_continuousprint .job-header,
@@ -21,11 +43,11 @@
   background-color: #222 !important;
 }
 #tab_plugin_continuousprint .queue-list {
-  border-radius: 10px;
+  border-radius: var(--cpq-pad);
   min-height: 100px;
   border-top: 1px #e5e5e5 solid;
   border-bottom: 1px #e5e5e5 solid;
-  padding: 10px 0px;
+  padding: var(--cpq-pad) 0px;
 }
 #tab_plugin_continuousprint .accordion-heading, {
   width:100%;
@@ -46,14 +68,23 @@
 #tab_plugin_continuousprint .job {
   position: relative;
 }
+#tab_plugin_continuousprint .job.draft {
+  border: 3px solid #e5e5e5;
+}
+#tab_plugin_continuousprint .job.draft .job_gutter {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  padding-right: var(--cpq-pad);
+}
 #tab_plugin_continuousprint .job .floatedit {
   position: absolute;
-  top: 15px;
-  right: 15px;
+  top: var(--cpq-pad2);
+  right: var(--cpq-pad2);
   opacity: 0.0;
   z-index: 1000;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--cpq-pad);
   border: 1px #e5e5e5 solid;
   background-color: white;
 }
@@ -71,7 +102,7 @@
   border-right: 0px;
 }
 #tab_plugin_continuousprint .queue-row-container > *, #settings_continuousprint_queues .queue-row-container > * {
-  margin-left: 10px;
+  margin-left: var(--cpq-pad);
   margin-bottom: 0;
   line-height: 1.6;
 }
@@ -88,7 +119,7 @@
   display: flex; /* allow for stacking progresses in jobs */
 }
 #tab_plugin_continuousprint .accordion-heading-button {
-  padding: 8px 15px; /* copied from .octoprint-container .accordion-heading .accordion-heading-button > a */
+  padding: var(--cpq-pad) var(--cpq-pad);
 }
 #tab_plugin_continuousprint .accordion-heading-button input {
   margin-top: -2px;
@@ -110,7 +141,7 @@
   display: flex;
   justify-content: space-between;
   font-weight: bold;
-  padding: 0px 8px 0 28px;
+  padding: var(--cpq-pad) 8px 0 28px;
   opacity: 0.5;
 }
 #tab_plugin_continuousprint .repeats {
@@ -119,12 +150,12 @@
 }
 #tab_plugin_continuousprint .queue-header > div, #settings_continuousprint_queues .queue-header > div {
   text-align: center;
-  margin-left: 10px;
+  margin-left: var(--cpq-pad);
 }
 #tab_plugin_continuousprint #queue_sets.empty {
   border: 1px #e5e5e5 solid; /* copy from .accordion-group */
-  padding: 15px;
-  border-radius: 10px;
+  padding: var(--cpq-pad);
+  border-radius: var(--cpq-pad);
 }
 #tab_plugin_continuousprint .accordion-body.collapse {
   /* Transitions copied from div#files.accordion-body.collapse */
@@ -304,10 +335,6 @@
   justify-content: space-between;
   padding: 0px 44px 0px 32px;
   flex-direction: row;
-}
-
-#tab_plugin_continuousprint .entry.success {
-  opacity: 0.5;
 }
 
 #tab_plugin_continuousprint .header {

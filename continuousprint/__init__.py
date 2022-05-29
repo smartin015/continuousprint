@@ -155,6 +155,7 @@ class ContinuousprintPlugin(
                         self._on_queue_update,
                         self._fileshare,
                         self._printer_profile,
+                        self._path_on_disk,
                     )
                     lq.connect()
                     self.q.add(q.name, lq)
@@ -311,7 +312,6 @@ class ContinuousprintPlugin(
             if name != "archive"
         ]
         qs.sort(key=lambda q: q["rank"])
-        print([(q["name"], q["rank"]) for q in qs])
 
         active = self.d.state != self.d._state_inactive if hasattr(self, "d") else False
         resp = {
@@ -348,6 +348,7 @@ class ContinuousprintPlugin(
                     self._on_queue_update,
                     self._fileshare,
                     self._printer_profile,
+                    self._path_on_disk,
                 )  # TODO specify strategy
                 lq.connect()
                 self.q.add(a["name"], lq)

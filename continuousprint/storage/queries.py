@@ -22,7 +22,7 @@ def releaseJob(j) -> bool:
     return True
 
 
-def importJob(qname, manifest, dirname: Path):
+def importJob(qname, manifest: dict, dirname: str):
     q = Queue.get(name=qname)
 
     # Manifest may have "remaining" values set incorrectly for new job; ensure
@@ -35,7 +35,7 @@ def importJob(qname, manifest, dirname: Path):
     j.save()
     for s in j.sets:
         # Prepend new folder as initial path is relative to root
-        s.path = str(dirname / s.path)
+        s.path = str(Path(dirname) / s.path)
         s.remaining = s.count
         s.sd = False
         s.id = None
@@ -131,7 +131,11 @@ def _upsertSet(set_id, data, job):
     try:
         s = Set.get(id=set_id)
     except Set.DoesNotExist:
-        s = Set(id=set_id)
+        # This can happen when dragging a set between two draft jobs, and saving
+        # the source job (which deletes the source job's set).
+        # In that case the ID doesn't matter as much as the existence of the set.
+        # We use placeholder values here as all will be set later in the upsert.
+        s = Set.create(path="", sd=False, job=job, rank=0)
     for k, v in data.items():
         if k in (
             "id",
@@ -143,7 +147,6 @@ def _upsertSet(set_id, data, job):
             continue
         setattr(s, k, v)
     s.job = job
-
     s.material_keys = ",".join(data.get("materials", ""))
     s.profile_keys = ",".join(data.get("profiles", ""))
 
@@ -192,8 +195,9 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             for s in j.sets:
                 if s.id not in set_ids:
                     s.delete_instance()
-            # Update new sets
-            for s in data["sets"]:
+            # Update new sets and ensure proper order
+            for i, s in enumerate(data["sets"]):
+                s["rank"] = float(i)
                 _upsertSet(s["id"], s, j)
         return Job.get(id=job_id).as_dict()
 
