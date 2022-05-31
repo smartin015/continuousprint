@@ -13,7 +13,7 @@ class CPAPI {
     this.loading = loading_vm;
   }
 
-  _call_base(url, data, cb, blocking=true) {
+  _call_base(url, data, cb, err_cb=undefined, blocking=true) {
     let self = this;
     if (blocking) {
       if (self.loading()) {
@@ -34,18 +34,21 @@ class CPAPI {
           if (blocking) {
             self.loading(false);
           }
+        },
+        error: (xhr,  textstatus, errThrown) => {
+          err_cb && err_cb(xhr.status, errThrown);
         }
     });
   }
 
-  _call(type, method, data, cb, blocking=true) {
-    return this._call_base(`${this.BASE}/${type}/${method}`, data, cb, blocking);
+  _call(type, method, data, cb, err_cb=undefined, blocking=true) {
+    return this._call_base(`${this.BASE}/${type}/${method}`, data, cb, err_cb, blocking);
   }
 
-  get(type, cb) {
+  get(type, cb, err_cb=undefined) {
     // History fetching doesn't mess with mutability
     let blocking = (type !== this.HISTORY);
-    this._call(type, 'get', undefined, cb, blocking);
+    this._call(type, 'get', undefined, cb, err_cb, blocking);
   }
 
   add(type, data, cb) {
@@ -81,8 +84,8 @@ class CPAPI {
     this._call(type, 'import', data, cb);
   }
 
-  getSpoolManagerState(cb) {
-    this._call_base("plugin/SpoolManager/loadSpoolsByQuery?from=0&to=1000000&sortColumn=displayName&sortOrder=desc&filterName=&materialFilter=all&vendorFilter=all&colorFilter=all", undefined, cb, false);
+  getSpoolManagerState(cb, err_cb) {
+    this._call_base("plugin/SpoolManager/loadSpoolsByQuery?from=0&to=1000000&sortColumn=displayName&sortOrder=desc&filterName=&materialFilter=all&vendorFilter=all&colorFilter=all", undefined, cb, err_cb, false);
   }
 
   setActive(active, cb) {

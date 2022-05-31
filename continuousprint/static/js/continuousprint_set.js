@@ -123,11 +123,19 @@ function CPSet(data, job, api, profile) {
   // ==== Mutation methods ====
 
   self.set_material = function(t, v) {
+    console.log(t,v);
+    if (v === "Any") {
+      v = '';
+    }
     let mats = self.mats();
     while (t >= mats.length) {
       mats.push('');
     }
     mats[t] = v;
+    // Discard empties
+    while (mats.length > 0 && mats[mats.length-1] == '') {
+      mats.pop();
+    }
     self.mats(mats);
   }
 }

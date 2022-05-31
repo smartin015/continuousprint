@@ -13,11 +13,41 @@
 #files .cpq-gjob.fa-archive {
   margin-right: 4px;
 }
+
+#state span.ERROR {
+	background-color: rgba(255, 0, 0, 0.6);
+	border-radius: var(--cpq-pad);
+	padding: var(--cpq-pad);
+}
+#state span.NEEDS_ACTION {
+	animation: pulse 2.5s infinite;
+	border-radius: var(--cpq-pad);
+	padding: var(--cpq-pad);
+}
+
+@keyframes pulse {
+	0% {
+  	background-color: rgba(255, 150, 0, 0.3);
+	}
+
+	50% {
+  	background-color: rgba(255, 150, 0, 0.8);
+	}
+
+	100% {
+  	background-color: rgba(255, 150, 0, 0.3);
+	}
+}
+
 #tab_plugin_continuousprint .cpq-leftpad {
   margin-left: var(--cpq-pad);
 }
 #continuousprint_tab_queues > div {
   margin-bottom: 50px;
+}
+#tab_plugin_continuousprint #queue_sets.draft.highlight, #tab_plugin_continuousprint .queue-list > .highlight {
+  border: 3px #77a4ff solid !important;
+  min-height: 100px;
 }
 #tab_plugin_continuousprint .cp-header {
   display: flex;
@@ -27,6 +57,12 @@
 }
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
+}
+#tab_plugin_continuousprint .profile-select {
+  /* Match the style of Bootstrap labels */
+  height: 20px;
+  width: 60px;
+  margin-bottom: 0px;
 }
 #tab_plugin_continuousprint .job.acquired .job-name {
   font-weight: bold;
@@ -189,7 +225,7 @@
   opacity: 0.7;
 }
 #tab_plugin_continuousprint #queue_sets.empty.draft::before {
-  content: "Hint: Click the + button on a file, or drag a queue item here";
+  content: "Hint: Click the + button on a file, or drag in a set from another job in edit mode.";
   font-weight: italic;
   font-size: 85%;
   opacity: 0.7;

@@ -80,7 +80,7 @@ class AbstractEditableQueue(AbstractQueue):
     """Some queues (e.g. local to a single printer) are directly editable."""
 
     @abstractmethod
-    def add_job(self) -> JobView:
+    def add_job(self, name="") -> JobView:
         pass
 
     @abstractmethod

@@ -20,13 +20,13 @@ markdown_extensions:
   - admonition
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - GCODE Scripting: gcode-scripting.md
-  - Advanced Queuing: advanced-queuing.md
-  - Job Files: job-files.md
-  - Failure Recovery: failure-recovery.md
-  - LAN Queues: lan-queues.md
-  - Material Selection: material-selection.md
-  - Profile Selection: printer-profiles.md
-  - Contributing: contributing.md
-  - API: api.md
+  - 'getting-started.md'
+  - 'gcode-scripting.md'
+  - 'advanced-queuing.md'
+  - 'job-files.md'
+  - 'failure-recovery.md'
+  - 'lan-queues.md'
+  - 'material-selection.md'
+  - 'printer-profiles.md'
+  - 'contributing.md'
+  - 'api.md'

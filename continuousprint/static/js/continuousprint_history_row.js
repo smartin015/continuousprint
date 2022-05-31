@@ -37,12 +37,12 @@ function CPHistoryRow(data) {
     if (result !== null && result !== undefined) {
       return result;
     }
-    return "started";
+    return "in progress";
   });
   self.icon_class = ko.computed(function() {
     let r = self.result();
     switch (r) {
-      case "started":
+      case "in progress":
         return "fas fa-cube";
       case "aborted":
         return "fa fa-exclamation-triangle";

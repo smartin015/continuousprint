@@ -138,6 +138,8 @@ class ContinuousprintPlugin(
             self._logger.error(f"Could not migrate old json state: {state_data}")
             self._logger.error(traceback.format_exc())
 
+        queries.clearOldState()
+
         self._printer_profile = PRINTER_PROFILES[
             self._get_key(data.Keys.PRINTER_PROFILE)
         ]
@@ -285,13 +287,18 @@ class ContinuousprintPlugin(
         if self._spool_manager is not None:
             # We need *all* selected spools for all tools, so we must look it up from the plugin itself
             # (event payload also excludes color hex string which is needed for our identifiers)
-            materials = self._spool_manager.api_getSelectedSpoolInformations()
-            materials = [
-                f"{m['material']}_{m['colorName']}_{m['color']}"
-                if m is not None
-                else None
-                for m in materials
-            ]
+            try:
+                materials = self._spool_manager.api_getSelectedSpoolInformations()
+                materials = [
+                    f"{m['material']}_{m['colorName']}_{m['color']}"
+                    if m is not None
+                    else None
+                    for m in materials
+                ]
+            except Exception:
+                self._logger.warning(
+                    "SpoolManager getSelectedSpoolInformations() returned error; skipping material assignment"
+                )
 
         if self.d.action(a, p, path, materials):
             self._sync_state()
@@ -318,6 +325,7 @@ class ContinuousprintPlugin(
             "active": active,
             "profile": self._get_key(Keys.PRINTER_PROFILE),
             "status": "Initializing" if not hasattr(self, "d") else self.d.status,
+            "statusType": "INIT" if not hasattr(self, "d") else self.d.status_type.name,
             "queues": qs,
         }
         return json.dumps(resp)

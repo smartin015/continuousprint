@@ -52,7 +52,8 @@ class LocalQueue(AbstractEditableQueue):
             return False
 
         has_work = self.set.decrement()
-        if has_work:
+        earliest_job = self.queries.getNextJobInQueue(self.ns, self._profile)
+        if has_work and earliest_job == self.job and self.job.acquired:
             self.set = self.job.next_set(self._profile)
             return True
         else:
@@ -82,8 +83,8 @@ class LocalQueue(AbstractEditableQueue):
 
     # -------------- begin AbstractEditableQueue -----------
 
-    def add_job(self) -> JobView:
-        return self.queries.newEmptyJob(self.ns)
+    def add_job(self, name="") -> JobView:
+        return self.queries.newEmptyJob(self.ns, name)
 
     def add_set(self, job_id, data) -> SetView:
         return self.queries.appendSet(self.ns, job_id, data)
@@ -115,7 +116,7 @@ class LocalQueue(AbstractEditableQueue):
             suffix=".gjob", dir=dest_dir, delete=False
         ) as tf:
             pack_job(j.as_dict(), filepaths, tf.name)
-            path = str(Path(dest_dir) / packed_name(j.name))
+            path = packed_name(j.name, dest_dir)
             os.rename(tf.name, path)
             return path
 

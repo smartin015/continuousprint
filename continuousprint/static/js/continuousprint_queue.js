@@ -33,14 +33,15 @@ function CPQueue(data, api, files, profile) {
       let pkeys = Object.keys(data.peers);
       if (pkeys.length === 0) {
         self.details(`(connecting...)`);
+        self.fullDetails('Searching for other printers with this queue\non the local network - this could take up to a minute');
       } else {
-        self.details(`(${pkeys.length-1} peer${(pkeys.length != 2) ? 's' : ''})`);
+        self.details(`(${pkeys.length} printer${(pkeys.length != 1) ? 's' : ''})`);
+        let fd = 'Connected printers:';
+        for (let p of pkeys) {
+          fd += `\n${data.peers[p].name} (${p}): ${data.peers[p].status}`;
+        }
+        self.fullDetails(fd);
       }
-      let fd = '';
-      for (let p of pkeys) {
-        fd += `\n${data.peers[p].name} (${p}): ${data.peers[p].status}`;
-      }
-      self.fullDetails(fd);
     }
 
     self.batchSelectBase = function(mode) {
@@ -179,8 +180,22 @@ function CPQueue(data, api, files, profile) {
       });
     };
 
+    self._uniqueJobName = function() {
+      let names = new Set();
+      for (let j of self.jobs()) {
+        names.add(j._name());
+      }
+      let i = 0;
+      let result;
+      do {
+        i++;
+        result = "Job " + i;
+      } while (i < 100 && names.has(result));
+      return result;
+    };
+
     self.newEmptyJob = function() {
-        self.api.add(self.api.JOB, {}, (result) => {
+        self.api.add(self.api.JOB, {name: self._uniqueJobName()}, (result) => {
           self.jobs.push(new CPJob(result, data.peers, self.api, profile));
         });
     };
@@ -202,24 +217,27 @@ function CPQueue(data, api, files, profile) {
         let job = null;
         for (let j of self.jobs()) {
           if (j.draft()) {
-            job = j.id();
+            job = j;
             break;
           }
         }
-        self.api.add(self.api.SET, {
+
+        let set_data = {
             name: data.name,
             path: data.path,
             sd: (data.origin !== "local"),
             count: 1,
-            job,
-        }, (response) => {
-          // Take the updated job ID and set and merge it into the nested arrays
-          for (let j of self.jobs()) {
-            if (j.id() === response.job_id) {
-              return j.onSetModified(response.set_);
-            }
-          }
-          return self.jobs.push(new CPJob({id: response.job_id, name: job, count: 1, sets: [response.set_]}, data.peers, self.api, profile));
+        };
+
+        // Adding to a draft job does not invoke the API
+        if (job !== null) {
+          return job.onSetModified(set_data);
+        }
+        set_data['jobName'] = self._uniqueJobName();
+        set_data['job'] = null;
+        // Invoking API causes a new job to be created
+        self.api.add(self.api.SET, set_data, (response) => {
+          return self.jobs.push(new CPJob({id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]}, data.peers, self.api, profile));
         });
     };
 

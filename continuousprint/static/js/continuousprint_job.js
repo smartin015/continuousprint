@@ -20,7 +20,10 @@ function CPJob(obj, peers, api, profile) {
   }
   var self = this;
 
-  obj = {...{sets: [], name: "", draft: false, count: 1, remaining: 1, queue: "default", id: -1}, ...obj};
+  obj = {...{sets: [], name: "", draft: false, count: 1, queue: "default", id: -1}, ...obj};
+  if (obj.remaining === undefined) {
+    obj.remaining = obj.count;
+  }
   self.id = ko.observable(obj.id);
   self._name = ko.observable(obj.name || "");
 
@@ -125,7 +128,7 @@ function CPJob(obj, peers, api, profile) {
     return Math.round(100 / self.count()) + '%';
   });
   self.onChecked = function(sel) {
-    if (self.draft()) {
+    if (self.draft() || self.acquiredBy()) {
       return;
     }
     if (sel !== undefined) {
@@ -133,6 +136,10 @@ function CPJob(obj, peers, api, profile) {
     } else {
       self.selected(!self.selected());
     }
+  }
+  self.onEnter = function(d, e) {
+    e.keyCode === 13 && self.editEnd();
+    return true;
   }
 }
 

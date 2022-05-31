@@ -139,14 +139,6 @@
                     originalIndex = fromArray.indexOf(itemVM),
                     newIndex = e.newIndex;
 
-                // We have to find out the actual desired index of the to array,
-                // as this might be a computed array. We could otherwise potentially
-                // drop an item above the 3rd visible item, but the 2nd visible item
-                // has an actual index of 5.
-                if (e.item.previousElementSibling) {
-                    newIndex = to().indexOf(ko.dataFor(e.item.previousElementSibling)) + 1;
-                }
-
                 // Remove sortables "unbound" element
                 e.item.parentNode.removeChild(e.item);
 
@@ -157,6 +149,19 @@
                 fromArray.splice(originalIndex, 1);
                 // Update the array, this will also remove sortables "unbound" clone
                 from.valueHasMutated();
+
+
+                // We have to find out the actual desired index of the to array,
+                // as this might be a computed array. We could otherwise potentially
+                // drop an item above the 3rd visible item, but the 2nd visible item
+                // has an actual index of 5.
+                // @smartin015 2022-05-30: moved this to AFTER parentNode.removeChild as
+                // otherwise it inserts too far away from its destination when moved
+                // to the same queue (it counts its own position)
+                if (e.item.previousElementSibling) {
+                    newIndex = to().indexOf(ko.dataFor(e.item.previousElementSibling)) + 1;
+                }
+
                 var groupOption = e.groupOption;
                 // See the option at https://github.com/SortableJS/Sortable#options
                 // group: { name: 'shared', pull: 'clone' }

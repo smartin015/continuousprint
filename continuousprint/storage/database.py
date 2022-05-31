@@ -89,7 +89,7 @@ class JobView:
         return self.has_incomplete_sets() or self.remaining > 0
 
     def next_set(self, profile):
-        if self.draft:
+        if self.draft or self.queue.name == ARCHIVE_QUEUE:
             return None
         self.normalize()
         for s in self.sets:

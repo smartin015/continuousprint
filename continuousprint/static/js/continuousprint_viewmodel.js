@@ -32,6 +32,7 @@ function CPViewModel(parameters) {
     self.cpPrinterProfiles = CP_PRINTER_PROFILES;
     self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
     self.status = ko.observable("Initializing...");
+    self.statusType = ko.observable("INIT");
     self.active = ko.observable(false);
     self.active_set = ko.observable(null);
     self.loading = ko.observable(false);
@@ -73,6 +74,17 @@ function CPViewModel(parameters) {
 
     // Patch the printer state view model to display current status
     self.printerState.continuousPrintStateString = ko.observable("");
+    self.printerState.continuousPrintStateStatus = ko.observable("");
+    self.printerState.continuousPrintStateIcon = ko.computed(function() {
+      switch(self.printerState.continuousPrintStateStatus()) {
+        case "NEEDS_ACTION":
+          return "fas fa-hand-paper";
+        case "ERROR":
+          return "far fa-exclamation-triangle";
+        default:
+          return "";
+      }
+    });
 
     self._loadState = function(state) {
         self.log.info(`[${self.PLUGIN_ID}] loading state...`);
@@ -86,8 +98,12 @@ function CPViewModel(parameters) {
       // replacing them
       let selections = {};
       let expansions = {};
+      let drafts = {}
       for (let q of self.queues()) {
         for (let j of q.jobs()) {
+          if (j.draft()) {
+            drafts[j.id().toString()] = j;
+          }
           if (j.selected()) {
             selections[j.id().toString()] = true;
           }
@@ -106,7 +122,16 @@ function CPViewModel(parameters) {
           }
         }
         let cpq = new CPQueue(q, self.api, self.files, self.profile);
-        console.log(cpq.name);
+
+        // Replace draft entries
+        let cpqj = cpq.jobs();
+        for (let i = 0; i < q.jobs.length; i++) {
+          let draft = drafts[cpqj[i].id()];
+          if (draft !== undefined) {
+            cpq.jobs.splice(i, 1, draft);
+            console.log("Splicing draft job", draft);
+          }
+        }
         result.push(cpq);
         if (cpq.name === 'local') {
           self.defaultQueue = cpq;
@@ -121,8 +146,10 @@ function CPViewModel(parameters) {
         self.active(state.active);
         self.active_set(state.active_set);
         self.status(state.status);
+        self.statusType(state.statusType);
         self.profile(state.profile);
         self.printerState.continuousPrintStateString(state.status);
+        self.printerState.continuousPrintStateStatus(state.statusType);
         //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
@@ -140,26 +167,53 @@ function CPViewModel(parameters) {
       }
     };
 
-    self.sortStart = function(evt) {
+    self.draggingSet = ko.observable();
+    self.draggingJob = ko.observable();
+    self.sortStart = function(evt, vm) {
       // Faking server disconnect allows us to disable the default whole-page
       // file drag and drop behavior.
       self.files.onServerDisconnect();
+      self.draggingSet(vm.constructor.name === "CPSet");
+      self.draggingJob(vm.constructor.name === "CPJob");
+      console.log("draggingJob", self.draggingJob());
     };
 
-    self.sortEnd = function(evt, e) {
+    self.sortEnd = function(evt, vm, src) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
+      self.draggingSet(false);
+      self.draggingJob(false);
+
+      // If we're dragging a job out of the local queue and into a network queue,
+      // we must warn the user about the irreversable action before making the change.
+      // This fully replaces the default sort action
+      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
+        let targetQueue = ko.dataFor(evt.to);
+        // Undo the move done by CPSortable and trigger updates
+        // This is inefficient (i.e. could instead prevent the transfer) but that
+        // would require substantial edits to the CPSortable library.
+        targetQueue.jobs.splice(evt.newIndex, 1);
+        src.jobs.splice(evt.oldIndex, 0, vm);
+        src.jobs.valueHasMutated();
+        targetQueue.jobs.valueHasMutated();
+
+        return self.showSubmitJobDialog(vm, targetQueue);
+      }
+
       // Sadly there's no "destination job" information, so we have to
       // infer the index of the job based on the rendered HTML given by evt.to
-      if (e.constructor.name === "CPJob") {
+      if (vm.constructor.name === "CPJob") {
         let jobs = self.defaultQueue.jobs();
-        let dest_idx = jobs.indexOf(e);
+        let dest_idx = jobs.indexOf(vm);
+
+        let ids = []
+        for (let j of jobs) {
+          ids.push(j.id());
+        }
         self.api.mv(self.api.JOB, {
-            id: e.id,
+            id: vm.id(),
             after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
-        }, (result) => {
-          console.log(result);
-        });
+        }, (result) => {});
       }
     };
 
@@ -172,11 +226,6 @@ function CPViewModel(parameters) {
       if (evt.from.id === "queue_sets" && !evt.to.classList.contains("draft")) {
         return false;
       }
-      // Draft jobs can only be dragged within the local queue
-      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
-        return false;
-      }
-
       return true;
     };
 
@@ -231,6 +280,7 @@ function CPViewModel(parameters) {
         }
     };
 
+    self.hasSpoolManager = ko.observable(false);
     self.badMaterialCount = ko.observable(0);
     self.api.getSpoolManagerState(function(resp) {
       let result = {};
@@ -245,13 +295,35 @@ function CPViewModel(parameters) {
       }
       self.materials(Object.values(result));
       self.badMaterialCount(nbad);
+      console.log("has spool manz");
+      self.hasSpoolManager(true);
+    }, function(statusCode, errText) {
+      console.log(statusCode);
+      self.hasSpoolManager(statusCode !== 404);
     });
 
-    self.submitJob = function(vm) {
-      for (let id of self.defaultQueue._getSelections().job_ids) {
-        self.api.submit(self.api.JOB, {id, queue: vm.name}, self._setState);
+
+		self.dialog = $("#cpq_submitDialog");
+		self.jobSendDetails = ko.observable();
+    self.jobSendTitle = ko.computed(function() {
+      let details = self.jobSendDetails();
+      if (details === undefined) {
+        return "";
       }
+      return `Send ${details[0]._name()} to ${details[1].name}?`;
+    });
+    self.submitJob = function() {
+      let details = self.jobSendDetails();
+      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, self._setState);
+			self.dialog.modal('hide');
     }
+		self.showSubmitJobDialog = function(job, queue) {
+      self.jobSendDetails([job, queue]);
+			self.dialog.modal({}).css({
+					width: 'auto',
+					'margin-left': function() { return -($(this).width() /2); }
+			});
+		}
 
     /* ===== History Tab ===== */
     self.history = ko.observableArray();
@@ -274,7 +346,6 @@ function CPViewModel(parameters) {
       self.history(result);
     };
     self.refreshHistory = function() {
-      console.log("Loading history...");
       self.api.get(self.api.HISTORY, self._setHistory);
     };
     self.clearHistory = function() {

@@ -1,4 +1,4 @@
-# Contributor Guide
+# Contributing
 
 Follow these steps if you'd like to set up a development environment for contributing changes back to Continuous Print.
 

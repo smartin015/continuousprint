@@ -196,6 +196,19 @@
       <p>
         Read <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">this guide</a> to learn how to best configure network queues.
       </p>
+      <div class="alert alert-error" data-bind="hidden: allValidQueueAddr">
+        <p>
+        <i class="fas fa-exclamation-circle"></i> One or more queues have an invalid address configured.
+        </p>
+        <p>
+        All queues (other than the local queue) must have an address of the form <i>hostname:port</i>, with a port value of 5000 or higher.
+        </p>
+      </div>
+      <div class="alert alert-error" data-bind="hidden: allValidQueueNames">
+        <p>
+        <i class="fas fa-exclamation-circle"></i> One or more queues needs a name.
+        </p>
+      </div>
       <div class="queue-header">
         <div style="text-align: center; flex: 1">Name</div>
         <div style="text-align: center; width: 180px">Hostname:Port</div>
@@ -206,10 +219,10 @@
         <div class="queue-row-container">
             <i class="fas fa-grip-lines-vertical"></i>
             <div style="flex:1">
-              <input type="text" style="width:90%" data-bind="value: name, disable: name === 'local'" placeholder="e.g. LAN"></input>
+            <input type="text" style="width:90%" data-bind="value: name, disable: name === 'local', event: {change: $root.queueChanged}" placeholder="e.g. LAN"></input>
             </div>
             <div style="width: 180px">
-              <input type="text" style="width:90%" data-bind="value: addr, hidden: name === 'local'" placeholder="e.g. 0.0.0.0:6789"></input>
+            <input type="text" style="width:90%" data-bind="value: addr, hidden: name === 'local', event: {change: $root.queueChanged}" placeholder="e.g. 0.0.0.0:6789"></input>
             </div>
             <div style="width: 180px">
               <select data-bind="value: strategy" style="width: 100%">

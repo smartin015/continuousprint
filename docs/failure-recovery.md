@@ -1,5 +1,7 @@
 # Failure Recovery
 
+**Failure recovery lets your printer use [Obico](http://obico.io) to retry prints when they start to fail.**
+
 Sometimes, printers don't do what they're told.
 
 Follow the steps in this guide to help Continuous Print recover from unexpected printing behavior.

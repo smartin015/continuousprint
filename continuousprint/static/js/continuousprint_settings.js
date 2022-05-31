@@ -32,6 +32,13 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
       self.scripts[s.name] = s.gcode;
     }
 
+    // Patch the settings viewmodel to allow for us to block saving when validation has failed.
+    // As of 2022-05-31, 'exchanging()' is only used for display and not for logic.
+    self.settings.exchanging_orig = self.settings.exchanging;
+    self.settings.exchanging = ko.pureComputed(function () {
+        return self.settings.exchanging_orig() || !self.allValidQueueNames() || !self.allValidQueueAddr();
+    });
+
     // Queues are stored in the DB; we must fetch them.
     self.queues = ko.observableArray();
     self.queue_fingerprint = null;
@@ -78,6 +85,33 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.rmQueue = function(q) {
       self.queues.remove(q);
     }
+    self.queueChanged = function() {
+      self.queues.valueHasMutated();
+    }
+    self.allValidQueueAddr = ko.computed(function() {
+      for (let q of self.queues()) {
+        if (q.name === 'local') {
+          continue;
+        }
+        let sp = q.addr.split(':');
+        if (sp.length !== 2) {
+          return false;
+        }
+        let port = parseInt(sp[1]);
+        if (isNaN(port) || port < 5000) {
+          return false;
+        }
+      }
+      return true;
+    });
+    self.allValidQueueNames = ko.computed(function() {
+      for (let q of self.queues()) {
+        if (q.name.trim() === '') {
+          return false;
+        }
+      }
+      return true;
+    });
 
     // Called automatically by SettingsViewModel
     self.onSettingsShown = function() {

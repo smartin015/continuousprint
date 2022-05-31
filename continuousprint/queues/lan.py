@@ -77,7 +77,6 @@ class LANQueue(AbstractJobQueue):
         manifest = j.as_dict()
         if manifest.get("created") is None:
             manifest["created"] = int(time.time())
-
         # Note: postJob strips fields from manifest in-place
         hash_ = self._fileshare.post(manifest, filepaths)
         self.lan.q.setJob(hash_, manifest)

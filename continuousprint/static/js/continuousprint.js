@@ -28,7 +28,14 @@ $(function() {
         $("#files_template_machinecode").text(mctmpl.html());
 
         // This injects the status of the queue into PrinterStateViewModel (the "State" panel)
-        $("#state .accordion-inner").prepend('<div title="Continuous Print Queue State">Queue: <strong data-bind="text: continuousPrintStateString"></strong></div>');
+        $("#state .accordion-inner").prepend(`
+          <div title="Continuous Print Queue State">
+            Queue:
+            <span data-bind="css: continuousPrintStateStatus">
+                <i data-bind="css: continuousPrintStateIcon, visible: continuousPrintStateIcon"></i>
+                <strong data-bind="text: continuousPrintStateString"></strong>
+            </span>
+          </div>`);
     });
 
     OCTOPRINT_VIEWMODELS.push({

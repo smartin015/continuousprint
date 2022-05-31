@@ -8,6 +8,13 @@ from pathlib import Path
 from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 
 
+def clearOldState():
+    # On init, scrub the local DB for any state that may have been left around
+    # due to an improper shutdown
+    Job.update(acquired=False).execute()
+    Run.update(end=datetime.now(), result="aborted").where(Run.end.is_null()).execute()
+
+
 def getQueues():
     return Queue.select().order_by(Queue.rank.asc())
 
@@ -302,6 +309,10 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
             j = newEmptyJob(q)
     except Job.DoesNotExist:
         j = newEmptyJob(q)
+    print("jobName", data.get("jobName"))
+    if data.get("jobName") is not None:
+        j.name = data["jobName"]
+        j.save()
 
     count = int(data["count"])
     s = Set.create(
@@ -325,12 +336,13 @@ def remove(queue_ids: list = [], job_ids: list = [], set_ids: list = []):
                 Queue.delete().where(Queue.id.in_(queue_ids)).execute()
             )
 
+        # Jobs aren't actually deleted- they go to an archive instead
         q = Queue.get(name="archive")
-
         if len(job_ids) > 0:
             result["jobs_deleted"] = (
                 Job.update(queue=q).where(Job.id.in_(job_ids)).execute()
             )
+
         # Only delete sets if we haven't already archived their job
         if len(set_ids) > 0:
             result["sets_deleted"] = (

@@ -17,6 +17,12 @@ class Printer(Enum):
     BUSY = auto()
 
 
+class StatusType(Enum):
+    NORMAL = auto()
+    NEEDS_ACTION = auto()
+    ERROR = auto()
+
+
 # Inspired by answers at
 # https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
 def timeAgo(elapsed):
@@ -37,6 +43,7 @@ class Driver:
     ):
         self._logger = logger
         self.status = None
+        self.status_type = StatusType.NORMAL
         self._set_status("Initializing")
         self.q = queue
         self.state = self._state_unknown
@@ -115,7 +122,8 @@ class Driver:
             cur = self._cur_materials[i] if i < len(self._cur_materials) else None
             if im != cur:
                 self._set_status(
-                    f"Waiting for spool {im} in tool {i} (currently: {cur})"
+                    f"Waiting for spool {im} in tool {i} (currently: {cur})",
+                    StatusType.NEEDS_ACTION,
                 )
                 return
 
@@ -126,11 +134,12 @@ class Driver:
             # TODO bail out of the job and mark it as bad rather than dropping into inactive state
             self.start_failures += 1
             if self.start_failures >= self.max_startup_attempts:
-                self._set_status("Failed to start; too many attempts")
+                self._set_status("Failed to start; too many attempts", StatusType.ERROR)
                 return self._state_inactive
             else:
                 self._set_status(
-                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})"
+                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
+                    StatusType.ERROR,
                 )
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
@@ -145,13 +154,17 @@ class Driver:
                 return self._state_spaghetti_recovery
             else:
                 self._set_status(
-                    f"Paused after {timeAgo(elapsed)} (>{timeAgo(self.retry_threshold_seconds)}); awaiting user"
+                    f"Paused after {timeAgo(elapsed)} (>{timeAgo(self.retry_threshold_seconds)}); awaiting user",
+                    StatusType.NEEDS_ACTION,
                 )
                 return self._state_paused
         elif a == Action.SUCCESS:
             item = self.q.get_set()
 
-            if item.path == self._cur_path:
+            # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
+            # the file name, not the full path to the file.
+            # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterCallback.on_printer_send_current_data
+            if item.path.split("/")[-1] == self._cur_path:
                 return self._state_success
             else:
                 self._logger.info(
@@ -163,20 +176,22 @@ class Driver:
             item = self.q.get_set()
             if item is not None:
                 self._set_status("Printing")
+            else:
+                self._set_status("Waiting for printer to be ready")
         elif p == Printer.PAUSED:
             return self._state_paused
         elif p == Printer.IDLE:  # Idle state without event; assume success
             return self._state_success
 
     def _state_paused(self, a: Action, p: Printer):
-        self._set_status("Queue paused")
+        self._set_status("Paused", StatusType.NEEDS_ACTION)
         if a == Action.DEACTIVATE or p == Printer.IDLE:
             return self._state_inactive
         elif p == Printer.BUSY:
             return self._state_printing
 
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
-        self._set_status("Cancelling print (spaghetti seen early in print)")
+        self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
             self._runner.cancel_print()
             return self._state_failure
@@ -222,7 +237,7 @@ class Driver:
         elif a == Action.SUCCESS:
             return self._enter_start_print(a, p)
         elif a == Action.FAILURE:
-            self._set_status("Error occurred clearing bed - aborting")
+            self._set_status("Error when clearing bed - aborting", StatusType.ERROR)
             return self._state_inactive  # Skip past failure state to inactive
 
         if p == Printer.IDLE:  # Idle state without event; assume success
@@ -249,10 +264,11 @@ class Driver:
         else:
             self._set_status("Finishing up")
 
-    def _set_status(self, status):
+    def _set_status(self, status, status_type=StatusType.NORMAL):
         if status != self.status:
             self._update_ui = True
             self.status = status
+            self.status_type = status_type
             self._logger.info(status)
 
     def set_retry_on_pause(

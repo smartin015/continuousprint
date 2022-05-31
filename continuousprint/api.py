@@ -157,7 +157,11 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.ADDJOB)
     def add_job(self):
-        return json.dumps(self._get_queue(DEFAULT_QUEUE).add_job().as_dict())
+        return json.dumps(
+            self._get_queue(DEFAULT_QUEUE)
+            .add_job(flask.request.form.get("name"))
+            .as_dict()
+        )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
@@ -196,7 +200,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         j = queries.getJob(int(flask.request.form["id"]))
         # Submit to the queue and remove from its origin
         self._get_queue(flask.request.form["queue"]).submit_job(j)
-        self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id])
+        self._logger.debug(self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id]))
         return self._state_json()
 
     # PRIVATE API METHOD - may change without warning.
