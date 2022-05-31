@@ -33,6 +33,13 @@ class TestEmptyQueue(DBTest):
         self.assertEqual(q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE), None)
         self.assertEqual(q.getAcquiredJob(), None)
 
+    def testClearOldState(self):
+        Job.create(name="j1", count=1, acquired=True, queue=1, rank=0)
+        Run.create(queueName="q", jobName="j1", path="a.gcode")
+        q.clearOldState()
+        self.assertEqual(Job.select().where(Job.acquired).count(), 0)
+        self.assertEqual(Run.select().where(Run.end.is_null()).count(), 0)
+
     def testImportJob(self):
         q.importJob(
             DEFAULT_QUEUE,

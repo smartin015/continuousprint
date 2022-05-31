@@ -116,6 +116,25 @@ class TestLocalQueue(IntegrationTest):
         self.assert_from_printing_state("j1.gcode")
         self.assert_from_printing_state("j2.gcode", finishing=True)
 
+    def test_goes_back_when_new_job_prepended(self):
+        queries.appendSet(
+            DEFAULT_QUEUE,
+            "",
+            dict(path="j1.gcode", sd=False, material="", profile="", count=1),
+        )
+        queries.appendSet(
+            DEFAULT_QUEUE,
+            "",
+            dict(path="j2.gcode", sd=False, material="", profile="", count=2),
+        )
+        queries.updateJob(2, dict(draft=False))
+
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
+        queries.updateJob(1, dict(draft=False))  # now j1 is available for prinitng
+        self.assert_from_printing_state("j2.gcode")
+        self.assert_from_printing_state("j1.gcode")
+        self.assert_from_printing_state("j2.gcode", finishing=True)
+
     def test_completes_job_in_order(self):
         queries.appendSet(
             DEFAULT_QUEUE,
@@ -176,6 +195,7 @@ class TestLANQueue(IntegrationTest):
             onupdate,
             MagicMock(),
             dict(name="profile"),
+            lambda path: path,
         )
         return lq
 
@@ -245,6 +265,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
                 onupdate,
                 MagicMock(),
                 dict(name="profile"),
+                lambda path: path,
             )
             mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
             mq.add(lq.ns, lq)

@@ -91,7 +91,8 @@ test('files.add', () => {
 
 test('sortStart turns off default drag-drop', () => {
   let v = init();
-  v.sortStart();
+  let vm = {constructor: {name: 'CPSet'}};
+  v.sortStart(undefined, vm);
   expect(v.files.onServerDisconnect).toHaveBeenCalled();
 });
 
@@ -143,23 +144,27 @@ describe('sortMove', () => {
 
 test('sortEnd job to start', () => {
   let v = init();
+  let ccont = {classList: {contains: () => true}};
+  let evt = {from: ccont, to: ccont};
   let j = v.defaultQueue.jobs()[0];
-  v.sortEnd(null, j, null);
+  v.sortEnd(evt, j, null);
   expect(v.files.onServerConnect).toHaveBeenCalled();
   expect(v.api.mv).toHaveBeenCalled();
   let data = v.api.mv.mock.calls[0][1];
-  expect(data.id).toEqual(j.id);
+  expect(data.id).toEqual(j.id());
   expect(data.after_id).toEqual(-1);
 });
 
 test('sortEnd job to end', () => {
   let v = init(njobs=2);
+  let ccont = {classList: {contains: () => true}};
+  let evt = {from: ccont, to: ccont};
   let j = v.defaultQueue.jobs()[1];
-  v.sortEnd(null, j, null);
+  v.sortEnd(evt, j, null);
   expect(v.files.onServerConnect).toHaveBeenCalled();
   expect(v.api.mv).toHaveBeenCalled();
   let data = v.api.mv.mock.calls[0][1];
-  expect(data.id).toEqual(j.id);
+  expect(data.id).toEqual(j.id());
   expect(data.after_id).toEqual(1);
 });
 

@@ -32,7 +32,7 @@ test('materials', () => {
   i.mats(['', 'PLA_black_000000']);
   let m = i.materials();
   expect(m[0].title).toBe("any");
-  expect(m[1].title).toBe("PLA black 000000");
+  expect(m[1].title).toBe("PLA (black)");
   expect(m[1].bgColor).toBe("000000");
 });
 

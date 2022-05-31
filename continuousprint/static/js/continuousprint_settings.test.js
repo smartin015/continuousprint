@@ -98,7 +98,7 @@ test('load queues', () => {
 });
 test('dirty exit commits queues', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
-  v.queues.push({name: 'asdf'});
+  v.queues.push({name: 'asdf', addr: ''});
   v.onSettingsBeforeSave();
   expect(v.api.edit).toHaveBeenCalled();
 });

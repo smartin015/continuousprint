@@ -309,7 +309,6 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
             j = newEmptyJob(q)
     except Job.DoesNotExist:
         j = newEmptyJob(q)
-    print("jobName", data.get("jobName"))
     if data.get("jobName") is not None:
         j.name = data["jobName"]
         j.save()

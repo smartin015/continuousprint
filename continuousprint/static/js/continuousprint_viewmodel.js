@@ -18,6 +18,7 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   log = {
     "getLogger": () => {return console;}
   };
+  $ = function() { return null; };
 }
 
 function CPViewModel(parameters) {

@@ -80,6 +80,7 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         self.assertEqual([self.q.get_job(), self.q.get_set()], [None, None])
 
     def test_decrement_more_work(self):
+        self.q.queries.getNextJobInQueue.return_value = self.j
         self.s.decrement.return_value = True
         self.q.decrement()
         self.s.decrement.assert_called()
