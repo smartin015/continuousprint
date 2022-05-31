@@ -13,7 +13,7 @@
     
     
       
-        <title>Contributing - Continuous Print</title>
+        <title>LAN Queues - Continuous Print</title>
       
     
     
@@ -63,7 +63,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing" class="md-skip">
+        <a href="#lan-queues" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing
+              LAN Queues
             
           </span>
         </div>
@@ -292,11 +292,107 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../lan-queues/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          LAN Queues
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         LAN Queues
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#behavior" class="md-nav__link">
+    Behavior
+  </a>
+  
+    <nav class="md-nav" aria-label="Behavior">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lan-queues-manage-jobs-not-setsfiles" class="md-nav__link">
+    LAN Queues manage Jobs, not Sets/Files
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#queue-strategies" class="md-nav__link">
+    Queue Strategies
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gcode-limitations" class="md-nav__link">
+    GCODE Limitations
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-a-lan-queue" class="md-nav__link">
+    Add a LAN queue
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#submit-a-job" class="md-nav__link">
+    Submit a job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cancel-a-job" class="md-nav__link">
+    Cancel a job
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -337,107 +433,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Contributing
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
         Contributing
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-install-octoprint-from-source" class="md-nav__link">
-    1. Install octoprint from source
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-dev-tools" class="md-nav__link">
-    2. Install dev tools
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-and-start-the-continuous-print-plugin-in-local-dev-mode" class="md-nav__link">
-    2. Install and start the continuous print plugin in local dev mode
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Install and start the continuous print plugin in local dev mode">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#editing-docs" class="md-nav__link">
-    Editing docs
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-run-unit-tests-to-verify-changes" class="md-nav__link">
-    3. Run unit tests to verify changes
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-install-a-dev-version-on-octopi" class="md-nav__link">
-    4. Install a dev version on OctoPi
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-submit-a-pull-request" class="md-nav__link">
-    5. Submit a pull request
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips-and-tricks" class="md-nav__link">
-    Tips and Tricks
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -484,30 +484,30 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-install-octoprint-from-source" class="md-nav__link">
-    1. Install octoprint from source
+  <a href="#behavior" class="md-nav__link">
+    Behavior
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-dev-tools" class="md-nav__link">
-    2. Install dev tools
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-install-and-start-the-continuous-print-plugin-in-local-dev-mode" class="md-nav__link">
-    2. Install and start the continuous print plugin in local dev mode
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Install and start the continuous print plugin in local dev mode">
+    <nav class="md-nav" aria-label="Behavior">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#editing-docs" class="md-nav__link">
-    Editing docs
+  <a href="#lan-queues-manage-jobs-not-setsfiles" class="md-nav__link">
+    LAN Queues manage Jobs, not Sets/Files
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#queue-strategies" class="md-nav__link">
+    Queue Strategies
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gcode-limitations" class="md-nav__link">
+    GCODE Limitations
   </a>
   
 </li>
@@ -518,29 +518,29 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-run-unit-tests-to-verify-changes" class="md-nav__link">
-    3. Run unit tests to verify changes
+  <a href="#setup" class="md-nav__link">
+    Setup
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-install-a-dev-version-on-octopi" class="md-nav__link">
-    4. Install a dev version on OctoPi
+  <a href="#add-a-lan-queue" class="md-nav__link">
+    Add a LAN queue
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-submit-a-pull-request" class="md-nav__link">
-    5. Submit a pull request
+  <a href="#submit-a-job" class="md-nav__link">
+    Submit a job
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#tips-and-tricks" class="md-nav__link">
-    Tips and Tricks
+  <a href="#cancel-a-job" class="md-nav__link">
+    Cancel a job
   </a>
   
 </li>
@@ -559,94 +559,75 @@
                 
 
 
-<h1 id="contributing">Contributing</h1>
-<p>Follow these steps if you'd like to set up a development environment for contributing changes back to Continuous Print.</p>
-<p>If you just want to run the plugin, see <a href="/getting-started/">Getting Started</a>.</p>
-<p><em>This guide is based on the <a href="https://docs.octoprint.org/en/master/plugins/gettingstarted.html">octoprint plugin quickstart guide</a></em></p>
-<h2 id="1-install-octoprint-from-source">1. Install octoprint from source</h2>
-<p>Install octoprint locally:</p>
-<pre><code class="language-shell">git clone https://github.com/OctoPrint/OctoPrint
-cd OctoPrint
-virtualenv venv
-source venv/bin/activate
-pip install -e .
-</code></pre>
-<h2 id="2-install-dev-tools">2. Install dev tools</h2>
+<h1 id="lan-queues">LAN Queues</h1>
+<p><strong>A LAN queue is a local network queue that multiple 3D printers print from.</strong></p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>Perform this step <strong>in a different terminal</strong> - NOT using the venv we set up for OctoPrint. The
-dev dependencies are known to conflict with OctoPrint's dependencies and can break your OctoPrint installation.</p>
+<p>This feature is only available in <code>v2.0.0</code> or higher.</p>
 </div>
-<p>It is recommended to <a href="https://docs.github.com/en/get-started/quickstart/fork-a-repo">fork</a> this repository so that it's easier to submit your changes back to the main repo later (see "Submit a pull request" below).</p>
-<pre><code>git clone https://github.com/smartin015/continuousprint.git
-cd continuousprint
-pip install -r dev-dependencies.txt
-pre-commit install
-</code></pre>
-<p>You can verify good installation by running <code>pre-commit run --all-files</code>. If everything passes, you're good to go.</p>
-<h2 id="2-install-and-start-the-continuous-print-plugin-in-local-dev-mode">2. Install and start the continuous print plugin in local dev mode</h2>
-<p>In the same terminal as the one where you activated the environment (see step 1), install the plugin in dev mode and launch the server:</p>
-<pre><code class="language-shell">cd ../continuousprint
-octoprint dev plugin:install
-octoprint serve
-</code></pre>
-<p>You should see "Successfully installed continuousprint" when running the install command, and you can view the page at <a href="http://localhost:5000">http://localhost:5000</a>.</p>
-<h3 id="editing-docs">Editing docs</h3>
-<p>Continuous Print uses <a href="https://www.mkdocs.org/">mkdocs</a> to generate web documentation. All documentation lives in <code>docs/</code>.</p>
-<p>if you installed the dev tools (step 2) you can run <code>mkdocs serve</code> from the root of the repository to see doc edits live at <a href="http://localhost:8000">http://localhost:8000</a>.</p>
-<h2 id="3-run-unit-tests-to-verify-changes">3. Run unit tests to verify changes</h2>
-<p>When you've made your changes, it's important to test for regressions.</p>
-<p>Run python tests with this command:</p>
-<pre><code>python3 -m unittest *_test.py
-</code></pre>
-<p>Frontend unit tests require some additional setup (make sure <a href="https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable">yarn</a> and its dependencies are installed):</p>
-<pre><code>cd .../continuousprint
-yarn install
-yarn run test
-</code></pre>
-<p>This will run all frontend JS test files (<code>continuousprint/static/js/\*.test.js</code>). You can also <code>yarn run watch-test</code> to set up a test process which re-runs whenever you save a JS test file.</p>
-<h2 id="4-install-a-dev-version-on-octopi">4. Install a dev version on OctoPi</h2>
-<p>Users of <a href="https://octoprint.org/download/">OctoPi</a> can install a development version directly on their pi to test their changes on actual hardware.</p>
+<p>It's not unusual to have multiple 3D printers - in home workshops, in the prototyping industry, and even for 3D printing services (e.g. Shapeways) and manufacturers that manage hundreds/thousands of them.</p>
+<p>Continuous Print provides a single, local queue by default - managed by a single printer with a single instance of OctoPrint. But by adding LAN queues, multiple printers can coordinate together over the network to print jobs from the same queue(s).</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Editing code - especially unfamiliar code - can lead to unpredictable behavior. You're controlling a robot that can pinch fingers and melt plastic, so be careful and consider using the <a href="https://docs.octoprint.org/en/master/development/virtual_printer.html">built-in virtual printer</a> before a physical test.</p>
+<p>This feature is not yet proven. If you encounter problems, please read this guide thoroughly before <a href="https://github.com/smartin015/continuousprint/issues/new/choose">creating an issue</a> if you're unable to resolve them.</p>
 </div>
-<ol>
-<li><code>ssh pi@&lt;your octopi hostname&gt;</code> and provide your password (the default is <code>raspberry</code>, but for security reasons you should change it with <code>passwd</code> when you can)</li>
-<li><code>git clone https://github.com/smartin015/continuousprint.git</code></li>
-<li>Uninstall any existing continuous print installations (see <code>Settings</code> -&gt; <code>Plugin Manager</code> in the browser)</li>
-<li><code>cd continuousprint &amp;&amp; ~/oprint/bin/python3 setup.py install</code></li>
-</ol>
-<p>Note that we're using the bundled version of python3 that comes with octoprint, <strong>NOT</strong> the system installed python3. If you try the latter, it'll give an error that sounds like octoprint isn't installed.</p>
-<h2 id="5-submit-a-pull-request">5. Submit a pull request</h2>
-<p>When you've made and tested your changes, follow the remaining instructions for <a href="https://docs.github.com/en/get-started/quickstart/contributing-to-projects">contributing to projects</a> to create a pull request.</p>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>New pull requests must be submitted to the <code>rc</code> branch, <strong>not to the <code>master</code> branch</strong>.</p>
-<p>Additonally, the <a href="https://github.com/smartin015/continuousprint/blob/rc/setup.py#L17">plugin version line</a> in <code>setup.py</code> <strong>must have an incremented <code>rc</code> number</strong> (e.g. <code>1.5.0rc2</code> -&gt; <code>1.5.0rc3</code>, <code>1.6.1</code> -&gt; <code>1.6.2rc1</code>).</p>
-<p>This allows users to test the "release candidate" and shake out any bugs before everyone receives the change.</p>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>LAN queues are intended for trusted, local (LAN) networks only - not for cross-network (WAN) use cases. Using LAN queues across networks is insecure and strongly discouraged.</p>
 </div>
-<p>You should receive a review within a day or so - if you haven't heard back in a week or more, <a href="https://github.com/smartin015/continuousprint/blob/master/setup.py#L27">email the plugin author</a>.</p>
-<h2 id="tips-and-tricks">Tips and Tricks</h2>
-<p>This is a collection of random tidbits intended to help you get your bearings.</p>
+<h2 id="behavior">Behavior</h2>
+<h3 id="lan-queues-manage-jobs-not-setsfiles">LAN Queues manage Jobs, not Sets/Files</h3>
+<p>Queues operate at the level of a Job (see <a href="/advanced-queuing/#sets-and-jobs">Sets and Jobs</a> for disambiguation). All work described by the job will be completed by the printer which acquires it. In other words, <strong>the work within a job will not be distributed across printers</strong>. This is to ensure compatability with future work to support WAN / decentralized network printing, ensuring that all prints of any job are guaranteed to end up in the same physical location.</p>
+<h3 id="queue-strategies">Queue Strategies</h3>
+<p>When a printer is done with its job, it will choose the next one based on whichever strategy is configured for the queue it's printing from. There is currently only one strategy:</p>
 <ul>
-<li>The backend (<code>__init__.py</code> and dependencies) stores a flattened representation of the print queue and
-  iterates through it from beginning to end. Each item is loaded as a QueueItem (see <code>print_queue.py</code>).</li>
-<li>The frontend talks to the backend with the flattened queue, but operates on an inmemory structured version:<ul>
-<li>Each flattened queue item is loaded as a <code>CPQueueItem</code> (see continuousprint/static/js/continuousprint_queueitem.js)</li>
-<li>Sets of the same queue item are aggregated into a <code>CPQueueSet</code> (see continuousprint/static/js/continuousprint_queueset.js)</li>
-<li>Multiple queuesets are grouped together and run one or more times as a <code>CPJob</code> (see continuousprint/static/js/continuousprint_job.js)</li>
-<li>For simplicity, each level only understands the level below it - e.g. a Job doesn't care about QueueItems.</li>
+<li><strong>In-Order</strong> prints linearly down the queue from top to bottom, one job at a time.</li>
+</ul>
+<p>In the future, you will be able to customize how your printer works on the queue, e.g. choosing jobs in a way which avoids excessive filament changes and other manual actions.</p>
+<p>The overall strategy <em>between</em> queues is currently in-order, i.e. all prints in the topmost queue will be executed before moving onto the next queue, and so on. This will eventually change to allow a top-level strategy which dictates which queue to print from.</p>
+<h3 id="gcode-limitations">GCODE Limitations</h3>
+<p>3D print slicers generate a <code>*.gcode</code> file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).</p>
+<p>This can be mitigated in one of two ways:</p>
+<ol>
+<li>Use exactly the same make and model of printer for all members of the LAN queue</li>
+<li>Configure the correct <a href="/printer-profiles">profiles</a> for all Sets so that each type of printer has its own compatible <code>*.gcode</code> files to fully print the job.</li>
+</ol>
+<h2 id="setup">Setup</h2>
+<p>By default, no LAN queues are configured and all prints are local to the specific instance of Octoprint.</p>
+<p><strong>You will need a working instance of OctoPrint (with the Continuous Print plugin installed) for every printer you wish to have join the queue.</strong></p>
+<h2 id="add-a-lan-queue">Add a LAN queue</h2>
+<ol>
+<li>Open OctoPrint's settings page</li>
+<li>Click through to Continuous Print</li>
+<li>Click the Queues button to go to the queue settings page.</li>
+<li>Click the "Add Queue" button to add a new LAN queue.</li>
+<li>Fill in the inputs, but keep in mind:<ul>
+<li>Each queue must have a unique name (which cannot be <code>local</code> and <code>archive</code> - these are reserved)</li>
+<li>Hostname:Port must be of the form <code>hostname:port</code> (e.g. <code>0.0.0.0:6789</code>, <code>localhost:5001</code>, <code>myhostname:9007</code>)<ul>
+<li>A hostname of <code>localhost</code> will only connect to other OctoPrint instances on the same host. If you're unsure what to specify here, try <code>0.0.0.0</code> which <a href="https://en.wikipedia.org/wiki/0.0.0.0">binds to all IP addresses on the host</a>.</li>
 </ul>
 </li>
-<li>Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.</li>
-<li>Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, both of which are heavily customized. For more details on changes see:<ul>
-<li>Applied fix from https://github.com/SortableJS/knockout-sortablejs/pull/13</li>
-<li>Applied fix from https://github.com/SortableJS/knockout-sortablejs/issues/14</li>
-<li>Discussion at https://github.com/smartin015/continuousprint/issues/14 (conflict with a different <code>knockout-sortable</code> library)</li>
+<li>Access control may be a factor if you're using a port number below 1024 (see <a href="https://www.w3.org/Daemon/User/Installation/PrivilegedPorts.html">privileged ports</a>)</li>
+<li>You may experience silent failures if you specify a port that's already in use by another process.</li>
+<li>All LAN queues are only visible to other devices on the same network, unless you've taken steps to expose ports (NOT recommended).</li>
 </ul>
 </li>
-</ul>
+<li>When you've finished configuring your queues, click <code>Save</code>.</li>
+</ol>
+<p>If everything is working properly, you'll see the changes reflected in the queues on the Continuous Print tab with the queue(s) you added. It will show no other peers connected to it, but that's because we still have to set them up. Complete steps 1-6 for all remaining printers, and you should see them as peers when you look at the header of the queue.</p>
+<h2 id="submit-a-job">Submit a job</h2>
+<p>Submitting a job is as simple as dragging it from the "local" queue to your LAN queue. After confirming that you wish to submit your job, the job will disappear from the local queue and show up on the LAN queue.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently, LAN queue submission is somewhat destructive - the job cannot be modified or reverted once it's submitted, only deleted.</p>
+<p>If you have a very complex job to submit, consider <a href="/gjob-files">saving it</a> before submission so you have a backup.</p>
+</div>
+<h2 id="cancel-a-job">Cancel a job</h2>
+<ol>
+<li>Click the checkbox next to the job in your LAN queue.</li>
+<li>Click the trash can icon that appears.</li>
+</ol>
+<p>The job will disappear from the LAN queue and no longer be printed. Note that a job may not be deleted if a printer is actively printing it.</p>
 
               
             </article>
@@ -660,7 +641,7 @@ yarn run test
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../printer-profiles/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Printer Profiles" rel="prev">
+        <a href="../failure-recovery/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Failure Recovery" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -669,20 +650,20 @@ yarn run test
               <span class="md-footer__direction">
                 Previous
               </span>
-              Printer Profiles
+              Failure Recovery
             </div>
           </div>
         </a>
       
       
         
-        <a href="../api/" class="md-footer__link md-footer__link--next" aria-label="Next: API" rel="next">
+        <a href="../material-selection/" class="md-footer__link md-footer__link--next" aria-label="Next: Material Selection" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              API
+              Material Selection
             </div>
           </div>
           <div class="md-footer__button md-icon">
