@@ -6,6 +6,7 @@ if (typeof log === "undefined" || log === null) {
   };
   CP_PRINTER_PROFILES = [];
   CP_GCODE_SCRIPTS = [];
+  CP_LOCAL_IP = '';
   CPAPI = require('./continuousprint_api');
 }
 
@@ -18,6 +19,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.api = parameters[2] || new CPAPI();
     self.loading = ko.observable(false);
     self.api.init(self.loading);
+    self.local_ip = ko.observable(CP_LOCAL_IP || '');
 
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)
     self.profiles = {};

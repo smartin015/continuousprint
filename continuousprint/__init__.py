@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 
+import socket
 import json
 import time
 import traceback
@@ -124,7 +125,9 @@ class ContinuousprintPlugin(
         )
 
         fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
-        self._fileshare = Fileshare("0.0.0.0:0", fileshare_dir, self._logger)
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
+        self._fileshare = Fileshare(f"{local_ip}:0", fileshare_dir, self._logger)
         self._fileshare.connect()
 
         # Migrate from old JSON state if needed
@@ -382,9 +385,12 @@ class ContinuousprintPlugin(
 
     # ---------------------- Begin TemplatePlugin -------------------
     def get_template_vars(self):
+        hostname = socket.gethostname()
+        local_ip = socket.gethostbyname(hostname)
         return dict(
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
+            local_ip=local_ip,
         )
 
     def get_template_configs(self):

@@ -57,7 +57,7 @@ By default, no LAN queues are configured and all prints are local to the specifi
 4. Click the "Add Queue" button to add a new LAN queue.
 5. Fill in the inputs, but keep in mind:
     * Each queue must have a unique name (which cannot be `local` and `archive` - these are reserved)
-    * Hostname:Port must be of the form `hostname:port` (e.g. `0.0.0.0:6789`, `localhost:5001`, `myhostname:9007`)
+    * Address:Port must be of the form `ip_address:port` (e.g. `192.168.1.43:6789`)
         * A hostname of `localhost` will only connect to other OctoPrint instances on the same host. If you're unsure what to specify here, try `0.0.0.0` which [binds to all IP addresses on the host](https://en.wikipedia.org/wiki/0.0.0.0).
     * Access control may be a factor if you're using a port number below 1024 (see [privileged ports](https://www.w3.org/Daemon/User/Installation/PrivilegedPorts.html))
     * You may experience silent failures if you specify a port that's already in use by another process.

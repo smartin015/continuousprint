@@ -3,6 +3,7 @@
 <script type="text/javascript">
   const CP_PRINTER_PROFILES = {{plugin_continuousprint_printer_profiles|tojson|safe}};
   const CP_GCODE_SCRIPTS = {{plugin_continuousprint_gcode_scripts|tojson|safe}};
+  const CP_LOCAL_IP = {{plugin_continuousprint_local_ip|tojson|safe}};
 </script>
 
 <ul class="nav nav-pills">
@@ -201,17 +202,17 @@
         <i class="fas fa-exclamation-circle"></i> One or more queues have an invalid address configured.
         </p>
         <p>
-        All queues (other than the local queue) must have an address of the form <i>hostname:port</i>, with a port value of 5000 or higher.
+        All queues (other than the local queue) must have an address of the form <i>ip_address:port</i>, with a port value of 5000 or higher.
         </p>
       </div>
       <div class="alert alert-error" data-bind="hidden: allValidQueueNames">
         <p>
         <i class="fas fa-exclamation-circle"></i> One or more queues needs a name.
         </p>
-      </div>
+        </div>
       <div class="queue-header">
         <div style="text-align: center; flex: 1">Name</div>
-        <div style="text-align: center; width: 180px">Hostname:Port</div>
+        <div style="text-align: center; width: 180px">Address:Port</div>
         <div style="text-align: center; width: 180px">Strategy</div>
         <div style="width:30px"></div>
       </div>
@@ -222,7 +223,7 @@
             <input type="text" style="width:90%" data-bind="value: name, disable: name === 'local', event: {change: $root.queueChanged}" placeholder="e.g. LAN"></input>
             </div>
             <div style="width: 180px">
-            <input type="text" style="width:90%" data-bind="value: addr, hidden: name === 'local', event: {change: $root.queueChanged}" placeholder="e.g. 0.0.0.0:6789"></input>
+            <input type="text" style="width:90%" data-bind="value: addr, hidden: name === 'local', event: {change: $root.queueChanged}, attr: {placeholder: 'e.g. ' + $root.local_ip() + ':6789'}"></input>
             </div>
             <div style="width: 180px">
               <select data-bind="value: strategy" style="width: 100%">
