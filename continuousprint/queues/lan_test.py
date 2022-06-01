@@ -27,7 +27,7 @@ class LANQueueTest(unittest.TestCase):
 
 class TestLANQueueNoConnection(LANQueueTest):
     def test_update_peer_state(self):
-        self.q.update_peer_state("HI", {}, {})  # No explosions? Good
+        self.q.update_peer_state("HI", {}, {}, {})  # No explosions? Good
 
 
 class TestLANQueueConnected(LANQueueTest):

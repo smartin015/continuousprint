@@ -64,7 +64,14 @@ class Driver:
             self._cur_path = path
         if len(materials) > 0:
             self._cur_materials = materials
-        nxt = self.state(a, p)
+
+        # Deactivation must be allowed on all states, so we hande it here for
+        # completeness.
+        if a == Action.DEACTIVATE and self.state != self._state_inactive:
+            nxt = self._state_inactive
+        else:
+            nxt = self.state(a, p)
+
         if nxt is not None:
             self._logger.info(f"{self.state.__name__} -> {nxt.__name__}")
             self.state = nxt
@@ -76,8 +83,7 @@ class Driver:
         return False
 
     def _state_unknown(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
+        pass
 
     def _state_inactive(self, a: Action, p: Printer):
         self.q.release()
@@ -94,6 +100,16 @@ class Driver:
         else:
             self._set_status("Inactive (active print continues unmanaged)")
 
+    def _state_idle(self, a: Action, p: Printer):
+        item = self.q.get_set_or_acquire()
+        if item is None:
+            self._set_status("Idle (awaiting printable Job)")
+        else:
+            if p != Printer.IDLE:
+                return self._state_printing
+            else:
+                return self._enter_start_print(a, p)
+
     def _enter_start_print(self, a: Action, p: Printer):
         # TODO "clear bed on startup" setting
 
@@ -103,17 +119,14 @@ class Driver:
         return nxt if nxt is not None else self._state_start_print
 
     def _state_start_print(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
-
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
 
         item = self.q.get_set_or_acquire()
         if item is None:
-            self._set_status("No work to do; going inactive")
-            return self._state_inactive
+            self._set_status("No work to do; going idle")
+            return self._state_idle
 
         # Block until we have the right materials loaded (if required)
         for i, im in enumerate(item.materials()):
@@ -143,9 +156,7 @@ class Driver:
                 )
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
-        elif a == Action.FAILURE:
+        if a == Action.FAILURE:
             return self._state_failure
         elif a == Action.SPAGHETTI:
             run = self.q.get_run()
@@ -185,7 +196,9 @@ class Driver:
 
     def _state_paused(self, a: Action, p: Printer):
         self._set_status("Paused", StatusType.NEEDS_ACTION)
-        if a == Action.DEACTIVATE or p == Printer.IDLE:
+        if p == Printer.IDLE:
+            # Here, IDLE implies the user cancelled the print.
+            # Go inactive to prevent stomping on manual changes
             return self._state_inactive
         elif p == Printer.BUSY:
             return self._state_printing
@@ -205,6 +218,7 @@ class Driver:
             return self._state_start_clearing
         else:
             self.q.end_run("failure")
+            self._set_status("Failure (max retries exceeded", StatusType.ERROR)
             return self._state_inactive
 
     def _state_success(self, a: Action, p: Printer):
@@ -222,8 +236,6 @@ class Driver:
             return self._state_start_finishing
 
     def _state_start_clearing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
@@ -232,9 +244,7 @@ class Driver:
         return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
-        elif a == Action.SUCCESS:
+        if a == Action.SUCCESS:
             return self._enter_start_print(a, p)
         elif a == Action.FAILURE:
             self._set_status("Error when clearing bed - aborting", StatusType.ERROR)
@@ -246,8 +256,6 @@ class Driver:
             self._set_status("Clearing bed")
 
     def _state_start_finishing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
@@ -256,13 +264,14 @@ class Driver:
         return self._state_finishing
 
     def _state_finishing(self, a: Action, p: Printer):
-        if a in [Action.DEACTIVATE, Action.SUCCESS, Action.FAILURE]:
+        if a == Action.FAILURE:
             return self._state_inactive
 
-        if p == Printer.IDLE:  # Idle state without event; assume success
-            return self._state_inactive
-        else:
-            self._set_status("Finishing up")
+        # Idle state without event -> assume success and go idle
+        if a == Action.SUCCESS or p == Printer.IDLE:
+            return self._state_idle
+
+        self._set_status("Finishing up")
 
     def _set_status(self, status, status_type=StatusType.NORMAL):
         if status != self.status:

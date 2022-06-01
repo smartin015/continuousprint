@@ -117,8 +117,8 @@ class TestFromInactive(unittest.TestCase):
         self.d._runner.run_finish_script.assert_called()
         self.assertEqual(self.d.state.__name__, self.d._state_finishing.__name__)
 
-        self.d.action(DA.TICK, DP.IDLE)  # -> inactive
-        self.assertEqual(self.d.state.__name__, self.d._state_inactive.__name__)
+        self.d.action(DA.TICK, DP.IDLE)  # -> idle
+        self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
 
 
 class TestFromStartPrint(unittest.TestCase):

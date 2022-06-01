@@ -71,7 +71,7 @@ class IntegrationTest(DBTest):
                 self.d._runner.run_finish_script.assert_called()
                 self.d._runner.run_finish_script.reset_mock()
                 self.d.action(DA.TICK, DP.IDLE)  # -> inactive
-                self.assertEqual(self.d.state.__name__, self.d._state_inactive.__name__)
+                self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
         except AssertionError as e:
             raise AssertionError(
                 f"Expecting start_print={want_path}, finishing={finishing}"
@@ -336,8 +336,8 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d2.action(DA.SUCCESS, DP.IDLE, path="j2.gcode")  # -> success
             d2.action(DA.TICK, DP.IDLE)  # -> start_finishing
             d2.action(DA.TICK, DP.IDLE)  # -> finishing
-            d2.action(DA.TICK, DP.IDLE)  # -> active
-            self.assertEqual(d2.state.__name__, d2._state_inactive.__name__)
+            d2.action(DA.TICK, DP.IDLE)  # -> idle
+            self.assertEqual(d2.state.__name__, d2._state_idle.__name__)
 
 
 if __name__ == "__main__":

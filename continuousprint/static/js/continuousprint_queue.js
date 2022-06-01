@@ -22,12 +22,14 @@ function CPQueue(data, api, files, profile) {
     self.strategy = data.strategy;
     self.addr = data.addr;
     self.jobs = ko.observableArray([]);
+    self._pushJob = function(jdata) {
+      self.jobs.push(new CPJob(jdata, data.peers, self.api, profile));
+    };
     for (let j of data.jobs) {
-      self.jobs.push(new CPJob(j, data.peers, self.api, profile));
+      self._pushJob(j);
     }
     self.shiftsel = ko.observable(-1);
     self.details = ko.observable("");
-    self.active_set = ko.observable(data.active_set);
     self.fullDetails = ko.observable("");
     if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);
@@ -38,11 +40,43 @@ function CPQueue(data, api, files, profile) {
         self.details(`(${pkeys.length} printer${(pkeys.length != 1) ? 's' : ''})`);
         let fd = 'Connected printers:';
         for (let p of pkeys) {
-          fd += `\n${data.peers[p].name} (${p}): ${data.peers[p].status}`;
+          let pd = data.peers[p];
+          fd += `\n${pd.name} (${pd.profile.name}, ${p}): ${pd.status}`;
         }
         self.fullDetails(fd);
       }
+
+      let actives = [];
+      for (let pd of Object.values(data.peers)) {
+        if (pd.active_set !== null) {
+          actives.push(pd.active_set);
+        }
+      }
+      self.active_sets = ko.observableArray(actives);
+    } else {
+      self.active_sets = ko.observableArray([data.active_set]);
     }
+    self.local_active_set = ko.observable(data.active_set);
+
+    self.active_jobs = ko.computed(function() {
+      let actives = new Set(self.active_sets());
+      console.log("actives", actives);
+      let result = [];
+      for (let j of self.jobs()) {
+        if (j.acquiredBy() === undefined) {
+          console.log("non acquired, skipping", j);
+          continue;
+        }
+        for (let s of j.sets()) {
+          if (actives.has(s.id)) {
+            result.push(j.id());
+            break;
+          }
+        }
+      }
+      console.log("active_jobs", result);
+      return result;
+    });
 
     self.batchSelectBase = function(mode) {
       switch (mode) {
@@ -196,13 +230,13 @@ function CPQueue(data, api, files, profile) {
 
     self.newEmptyJob = function() {
         self.api.add(self.api.JOB, {name: self._uniqueJobName()}, (result) => {
-          self.jobs.push(new CPJob(result, data.peers, self.api, profile));
+          self._pushJob(result);
         });
     };
 
     self.importJob = function(path) {
       self.api.import(self.api.JOB, {path, queue: self.name}, (result) => {
-        self.jobs.push(new CPJob(result, data.peers, self.api, profile));
+        self._pushJob(result);
       });
     }
 
@@ -237,7 +271,7 @@ function CPQueue(data, api, files, profile) {
         set_data['job'] = null;
         // Invoking API causes a new job to be created
         self.api.add(self.api.SET, set_data, (response) => {
-          return self.jobs.push(new CPJob({id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]}, data.peers, self.api, profile));
+          return self._pushJob({id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]});
         });
     };
 

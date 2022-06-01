@@ -41,6 +41,7 @@ function CPJob(obj, peers, api, profile) {
   }
   self.draft = ko.observable(obj.draft);
   self.count = ko.observable(obj.count);
+  self.active = ko.observable(obj.active || false);
   self.remaining = ko.observable((obj.remaining !== undefined) ? obj.remaining : obj.count);
   self.completed = ko.observable(obj.count - self.remaining());
   self.selected = ko.observable(obj.selected || false);

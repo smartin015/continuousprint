@@ -56,8 +56,8 @@ class ContinuousprintPlugin(
     def _on_settings_updated(self):
         self.d.set_retry_on_pause(
             self._get_key(Keys.RESTART_ON_PAUSE),
-            self._get_key(Keys.RESTART_MAX_RETRIES),
-            self._get_key(Keys.RESTART_MAX_TIME),
+            int(self._get_key(Keys.RESTART_MAX_RETRIES)),
+            int(self._get_key(Keys.RESTART_MAX_TIME)),
         )
 
     def _rm_temp_files(self):
@@ -316,7 +316,7 @@ class ContinuousprintPlugin(
         if run is not None:
             run = run.as_dict()
         netname = self._get_key(Keys.NETWORK_NAME)
-        self.q.update_peer_state(netname, p.name, run)
+        self.q.update_peer_state(netname, p.name, run, self._printer_profile)
 
     def _state_json(self):
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump

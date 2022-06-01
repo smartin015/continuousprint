@@ -44,13 +44,15 @@ class LANQueue(AbstractJobQueue):
     def destroy(self):
         self.lan.destroy()
 
-    def update_peer_state(self, name, status, run):
+    def update_peer_state(self, name, status, run, profile):
         if self.lan is not None and self.lan.q is not None:
             self.lan.q.syncPeer(
                 dict(
+                    active_set=self._active_set(),
                     name=name,
                     status=status,
                     run=run,
+                    profile=profile,
                     fs_addr=f"{self._fileshare.host}:{self._fileshare.port}",
                 )
             )
@@ -152,11 +154,13 @@ class LANQueue(AbstractJobQueue):
                 self.release()
                 return False
 
-    def as_dict(self) -> dict:
-        active_set = None
+    def _active_set(self):
         assigned = self.get_set()
         if assigned is not None:
-            active_set = assigned.id
+            return assigned.id
+        return None
+
+    def as_dict(self) -> dict:
         jobs = []
         peers = {}
         if self.lan.q is not None:
@@ -173,6 +177,6 @@ class LANQueue(AbstractJobQueue):
                 strategy=self.strategy.name,
                 jobs=jobs,
                 peers=peers,
-                active_set=active_set,
+                active_set=self._active_set(),
             )
         )

@@ -77,7 +77,7 @@ class ScriptRunner:
         return self.execute_gcode(self._keys.CLEARING_SCRIPT)
 
     def start_print(self, item):
-        self._msg(f"Job {item.job.name}: printing {item.path}")
+        self._msg(f"{item.job.name}: printing {item.path}")
 
         path = item.path
         # LAN set objects may not link directly to the path of the print file.

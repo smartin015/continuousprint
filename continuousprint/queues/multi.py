@@ -17,10 +17,10 @@ class MultiQueue(AbstractQueue):
         self.active_queue = None
         self.update_cb = update_cb
 
-    def update_peer_state(self, name, status, run):
+    def update_peer_state(self, *args):
         for q in self.queues.values():
             if hasattr(q, "update_peer_state"):
-                q.update_peer_state(name, status, run)
+                q.update_peer_state(*args)
 
     def add(self, name: str, q: AbstractQueue):
         self.queues[name] = q

@@ -144,9 +144,9 @@
               <!-- /ko -->
               <!-- ko if: !draft() -->
               <div class="job-name" data-bind="text: _name"></div>
-              <div class="progress" data-bind="css: { 'progress-striped active': $root.active() && queue.active_set() && acquiredBy() !== undefined }">
+              <div class="progress" data-bind="css: { 'progress-striped active': queue.active_jobs().indexOf(id()) !== -1}">
                 <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
-                <div data-bind="visible: $root.active() && queue.active_set() && acquiredBy() !== undefined, style: { width: pct_active() }" class="bar active"></div>
+                <div data-bind="visible: queue.active_jobs().indexOf(id()) !== -1, style: { width: pct_active() }" class="bar active"></div>
               </div>
               <div class="repeats" data-bind="text: completed() + '/' + count()"></div>
               <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
@@ -161,7 +161,7 @@
                   <div class="accordion-heading">
                     <div class="queue-row-container">
                         <i class="fas fa-grip-vertical" data-bind="visible: job.draft"></i>
-                        <p class="file-name" style="cursor:pointer" data-bind="click: $root.expand, style: { 'font-weight': queue.active_set() == id ? 'bold': null }">
+                        <p class="file-name" style="cursor:pointer" data-bind="click: $root.expand, style: { 'font-weight': queue.local_active_set() === id ? 'bold': null }">
                         <i class="fa" data-bind="css: expanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
                         <span class="materials" data-bind="visible: materials().length > 0, foreach: materials">
                         <span class="label" data-bind="attr: {title: title}, text: shortName, style: {'background-color': bgColor, 'color': color}"></span>
@@ -172,9 +172,9 @@
                         <div style="width: 150px; text-align: center;" data-bind="hidden: profile_matches" title="Set profile doesn't match this printer and will be skipped">
                           <i class="fas fa-angle-double-right"  style="margin-top: 3px; opacity: 0.5;"></i>
                         </div>
-                        <div class="progress" data-bind="hidden: !profile_matches(), css: { 'progress-striped active': $root.active() && queue.active_set() == id }">
+                        <div class="progress" data-bind="hidden: !profile_matches(), css: { 'progress-striped active': queue.active_sets().indexOf(id) !== -1 }">
                           <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
-                          <div data-bind="visible: $root.active() && queue.active_set() == id, style: { width: pct_active() }" class="bar active"></div>
+                          <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
                         </div>
                         <div class="repeats" data-bind="text: completed() + '/' + count()"></div>
                         <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
