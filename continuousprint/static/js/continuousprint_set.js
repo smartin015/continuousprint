@@ -123,7 +123,6 @@ function CPSet(data, job, api, profile) {
   // ==== Mutation methods ====
 
   self.set_material = function(t, v) {
-    console.log(t,v);
     if (v === "Any") {
       v = '';
     }

@@ -60,11 +60,9 @@ function CPQueue(data, api, files, profile) {
 
     self.active_jobs = ko.computed(function() {
       let actives = new Set(self.active_sets());
-      console.log("actives", actives);
       let result = [];
       for (let j of self.jobs()) {
         if (j.acquiredBy() === undefined) {
-          console.log("non acquired, skipping", j);
           continue;
         }
         for (let s of j.sets()) {
@@ -74,7 +72,6 @@ function CPQueue(data, api, files, profile) {
           }
         }
       }
-      console.log("active_jobs", result);
       return result;
     });
 
@@ -144,7 +141,6 @@ function CPQueue(data, api, files, profile) {
 
       let idx = self.shiftsel()
       if (e.shiftKey && idx !== -1) {
-        console.log(vm, e);
         let target_idx = self.jobs.indexOf(vm);
         let sel = !vm.selected();
         let start = Math.min(idx, target_idx);

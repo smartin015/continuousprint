@@ -130,7 +130,6 @@ function CPViewModel(parameters) {
           let draft = drafts[cpqj[i].id()];
           if (draft !== undefined) {
             cpq.jobs.splice(i, 1, draft);
-            console.log("Splicing draft job", draft);
           }
         }
         result.push(cpq);
@@ -176,7 +175,6 @@ function CPViewModel(parameters) {
       self.files.onServerDisconnect();
       self.draggingSet(vm.constructor.name === "CPSet");
       self.draggingJob(vm.constructor.name === "CPJob");
-      console.log("draggingJob", self.draggingJob());
     };
 
     self.sortEnd = function(evt, vm, src) {
@@ -296,10 +294,8 @@ function CPViewModel(parameters) {
       }
       self.materials(Object.values(result));
       self.badMaterialCount(nbad);
-      console.log("has spool manz");
       self.hasSpoolManager(true);
     }, function(statusCode, errText) {
-      console.log(statusCode);
       self.hasSpoolManager(statusCode !== 404);
     });
 

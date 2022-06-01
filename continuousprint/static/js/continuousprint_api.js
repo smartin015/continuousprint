@@ -19,7 +19,6 @@ class CPAPI {
       if (self.loading()) {
         return;
       }
-      console.log("set loading")
       self.loading(true);
     }
     $.ajax({

@@ -121,7 +121,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
         if (self.settings.settings.plugins.continuousprint.cp_printer_profile() === prof.name) {
           self.selected_make(prof.make);
           self.selected_model(prof.model);
-          console.log("Updated selected make & model", prof);
           return;
         }
       }
