@@ -45,9 +45,28 @@
 #continuousprint_tab_queues > div {
   margin-bottom: 50px;
 }
-#tab_plugin_continuousprint #queue_sets.draft.highlight, #tab_plugin_continuousprint .queue-list > .highlight {
+#tab_plugin_continuousprint .highlight {
   border: 3px #77a4ff solid !important;
   min-height: 100px;
+}
+.themeify.discorded #tab_plugin_continuousprint .highlight,
+.themeify.cyborg #tab_plugin_continuousprint .highlight,
+.themeify.discoranged #tab_plugin_continuousprint .highlight,
+.themeify.nighttime #tab_plugin_continuousprint .highlight {
+  border: 3px #656b76 solid !important;
+}
+
+#tab_plugin_continuousprint .multiselect {
+  flex-grow: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: right;
+  margin-bottom: -31px;
+  margin-left: 4px;
+}
+#tab_plugin_continuousprint .multiselect .btn-group {
+  /* Lay on top of table headers */
+  z-index: 1;
 }
 #tab_plugin_continuousprint .cp-header {
   display: flex;
@@ -114,9 +133,6 @@
 #tab_plugin_continuousprint .job.shiftsel {
   border-left: 3px solid #CCC !important;
 }
-#tab_plugin_continuousprint .job.draft {
-  border: 3px solid #e5e5e5;
-}
 #tab_plugin_continuousprint .job.draft .job-gutter {
   display: flex;
   flex-direction: row;
@@ -179,13 +195,13 @@
 #tab_plugin_continuousprint .accordion-body.collapse.in {
   max-height: 500px;
 }
-
 #tab_plugin_continuousprint .queue-header, #settings_continuousprint_queues .queue-header {
   display: flex;
   justify-content: space-between;
   font-weight: bold;
   padding: var(--cpq-pad) 8px 0 28px;
   opacity: 0.5;
+  margin-left: 55px;
 }
 #tab_plugin_continuousprint .repeats {
   width: 85px;

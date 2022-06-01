@@ -75,7 +75,7 @@
   <div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
     <div class="cp-queue">
     <div class="cp-header action-bar">
-        <div style="flex-grow: 0; display: flex; flex-direction: row; justify-content: right">
+        <div class="multiselect">
           <div class="dropdown">
             <a class="btn dropdown-toggle" data-toggle="dropdown">
               <i style="cursor: pointer" data-bind="click: onChecked, css: (checkFraction() >= 1) ? 'fas fa-check-square' : ((checkFraction() > 0) ? 'fas fa-minus-square' : 'far fa-square')"></i>
@@ -156,7 +156,7 @@
 
           <div class="accordion-body collapse in">
             <div class="accordion-inner">
-              <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft, 'highlight': $root.draggingSet}" class="sets">
+              <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft, 'highlight': $root.draggingSet() && job.draft()}" class="sets">
                 <div class="accordion-group">
                   <div class="accordion-heading">
                     <div class="queue-row-container">
