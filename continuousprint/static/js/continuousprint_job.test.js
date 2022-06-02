@@ -1,128 +1,80 @@
-const QueueItem = require('./continuousprint_queueitem');
-const QueueSet = require('./continuousprint_queueset');
 const Job = require('./continuousprint_job');
 
 const DATA = {
-  name: `item`,
   path: `item.gcode`,
   sd: false,
-  idx: 0,
-  job: "testjob",
-  run: 0,
   materials: [],
-  start_ts: null,
-  end_ts: null,
-  result: null,
-  retries: 0,
+  count: 2,
+  remaining: 1,
 };
 
-function queuesets(nsets = 2, count = 3, runs = 2, ncomplete = 1) {
+function sets(nsets = 2) {
   let sets = [];
   for (let s = 0; s < nsets; s++) {
-    let items = [];
-    for (let run = 0; run < runs; run++) {
-      for (let i = 0; i < count; i++) {
-        let idx=count*run+i;
-        let data = {...DATA, name: `item ${s}`, idx, run};
-        if (idx < ncomplete) {
-          items.push({...data, start_ts:100, end_ts:101, result:"success"});
-        } else {
-          items.push(data);
-        }
-      }
-    }
-    sets.push(items);
+    sets.push({...DATA, path: `item${s}.gcode`, id: s});
   }
   return sets;
 }
+
+function api() {
+  return {
+    edit: jest.fn((_, obj, cb) => cb(obj)),
+  }
+}
+
 test('basic observables', () => {
-  let j = new Job({name: 'bob', queuesets: queuesets()});
-  expect(j.name()).toBe('bob');
-  expect(j.queuesets().length).not.toBe(0);
+  let j = new Job({name: 'bob', sets: sets()}, [], api());
+  expect(j._name()).toBe('bob');
+  expect(j.sets().length).not.toBe(0);
 });
 
-test('pushQueueItem', () => {
-  let j = new Job();
-  j.pushQueueItem(DATA);
-  expect(j.queuesets().length).toBe(1);
+test('onSetModified new', () => {
+  let j = new Job({sets: sets()}, [], api());
+  j.onSetModified({...DATA, id: 5, path: "asdf"});
+  expect(j.sets().length).toBe(3); // Added onto the end
 });
 
-test('count and length aggregate queuesets', () => {
-  let j = new Job({queuesets: queuesets()});
-  expect(j.count()).toBe(2);
+test('onSetModified existing', () => {
+  let j = new Job({sets: sets()}, [], api());
+  j.onSetModified({...DATA, id: 1, path: "asdf"});
+  expect(j.sets().length).toBe(2); // Replaced
+  expect(j.sets()[1].path()).toBe('asdf');
+});
+
+test('length and length_completed', () => {
+  let j = new Job({count: 3, remaining: 1, sets: sets()}, [], api());
+  // 2 jobs done, each with 2 sets of 2 --> 8
+  // plus an extra 1 each in current run --> 10
+  expect(j.length_completed()).toBe(10);
   expect(j.length()).toBe(12);
 });
 
-test('is_configured respects name and count', () => {
-  let j = new Job();
-  expect(j.is_configured()).toBe(false);
-  j = new Job({queuesets: queuesets()});
-  expect(j.is_configured()).toBe(true);
-  j = new Job({name: 'foo'});
-  expect(j.is_configured()).toBe(true);
+test('checkFraction', () => {
+  let j = new Job({sets: sets()}, [], api());
+  expect(j.checkFraction()).toBe(0);
+  j.selected(true);
+  expect(j.checkFraction()).not.toBe(0);
 });
 
-test('runs_completed uses smallest queueset', () => {
-  DEND = {...DATA, end_ts: 5};
-  let j = new Job({queuesets: [
-    [{...DATA, run:0}, {...DATA, run:1}, {...DEND, run:2}],
-    [{...DATA, run:0}, {...DEND, run:1}, {...DEND, run:2}],
-  ]});
-  expect(j.runs_completed()).toBe(1);
+test('pct_complete', () => {
+  let j = new Job({count: 5, remaining: 3, sets: sets()}, [], api());
+  expect(j.pct_complete()).toBe('40%');
 });
 
-test('progress aggregates queuesets', () => {
-  let j = new Job({queuesets: queuesets()});
-  let stats = {};
-  for (let p of j.progress()) {
-    stats[p['result']] = (stats[p['result']] || 0) + p['pct'];
-  }
-  // Note: still separate elements, not normalized, but it does include them all
-  expect(stats).toStrictEqual({pending: 166, success: 34});
+test('editStart', () =>{
+  let a = api();
+  let j = new Job({}, [], a);
+  j.editStart();
+  expect(a.edit).toHaveBeenCalled();
+  expect(j.draft()).toBe(true);
 });
 
-test('as_queue contains all fields and all items in the right order', () => {
-  let j = new Job({queuesets: queuesets(), name: "test"});
-  // Note that item 0 and item 1 sets are interleaved, 3 then 3 etc.
-  // with completed items listed first and runs increasing per full repetition of all items
-  expect(j.as_queue()).toStrictEqual([
-    {"end_ts": 101, "job": "test", "materials": [], "name": "item 0", "path": "item.gcode", "result": "success", "retries": 0, "run": 0, "sd": false, "start_ts": 100},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
-    {"end_ts": 101,  "job": "test", "materials": [], "name": "item 1", "path": "item.gcode", "result": "success", "retries": 0, "run": 0, "sd": false, "start_ts": 100},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 0, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 0", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null},
-    {"end_ts": null, "job": "test", "materials": [], "name": "item 1", "path": "item.gcode", "result": null, "retries": 0, "run": 1, "sd": false, "start_ts": null}
-  ]);
-});
-
-test('set_count affects all queuesets', () => {
-  let j = new Job({queuesets: queuesets()});
-  j.set_count(1);
-  for (let qs of j.queuesets()) {
-    expect(qs.count()).toBe(3);
-    expect(qs.length()).toBe(3);
-  }
-});
-
-test('set_name sets the name', () => {
-  let j = new Job();
-  j.set_name('bob');
-  expect(j.name()).toBe('bob');
-});
-
-test('sort_end updates queuesets',  () => {
-  let j = new Job({queuesets: queuesets()});
-  j.queuesets()[0].set_runs(3);
-  expect(j.queuesets()[0].length()).toBe(9);
-  j.sort_end(j.queuesets()[0]);
-  for (let qs of j.queuesets()) {
-    expect(qs.count()).toBe(3);
-    expect(qs.length()).toBe(6);
-  }
+test('editEnd', () => {
+  let a = api();
+  let j = new Job({draft: true, name: 'bob', count: 2}, [], a);
+  j.editEnd();
+  let call = a.edit.mock.calls[0][1];
+  expect(call.name).toEqual('bob');
+  expect(call.count).toEqual(2);
+  expect(call.draft).toEqual(false);
 });

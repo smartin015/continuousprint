@@ -1,4 +1,4 @@
-# GCODE Scripting Exapmles
+# GCODE Scripting
 
 GCODE scripts can be quite complex - if you want to learn the basics, try reading through [this primer](https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/).
 

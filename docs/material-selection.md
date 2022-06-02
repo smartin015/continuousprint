@@ -1,4 +1,6 @@
-# Material Selection (BETA)
+# Material Selection
+
+**Material Selection pauses the queue automatically when you need to change filaments.**
 
 Follow the steps in this guide to support tagging queued items with specific material requirements.
 

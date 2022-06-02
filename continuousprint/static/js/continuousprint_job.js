@@ -8,128 +8,139 @@
 if (typeof ko === "undefined" || ko === null) {
   ko = require('knockout');
 }
-if (typeof CPQueueSet === "undefined" || CPQueueSet === null) {
-  CPQueueSet = require('./continuousprint_queueset');
+if (typeof CPSet === "undefined" || CPSet === null) {
+  CPSet = require('./continuousprint_set');
 }
 
-// jobs and queuesets are derived from self.queue, but they must be
+// jobs and sets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
-function CPJob(obj) {
-  var self = this;
-  obj = {...{queuesets: [], name: ""}, ...obj};
-  self.name = ko.observable(obj.name);
-  self.queuesets = ko.observableArray([]);
-  for (let qs of obj.queuesets) {
-    self.queuesets.push(new CPQueueSet(qs));
+function CPJob(obj, peers, api, profile) {
+  if (api === undefined) {
+    throw Error("API must be provided when creating CPJob");
   }
-  self._count = function(exclude_qs=null) {
-    let maxrun = 0;
-    for (let qs of self.queuesets()) {
-      if (qs.length() > 0 && qs !== exclude_qs) {
-        maxrun = Math.max(maxrun, qs.items()[qs.length()-1].run());
+  var self = this;
+
+  obj = {...{sets: [], name: "", draft: false, count: 1, queue: "default", id: -1}, ...obj};
+  if (obj.remaining === undefined) {
+    obj.remaining = obj.count;
+  }
+  self.id = ko.observable(obj.id);
+  self._name = ko.observable(obj.name || "");
+
+  if (obj.acquired) {
+    self.acquiredBy = ko.observable('local');
+  } else if (obj.acquired_by_) {
+    let peer = peers[obj.acquired_by_];
+    if (peer !== undefined) {
+      self.acquiredBy = ko.observable(peer.name);
+    } else {
+      self.acquiredBy = ko.observable(obj.acquired_by_)
+    }
+  } else {
+    self.acquiredBy = ko.observable();
+  }
+  self.draft = ko.observable(obj.draft);
+  self.count = ko.observable(obj.count);
+  self.active = ko.observable(obj.active || false);
+  self.remaining = ko.observable((obj.remaining !== undefined) ? obj.remaining : obj.count);
+  self.completed = ko.observable(obj.count - self.remaining());
+  self.selected = ko.observable(obj.selected || false);
+
+  self.sets = ko.observableArray([]);
+  for (let s of obj.sets) {
+    self.sets.push(new CPSet(s, self, api, profile));
+  }
+
+  self._update = function(result) {
+    self.draft(result.draft);
+    self.count(result.count);
+    self.remaining(result.remaining); // Adjusted when count is mutated
+    self.completed(result.count - result.remaining); // Adjusted when count is mutated
+    self.id(result.id); // May change if no id to start with
+    self._name(result.name);
+    let cpss = [];
+    if (result.sets !== undefined) {
+      for (let qsd of result.sets) {
+        cpss.push(new CPSet(qsd, self, api, profile));
       }
     }
-    return maxrun+1; // Runs, not last run idx
+    self.sets(cpss);
+  };
+
+  self.as_object = function() {
+    let data = {
+        name: self._name(),
+        count: self.count(),
+        remaining: self.remaining(),
+        id: self.id(),
+        sets: []
+    };
+    for (let s of self.sets()) {
+      data.sets.push(s.as_object());
+    }
+    return data;
   }
-  self.count = ko.computed(self._count);
+
+  self.editStart = function() {
+    api.edit(api.JOB, {id: self.id(), draft: true}, () => {
+      self.draft(true);
+    });
+  }
+  self.onSetModified = function(s) {
+    let newqs = new CPSet(s, self, api, profile);
+    for (let qs of self.sets()) {
+      if (qs.id === s.id) {
+        return self.sets.replace(qs, newqs);
+      }
+    }
+    self.sets.push(newqs);
+ }
+  self.editCancel = function() {
+    api.edit(api.JOB, {id: self.id(), draft: false}, self._update);
+  }
+  self.editEnd = function() {
+    let data = self.as_object();
+    data.draft = false;
+    api.edit(api.JOB, data, self._update);
+  }
+
   self.length = ko.computed(function() {
     let l = 0;
-    for (let qs of self.queuesets()) {
-      l += qs.length();
+    let c = self.count();
+    for (let qs of self.sets()) {
+      l += qs.count()*c;
     }
     return l;
   });
-  self.is_configured = function() {
-    return (self.name() !== "" || self.count() != 1);
-  }
-  self.is_complete = function() {
-    let cnt = self.count();
-    for (let qs of self.queuesets()) {
-      if (qs.runs_completed() !== cnt) {
-        return false;
-      }
+  self.length_completed = ko.computed(function() {
+    let r = 0;
+    for (let qs of self.sets()) {
+      r += qs.length_completed();
     }
-    return true;
-  }
-  self.items_completed = ko.computed(function() {
-    let num = 0;
-    for (let qs of self.queuesets()) {
-      num += qs.items_completed();
-    }
-    return num;
-  })
-  self.runs_completed = ko.computed(function() {
-    if (self.queuesets().length < 1) {
-      return 0;
-    }
-    let rc = self.count();
-    for (let qs of self.queuesets()) {
-      rc = Math.min(rc, qs.runs_completed());
-    }
-    return rc;
+    return r;
   });
-  self.progress = ko.computed(function() {
-    let result = [];
-    for (let qs of self.queuesets()) {
-      result.push(qs.progress());
+  self.checkFraction = ko.computed(function() {
+    return (self.selected()) ? 1 : 0;
+  });
+  self.pct_complete = ko.computed(function() {
+    return Math.round(100 * self.completed()/self.count()) + '%';
+  });
+  self.pct_active = ko.computed(function() {
+    return Math.round(100 / self.count()) + '%';
+  });
+  self.onChecked = function(sel) {
+    if (self.draft() || self.acquiredBy()) {
+      return;
     }
-    return result.flat();
-  })
-  self.as_queue = function() {
-    let result = [];
-    let qss = self.queuesets();
-    let qsi = [];
-    for (let i = 0; i < qss.length; i++) {
-      qsi.push(0);
-    }
-    // Round-robin through the queuesets, pushing until we've exhausted each run
-    let job = self.name();
-    for (let run = 0; run < self.count(); run++) {
-      for (let i=0; i < qsi.length; i++) {
-        let items = qss[i].items();
-        while (items.length > qsi[i] && items[qsi[i]].run() <= run) {
-          let item = {...items[qsi[i]].as_object(), job, run};
-          result.push(item);
-          qsi[i]++;
-        }
-      }
-    }
-    return result;
-  }
-
-  // ==== Mutation methods =====
-
-  self.set_count = function(v) {
-    for (let qs of self.queuesets()) {
-      qs.set_runs(v);
+    if (sel !== undefined) {
+      self.selected(sel);
+    } else {
+      self.selected(!self.selected());
     }
   }
-  self.set_name = function(name) {
-    self.name(name);
-  }
-  self.sort_end = function(item) {
-    let cnt = self._count(exclude_qs=item);
-    for (let qs of self.queuesets()) {
-      qs.set_runs(cnt);
-    }
-  }
-  self.pushQueueItem = function(item) {
-    self.queuesets.push(new CPQueueSet([item]));
-  }
-  self.requeueFailures = function() {
-    for (let qs of self.queuesets()) {
-      let items = qs.items();
-      let modified = false;
-      for (let i of items) {
-        if (i.result().startsWith("fail")) {
-          i.requeue();
-          modified = true;
-        }
-      }
-      if (modified) {
-        qs.items(items);
-      }
-    }
+  self.onEnter = function(d, e) {
+    e.keyCode === 13 && self.editEnd();
+    return true;
   }
 }
 

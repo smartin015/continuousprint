@@ -1,11 +1,98 @@
+:root {
+    /* Small padding roughly matches the spacing between Print/Pause/Cancel buttons in the State panel */
+    --cpq-pad: 6px;
+    --cpq-pad2: 20px;
+}
+
+#files .cpq-gjob div[title="Load"] {
+  display: none !important;
+}
+#files .cpq-gjob div[title="Load and Print"] {
+  display: none !important;
+}
+#files .cpq-gjob.fa-archive {
+  margin-right: 4px;
+}
+
+#state span.ERROR {
+	background-color: rgba(255, 0, 0, 0.6);
+	border-radius: var(--cpq-pad);
+	padding: var(--cpq-pad);
+}
+#state span.NEEDS_ACTION {
+	animation: pulse 2.5s infinite;
+	border-radius: var(--cpq-pad);
+	padding: var(--cpq-pad);
+}
+
+@keyframes pulse {
+	0% {
+  	background-color: rgba(255, 150, 0, 0.3);
+	}
+
+	50% {
+  	background-color: rgba(255, 150, 0, 0.8);
+	}
+
+	100% {
+  	background-color: rgba(255, 150, 0, 0.3);
+	}
+}
+
+#tab_plugin_continuousprint .cpq-leftpad {
+  margin-left: var(--cpq-pad);
+}
+#continuousprint_tab_queues > div {
+  margin-bottom: 50px;
+}
+#tab_plugin_continuousprint .highlight {
+  border: 3px #77a4ff solid !important;
+  min-height: 100px;
+}
+.themeify.discorded #tab_plugin_continuousprint .highlight,
+.themeify.cyborg #tab_plugin_continuousprint .highlight,
+.themeify.discoranged #tab_plugin_continuousprint .highlight,
+.themeify.nighttime #tab_plugin_continuousprint .highlight {
+  border: 3px #656b76 solid !important;
+}
+
+#tab_plugin_continuousprint .multiselect {
+  flex-grow: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: right;
+  margin-bottom: -31px;
+  margin-left: 4px;
+}
+#tab_plugin_continuousprint .multiselect .btn-group {
+  /* Lay on top of table headers */
+  z-index: 1;
+}
 #tab_plugin_continuousprint .cp-header {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   align-items: center;
+  font-weight: bold;
 }
 #tab_plugin_continuousprint .job-header {
   background-color: #eee;
+}
+#tab_plugin_continuousprint .profile-select {
+  /* Match the style of Bootstrap labels */
+  height: 20px;
+  width: 60px;
+  margin-bottom: 0px;
+}
+#tab_plugin_continuousprint .job.acquired .job-name {
+  font-weight: bold;
+}
+#tab_plugin_continuousprint .fa-grip-vertical {
+  opacity: 0.0;
+  margin-left: 1px !important;
+}
+#tab_plugin_continuousprint *:hover > .fa-grip-vertical {
+  opacity: 0.5;
+  cursor: grab;
 }
 .themeify.discorded #tab_plugin_continuousprint .job-header,
 .themeify.cyborg #tab_plugin_continuousprint .job-header,
@@ -13,7 +100,17 @@
 .themeify.nighttime #tab_plugin_continuousprint .job-header {
   background-color: #222 !important;
 }
-
+#tab_plugin_continuousprint .queue-list {
+  border-radius: var(--cpq-pad);
+  min-height: 70px;
+  border-top: 1px #e5e5e5 solid;
+  border-bottom: 1px #e5e5e5 solid;
+  padding: var(--cpq-pad) 0px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
 #tab_plugin_continuousprint .accordion-heading, {
   width:100%;
   display: flex;
@@ -22,13 +119,39 @@
   justify-content: right;
   align-items: center;
 }
-#tab_plugin_continuousprint .queue-row-container {
+#tab_plugin_continuousprint .queue-row-container, #settings_continuousprint_queues .queue-row-container {
   width:100%;
   display: flex;
   flex-wrap: nowrap;
   flex-direction: row;
   justify-content: right;
   align-items: center;
+}
+#tab_plugin_continuousprint .job {
+  position: relative;
+}
+#tab_plugin_continuousprint .job.shiftsel {
+  border-left: 3px solid #CCC !important;
+}
+#tab_plugin_continuousprint .job.draft .job-gutter {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  padding-right: var(--cpq-pad);
+  padding-top: var(--cpq-pad);
+}
+#tab_plugin_continuousprint .job .floatedit {
+  position: absolute;
+  top: var(--cpq-pad2);
+  right: var(--cpq-pad2);
+  opacity: 0.0;
+  z-index: 1000;
+}
+#tab_plugin_continuousprint .job:hover .floatedit {
+  opacity: 0.5;
+}
+#tab_plugin_continuousprint .job:hover .floatedit:hover {
+  opacity: 1.0;
 }
 #tab_plugin_continuousprint .job .accordion-group {
   border-right: 0px;
@@ -37,8 +160,8 @@
   padding-right: 0px;
   border-right: 0px;
 }
-#tab_plugin_continuousprint .queue-row-container > * {
-  margin-left: 10px;
+#tab_plugin_continuousprint .queue-row-container > *, #settings_continuousprint_queues .queue-row-container > * {
+  margin-left: var(--cpq-pad);
   margin-bottom: 0;
   line-height: 1.6;
 }
@@ -55,7 +178,10 @@
   display: flex; /* allow for stacking progresses in jobs */
 }
 #tab_plugin_continuousprint .accordion-heading-button {
-  padding: 8px 15px; /* copied from .octoprint-container .accordion-heading .accordion-heading-button > a */
+  padding: var(--cpq-pad) var(--cpq-pad);
+}
+#tab_plugin_continuousprint .accordion-heading-button input {
+  margin-top: -2px;
 }
 #tab_plugin_continuousprint .accordion-body.collapse {
   /* Transitions copied from div#files.accordion-body.collapse */
@@ -69,24 +195,26 @@
 #tab_plugin_continuousprint .accordion-body.collapse.in {
   max-height: 500px;
 }
-
-#tab_plugin_continuousprint .queue-header {
+#tab_plugin_continuousprint .queue-header, #settings_continuousprint_queues .queue-header {
   display: flex;
   justify-content: space-between;
   font-weight: bold;
-  padding: 0px 44px 0px 32px;
+  padding: var(--cpq-pad) 8px 0 28px;
+  opacity: 0.5;
+  margin-left: 55px;
 }
 #tab_plugin_continuousprint .repeats {
   width: 85px;
-  text-align: right;
-}
-#tab_plugin_continuousprint .queue-header > div {
   text-align: center;
+}
+#tab_plugin_continuousprint .queue-header > div, #settings_continuousprint_queues .queue-header > div {
+  text-align: center;
+  margin-left: var(--cpq-pad);
 }
 #tab_plugin_continuousprint #queue_sets.empty {
   border: 1px #e5e5e5 solid; /* copy from .accordion-group */
-  padding: 15px;
-  border-radius: 10px;
+  padding: var(--cpq-pad);
+  border-radius: var(--cpq-pad);
 }
 #tab_plugin_continuousprint .accordion-body.collapse {
   /* Transitions copied from div#files.accordion-body.collapse */
@@ -99,33 +227,10 @@
 }
 #tab_plugin_continuousprint .accordion-body.collapse.in {
   max-height: 500px;
-}
-
-#tab_plugin_continuousprint .queue-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 0px 58px 0 28px;
-  opacity: 0.5;
-}
-#tab_plugin_continuousprint .queue-header > div {
-  margin-left: 10px;
-}
-#tab_plugin_continuousprint #queue_sets.empty {
-  padding: 15px;
-  border: none;
-  box-shadow: none;
 }
 #tab_plugin_continuousprint .label {
   border: 1px gray solid;
 }
-#tab_plugin_continuousprint div.material_select {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 1vh;
-}
-
 #tab_plugin_continuousprint ::placeholder {
   font-weight: italic;
   opacity: 0.7;
@@ -135,63 +240,30 @@
   font-size: 85%;
   opacity: 0.7;
 }
-#tab_plugin_continuousprint #queue_sets.empty::before {
-  content: "Hint: Click the + button on a file, or drag a queue item here";
+#tab_plugin_continuousprint #queue_sets.empty.draft::before {
+  content: "Hint: Click the + button on a file, or drag in a set from another job in edit mode.";
   font-weight: italic;
   font-size: 85%;
   opacity: 0.7;
 }
 #tab_plugin_continuousprint .queue-set-list {
-  max-height: 200px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
-#tab_plugin_continuousprint .queue-set-list table {
-  table-layout:auto;
+#tab_plugin_continuousprint .queue-set-list h4 {
+  border-bottom: 1px #e5e5e5 solid;
+}
+#tab_plugin_continuousprint .queue-set-list .full {
   width: 100%;
-  border-collapse: collapse;
 }
-#tab_plugin_continuousprint .queue-set-list th {
-  position: sticky;
-  background: #eee;
-  top: 0;
-  text-align: left;
-  padding: 0 3px;
-  /* position:sticky doesn't work with regular borders, so we use box shadow */
-  box-shadow: inset 0 -1px 0 black;
-  font-weight: normal;
-}
-.themeify.discorded #tab_plugin_continuousprint .queue-set-list th,
-.themeify.cyborg #tab_plugin_continuousprint .queue-set-list th,
-.themeify.discoranged #tab_plugin_continuousprint .queue-set-list th,
-.themeify.nighttime #tab_plugin_continuousprint .queue-set-list th {
-  background-color: #222 !important;
-}
-
-#tab_plugin_continuousprint .queue-set-list th::after {
-  content: ' ';
-  position: absolute;
-  left: 0;
-  width: 100%;
-  bottom: -1px;
-  border-bottom: 1px gray solid;
-}
-#tab_plugin_continuousprint i.fa-grip-lines-vertical {
-  cursor: grab;
-}
-#tab_plugin_continuousprint .queue-set-list td {
-  padding: 0 3px;
-}
-#tab_plugin_continuousprint .queue-set-list tr :first-child {
-  border-right: 1px gray solid;
-}
-#tab_plugin_continuousprint .queue-set-list tr.run-alt {
-  background-color: #e5e5e5;
-}
-.themeify.discorded #tab_plugin_continuousprint tr.run-alt,
-.themeify.cyborg #tab_plugin_continuousprint tr.run-alt,
-.themeify.discoranged #tab_plugin_continuousprint tr.run-alt,
-.themeify.nighttime #tab_plugin_continuousprint tr.run-alt {
-  background-color: #282828 !important;
+#tab_plugin_continuousprint .queue-set-list .gutter {
+  border-top: 1px #e5e5e5 solid;
+  padding-top: var(--cpq-pad);
+  display: flex;
+  justify-content: space-between;
 }
 
 #tab_plugin_continuousprint .count-box{
@@ -226,7 +298,6 @@
     max-width: 96%;
     text-overflow: ellipsis;
     border: 0;
-    cursor: pointer;
 }
 .bold{
   font-weight: bold;
@@ -274,4 +345,38 @@
     animation: progress-bar-stripes 2s linear infinite;
     background-image: linear-gradient(45deg,rgba(255,255,255,0.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.15) 50%,rgba(255,255,255,0.15) 75%,transparent 75%,transparent);
 }
+
+/* Below stylesheets are for the "history" page */
+
+#tab_plugin_continuousprint .header, #tab_plugin_continuousprint .entries > div  {
+  display: flex;
+  justify-content: space-between;
+  padding: 0px 44px 0px 32px;
+  flex-direction: row;
+}
+
+#tab_plugin_continuousprint .header {
+  font-weight: bold;
+  opacity: 0.5;
+  border-bottom: 1px gray solid;
+}
+
+#tab_plugin_continuousprint .header > *, #tab_plugin_continuousprint .entries > .entry > * {
+  flex: 1;
+  text-align: center;
+}
+
+#tab_plugin_continuousprint .separator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#tab_plugin_continuousprint .separator .line {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #000;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
 /* ======== */

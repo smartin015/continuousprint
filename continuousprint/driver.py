@@ -17,6 +17,12 @@ class Printer(Enum):
     BUSY = auto()
 
 
+class StatusType(Enum):
+    NORMAL = auto()
+    NEEDS_ACTION = auto()
+    ERROR = auto()
+
+
 # Inspired by answers at
 # https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
 def timeAgo(elapsed):
@@ -28,7 +34,7 @@ def timeAgo(elapsed):
         return str(round(elapsed / (60 * 60 * 24))) + " days"
 
 
-class ContinuousPrintDriver:
+class Driver:
     def __init__(
         self,
         queue,
@@ -37,6 +43,7 @@ class ContinuousPrintDriver:
     ):
         self._logger = logger
         self.status = None
+        self.status_type = StatusType.NORMAL
         self._set_status("Initializing")
         self.q = queue
         self.state = self._state_unknown
@@ -44,9 +51,9 @@ class ContinuousPrintDriver:
         self.retry_on_pause = False
         self.max_retries = 0
         self.retry_threshold_seconds = 0
+        self.max_startup_attempts = 3
         self.first_print = True
         self._runner = script_runner
-        self._intent = None  # Intended file path
         self._update_ui = False
         self._cur_path = None
         self._cur_materials = []
@@ -57,7 +64,14 @@ class ContinuousPrintDriver:
             self._cur_path = path
         if len(materials) > 0:
             self._cur_materials = materials
-        nxt = self.state(a, p)
+
+        # Deactivation must be allowed on all states, so we hande it here for
+        # completeness.
+        if a == Action.DEACTIVATE and self.state != self._state_inactive:
+            nxt = self._state_inactive
+        else:
+            nxt = self.state(a, p)
+
         if nxt is not None:
             self._logger.info(f"{self.state.__name__} -> {nxt.__name__}")
             self.state = nxt
@@ -69,99 +83,132 @@ class ContinuousPrintDriver:
         return False
 
     def _state_unknown(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
+        pass
 
     def _state_inactive(self, a: Action, p: Printer):
+        self.q.release()
         self.retries = 0
 
         if a == Action.ACTIVATE:
             if p != Printer.IDLE:
                 return self._state_printing
             else:
-                # TODO "clear bed on startup" setting
-                return self._state_start_print
+                return self._enter_start_print(a, p)
 
         if p == Printer.IDLE:
             self._set_status("Inactive (click Start Managing)")
         else:
             self._set_status("Inactive (active print continues unmanaged)")
 
-    def _state_start_print(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
+    def _state_idle(self, a: Action, p: Printer):
+        self.q.release()
 
+        item = self.q.get_set_or_acquire()
+        if item is None:
+            self._set_status("Idle (awaiting printable Job)")
+        else:
+            if p != Printer.IDLE:
+                return self._state_printing
+            else:
+                return self._enter_start_print(a, p)
+
+    def _enter_start_print(self, a: Action, p: Printer):
+        # TODO "clear bed on startup" setting
+
+        # Pre-call start_print on entry to eliminate tick delay
+        self.start_failures = 0
+        nxt = self._state_start_print(a, p)
+        return nxt if nxt is not None else self._state_start_print
+
+    def _state_start_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
 
+        item = self.q.get_set_or_acquire()
+        if item is None:
+            self._set_status("No work to do; going idle")
+            return self._state_idle
+
         # Block until we have the right materials loaded (if required)
-        item = self.q[self._next_available_idx()]
-        for i, im in enumerate(item.materials):
+        for i, im in enumerate(item.materials()):
             if im is None:  # No constraint
                 continue
             cur = self._cur_materials[i] if i < len(self._cur_materials) else None
             if im != cur:
                 self._set_status(
-                    f"Waiting for spool {im} in tool {i} (currently: {cur})"
+                    f"Waiting for spool {im} in tool {i} (currently: {cur})",
+                    StatusType.NEEDS_ACTION,
                 )
                 return
 
-        # The next print may not be the *immediately* next print
-        # e.g. if we skip over a print or start mid-print
-        idx = self._next_available_idx()
-        if idx is not None:
-            p = self.q[idx]
-            p.start_ts = int(time.time())
-            p.end_ts = None
-            p.retries = self.retries
-            self.q[idx] = p
-            self._intent = self._runner.start_print(p)
+        self.q.begin_run()
+        if self._runner.start_print(item):
             return self._state_printing
         else:
-            return self._state_inactive
-
-    def _elapsed(self):
-        return time.time() - self.q[self._cur_idx()].start_ts
+            # TODO bail out of the job and mark it as bad rather than dropping into inactive state
+            self.start_failures += 1
+            if self.start_failures >= self.max_startup_attempts:
+                self._set_status("Failed to start; too many attempts", StatusType.ERROR)
+                return self._state_inactive
+            else:
+                self._set_status(
+                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
+                    StatusType.ERROR,
+                )
 
     def _state_printing(self, a: Action, p: Printer, elapsed=None):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
-        elif a == Action.FAILURE:
+        if a == Action.FAILURE:
             return self._state_failure
         elif a == Action.SPAGHETTI:
-            elapsed = self._elapsed()
+            run = self.q.get_run()
+            elapsed = time.time() - run.start.timestamp()
             if self.retry_on_pause and elapsed < self.retry_threshold_seconds:
                 return self._state_spaghetti_recovery
             else:
                 self._set_status(
-                    f"Print paused {timeAgo(elapsed)} into print (over auto-restart threshold of {timeAgo(self.retry_threshold_seconds)}); awaiting user input"
+                    f"Paused after {timeAgo(elapsed)} (>{timeAgo(self.retry_threshold_seconds)}); awaiting user",
+                    StatusType.NEEDS_ACTION,
                 )
                 return self._state_paused
         elif a == Action.SUCCESS:
-            return self._state_success
+            item = self.q.get_set()
+
+            # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
+            # the file name, not the full path to the file.
+            # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterCallback.on_printer_send_current_data
+            if item.path.split("/")[-1] == self._cur_path:
+                return self._state_success
+            else:
+                self._logger.info(
+                    f"Completed print {self._cur_path} not matching current queue item {item.path} - clearing it in prep to start queue item"
+                )
+                return self._state_start_clearing
 
         if p == Printer.BUSY:
-            idx = self._cur_idx()
-            if idx is not None:
-                self._set_status(f"Printing {self.q[idx].name}")
+            item = self.q.get_set()
+            if item is not None:
+                self._set_status("Printing")
+            else:
+                self._set_status("Waiting for printer to be ready")
         elif p == Printer.PAUSED:
             return self._state_paused
         elif p == Printer.IDLE:  # Idle state without event; assume success
             return self._state_success
 
     def _state_paused(self, a: Action, p: Printer):
-        self._set_status("Queue paused")
-        if a == Action.DEACTIVATE or p == Printer.IDLE:
+        self._set_status("Paused", StatusType.NEEDS_ACTION)
+        if p == Printer.IDLE:
+            # Here, IDLE implies the user cancelled the print.
+            # Go inactive to prevent stomping on manual changes
             return self._state_inactive
         elif p == Printer.BUSY:
             return self._state_printing
 
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
-        self._set_status("Cancelling print (spaghetti seen early in print)")
+        self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
             self._runner.cancel_print()
-            self._intent = None
             return self._state_failure
 
     def _state_failure(self, a: Action, p: Printer):
@@ -172,75 +219,67 @@ class ContinuousPrintDriver:
             self.retries += 1
             return self._state_start_clearing
         else:
-            idx = self._cur_idx()
-            if idx is not None:
-                self._complete_item(idx, "failure")
+            self.q.end_run("failure")
+            self._set_status("Failure (max retries exceeded", StatusType.ERROR)
             return self._state_inactive
 
     def _state_success(self, a: Action, p: Printer):
-        idx = self._cur_idx()
-
-        # Complete prior queue item if that's what we just finished
-        if idx is not None:
-            path = self.q[idx].path
-            if self._intent == path and self._cur_path == path:
-                self._complete_item(idx, "success")
-            else:
-                self._logger.info(
-                    f"Current queue item {path} not matching intent {self._intent}, current path {self._cur_path} - no completion"
-                )
+        # Complete prior queue item if that's what we just finished.
+        # Note that end_run fails silently if there's no active run
+        # (e.g. if we start managing mid-print)
+        self.q.end_run("success")
         self.retries = 0
 
         # Clear bed if we have a next queue item, otherwise run finishing script
-        idx = self._next_available_idx()
-        if idx is not None:
+        item = self.q.get_set_or_acquire()
+        if item is not None:
             return self._state_start_clearing
         else:
             return self._state_start_finishing
 
     def _state_start_clearing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._intent = self._runner.clear_bed()
+        self._runner.clear_bed()
         return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
-        if p != Printer.IDLE:
-            return
+        if a == Action.SUCCESS:
+            return self._enter_start_print(a, p)
+        elif a == Action.FAILURE:
+            self._set_status("Error when clearing bed - aborting", StatusType.ERROR)
+            return self._state_inactive  # Skip past failure state to inactive
 
-        self._set_status("Clearing bed")
-        return self._state_start_print
+        if p == Printer.IDLE:  # Idle state without event; assume success
+            return self._enter_start_print(a, p)
+        else:
+            self._set_status("Clearing bed")
 
     def _state_start_finishing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
-            return self._state_inactive
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._intent = self._runner.run_finish_script()
+        self._runner.run_finish_script()
         return self._state_finishing
 
     def _state_finishing(self, a: Action, p: Printer):
-        if a == Action.DEACTIVATE:
+        if a == Action.FAILURE:
             return self._state_inactive
-        if p != Printer.IDLE:
-            return
 
-        self._set_status("Finising up")
+        # Idle state without event -> assume success and go idle
+        if a == Action.SUCCESS or p == Printer.IDLE:
+            return self._state_idle
 
-        return self._state_inactive
+        self._set_status("Finishing up")
 
-    def _set_status(self, status):
+    def _set_status(self, status, status_type=StatusType.NORMAL):
         if status != self.status:
             self._update_ui = True
             self.status = status
+            self.status_type = status_type
             self._logger.info(status)
 
     def set_retry_on_pause(
@@ -253,25 +292,6 @@ class ContinuousPrintDriver:
             f"Retry on pause: {enabled} (max_retries {max_retries}, threshold {retry_threshold_seconds}s)"
         )
 
-    def _cur_idx(self):
-        for (i, item) in enumerate(self.q):
-            if item.start_ts is not None and item.end_ts is None:
-                return i
-        return None
-
     def current_path(self):
-        idx = self._cur_idx()
-        return None if idx is None else self.q[idx].name
-
-    def _next_available_idx(self):
-        for (i, item) in enumerate(self.q):
-            if item.end_ts is None:
-                return i
-        return None
-
-    def _complete_item(self, idx, result):
-        self._logger.debug(f"Completing q[{idx}] - {result}")
-        item = self.q[idx]
-        item.end_ts = int(time.time())
-        item.result = result
-        self.q[idx] = item  # TODO necessary?
+        item = self.q.get_set()
+        return None if item is None else item.path

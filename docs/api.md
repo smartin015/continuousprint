@@ -1,4 +1,4 @@
-# Continuous Print API
+# API
 
 This plugin comes with a basic API to fetch state and start/stop the queue. This allows for other scripts and plugins to interact with the continuous print queue to unlock even more autonomous printing!
 

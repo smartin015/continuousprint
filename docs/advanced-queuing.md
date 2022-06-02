@@ -1,4 +1,4 @@
-# Advanced Queuing
+# Queuing Basics
 
 ![british queueing meme](https://y.yarn.co/276d8bc3-5a86-4b5c-ace4-99b363f9c43b_text.gif)
 

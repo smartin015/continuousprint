@@ -20,11 +20,14 @@ markdown_extensions:
   - admonition
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - GCODE Scripting: gcode-scripting.md
-  - Advanced Queuing: advanced-queuing.md
-  - Managed Bed Cooldown: managed-bed-cooldown.md
-  - Failure Recovery: failure-recovery.md
-  - Material Selection: material-selection.md
-  - Contributing: contributing.md
-  - API: api.md
+  - 'getting-started.md'
+  - 'gcode-scripting.md'
+  - 'advanced-queuing.md'
+  - 'job-files.md'
+  - 'failure-recovery.md'
+  - 'lan-queues.md'
+  - 'material-selection.md'
+  - 'printer-profiles.md'
+  - 'managed-bed-cooldown.md'
+  - 'contributing.md'
+  - 'api.md'
