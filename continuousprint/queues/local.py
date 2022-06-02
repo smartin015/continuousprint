@@ -1,5 +1,6 @@
 from .abstract import Strategy, QueueData, AbstractEditableQueue
 import tempfile
+import os
 from ..storage.database import JobView, SetView
 from peerprint.filesharing import pack_job, unpack_job, packed_name
 from pathlib import Path
