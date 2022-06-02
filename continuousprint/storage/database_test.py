@@ -189,6 +189,38 @@ class TestJobWithSet(DBTest):
         self.assertEqual([s.path for s in j2.sets], [s.path for s in j.sets])
 
 
+class TestMultiSet(DBTest):
+    def setUp(self):
+        super().setUp()
+        self.j = Job.create(
+            queue=self.q, name="a", rank=0, count=5, remaining=5, draft=False
+        )
+        self.s = []
+        for name in ("a", "b"):
+            self.s.append(
+                Set.create(
+                    path="a",
+                    sd=False,
+                    job=self.j,
+                    rank=0,
+                    count=2,
+                    remaining=2,
+                    material_keys="m1,m2",
+                    profile_keys="p1,p2",
+                )
+            )
+
+    def testSetsAreSequential(self):
+        p = dict(name="p1")
+        self.assertEqual(self.j.next_set(p), self.s[0])
+        Set.get(1).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[0])
+        Set.get(1).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[1])
+        Set.get(2).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[1])
+
+
 class TestSet(DBTest):
     def setUp(self):
         super().setUp()
