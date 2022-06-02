@@ -28,5 +28,6 @@ nav:
   - 'lan-queues.md'
   - 'material-selection.md'
   - 'printer-profiles.md'
+  - 'managed-bed-cooldown.md'
   - 'contributing.md'
   - 'api.md'
