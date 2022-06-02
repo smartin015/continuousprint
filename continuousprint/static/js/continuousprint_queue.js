@@ -191,6 +191,7 @@ function CPQueue(data, api, files, profile) {
             s.remaining(s.count());
             s.completed(0);
           }
+          j.selected(false);
         }
       });
     };
@@ -207,6 +208,10 @@ function CPQueue(data, api, files, profile) {
           });
           // Reload the file panel to show the new file
           self.files.requestData({force: true});
+
+          for (let j of d.jobs) {
+            j.selected(false);
+          }
       });
     };
 

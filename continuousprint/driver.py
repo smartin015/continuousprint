@@ -101,6 +101,8 @@ class Driver:
             self._set_status("Inactive (active print continues unmanaged)")
 
     def _state_idle(self, a: Action, p: Printer):
+        self.q.release()
+
         item = self.q.get_set_or_acquire()
         if item is None:
             self._set_status("Idle (awaiting printable Job)")

@@ -386,7 +386,7 @@ def getHistory():
             Run.start, Run.end, Run.result, Run.queueName, Run.jobName, Run.path, Run.id
         )
         .order_by(Run.start.desc())
-        .limit(1000)
+        .limit(100)
     ).execute()
 
     result = [

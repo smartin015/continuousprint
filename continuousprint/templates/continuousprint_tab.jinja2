@@ -134,7 +134,7 @@
           <!-- /ko -->
           <div class="accordion-heading job-header">
             <div class="queue-row-container">
-              <i class="fas fa-grip-vertical" data-bind="hidden: draft() || queue.name !== 'local'"></i>
+            <i class="fas fa-grip-vertical" data-bind="style: {visibility: (draft() || queue.name !== 'local') ? 'hidden' : null}"></i>
               <i style="cursor: pointer" data-bind="hidden: draft() || (acquiredBy() && $root.active()), css: selected() ? 'fas fa-check-square' : 'far fa-square', event: {mousedown: queue.onChecked}"></i>
               <i data-bind="visible: acquiredBy(), attr: {title: 'Acquired by: ' + acquiredBy()}" class="fas fa-cube"></i>
               <!-- ko if: draft -->

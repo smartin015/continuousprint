@@ -144,10 +144,10 @@ class LANQueue(AbstractJobQueue):
 
     def decrement(self) -> None:
         if self.job is not None:
-            has_work = self.set.decrement()
-            if has_work:
+            next_set = self.set.decrement(self._profile)
+            if next_set:
                 self._logger.debug("Still has work, going for next set")
-                self.set = self.job.next_set(self._profile)
+                self.set = next_set
                 return True
             else:
                 self._logger.debug("No more work; releasing")

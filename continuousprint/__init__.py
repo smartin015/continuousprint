@@ -73,6 +73,11 @@ class ContinuousprintPlugin(
         v = self._settings.get([k.setting])
         return v if v is not None else default
 
+    def _add_folder(self, path):
+        return self._file_manager.add_folder(
+            FileDestinations.LOCAL, self._path_in_storage(path)
+        )
+
     # --------------------- Begin StartupPlugin ---------------------
 
     def _setup_thirdparty_plugin_integration(self):
@@ -183,6 +188,7 @@ class ContinuousprintPlugin(
                         queues.abstract.Strategy.IN_ORDER,
                         self._printer_profile,
                         self._path_on_disk,
+                        self._add_folder,
                     ),
                 )
 

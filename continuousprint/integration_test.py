@@ -83,7 +83,12 @@ class TestLocalQueue(IntegrationTest):
 
     def newQueue(self):
         return LocalQueue(
-            queries, DEFAULT_QUEUE, Strategy.IN_ORDER, dict(name="profile"), MagicMock()
+            queries,
+            DEFAULT_QUEUE,
+            Strategy.IN_ORDER,
+            dict(name="profile"),
+            MagicMock(),
+            MagicMock(),
         )
 
     def test_retries_failure(self):

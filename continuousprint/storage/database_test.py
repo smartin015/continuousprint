@@ -12,7 +12,7 @@ from .database import (
 )
 import tempfile
 
-# logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class DBTest(unittest.TestCase):
@@ -192,7 +192,9 @@ class TestJobWithSet(DBTest):
 class TestSet(DBTest):
     def setUp(self):
         super().setUp()
-        self.j = Job.create(queue=self.q, name="a", rank=0, count=5, remaining=5)
+        self.j = Job.create(
+            queue=self.q, name="a", rank=0, count=5, remaining=5, draft=False
+        )
         self.s = Set.create(
             path="a",
             sd=False,
@@ -204,14 +206,19 @@ class TestSet(DBTest):
             profile_keys="p1,p2",
         )
 
+    def testDecrementWithDifferentProfile(self):
+        # using a different profile should decrement the job when there is no printable sets
+        self.s.decrement(dict(name="otherprof"))
+        self.assertEqual(self.j.remaining, 4)
+
     def testDecrementWithRemaining(self):
-        self.s.decrement()
+        self.s.decrement(dict(name="p1"))
         self.assertEqual(self.s.remaining, 4)
         self.assertEqual(self.j.remaining, 5)
 
     def testDecrementToZeroDecrementsJob(self):
         self.s.remaining = 0
-        self.s.decrement()
+        self.s.decrement(dict(name="p1"))
         self.s = Set.get(id=self.s.id)
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.s.remaining, 5)
@@ -221,8 +228,10 @@ class TestSet(DBTest):
         # When there's one "remaining" job run but all the sets are complete,
         # consider the job done.
         self.s.remaining = 0
+        self.s.save()
         self.j.remaining = 1
-        self.s.decrement()
+        self.j.save()
+        self.s.decrement(dict(name="p1"))
         self.s = Set.get(id=self.s.id)
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.j.remaining, 0)

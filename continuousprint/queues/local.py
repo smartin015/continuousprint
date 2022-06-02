@@ -1,7 +1,6 @@
 from .abstract import Strategy, QueueData, AbstractEditableQueue
 import tempfile
 from ..storage.database import JobView, SetView
-import os
 from peerprint.filesharing import pack_job, unpack_job, packed_name
 from pathlib import Path
 import dataclasses
@@ -15,9 +14,11 @@ class LocalQueue(AbstractEditableQueue):
         strategy: Strategy,
         profile: dict,
         path_on_disk_fn,
+        mkdir_fn,
     ):
         super().__init__()
         self._path_on_disk = path_on_disk_fn
+        self._mkdir = mkdir_fn
         self.ns = queueName
         self._profile = profile
         j = queries.getAcquiredJob()
@@ -51,7 +52,7 @@ class LocalQueue(AbstractEditableQueue):
             self.release()
             return False
 
-        has_work = self.set.decrement()
+        has_work = self.set.decrement(self._profile) is not None
         earliest_job = self.queries.getNextJobInQueue(self.ns, self._profile)
         if has_work and earliest_job == self.job and self.job.acquired:
             self.set = self.job.next_set(self._profile)
@@ -103,7 +104,7 @@ class LocalQueue(AbstractEditableQueue):
 
     def import_job(self, gjob_path: str) -> dict:
         out_dir = str(Path(gjob_path).stem)
-        os.makedirs(out_dir, exist_ok=True)
+        self._mkdir(out_dir)
         manifest, filepaths = unpack_job(
             self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
         )

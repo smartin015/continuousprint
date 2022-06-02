@@ -164,7 +164,7 @@ class TestSingleItemQueue(DBTest):
             [(1, 1), (1, 1), True],
             [(0, 1), (0, 0), False],
             [(0, 2), (1, 1), True],
-            [(1, 0), (1, 0), True],
+            [(1, 0), (1, 0), False],  # job remaining=0 always returns false
         ]
         j = Job.get(id=1)
         s = Set.get(id=1)
@@ -208,7 +208,7 @@ class TestSingleItemQueue(DBTest):
                 j.count = max(before[1], 1)
                 j.save()
 
-                s.decrement()
+                s.decrement(dict(name=PROFILE))
 
                 s = Set.get(id=s.id)
                 j = Job.get(id=j.id)
@@ -333,7 +333,7 @@ class TestMultiItemQueue(DBTest):
     def testGetNextJobAfterDecrement(self):
         j = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)
         s = j.sets[0]
-        s.decrement()
+        s.decrement(dict(name=PROFILE))
         j2 = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)
         self.assertEqual(j2.id, j.id)
         self.assertEqual(j2.sets[0].remaining, 0)

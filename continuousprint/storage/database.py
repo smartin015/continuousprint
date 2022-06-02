@@ -64,37 +64,28 @@ class JobView:
 
     This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)"""
 
-    def normalize(self):
-        # Return True if there's valid work
-        if self.remaining == 0:
-            return self.has_incomplete_sets()
-        if self.has_incomplete_sets():
-            return True
-        self.decrement()
+    def refresh_sets(self):
+        raise NotImplementedError()
 
-    def decrement(self) -> bool:
+    def decrement(self):
         self.remaining = max(self.remaining - 1, 0)
         self.save()
         if self.remaining > 0:
             self.refresh_sets()
-        return self.has_work()
-
-    def has_incomplete_sets(self) -> bool:
-        for s in self.sets:
-            if s.remaining > 0:
-                return True
-        return False
-
-    def has_work(self) -> bool:
-        return self.has_incomplete_sets() or self.remaining > 0
 
     def next_set(self, profile):
-        if self.draft or self.queue.name == ARCHIVE_QUEUE:
+        if self.draft or self.queue.name == ARCHIVE_QUEUE or self.remaining == 0:
             return None
-        self.normalize()
+
+        nxt = self._next_set(profile)
+        if nxt is None:  # We may need to decrement to actually get the next set
+            self.decrement()
+            nxt = self._next_set(profile)
+        return nxt
+
+    def _next_set(self, profile):
         for s in self.sets:
-            profs = s.profiles()
-            if s.remaining > 0 and (len(profs) == 0 or profile["name"] in profs):
+            if s.is_printable(profile):
                 return s
 
     @classmethod
@@ -161,13 +152,16 @@ class SetView:
     def profiles(self):
         return self._csv2list(self.profile_keys)
 
-    def decrement(self):
+    def is_printable(self, profile):
+        profs = self.profiles()
+        if self.remaining > 0 and (len(profs) == 0 or profile["name"] in profs):
+            return True
+        return False
+
+    def decrement(self, profile):
         self.remaining = max(0, self.remaining - 1)
         self.save()  # Save must occur before job is observed
-        if not self.job.has_incomplete_sets():
-            return self.job.decrement()
-        else:
-            return True
+        return self.job.next_set(profile)
 
     @classmethod
     def from_dict(self, s):

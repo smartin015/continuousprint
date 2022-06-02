@@ -13,7 +13,12 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
         queries = MagicMock()
         queries.getAcquiredJob.return_value = None
         self.q = LocalQueue(
-            queries, "testQueue", Strategy.IN_ORDER, dict(name="profile"), MagicMock()
+            queries,
+            "testQueue",
+            Strategy.IN_ORDER,
+            dict(name="profile"),
+            MagicMock(),
+            MagicMock(),
         )
 
     def test_acquire_success(self):
@@ -59,7 +64,12 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         self.j.next_set.side_effect = [self.s, self.ns]
         queries.getAcquiredJob.return_value = self.j
         self.q = LocalQueue(
-            queries, "testQueue", Strategy.IN_ORDER, dict(name="profile"), MagicMock()
+            queries,
+            "testQueue",
+            Strategy.IN_ORDER,
+            dict(name="profile"),
+            MagicMock(),
+            MagicMock(),
         )
 
     def test_init_already_acquired(self):
