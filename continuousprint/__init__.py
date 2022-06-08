@@ -60,12 +60,6 @@ class ContinuousprintPlugin(
             int(self._get_key(Keys.RESTART_MAX_TIME)),
         )
 
-    def _rm_temp_files(self):
-        # Clean up any file references from prior runs
-        for path in TEMP_FILES.values():
-            if self._file_manager.file_exists(FileDestinations.LOCAL, path):
-                self._file_manager.remove_file(FileDestinations.LOCAL, path)
-
     def _set_key(self, k, v):
         return self._settings.set([k.setting], v)
 
@@ -209,13 +203,19 @@ class ContinuousprintPlugin(
         )
         self._update(DA.DEACTIVATE)  # Initializes and passes printer state
         self._on_settings_updated()
-        self._rm_temp_files()
 
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
         # timer with a periodic tick ensures that the driver knows what the state of the printer is.
-        self.watchdog = RepeatedTimer(5.0, lambda: self._update(DA.TICK))
+        self.watchdog = RepeatedTimer(5.0, self._on_watchdog)
         self.watchdog.start()
         self._logger.info("Continuous Print Plugin started")
+
+    def _on_watchdog(self):
+        # Catch/pass all exceptions to prevent errors from stopping the repeated timer.
+        try:
+            self._update(DA.TICK)
+        except Exception:
+            traceback.print_exc()
 
     # ------------------------ End StartupPlugin ---------------------------
 
@@ -230,16 +230,7 @@ class ContinuousprintPlugin(
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
 
-        if event == Events.METADATA_ANALYSIS_FINISHED:
-            # OctoPrint analysis writes to the printing file - we must remove
-            # our temp files AFTER analysis has finished or else we'll get a "file not found" log error.
-            # We do so when either we've finished printing or when the temp file is no longer selected
-            if self._printer.get_state_id() != "OPERATIONAL":
-                for path in TEMP_FILES.values():
-                    if self._printer.is_current_file(path, sd=False):
-                        return
-            self._rm_temp_files()
-        elif event == Events.PRINT_DONE:
+        if event == Events.PRINT_DONE:
             self._update(DA.SUCCESS)
         elif event == Events.PRINT_FAILED:
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED

@@ -42,7 +42,7 @@ class Keys(Enum):
 PRINT_FILE_DIR = "ContinuousPrint"
 TEMP_FILES = dict(
     [
-        (k, f"{k}.gcode")
+        (k, f"{PRINT_FILE_DIR}/{k}.gcode")
         for k in [Keys.FINISHED_SCRIPT.setting, Keys.CLEARING_SCRIPT.setting]
     ]
 )
