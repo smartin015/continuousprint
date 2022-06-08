@@ -44,7 +44,19 @@ function CPViewModel(parameters) {
     self.profile = ko.observable('');
 
     self.api = parameters[4] || new CPAPI();
-    self.api.init(self.loading);
+
+
+    self.api.init(self.loading,
+      function(code, reason) {
+        console.error("API Error", code, reason);
+        new PNotify({
+            title: `Continuous Print API (Error ${code})`,
+            text: reason,
+            type: 'error',
+            hide: true,
+            buttons: {closer: true, sticker: false},
+        });
+      });
 
     self.setActive = function(active) {
         self.api.setActive(active, () => {

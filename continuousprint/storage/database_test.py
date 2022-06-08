@@ -138,6 +138,12 @@ class TestJobWithSet(DBTest):
     def testNextSetWithSameProfile(self):
         self.assertEqual(self.j.next_set(dict(name="baz")), self.s)
 
+    def testNextSetWithZeroCount(self):
+        self.s.count = 0
+        self.s.remaining = 0
+        self.s.save()
+        self.assertEqual(self.j.next_set(dict(name="baz")), None)
+
     def testDecrementUnstartedSet(self):
         self.j.decrement()
         self.assertEqual(self.j.remaining, 4)
@@ -158,6 +164,12 @@ class TestJobWithSet(DBTest):
         self.assertEqual(self.j.sets[0].remaining, 5)
 
     def testDecrementNoRemaining(self):
+        self.j.remaining = 0
+        self.j.decrement()
+        self.assertEqual(self.j.remaining, 0)
+
+    def testDecrementZeroCount(self):
+        self.j.count = 0
         self.j.remaining = 0
         self.j.decrement()
         self.assertEqual(self.j.remaining, 0)

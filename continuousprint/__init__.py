@@ -72,6 +72,14 @@ class ContinuousprintPlugin(
             FileDestinations.LOCAL, self._path_in_storage(path)
         )
 
+    def _get_local_ip(self):
+        # https://stackoverflow.com/a/57355707
+        hostname = socket.gethostname()
+        try:
+            return socket.gethostbyname(f"{hostname}.local")
+        except socket.gaierror:
+            return socket.gethostbyname(hostname)
+
     # --------------------- Begin StartupPlugin ---------------------
 
     def _setup_thirdparty_plugin_integration(self):
@@ -124,15 +132,9 @@ class ContinuousprintPlugin(
         )
 
         fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
-
-        # https://stackoverflow.com/a/57355707
-        hostname = socket.gethostname()
-        try:
-            self.local_ip = socket.gethostbyname(f"{hostname}.local")
-        except socket.gaierror:
-            self.local_ip = socket.gethostbyname(hostname)
-
-        self._fileshare = Fileshare(f"{self.local_ip}:0", fileshare_dir, self._logger)
+        fileshare_addr = f"{self._get_local_ip()}:0"
+        self._logger.info(f"Starting fileshare with address {fileshare_addr}")
+        self._fileshare = Fileshare(fileshare_addr, fileshare_dir, self._logger)
         self._fileshare.connect()
 
         # Migrate from old JSON state if needed
@@ -391,7 +393,7 @@ class ContinuousprintPlugin(
         return dict(
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
-            local_ip=self.local_ip,
+            local_ip=self._get_local_ip(),
         )
 
     def get_template_configs(self):

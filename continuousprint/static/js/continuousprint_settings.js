@@ -18,7 +18,16 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     self.files = parameters[1]
     self.api = parameters[2] || new CPAPI();
     self.loading = ko.observable(false);
-    self.api.init(self.loading);
+    self.api.init(self.loading, function(code, reason) {
+      console.log("API Error", code, reason);
+      new PNotify({
+        title: `Continuous Print Settings (Error ${code})`,
+        text: reason,
+        type: 'error',
+        hide: true,
+        buttons: {closer: true, sticker: false},
+      });
+    });
     self.local_ip = ko.observable(CP_LOCAL_IP || '');
 
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)

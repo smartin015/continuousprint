@@ -8,9 +8,9 @@ class CPAPI {
   QUEUES = "queues"
   HISTORY = "history"
 
-  init(loading_vm) {
-    console.log("API init");
+  init(loading_vm, err_cb) {
     this.loading = loading_vm;
+    this.default_err_cb = err_cb;
   }
 
   _call_base(url, data, cb, err_cb=undefined, blocking=true) {
@@ -35,7 +35,14 @@ class CPAPI {
           }
         },
         error: (xhr,  textstatus, errThrown) => {
-          err_cb && err_cb(xhr.status, errThrown);
+          if (err_cb) {
+            err_cb(xhr.status, errThrown);
+          } else {
+            self.default_err_cb(xhr.status, errThrown);
+          }
+          if (blocking) {
+            self.loading(false);
+          }
         }
     });
   }
