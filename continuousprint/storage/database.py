@@ -115,7 +115,7 @@ class Job(Model, JobView):
     queue = ForeignKeyField(Queue, backref="jobs", on_delete="CASCADE")
     name = CharField()
     rank = FloatField()
-    count = IntegerField(default=1, constraints=[Check("count > 0")])
+    count = IntegerField(default=1, constraints=[Check("count >= 0")])
     remaining = IntegerField(
         default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
     )
@@ -185,7 +185,7 @@ class Set(Model, SetView):
     sd = BooleanField()
     job = ForeignKeyField(Job, backref="sets", on_delete="CASCADE")
     rank = FloatField()
-    count = IntegerField(default=1, constraints=[Check("count > 0")])
+    count = IntegerField(default=1, constraints=[Check("count >= 0")])
     remaining = IntegerField(
         default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
     )

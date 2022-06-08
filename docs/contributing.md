@@ -6,7 +6,45 @@ If you just want to run the plugin, see [Getting Started](/getting-started/).
 
 *This guide is based on the [octoprint plugin quickstart guide](https://docs.octoprint.org/en/master/plugins/gettingstarted.html)*
 
-## 1. Install octoprint from source
+## Docker setup
+
+[Docker](https://www.docker.com/) is a tool that allows you to run processes in isolated containers. A docker setup is included with CPQ for development purposes, meaning you don't have to install anything (other than Docker) on your computer in order to get up and running. Install Docker on your computer, then read on to learn how to start developing with CPQ.
+
+!!! Note
+
+    If you prefer to not use docker, proceed to "Manual setup" below.
+
+First, download the repository (you could alternately fork and use your own repository here, for easier contributing later):
+
+```
+git clone https://github.com/smartin015/continuousprint.git
+```
+
+Then start a new container using docker-compose (this is installed by default in most Docker installations, but check [here](https://docs.docker.com/compose/install/) if the command isn't found):
+
+```
+docker-compose run --service-ports dev1 /bin/bash
+```
+
+The container will start with the repo volume-mounted at `/home/oprint/continuousprint`. Register the plugin in dev mode so that live edits can be made:
+
+```
+cd ~/continuousprint && octoprint dev plugin:install
+```
+
+Then start the server:
+
+```
+octoprint serve
+```
+
+You can now visit it at [http://localhost:5000](http://localhost:5000).
+
+## Manual setup
+
+Read on to learn how to set up a development environment on your machine, without using Docker.
+
+### 1. Install octoprint from source
 
 Install octoprint locally:
 
@@ -18,7 +56,7 @@ source venv/bin/activate
 pip install -e .
 ```
 
-## 2. Install dev tools
+### 2. Install dev tools
 
 !!! important
 
@@ -36,7 +74,7 @@ pre-commit install
 
 You can verify good installation by running `pre-commit run --all-files`. If everything passes, you're good to go.
 
-## 2. Install and start the continuous print plugin in local dev mode
+### 2. Install and start the continuous print plugin in local dev mode
 
 In the same terminal as the one where you activated the environment (see step 1), install the plugin in dev mode and launch the server:
 
@@ -48,7 +86,31 @@ octoprint serve
 
 You should see "Successfully installed continuousprint" when running the install command, and you can view the page at [http://localhost:5000](http://localhost:5000).
 
-### Editing docs
+## Optional steps for easier development
+
+A couple of optional changes can improve your developer flow:
+
+### YAML configs
+
+Edit OctoPrint's yaml config to turn off minification and ignore startup errors (at `continuousprint/volume/config.yaml` in the Docker container, else in your OctoPrint install path):
+
+```
+ignoreIncompleteStartup: true
+devel:
+  webassets:
+    bundle: false
+    minify: false
+    minify_plugins: false
+```
+
+Turning off minification in particular will help when chasing down error messages - without this change, client-side errors become garbled and hard to root-cause.
+
+### Debug logging
+
+Enable debug-level messages from ContinuousPrint by going into `Settings > Logging` and adding `octoprint.plugins.continuousprint` at `DEBUG` level at the bottom of that page. Click `Save` and the log level will be updated.
+
+
+## Editing docs
 
 Continuous Print uses [mkdocs](https://www.mkdocs.org/) to generate web documentation. All documentation lives in `docs/`.
 
