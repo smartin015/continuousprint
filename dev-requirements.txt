@@ -1,3 +1,4 @@
-mkdocs
-mkdocs-material
-pre-commit
+pre-commit  # For running automated precommit scripts
+mkdocs-material  # Theme for documentation
+mkdocs  # Documentation library
+pymdown-extensions  # Fancy extensions for documentation
