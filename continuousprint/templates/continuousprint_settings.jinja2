@@ -11,6 +11,7 @@
   <li><a href="#settings_continuousprint_integrations" data-toggle="tab">Integrations</a></li>
   <li><a href="#settings_continuousprint_queues" data-toggle="tab">Queues</a></li>
   <li><a href="#settings_continuousprint_networking" data-toggle="tab">Networking</a></li>
+  <li><a href="#settings_continuousprint_behavior" data-toggle="tab">Behavior</a></li>
 </ul>
 <div class="tab-content">
   <div id="settings_continuousprint_gcode" class="tab-pane active">
@@ -237,5 +238,25 @@
       </div>
       <button style="margin-top: 25px" class="btn pull-right" data-bind="click: newBlankQueue"><i class="fas fa-plus"></i> Add Queue</button>
     </form>
+  </div> <!-- settings_continuousprint_queues -->
+
+
+  <div id="settings_continuousprint_behavior" class="tab-pane">
+    <form class="form-horizontal">
+      <legend>Behavior</legend>
+      <fieldset>
+        <div class="control-group" title="What to do when a print is uploaded">
+          <label class="control-label">Upload Action</label>
+          <div class="controls">
+            <select data-bind="value: settings.settings.plugins.continuousprint.cp_upload_action">
+              <option value="do_nothing">Do nothing</option>
+              <option value="add_draft">Add to queue as a new draft job</option>
+              <option value="add_printable">Add to queue as an immediately printable job</option>
+            </select>
+          </div>
+        </div>
+    </form>
   </div> <!-- settings_continuousprint_lan -->
+
+
 </div>

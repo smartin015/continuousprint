@@ -122,8 +122,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def _sync_history(self):
         return self._sync("history", self._history_json())
 
-    # Public API method returning the full state of the plugin in JSON format.
+    # Public method - returns the full state of the plugin in JSON format.
     # See `_state_json()` for return values.
+    # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
+    # (e.g. 1.4.1 -> 2.0.0)
     @octoprint.plugin.BlueprintPlugin.route("/state/get", methods=["GET"])
     @restricted_access
     def get_state(self):
@@ -141,14 +143,16 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         )
         return self._state_json()
 
-    # PRIVATE API METHOD - may change without warning.
+    # Public method - adds a new set to an existing job, or creates a new job and adds the set there.
+    # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
+    # (e.g. 1.4.1 -> 2.0.0)
     @octoprint.plugin.BlueprintPlugin.route("/set/add", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.ADDSET)
     def add_set(self):
         return json.dumps(
             self._get_queue(DEFAULT_QUEUE).add_set(
-                flask.request.form["job"], flask.request.form
+                flask.request.form.get("job", ""), flask.request.form
             )
         )
 
