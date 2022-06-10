@@ -410,6 +410,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#add-a-set" class="md-nav__link">
+    Add a set
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#startstop-managing-the-queue" class="md-nav__link">
     Start/stop managing the queue
   </a>
@@ -458,6 +465,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#add-a-set" class="md-nav__link">
+    Add a set
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#startstop-managing-the-queue" class="md-nav__link">
     Start/stop managing the queue
   </a>
@@ -491,28 +505,67 @@
 </div>
 <h2 id="fetch-the-queue-state">Fetch the queue state</h2>
 <p><strong>Request</strong></p>
-<p><strong><code>HTTP GET http://printer:5000/plugin/continuousprint/state</code></strong></p>
+<p><strong><code>HTTP GET http://printer:5000/plugin/continuousprint/state/get</code></strong></p>
 <p>Returns the current internal state of the printer as a JSON string. List entries within <code>queue</code> may include fields which are not listed here - those
 fields may be subject to change without notice, so be wary of depending on them.</p>
 <p><strong>Response</strong></p>
 <pre><code>{
   &quot;active&quot;: true/false,
   &quot;status&quot;: string,
-  &quot;queue&quot;: [
+  &quot;statusType&quot;: string
+  &quot;profile&quot;: string,
+  &quot;queues&quot;: [
     {
       &quot;name&quot;: string,
-      &quot;path&quot;: string,
-      &quot;sd&quot;: bool
-      &quot;job&quot;: string,
-      &quot;run&quot;: number
-      &quot;start_ts&quot;: null | number (seconds),
-      &quot;end_ts&quot;: null | number (seconds),
-      &quot;result&quot;: string (todo specific stirngs),
-      &quot;retries&quot;: number
+      &quot;strategy&quot;: string,
+      &quot;jobs&quot;: [
+        {
+          &quot;name&quot;: string,
+          &quot;count&quot;: int,
+          &quot;remaining&quot; int,
+          &quot;draft&quot;: bool,
+          &quot;acquired&quot;: bool,
+          &quot;created&quot; int,
+          &quot;id&quot;: int,
+          &quot;sets&quot;: [
+            {
+              &quot;path&quot;: string,
+              &quot;count&quot;: int,
+              &quot;remaining&quot;: int,
+              &quot;materials&quot;: [...],
+              &quot;profiles&quot;: [...],
+              &quot;sd&quot;: bool
+            },
+            ...
+          ]
+        },
+        ...
+      ]
     },
     ...
   ]
 }
+</code></pre>
+<h2 id="add-a-set">Add a set</h2>
+<p><strong>Request</strong></p>
+<p><strong><code>HTTP POST http://printer:5000/plugin/continuousprint/set/add</code></strong></p>
+<p>Adds a set, optionally creating an enclosing job if one is not specified.</p>
+<p>Payload:</p>
+<pre><code>path: string
+sd: bool
+count: int
+materials: list (optional)
+profiles: list (optional)
+job: int (optional ID of job)
+jobName: string (optional)
+jobDraft: bool (optional, default True)
+</code></pre>
+<p><strong>Response</strong></p>
+<pre><code>{
+  &quot;job_id&quot;: int,
+  &quot;set_&quot;: {
+    // Fields matching set fields in /state/get
+  }
 </code></pre>
 <h2 id="startstop-managing-the-queue">Start/stop managing the queue</h2>
 <p><strong>Request</strong></p>
