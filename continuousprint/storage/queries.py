@@ -314,7 +314,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
         j.name = data["jobName"]
     if data.get("jobDraft") is not None:
         draft = data["jobDraft"]
-        j.draft = draft is True or draft.lower() == "true"
+        j.draft = draft is True or (type(draft) == str and draft.lower() == "true")
     if j.is_dirty():
         j.save()
 
@@ -322,7 +322,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
     sd = data.get("sd", "false")
     s = Set.create(
         path=data["path"],
-        sd=(sd is True or sd.lower() == "true"),
+        sd=(sd is True or (type(sd) == str and sd.lower() == "true")),
         rank=rank(),
         material_keys=",".join(data.get("materials", "")),
         profile_keys=",".join(data.get("profiles", "")),
