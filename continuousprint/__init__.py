@@ -22,6 +22,7 @@ from .queues.local import LocalQueue
 from .storage.database import (
     migrateFromSettings,
     init as init_db,
+    DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
 )
 from .data import (
@@ -79,6 +80,12 @@ class ContinuousprintPlugin(
             return socket.gethostbyname(f"{hostname}.local")
         except socket.gaierror:
             return socket.gethostbyname(hostname)
+
+    def _add_set(self, path, sd, draft=True):
+        self._get_queue(DEFAULT_QUEUE).add_set(
+            "", dict(path=path, sd="true" if sd else "false", count=1, jobDraft=draft)
+        )
+        self._sync_state()
 
     # --------------------- Begin StartupPlugin ---------------------
 
@@ -232,6 +239,16 @@ class ContinuousprintPlugin(
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
 
+        if (
+            event == Events.UPLOAD
+        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
+            upload_action = self._get_key(Keys.UPLOAD_ACTION)
+            if upload_action != "do_nothing":
+                self._add_set(
+                    path=payload["path"],
+                    sd=payload["target"] != "local",
+                    draft=(upload_action != "add_printable"),
+                )
         if event == Events.PRINT_DONE:
             self._update(DA.SUCCESS)
         elif event == Events.PRINT_FAILED:

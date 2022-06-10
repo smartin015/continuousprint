@@ -30,6 +30,10 @@ class Keys(Enum):
     BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
     MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
     NETWORK_NAME = ("cp_network_name", "Generic")
+    UPLOAD_ACTION = (
+        "cp_upload_action",
+        "do_nothing",
+    )  # One of "do_nothing", "add_draft", "add_printable"
 
     def __init__(self, setting, default):
         self.setting = setting

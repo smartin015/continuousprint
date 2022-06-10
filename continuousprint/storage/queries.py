@@ -309,16 +309,23 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
             j = newEmptyJob(q)
     except Job.DoesNotExist:
         j = newEmptyJob(q)
+
     if data.get("jobName") is not None:
         j.name = data["jobName"]
+    if data.get("jobDraft") is not None:
+        draft = data["jobDraft"]
+        j.draft = draft is True or (type(draft) == str and draft.lower() == "true")
+    if j.is_dirty():
         j.save()
 
     count = int(data["count"])
+    sd = data.get("sd", "false")
     s = Set.create(
         path=data["path"],
-        sd=data["sd"] == "true",
+        sd=(sd is True or (type(sd) == str and sd.lower() == "true")),
         rank=rank(),
-        material_keys=",".join(data.get("material", "")),
+        material_keys=",".join(data.get("materials", "")),
+        profile_keys=",".join(data.get("profiles", "")),
         count=count,
         remaining=count,
         job=j,

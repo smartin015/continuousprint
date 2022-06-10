@@ -16,7 +16,7 @@ This plugin comes with a basic API to fetch state and start/stop the queue. This
 
 **Request**
 
-**`HTTP GET http://printer:5000/plugin/continuousprint/state`**
+**`HTTP GET http://printer:5000/plugin/continuousprint/state/get`**
 
 Returns the current internal state of the printer as a JSON string. List entries within `queue` may include fields which are not listed here - those
 fields may be subject to change without notice, so be wary of depending on them.
@@ -27,21 +27,70 @@ fields may be subject to change without notice, so be wary of depending on them.
 {
   "active": true/false,
   "status": string,
-  "queue": [
+  "statusType": string
+  "profile": string,
+  "queues": [
     {
       "name": string,
-      "path": string,
-      "sd": bool
-      "job": string,
-      "run": number
-      "start_ts": null | number (seconds),
-      "end_ts": null | number (seconds),
-      "result": string (todo specific stirngs),
-      "retries": number
+      "strategy": string,
+      "jobs": [
+        {
+          "name": string,
+          "count": int,
+          "remaining" int,
+          "draft": bool,
+          "acquired": bool,
+          "created" int,
+          "id": int,
+          "sets": [
+            {
+              "path": string,
+              "count": int,
+              "remaining": int,
+              "materials": [...],
+              "profiles": [...],
+              "sd": bool
+            },
+            ...
+          ]
+        },
+        ...
+      ]
     },
     ...
   ]
 }
+```
+
+## Add a set
+
+**Request**
+
+**`HTTP POST http://printer:5000/plugin/continuousprint/set/add`**
+
+Adds a set, optionally creating an enclosing job if one is not specified.
+
+Payload:
+
+```
+path: string
+sd: bool
+count: int
+materials: list (optional)
+profiles: list (optional)
+job: int (optional ID of job)
+jobName: string (optional)
+jobDraft: bool (optional, default True)
+```
+
+**Response**
+
+```
+{
+  "job_id": int,
+  "set_": {
+    // Fields matching set fields in /state/get
+  }
 ```
 
 ## Start/stop managing the queue
