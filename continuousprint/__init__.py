@@ -1,40 +1,45 @@
 # coding=utf-8
 from __future__ import absolute_import
 
+import socket
+import json
+import time
+import traceback
+from pathlib import Path
 import octoprint.plugin
 import octoprint.util
-import flask
-import json
-import yaml
-import os
-import time
-from io import BytesIO
-from octoprint.server.util.flask import restricted_access
 from octoprint.events import Events
-from octoprint.access.permissions import Permissions, ADMIN_GROUP
 import octoprint.filemanager
-from octoprint.filemanager.util import StreamWrapper
+from octoprint.filemanager.util import DiskFileWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
 
-
-from .print_queue import PrintQueue, QueueItem
-from .driver import ContinuousPrintDriver, Action as DA, Printer as DP
-
-QUEUE_KEY = "cp_queue"
-CLEARING_SCRIPT_KEY = "cp_bed_clearing_script"
-FINISHED_SCRIPT_KEY = "cp_queue_finished_script"
-TEMP_FILES = dict(
-    [(k, f"{k}.gcode") for k in [FINISHED_SCRIPT_KEY, CLEARING_SCRIPT_KEY]]
+from peerprint.filesharing import Fileshare
+from .driver import Driver, Action as DA, Printer as DP
+from .queues.lan import LANQueue
+from .queues.multi import MultiQueue
+from .queues.local import LocalQueue
+from .storage.database import (
+    migrateFromSettings,
+    init as init_db,
+    DEFAULT_QUEUE,
+    ARCHIVE_QUEUE,
 )
-RESTART_MAX_RETRIES_KEY = "cp_restart_on_pause_max_restarts"
-RESTART_ON_PAUSE_KEY = "cp_restart_on_pause_enabled"
-RESTART_MAX_TIME_KEY = "cp_restart_on_pause_max_seconds"
-BED_COOLDOWN_ENABLED_KEY = "bed_cooldown_enabled"
-BED_COOLDOWN_SCRIPT_KEY = "cp_bed_cooldown_script"
-BED_COOLDOWN_THRESHOLD_KEY = "bed_cooldown_threshold"
-BED_COOLDOWN_TIMEOUT_KEY = "bed_cooldown_timeout"
-MATERIAL_SELECTION_KEY = "cp_material_selection_enabled"
+from .data import (
+    PRINTER_PROFILES,
+    GCODE_SCRIPTS,
+    Keys,
+    PRINT_FILE_DIR,
+    TEMP_FILES,
+    ASSETS,
+    TEMPLATES,
+    update_info,
+)
+from .storage import queries
+from .script_runner import ScriptRunner
+from .api import ContinuousPrintAPI, Permission as CPQPermission
+
+UPDATE_PD = 1
 
 
 class ContinuousprintPlugin(
@@ -42,62 +47,49 @@ class ContinuousprintPlugin(
     octoprint.plugin.TemplatePlugin,
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.StartupPlugin,
-    octoprint.plugin.BlueprintPlugin,
     octoprint.plugin.EventHandlerPlugin,
+    ContinuousPrintAPI,
 ):
-    def _msg(self, msg="", type="popup"):
-        self._plugin_manager.send_plugin_message(
-            self._identifier, dict(type=type, msg=msg)
-        )
+    def _on_queue_update(self, q, now=time.time()):
+        self._logger.debug("_on_queue_update")
+        self._sync_state()
 
-    def _update_driver_settings(self):
+    def _on_settings_updated(self):
         self.d.set_retry_on_pause(
-            self._settings.get([RESTART_ON_PAUSE_KEY]),
-            self._settings.get([RESTART_MAX_RETRIES_KEY]),
-            self._settings.get([RESTART_MAX_TIME_KEY]),
+            self._get_key(Keys.RESTART_ON_PAUSE),
+            int(self._get_key(Keys.RESTART_MAX_RETRIES)),
+            int(self._get_key(Keys.RESTART_MAX_TIME)),
         )
 
-    # part of SettingsPlugin
-    def get_settings_defaults(self):
-        base = os.path.dirname(__file__)
-        with open(os.path.join(base, "data/printer_profiles.yaml"), "r") as f:
-            self._printer_profiles = yaml.safe_load(f.read())["PrinterProfile"]
-        with open(os.path.join(base, "data/gcode_scripts.yaml"), "r") as f:
-            self._gcode_scripts = yaml.safe_load(f.read())["GScript"]
+    def _set_key(self, k, v):
+        return self._settings.set([k.setting], v)
 
-        d = {}
-        d[QUEUE_KEY] = "[]"
-        d[CLEARING_SCRIPT_KEY] = ""
-        d[FINISHED_SCRIPT_KEY] = ""
+    def _get_key(self, k, default=None):
+        v = self._settings.get([k.setting])
+        return v if v is not None else default
 
-        for s in self._gcode_scripts:
-            name = s["name"]
-            gcode = s["gcode"]
-            if name == "Pause":
-                d[CLEARING_SCRIPT_KEY] = gcode
-            elif name == "Generic Off":
-                d[FINISHED_SCRIPT_KEY] = gcode
-        d[RESTART_MAX_RETRIES_KEY] = 3
-        d[RESTART_ON_PAUSE_KEY] = False
-        d[RESTART_MAX_TIME_KEY] = 60 * 60
-        d[BED_COOLDOWN_ENABLED_KEY] = False
-        d[BED_COOLDOWN_SCRIPT_KEY] = "; Put script to run before bed cools here\n"
-        d[BED_COOLDOWN_THRESHOLD_KEY] = 30
-        d[BED_COOLDOWN_TIMEOUT_KEY] = 60
-        d[MATERIAL_SELECTION_KEY] = False
-        return d
+    def _add_folder(self, path):
+        return self._file_manager.add_folder(
+            FileDestinations.LOCAL, self._path_in_storage(path)
+        )
 
-    def _active(self):
-        return self.d.state != self.d._state_inactive if hasattr(self, "d") else False
+    def _get_local_ip(self):
+        # https://stackoverflow.com/a/57355707
+        hostname = socket.gethostname()
+        try:
+            return socket.gethostbyname(f"{hostname}.local")
+        except socket.gaierror:
+            return socket.gethostbyname(hostname)
 
-    def _rm_temp_files(self):
-        # Clean up any file references from prior runs
-        for path in TEMP_FILES.values():
-            if self._file_manager.file_exists(FileDestinations.LOCAL, path):
-                self._file_manager.remove_file(FileDestinations.LOCAL, path)
+    def _add_set(self, path, sd, draft=True):
+        self._get_queue(DEFAULT_QUEUE).add_set(
+            "", dict(path=path, sd="true" if sd else "false", count=1, jobDraft=draft)
+        )
+        self._sync_state()
 
-    # part of StartupPlugin
-    def on_after_startup(self):
+    # --------------------- Begin StartupPlugin ---------------------
+
+    def _setup_thirdparty_plugin_integration(self):
         # Turn on "restart on pause" when TSD plugin is detected (must be version 1.8.11 or higher for custom event hook)
         if (
             getattr(
@@ -108,9 +100,9 @@ class ContinuousprintPlugin(
             self._logger.info(
                 "Has TSD plugin with custom events integration - enabling failure automation"
             )
-            self._settings.set([RESTART_ON_PAUSE_KEY], True)
+            self._set_key(Keys.RESTART_ON_PAUSE, True)
         else:
-            self._settings.set([RESTART_ON_PAUSE_KEY], False)
+            self._set_key(Keys.RESTART_ON_PAUSE, False)
 
         # SpoolManager plugin isn't required, but does enable material-based printing if it exists
         # Code based loosely on https://github.com/OllisGit/OctoPrint-PrintJobHistory/ (see _getPluginInformation)
@@ -118,30 +110,193 @@ class ContinuousprintPlugin(
         if smplugin is not None and smplugin.enabled:
             self._spool_manager = smplugin.implementation
             self._logger.info("SpoolManager found - enabling material selection")
-            self._settings.set([MATERIAL_SELECTION_KEY], True)
+            self._set_key(Keys.MATERIAL_SELECTION, True)
         else:
             self._spool_manager = None
-            self._settings.set([MATERIAL_SELECTION_KEY], False)
-
+            self._set_key(Keys.MATERIAL_SELECTION, False)
         self._settings.save()
-        self.q = PrintQueue(self._settings, QUEUE_KEY)
-        self.d = ContinuousPrintDriver(
-            queue=self.q,
-            script_runner=self,
+
+        # Try to fetch plugin-specific events, defaulting to None otherwise
+
+        # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
+        self.EVENT_TSD_COMMAND = getattr(
+            octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+        )
+        # These events are only defined when OctoPrint-SpoolManager plugin is installed.
+        self.EVENT_SPOOL_SELECTED = getattr(
+            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_SELECTED", None
+        )
+        self.EVENT_SPOOL_DESELECTED = getattr(
+            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
+        )
+
+    def on_after_startup(self):
+        self._setup_thirdparty_plugin_integration()
+
+        init_db(
+            db_path=Path(self.get_plugin_data_folder()) / "queue.sqlite3",
             logger=self._logger,
         )
-        self.update(DA.DEACTIVATE)  # Initializes and passes printer state
-        self._update_driver_settings()
-        self._rm_temp_files()
-        self.next_pause_is_spaghetti = False
+
+        fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
+        fileshare_addr = f"{self._get_local_ip()}:0"
+        self._logger.info(f"Starting fileshare with address {fileshare_addr}")
+        self._fileshare = Fileshare(fileshare_addr, fileshare_dir, self._logger)
+        self._fileshare.connect()
+
+        # Migrate from old JSON state if needed
+        state_data = self._get_key(Keys.QUEUE)
+        try:
+            if state_data is not None and state_data != "[]":
+                settings_state = json.loads(state_data)
+                migrateFromSettings(settings_state)
+                self._get_key(Keys.QUEUE)
+        except Exception:
+            self._logger.error(f"Could not migrate old json state: {state_data}")
+            self._logger.error(traceback.format_exc())
+
+        queries.clearOldState()
+
+        self._printer_profile = PRINTER_PROFILES[
+            self._get_key(data.Keys.PRINTER_PROFILE)
+        ]
+        self.q = MultiQueue(
+            queries, queues.abstract.Strategy.IN_ORDER, self._sync_history
+        )  # TODO set strategy for this and all other queue creations
+        for q in queries.getQueues():
+            if q.addr is not None:
+                try:
+                    lq = LANQueue(
+                        q.name,
+                        q.addr,
+                        self._logger,
+                        queues.abstract.Strategy.IN_ORDER,
+                        self._on_queue_update,
+                        self._fileshare,
+                        self._printer_profile,
+                        self._path_on_disk,
+                    )
+                    lq.connect()
+                    self.q.add(q.name, lq)
+                except ValueError:
+                    self._logger.error(
+                        f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
+                    )
+            elif q.name != ARCHIVE_QUEUE:
+                self.q.add(
+                    q.name,
+                    LocalQueue(
+                        queries,
+                        q.name,
+                        queues.abstract.Strategy.IN_ORDER,
+                        self._printer_profile,
+                        self._path_on_disk,
+                        self._add_folder,
+                    ),
+                )
+
+        self._runner = ScriptRunner(
+            self.popup,
+            self._get_key,
+            self._file_manager,
+            self._logger,
+            self._printer,
+            self._sync_state,
+            Keys,
+            data.TEMP_FILES,
+        )
+        self.d = Driver(
+            queue=self.q,
+            script_runner=self._runner,
+            logger=self._logger,
+        )
+        self._update(DA.DEACTIVATE)  # Initializes and passes printer state
+        self._on_settings_updated()
 
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
         # timer with a periodic tick ensures that the driver knows what the state of the printer is.
-        self.watchdog = RepeatedTimer(5.0, lambda: self.update(DA.TICK))
+        self.watchdog = RepeatedTimer(5.0, self._on_watchdog)
         self.watchdog.start()
         self._logger.info("Continuous Print Plugin started")
 
-    def update(self, a: DA):
+    def _on_watchdog(self):
+        # Catch/pass all exceptions to prevent errors from stopping the repeated timer.
+        try:
+            self._update(DA.TICK)
+        except Exception:
+            traceback.print_exc()
+
+    # ------------------------ End StartupPlugin ---------------------------
+
+    # ------------------------ Begin EventHandlerPlugin --------------------
+
+    def on_event(self, event, payload):
+        if not hasattr(self, "d"):  # Ignore any messages arriving before init
+            return
+        if event is None:
+            return
+
+        current_file = self._printer.get_current_job().get("file", {}).get("name")
+        is_current_path = current_file == self.d.current_path()
+
+        if (
+            event == Events.UPLOAD
+        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
+            upload_action = self._get_key(Keys.UPLOAD_ACTION)
+            if upload_action != "do_nothing":
+                self._add_set(
+                    path=payload["path"],
+                    sd=payload["target"] != "local",
+                    draft=(upload_action != "add_printable"),
+                )
+        if event == Events.PRINT_DONE:
+            self._update(DA.SUCCESS)
+        elif event == Events.PRINT_FAILED:
+            # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
+            self._update(DA.FAILURE)
+        elif event == Events.PRINT_CANCELLED:
+            if payload.get("user") is not None:
+                self._update(DA.DEACTIVATE)
+            else:
+                self._update(DA.TICK)
+        elif (
+            is_current_path
+            and event == self.EVENT_TSD_COMMAND
+            and payload.get("cmd") == "pause"
+            and payload.get("initiator") == "system"
+        ):
+            self._update(DA.SPAGHETTI)
+        elif event == self.EVENT_SPOOL_SELECTED:
+            self._update(DA.TICK)
+        elif event == self.EVENT_SPOOL_DESELECTED:
+            self._update(DA.TICK)
+        elif is_current_path and event == Events.PRINT_PAUSED:
+            self._update(DA.TICK)
+        elif is_current_path and event == Events.PRINT_RESUMED:
+            self._update(DA.TICK)
+        elif (
+            event == Events.PRINTER_STATE_CHANGED
+            and self._printer.get_state_id() == "OPERATIONAL"
+        ):
+            self._update(DA.TICK)
+        elif event == Events.SETTINGS_UPDATED:
+            self._on_settings_updated()
+
+    # ----------------------- End EventHandlerPlugin --------------------
+
+    #  ---------------------- Begin ContinuousPrintAPI -------------------
+
+    def _msg(self, data):
+        # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
+        self._plugin_manager.send_plugin_message(self._identifier, data)
+
+    def _path_on_disk(self, path):
+        return self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
+
+    def _path_in_storage(self, path):
+        return self._file_manager.path_in_storage(FileDestinations.LOCAL, path)
+
+    def _update(self, a: DA):
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
         # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
         # Avoid using payload.get('path') as some events may not express path info.
@@ -157,433 +312,139 @@ class ContinuousprintPlugin(
         if self._spool_manager is not None:
             # We need *all* selected spools for all tools, so we must look it up from the plugin itself
             # (event payload also excludes color hex string which is needed for our identifiers)
-            materials = self._spool_manager.api_getSelectedSpoolInformations()
-            materials = [
-                f"{m['material']}_{m['colorName']}_{m['color']}"
-                if m is not None
-                else None
-                for m in materials
-            ]
+            try:
+                materials = self._spool_manager.api_getSelectedSpoolInformations()
+                materials = [
+                    f"{m['material']}_{m['colorName']}_{m['color']}"
+                    if m is not None
+                    else None
+                    for m in materials
+                ]
+            except Exception:
+                self._logger.warning(
+                    "SpoolManager getSelectedSpoolInformations() returned error; skipping material assignment"
+                )
 
         if self.d.action(a, p, path, materials):
-            self._msg(type="reload")  # Reload UI when new state is added
+            self._sync_state()
 
-    # part of EventHandlerPlugin
-    def on_event(self, event, payload):
-        if not hasattr(self, "d"):  # Ignore any messages arriving before init
-            return
+        run = self.q.get_run()
+        if run is not None:
+            run = run.as_dict()
+        netname = self._get_key(Keys.NETWORK_NAME)
+        self.q.update_peer_state(netname, p.name, run, self._printer_profile)
 
-        current_file = self._printer.get_current_job().get("file", {}).get("name")
-        is_current_path = current_file == self.d.current_path()
-
-        # Try to fetch plugin-specific events, defaulting to None otherwise
-
-        # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
-        tsd_command = getattr(
-            octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
-        )
-        # This event is only defined when OctoPrint-SpoolManager plugin is installed.
-        spool_selected = getattr(
-            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_SELECTED", None
-        )
-        spool_deselected = getattr(
-            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
-        )
-
-        if event == Events.METADATA_ANALYSIS_FINISHED:
-            # OctoPrint analysis writes to the printing file - we must remove
-            # our temp files AFTER analysis has finished or else we'll get a "file not found" log error.
-            # We do so when either we've finished printing or when the temp file is no longer selected
-            if self._printer.get_state_id() != "OPERATIONAL":
-                for path in TEMP_FILES.values():
-                    if self._printer.is_current_file(path, sd=False):
-                        return
-            self._rm_temp_files()
-        elif event == Events.PRINT_DONE:
-            self.update(DA.SUCCESS)
-        elif event == Events.PRINT_FAILED:
-            # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
-            self.update(DA.FAILURE)
-        elif event == Events.PRINT_CANCELLED:
-            print(payload.get("user"))
-            if payload.get("user") is not None:
-                self.update(DA.DEACTIVATE)
-            else:
-                self.update(DA.TICK)
-        elif (
-            is_current_path
-            and tsd_command is not None
-            and event == tsd_command
-            and payload.get("cmd") == "pause"
-            and payload.get("initiator") == "system"
-        ):
-            self.update(DA.SPAGHETTI)
-        elif spool_selected is not None and event == spool_selected:
-            self.update(DA.TICK)
-        elif spool_deselected is not None and event == spool_deselected:
-            self.update(DA.TICK)
-        elif is_current_path and event == Events.PRINT_PAUSED:
-            self.update(DA.TICK)
-        elif is_current_path and event == Events.PRINT_RESUMED:
-            self.update(DA.TICK)
-        elif (
-            event == Events.PRINTER_STATE_CHANGED
-            and self._printer.get_state_id() == "OPERATIONAL"
-        ):
-            self.update(DA.TICK)
-        elif event == Events.UPDATED_FILES:
-            self._msg(type="updatefiles")
-        elif event == Events.SETTINGS_UPDATED:
-            self._update_driver_settings()
-
-    def _write_temp_gcode(self, key):
-        gcode = self._settings.get([key])
-        file_wrapper = StreamWrapper(key, BytesIO(gcode.encode("utf-8")))
-        added_file = self._file_manager.add_file(
-            octoprint.filemanager.FileDestinations.LOCAL,
-            TEMP_FILES[key],
-            file_wrapper,
-            allow_overwrite=True,
-        )
-        self._logger.info(f"Wrote file {added_file}")
-        return added_file
-
-    def run_finish_script(self):
-        self._msg("Print Queue Complete", type="complete")
-        path = self._write_temp_gcode(FINISHED_SCRIPT_KEY)
-        self._printer.select_file(path, sd=False, printAfterSelect=True)
-        return path
-
-    def cancel_print(self):
-        self._msg("Print cancelled", type="error")
-        self._printer.cancel_print()
-
-    def wait_for_bed_cooldown(self):
-        self._logger.info("Running bed cooldown script")
-        bed_cooldown_script = self._settings.get(["cp_bed_cooldown_script"]).split("\n")
-        self._printer.commands(bed_cooldown_script, force=True)
-        self._logger.info("Preparing for Bed Cooldown")
-        self._printer.set_temperature("bed", 0)  # turn bed off
-        start_time = time.time()
-
-        while (time.time() - start_time) <= (
-            60 * float(self._settings.get(["bed_cooldown_timeout"]))
-        ):  # timeout converted to seconds
-            bed_temp = self._printer.get_current_temperatures()["bed"]["actual"]
-            if bed_temp <= float(self._settings.get(["bed_cooldown_threshold"])):
-                self._logger.info(
-                    f"Cooldown threshold of {self._settings.get(['bed_cooldown_threshold'])} has been met"
-                )
-                return
-
-        self._logger.info(
-            f"Timeout of {self._settings.get(['bed_cooldown_timeout'])} minutes exceeded"
-        )
-        return
-
-    def clear_bed(self):
-        if self._settings.get(["bed_cooldown_enabled"]):
-            self.wait_for_bed_cooldown()
-        path = self._write_temp_gcode(CLEARING_SCRIPT_KEY)
-        self._printer.select_file(path, sd=False, printAfterSelect=True)
-        return path
-
-    def start_print(self, item, clear_bed=True):
-        self._msg("Starting print: " + item.name)
-        self._msg(type="reload")
-        try:
-            self._printer.select_file(item.path, item.sd)
-            self._logger.info(item.path)
-            self._printer.start_print()
-        except InvalidFileLocation:
-            self._msg("File not found: " + item.path, type="error")
-        except InvalidFileType:
-            self._msg("File not gcode: " + item.path, type="error")
-        return item.path
-
-    def state_json(self, extra_message=None):
-        # Values are stored json-serialized, so we need to create a json string and inject them into it
-        q = self._settings.get([QUEUE_KEY])
-
-        # Format extra message as key:value
-        if extra_message is not None:
-            extra_message = f', extra_message: "{extra_message}"'
-        else:
-            extra_message = ""
-
+    def _state_json(self):
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
         # (e.g. 1.4.1 -> 2.0.0).
-        resp = '{"active": %s, "status": "%s", "queue": %s%s}' % (
-            "true" if self._active() else "false",
-            "Initializing" if not hasattr(self, "d") else self.d.status,
-            q,
-            extra_message,
+        db_qs = dict([(q.name, q.rank) for q in queries.getQueues()])
+        qs = [
+            dict(q.as_dict(), rank=db_qs[name])
+            for name, q in self.q.queues.items()
+            if name != "archive"
+        ]
+        qs.sort(key=lambda q: q["rank"])
+
+        active = self.d.state != self.d._state_inactive if hasattr(self, "d") else False
+        resp = {
+            "active": active,
+            "profile": self._get_key(Keys.PRINTER_PROFILE),
+            "status": "Initializing" if not hasattr(self, "d") else self.d.status,
+            "statusType": "INIT" if not hasattr(self, "d") else self.d.status_type.name,
+            "queues": qs,
+        }
+        return json.dumps(resp)
+
+    def _history_json(self):
+        h = queries.getHistory()
+
+        if self.q.run is not None:
+            for row in h:
+                if row["run_id"] == self.q.run:
+                    row["active"] = True
+                    break
+        return json.dumps(h)
+
+    def _get_queue(self, name):
+        return self.q.get(name)
+
+    def _commit_queues(self, added, removed):
+        for name in removed:
+            self.q.remove(name)
+        for a in added:
+            try:
+                lq = LANQueue(
+                    a["name"],
+                    a["addr"],
+                    self._logger,
+                    queues.abstract.Strategy.IN_ORDER,
+                    self._on_queue_update,
+                    self._fileshare,
+                    self._printer_profile,
+                    self._path_on_disk,
+                )  # TODO specify strategy
+                lq.connect()
+                self.q.add(a["name"], lq)
+            except ValueError:
+                self._logger.error(
+                    f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
+                )
+
+        # We trigger state update rather than returning it here, because this is called by the settings viewmodel
+        # (not the main viewmodel that displays the queues)
+        self._sync_state()
+
+    # ----------------------- End ContinuousPrintAPI -----------------
+
+    # ---------------------- Begin SettingsPlugin --------------------
+
+    def get_settings_defaults(self):
+        return dict(
+            [(member.setting, member.default) for member in Keys.__members__.values()]
         )
-        return resp
+
+    # --------------------- End SettingsPlugin ----------------------
+
+    # ---------------------- Begin TemplatePlugin -------------------
+    def get_template_vars(self):
+        return dict(
+            printer_profiles=list(PRINTER_PROFILES.values()),
+            gcode_scripts=list(GCODE_SCRIPTS.values()),
+            local_ip=self._get_local_ip(),
+        )
+
+    def get_template_configs(self):
+        return TEMPLATES
+
+    # -------------------- End TemplatePlugin ----------------
+
+    # -------------------- Begin AssetPlugin ----------------
+    def get_assets(self):
+        return ASSETS
+
+    # -------------------- End AssetPlugin
+
+    # ---------------------------- Begin Plugin Hooks ------------------------------
+
+    def get_update_information(self):
+        return update_info(self._plugin_version)
+
+    def add_permissions(*args, **kwargs):
+        return [p.as_dict() for p in CPQPermission.__members__.values()]
 
     # Listen for resume from printer ("M118 //action:queuego") #from @grtrenchman
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
         if not action == "queuego":
             return
-        self.update(DA.ACTIVATE)
+        self._update(DA.ACTIVATE)
+        self._sync_state()
 
-    # Public API method returning the full state of the plugin in JSON format.
-    # See `state_json()` for return values.
-    @octoprint.plugin.BlueprintPlugin.route("/state", methods=["GET"])
-    @restricted_access
-    def state(self):
-        return self.state_json()
-
-    # Public method - enables/disables management and returns the current state
-    # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
-    # (e.g. 1.4.1 -> 2.0.0)
-    @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
-    @restricted_access
-    def set_active(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_STARTQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        self.update(
-            DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
-        )
-        return self.state_json()
-
-    # PRIVATE API method - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/clear", methods=["POST"])
-    @restricted_access
-    def clear(self):
-        i = 0
-        keep_failures = flask.request.form["keep_failures"] == "true"
-        keep_non_ended = flask.request.form["keep_non_ended"] == "true"
-        self._logger.info(
-            f"Clearing queue (keep_failures={keep_failures}, keep_non_ended={keep_non_ended})"
-        )
-        changed = []
-        while i < len(self.q):
-            v = self.q[i]
-            self._logger.info(f"{v.name} -- end_ts {v.end_ts} result {v.result}")
-            if v.end_ts is None and keep_non_ended:
-                i = i + 1
-            elif v.result == "failure" and keep_failures:
-                i = i + 1
-            else:
-                del self.q[i]
-                changed.append(i)
-        return self.state_json()
-
-    # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/assign", methods=["POST"])
-    @restricted_access
-    def assign(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_ASSIGNQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        items = json.loads(flask.request.form["items"])
-        self.q.assign(
-            [
-                QueueItem(
-                    name=i["name"],
-                    path=i["path"],
-                    sd=i["sd"],
-                    job=i["job"],
-                    materials=i["materials"],
-                    run=i["run"],
-                    start_ts=i.get("start_ts"),
-                    end_ts=i.get("end_ts"),
-                    result=i.get("result"),
-                    retries=i.get("retries"),
-                )
-                for i in items
-            ]
-        )
-        return self.state_json()
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/move", methods=["POST"])
-    @restricted_access
-    def move(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_CHQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        offs = int(flask.request.form["offs"])
-        self.q.move(idx, count, offs)
-        depr = "DEPRECATED: plugin/continuousprint/move is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/add", methods=["POST"])
-    @restricted_access
-    def add(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_ADDQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = flask.request.form.get("idx")
-        if idx is None:
-            idx = len(self.q)
-        else:
-            idx = int(idx)
-        items = json.loads(flask.request.form["items"])
-        self.q.add(
-            [
-                QueueItem(
-                    name=i["name"],
-                    path=i["path"],
-                    sd=i["sd"],
-                    job=i["job"],
-                    run=i["run"],
-                )
-                for i in items
-            ],
-            idx,
-        )
-        depr = "DEPRECATED: plugin/continuousprint/add is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/remove", methods=["POST"])
-    @restricted_access
-    def remove(self):
-        if not Permissions.PLUGIN_CONTINUOUSPRINT_RMQUEUE.can():
-            return flask.make_response("Insufficient Rights", 403)
-            self._logger.info("attempt failed due to insufficient permissions.")
-        idx = int(flask.request.form["idx"])
-        count = int(flask.request.form["count"])
-        self.q.remove(idx, count)
-
-        depr = "DEPRECATED: plugin/continuousprint/remove is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # DEPRECATED
-    @octoprint.plugin.BlueprintPlugin.route("/reset", methods=["POST"])
-    @restricted_access
-    def reset(self):
-        idxs = json.loads(flask.request.form["idxs"])
-        for idx in idxs:
-            i = self.q[idx]
-            i.start_ts = None
-            i.end_ts = None
-        self.q.remove(idx, len(idxs))
-        depr = "DEPRECATED: plugin/continuousprint/reset is no longer used and will be removed in the next major release."
-        self._logger.warn(depr)
-        return self.state_json(depr)
-
-    # part of TemplatePlugin
-    def get_template_vars(self):
-        return dict(
-            printer_profiles=self._printer_profiles, gcode_scripts=self._gcode_scripts
-        )
-
-    def get_template_configs(self):
-        return [
-            dict(
-                type="settings",
-                custom_bindings=True,
-                template="continuousprint_settings.jinja2",
-            ),
-            dict(
-                type="tab",
-                custom_bindings=False,
-                template="continuousprint_tab.jinja2",
-            ),
-        ]
-
-    # part of AssetPlugin
-    def get_assets(self):
-        return dict(
-            js=[
-                "js/cp_modified_sortable.js",
-                "js/cp_modified_knockout-sortable.js",
-                "js/continuousprint_api.js",
-                "js/continuousprint_queueitem.js",
-                "js/continuousprint_queueset.js",
-                "js/continuousprint_job.js",
-                "js/continuousprint_viewmodel.js",
-                "js/continuousprint_settings.js",
-                "js/continuousprint.js",
-            ],
-            css=["css/continuousprint.css"],
-        )
-
-    def get_update_information(self):
-        # Define the configuration for your plugin to use with the Software Update
-        # Plugin here. See https://docs.octoprint.org/en/master/bundledplugins/softwareupdate.html
-        # for details.
-        return dict(
-            continuousprint=dict(
-                displayName="Continuous Print Plugin",
-                displayVersion=self._plugin_version,
-                # version check: github repository
-                type="github_release",
-                user="smartin015",
-                repo="continuousprint",
-                current=self._plugin_version,
-                stable_branch=dict(
-                    name="Stable", branch="master", comittish=["master"]
-                ),
-                prerelease_branches=[
-                    dict(
-                        name="Release Candidate",
-                        branch="rc",
-                        comittish=["rc", "master"],
-                    )
-                ],
-                # update method: pip
-                pip="https://github.com/smartin015/continuousprint/archive/{target_version}.zip",
-            )
-        )
-
-    def add_permissions(*args, **kwargs):
-        return [
-            dict(
-                key="STARTQUEUE",
-                name="Start Queue",
-                description="Allows for starting queue",
-                roles=["admin", "continuousprint-start"],
-                dangerous=True,
-                default_groups=[ADMIN_GROUP],
-            ),
-            dict(
-                key="ADDQUEUE",
-                name="Add to Queue",
-                description="Allows for adding prints to the queue",
-                roles=["admin", "continuousprint-add"],
-                dangerous=True,
-                default_groups=[ADMIN_GROUP],
-            ),
-            dict(
-                key="RMQUEUE",
-                name="Remove Print from Queue ",
-                description="Allows for removing prints from the queue",
-                roles=["admin", "continuousprint-remove"],
-                dangerous=True,
-                default_groups=[ADMIN_GROUP],
-            ),
-            dict(
-                key="CHQUEUE",
-                name="Move items in Queue ",
-                description="Allows for moving items in the queue",
-                roles=["admin", "continuousprint-move"],
-                dangerous=True,
-                default_groups=[ADMIN_GROUP],
-            ),
-            dict(
-                key="ASSIGNQUEUE",
-                name="Assign the whole Queue",
-                description="Allows for loading the whole queue from JSON",
-                roles=["admin", "continuousprint-assign"],
-                dangerous=True,
-                default_groups=[ADMIN_GROUP],
-            ),
-        ]
+    def support_gjob_format(*args, **kwargs):
+        return dict(machinecode=dict(gjob=["gjob"]))
 
 
 __plugin_name__ = "Continuous Print"
-__plugin_pythoncompat__ = ">=3.6,<4"
+__plugin_pythoncompat__ = ">=3.7,<4"
 
 
 def __plugin_load__():
@@ -595,5 +456,6 @@ def __plugin_load__():
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
         "octoprint.access.permissions": __plugin_implementation__.add_permissions,
         "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
+        "octoprint.filemanager.extension_tree": __plugin_implementation__.support_gjob_format,
         # register to listen for "M118 //action:" commands
     }

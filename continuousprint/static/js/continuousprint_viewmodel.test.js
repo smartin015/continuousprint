@@ -10,7 +10,17 @@ function mocks(filename="test.gcode") {
     {}, // loginState only used in continuousprint.js
     {onServerDisconnect: jest.fn(), onServerConnect: jest.fn()},
     {currentProfileData: () => {return {extruder: {count: () => 1}}}},
-    {assign: jest.fn(), getState: jest.fn(), setActive: jest.fn(), getSpoolManagerState: jest.fn()},
+    {
+      init: jest.fn(),
+      setActive: jest.fn(),
+      getSpoolManagerState: jest.fn(),
+      add: jest.fn(),
+      get: jest.fn(),
+      rm: jest.fn(),
+      mv: jest.fn(),
+      update: jest.fn(),
+      reset: jest.fn(),
+    },
   ];
 }
 
@@ -18,33 +28,23 @@ const DATA = {
   name: `item`,
   path: `item.gcode`,
   sd: false,
-  idx: 0,
+  count: 1,
+  remaining: 1,
   job: "testjob",
-  run: 0,
-  start_ts: null,
-  end_ts: null,
-  result: null,
-  retries: 0,
 };
 
-function items(njobs = 1, nsets = 2, count = 3, runs = 2, ncomplete = 1) {
-  let items = [];
+function items(njobs = 1, nsets = 2) {
+  let jobs = [];
+  let sid = 1;
   for (let j = 0; j < njobs; j++) {
+    let job = {name: `job${j}`, count: 1, remaining: 1, sets: [], id: j+1};
     for (let s = 0; s < nsets; s++) {
-      for (let run = 0; run < runs; run++) {
-        for (let i = 0; i < count; i++) {
-          let idx=count*run+i;
-          let data = {...DATA, name: `item ${s}`, idx, run, job: `job${j}`};
-          if (idx < ncomplete) {
-            items.push({...data, start_ts:100, end_ts:101, result:"success"});
-          } else {
-            items.push(data);
-          }
-        }
-      }
+      job.sets.push({...DATA, name: `set${s}`, id: sid, materials: []});
+      sid++;
     }
+    jobs.push(job);
   }
-  return items;
+  return jobs;
 }
 
 function init(njobs = 1, filename="test.gcode") {
@@ -52,7 +52,10 @@ function init(njobs = 1, filename="test.gcode") {
   v._setState({
     active: false,
     status: 'Test Status',
-    queue: items(njobs),
+    queues: [{
+      name: 'local',
+      jobs: items(njobs),
+    }],
   });
   return v;
 }
@@ -61,143 +64,128 @@ function init(njobs = 1, filename="test.gcode") {
 test('onTabChange to continuous print tab triggers state reload', () => {
   let v = new VM(mocks());
   v.onTabChange('#tab_plugin_continuousprint', null);
-  expect(v.api.getState).toHaveBeenCalled();
+  expect(v.api.get).toHaveBeenCalled();
 
   v = new VM(mocks());
   v.onTabChange('#a_random_tab', null);
-  expect(v.api.getState).not.toHaveBeenCalled();
+  expect(v.api.get).not.toHaveBeenCalled();
   v.onTabChange('#a_random_tab', '#tab_plugin_continuousprint'); // Not on nav away
-  expect(v.api.getState).not.toHaveBeenCalled();
+  expect(v.api.get).not.toHaveBeenCalled();
 });
 
 test('setActive notifies server', () => {
   let v = new VM(mocks());
   v.loading(false); // Inits to loading by default
   v.setActive(true);
-  expect(v.api.setActive).toHaveBeenCalledWith(true, v._setState);
+  expect(v.api.setActive).toHaveBeenCalledWith(true, expect.any(Function));
 });
 
-test('refreshQueue triggers state reload', () => {
-  let v = new VM(mocks());
-  v.loading(false); // Inits to loading by default
-  v.refreshQueue();
-  expect(v.api.getState).toHaveBeenCalled();
-});
-
-test('mutation methods do nothing if in loading state', () => {
-  let v = new VM(mocks()); // default loading state
-  v.setActive(true);
-  v.setSelected(null);
-  v.files.add({});
-  v.clearCompleted();
-  v.clearAll();
-  v.requeueFailures();
-  v.remove(null);
-  v.setJobName(null, null);
-  v.setCount(null, null);
-  v.sortEnd(null, null, null);
-
-  expect(v.api.assign).not.toHaveBeenCalled();
-});
-
-test('files.add adds to bottom job and syncs to server', () => {
+test('files.add', () => {
   let v = init();
+  v.defaultQueue = {'addFile': jest.fn()};
   let data = {name: 'new file', path: 'test.gcode', origin: 'local'};
+  v.api.add = (_, data, cb) => cb({job_id: 2, set_: {...data, materials: []}});
   v.files.add(data);
-  expect(v.api.assign).toHaveBeenCalled();
-  let q = v.api.assign.mock.calls[0][0];
-  expect(q.length).toBe(13);
-  expect(q[q.length-1].name).toBe(data.name);
-});
-
-test('setSelected sets/clears the indexes', () => {
-  let v = init();
-  expect(v.selected()).toBe(null);
-  v.setSelected(0, 2);
-  expect(v.selected()).toStrictEqual([0,2]);
-  v.setSelected(0, 2); // Clear selection
-  expect(v.selected()).toBe(null);
+  expect(v.defaultQueue.addFile).toHaveBeenCalledWith(data);
 });
 
 test('sortStart turns off default drag-drop', () => {
   let v = init();
-  v.sortStart();
+  let vm = {constructor: {name: 'CPSet'}};
+  v.sortStart(undefined, vm);
   expect(v.files.onServerDisconnect).toHaveBeenCalled();
 });
 
-test('sortMove rejects sorts across different item types', () => {
+function fakeElem(id, classList=[]) {
+  return {
+    id,
+    classList: {
+      contains: (v) => classList.indexOf(v) !== -1,
+    },
+  };
+}
+
+describe('sortMove', () => {
   let v = init();
-  expect(v.sortMove({from: {id: 'a'}, to: {id: 'b'}})).toBe(false);
-  expect(v.sortMove({from: {id: 'a'}, to: {id: 'a'}})).toBe(true);
+
+  it('rejects sorts across different item types', () => {
+    expect(v.sortMove({
+      from: fakeElem('a'),
+      to: fakeElem('b')
+    })).toBe(false);
+    expect(v.sortMove({
+      from: fakeElem('a'),
+      to: fakeElem('a')
+    })).toBe(true);
+  });
+
+  it('prevents moving jobs out of local queue', () => {
+    expect(v.sortMove({
+      from: fakeElem('a', ['local']),
+      to: fakeElem('b', ['nonlocal'])
+    })).toBe(false);
+    expect(v.sortMove({
+      from: fakeElem('a', ['local']),
+      to: fakeElem('a', ['local'])
+    })).toBe(true);
+  });
+
+  it('only allows sets to drag between draft jobs', () => {
+    expect(v.sortMove({
+      from: fakeElem('queue_sets', ['draft']),
+      to: fakeElem('queue_sets', [])
+    })).toBe(false);
+    expect(v.sortMove({
+      from: fakeElem('queue_sets', ['draft']),
+      to: fakeElem('queue_sets', ['draft'])
+    })).toBe(true);
+  });
 });
 
-test('sortEnd re-enables default drag-drop, notifies jobs, syncs to server', () => {
+test('sortEnd job to start', () => {
   let v = init();
-  for (let j of v.jobs()) {
-    j.sort_end = jest.fn();
-  }
-  v.sortEnd();
+  let ccont = {classList: {contains: () => true}};
+  let evt = {from: ccont, to: ccont};
+  let j = v.defaultQueue.jobs()[0];
+  v.sortEnd(evt, j, null);
   expect(v.files.onServerConnect).toHaveBeenCalled();
-  for (let j of v.jobs()) {
-    expect(j.sort_end).toHaveBeenCalled();
-  }
-  expect(v.api.assign).toHaveBeenCalled();
+  expect(v.api.mv).toHaveBeenCalled();
+  let data = v.api.mv.mock.calls[0][1];
+  expect(data.id).toEqual(j.id());
+  expect(data.after_id).toEqual(-1);
 });
-test('setCount allows only positive integers', () => {
-  let vm = {set_count: jest.fn()};
-  let v = init();
-  v.setCount(vm, {target: {value: "-5"}});
-  v.setCount(vm, {target: {value: "0"}});
-  v.setCount(vm, {target: {value: "apple"}});
-  expect(vm.set_count).not.toHaveBeenCalled();
 
-  v.setCount(vm, {target: {value: "5"}});
-  expect(vm.set_count).toHaveBeenCalledWith(5);
-
-});
-test('setJobName syncs to server', () => {
-  let v = init();
-  v.setJobName(v.jobs()[0], {target: {value: 'ajobname'}})
-  expect(v.api.assign).toHaveBeenCalled();
-  let q = v.api.assign.mock.calls[0][0];
-  expect(q[0].job).toBe('ajobname');
-});
-test('setCount syncs to server', () => {
-  let v = init();
-
-  // Test with job count
-  v.setCount(v.jobs()[0], {target: {value: '1'}})
-  expect(v.api.assign).toHaveBeenCalled();
-  let q = v.api.assign.mock.calls[0][0];
-  expect(q.length).toBe(6);
-
-  // Test with queueset count
-  v.setCount(v.jobs()[0].queuesets()[0], {target: {value: '1'}});
-  q = v.api.assign.mock.calls[1][0];
-  expect(q.length).toBe(4);
-});
-test('clearAll clears everything & syncs', () => {
-  let v = init();
-  v.clearAll();
-  expect(v.api.assign).toHaveBeenCalledWith([], v._setState);
-});
-test('remove deletes job/queueset and syncs', () => {
+test('sortEnd job to end', () => {
   let v = init(njobs=2);
-  v.remove(v.jobs()[0]);
-  expect(v.api.assign).toHaveBeenCalled();
-  let q = v.api.assign.mock.calls[0][0];
-  expect(q.length).toBe(12);
-  v.remove(v.jobs()[0].queuesets()[0]);
-  q = v.api.assign.mock.calls[1][0];
-  expect(q.length).toBe(6);
+  let ccont = {classList: {contains: () => true}};
+  let evt = {from: ccont, to: ccont};
+  let j = v.defaultQueue.jobs()[1];
+  v.sortEnd(evt, j, null);
+  expect(v.files.onServerConnect).toHaveBeenCalled();
+  expect(v.api.mv).toHaveBeenCalled();
+  let data = v.api.mv.mock.calls[0][1];
+  expect(data.id).toEqual(j.id());
+  expect(data.after_id).toEqual(1);
 });
-test('activeItem returns indexes for job, queueset, and item', () => {
-  let v = init(njobs=2, filename="item.gcode");
 
-  expect(v.activeItem()).toBe(null);
+test('refreshHistory', () => {
+  let v = new VM(mocks());
+  v.refreshHistory();
+  expect(v.api.get).toHaveBeenCalled();
+});
 
-  // Printer printing and with partial item
-  let i = v.jobs()[1].queuesets()[0].items()[2];
-  i.start_ts(5);
-  expect(v.activeItem()).toStrictEqual([1, 0, 2]);
+test('clearHistory', () => {
+  let v = new VM(mocks());
+  v.clearHistory();
+  expect(v.api.reset).toHaveBeenCalled();
+});
+
+test('_setHistory', () => {
+  let v = new VM(mocks());
+  v._setHistory([
+    {job_name: "j1", set_path: "s1"},
+    {job_name: "j2", set_path: "s2"},
+  ]);
+  let ents = v.history();
+  expect(ents.length).toEqual(4); // Include dividers
 });

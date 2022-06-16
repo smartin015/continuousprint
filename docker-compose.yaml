@@ -1,0 +1,22 @@
+services:
+  dev1:
+    image: continuousprint-dev
+    build: .
+    ports:
+      - "5000:5000" # UI port
+        # Note discovery port 37020 and lan queue ports handled through docker network (so non-docker processes cannot auto join the queue)
+    volumes:
+      - ".:/home/oprint/continuousprint"
+      - "./volume:/home/oprint/.octoprint"
+    environment:
+      - "PYTHONUNBUFFERED=1"
+  dev2:
+    image: continuousprint-dev
+    build: .
+    ports:
+      - "5001:5000" # UI port
+    volumes:
+      - ".:/home/oprint/continuousprint"
+      - "./volume2:/home/oprint/.octoprint"
+    environment:
+      - "PYTHONUNBUFFERED=1"

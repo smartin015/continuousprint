@@ -16,6 +16,45 @@ GScript:
       G0 Y0 ;wipe forward
       G0 Y235 ;wipe aft
       G28 ; home
+  - name: "Prusa Mini"
+    description: >
+      This script example assumes a Prusa Mini printer with a vertical Z axis and a 180mm x 180mm XY build area.
+      It uses the printer's extruder to push the part off the build plate."
+    version: 0.0.1
+    gcode: |
+      M17 ;enable steppers
+      G91 ; Set relative for lift
+      G0 Z10 ; lift z by 10
+      G90 ;back to absolute positioning
+      M190 R25 ; set bed to 25 and wait for cooldown
+      
+      ;clear the bed
+      ;first column
+      G0 X180 Y180 ;move to back corner
+      G0 Z1 ;come down to 1MM from bed
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;second column
+      G0 X135 Y180 ;move to back corner
+      G0 Z1 ;come down to 1MM from bed
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;third column
+      G0 X90 Y180 ;move to back corner
+      G0 Z1 ;come down to 1MM from bed
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;fourth column
+      G0 X45 Y180 ;move to back corner
+      G0 Z1 ;come down to 1MM from bed
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      G28 ; home
+      
   - name: "Advance Belt Short"
     description: >
       This script works with a belt printer (specifically, a Creality CR-30). The belt is advanced to move

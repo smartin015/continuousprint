@@ -9,329 +9,250 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   // In the testing environment, dependencies must be manually imported
   ko = require('knockout');
   CPJob = require('./continuousprint_job');
+  CPQueue = require('./continuousprint_queue');
   CPAPI = require('./continuousprint_api');
+  cphr = require('./continuousprint_history_row');
+  CP_PRINTER_PROFILES = [];
+  CPHistoryRow = cphr.CPHistoryRow;
+  CPHistoryDivider = cphr.CPHistoryDivider;
   log = {
     "getLogger": () => {return console;}
   };
+  $ = function() { return null; };
 }
 
 function CPViewModel(parameters) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
-    self.log.info(`[${self.PLUGIN_ID}] Initializing`);
-    // Due to minification, it's very difficult to find and fix errors reported by users
-    // due to bugs/issues with JS code. Wrapping functions in _ecatch allows us to retain the
-    // function name and args, and prints the error to the console with hopefully enough info
-    // to properly debug.
-    var _ecatch = function(name, fn) {
-      if (typeof(name) !== 'string') {
-        throw Error("_ecatch not passed string as first argument (did you forget the function name?)");
-      }
-      return function() {
-        try {
-          var args = [];
-          for (var i = 0; i < arguments.length; i++) {
-            args.push(arguments[i]);
-          }
-          fn.apply(undefined, args);
-        } catch(err) {
-          let args_json = "<not json-able>";
-          try {
-            let args_json = JSON.stringify(arguments);
-          } catch(e2) {}
-          self.log.error(`[${self.PLUGIN_ID}]: error when calling ${name} with args ${args_json}: ${err}`);
-        }
-      };
-    };
-
     self.TAB_ID = "#tab_plugin_continuousprint";
     self.printerState = parameters[0];
     self.loginState = parameters[1];
     self.files = parameters[2];
     self.printerProfiles = parameters[3];
+    self.cpPrinterProfiles = CP_PRINTER_PROFILES;
     self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
+    self.status = ko.observable("Initializing...");
+    self.statusType = ko.observable("INIT");
+    self.active = ko.observable(false);
+    self.active_set = ko.observable(null);
+    self.loading = ko.observable(false);
+    self.materials = ko.observable([]);
+    self.queues = ko.observableArray([]);
+    self.defaultQueue = null;
+    self.expanded = ko.observable(null);
+    self.profile = ko.observable('');
+
     self.api = parameters[4] || new CPAPI();
 
-    // These are used in the jinja template
-    self.loading = ko.observable(true);
-    self.active = ko.observable(false);
-    self.status = ko.observable("Initializing...");
-    self.jobs = ko.observableArray([]);
-    self.selected = ko.observable(null);
 
-    self.materials = ko.observable([]);
-    self.api.getSpoolManagerState(function(resp) {
-      let result = {};
-      for (let spool of resp.allSpools) {
-        let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
-        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
-      }
-      self.materials(Object.values(result));
-    });
-
-    self.isSelected = function(j=null, q=null) {
-      j = self._resolve(j);
-      q = self._resolve(q);
-      return ko.computed(function() {
-        let s = self.selected();
-        if (s === null) {
-          return false;
-        }
-        let r =  (j === null || j === s[0]) && (q === null || q === s[1]);
-        return r;
+    self.api.init(self.loading,
+      function(code, reason) {
+        console.error("API Error", code, reason);
+        new PNotify({
+            title: `Continuous Print API (Error ${code})`,
+            text: reason,
+            type: 'error',
+            hide: true,
+            buttons: {closer: true, sticker: false},
+        });
       });
-    };
 
-    self.isActiveItem = function(j=null, q=null, i=null) {
-      j = self._resolve(j);
-      q = self._resolve(q);
-      i = self._resolve(i);
-      return ko.computed(function() {
-        let a = self.activeItem();
-        if (a === null) {
-          return false;
-        }
-        return (j === null || j === a[0]) && (q === null || q === a[1]) && (i === null || i === a[2]);
-      });
+    self.setActive = function(active) {
+        self.api.setActive(active, () => {
+          self.active(active);
+        });
     };
-
-    self.activeItem = ko.computed(function() {
-      if (!self.printerState.isPrinting() && !self.printerState.isPaused()) {
-        return null;
-      }
-      let printname = self.printerState.filename();
-      for (let j = 0; j < self.jobs().length; j++) {
-        let job = self.jobs()[j];
-        for (let q = 0; q < job.queuesets().length; q++) {
-          let qs = job.queuesets()[q];
-          for (let i = 0; i < qs.items().length; i++) {
-            let item = qs.items()[i];
-            if (item.path === printname && item.start_ts() !== null && item.end_ts() === null) {
-              return [j,q,i];
-            }
-          }
-        }
-      }
-      return null;
-    });
 
     // Patch the files panel to allow for adding to queue
-    self.files.add = _ecatch("files.add", function(data) {
-        if (self.loading()) {return;}
-        let now = Date.now();
-        let jobs = self.jobs();
-        let job = jobs[jobs.length-1];
-        // We want to add to a job with a single run and no name -
-        // otherwise implies adding to something a user has already configured
-        if (job.is_configured()) {
-          job = new CPJob();
-          self.jobs.push(job);
-        }
-        job.pushQueueItem({
-            name: data.name,
-            path: data.path,
-            sd: (data.origin !== "local"),
-            run: 0,
-            job: job.name(),
-        });
-        self._updateQueue();
-    });
+    self.files.add = function(data) {
+      self.defaultQueue.addFile(data);
+    };
 
-
-    // Call this after every mutation
-    self._updateQueue = _ecatch("_updateQueue", function() {
-      let q = [];
-      for (let j of self.jobs()) {
-        q = q.concat(j.as_queue());
+    // Patch the files panel to prevent selecting/printing .gjob files
+    let oldEnableSelect = self.files.enableSelect;
+    self.files.enableSelect = function(data) {
+      if (data['path'].endsWith('.gjob')) {
+        return false;
       }
-      console.log(q);
-      self.api.assign(q, self._setState);
+      return oldEnableSelect(data);
+    }
+    let oldEnableSelectAndPrint = self.files.enableSelectAndPrint;
+    self.files.enableSelectAndPrint = function(data) {
+      if (data['path'].endsWith('.gjob')) {
+        return false;
+      }
+      return oldEnableSelectAndPrint(data);
+    }
+
+    // Patch the printer state view model to display current status
+    self.printerState.continuousPrintStateString = ko.observable("");
+    self.printerState.continuousPrintStateStatus = ko.observable("");
+    self.printerState.continuousPrintStateIcon = ko.computed(function() {
+      switch(self.printerState.continuousPrintStateStatus()) {
+        case "NEEDS_ACTION":
+          return "fas fa-hand-paper";
+        case "ERROR":
+          return "far fa-exclamation-triangle";
+        default:
+          return "";
+      }
     });
 
-    self._loadState = _ecatch("_loadState", function(state) {
+    self._loadState = function(state) {
         self.log.info(`[${self.PLUGIN_ID}] loading state...`);
-        self.loading(true);
-        self.api.getState(self._setState);
-    });
+        self.api.get(self.api.STATE, self._setState);
+    };
 
-    self._updateJobs = _ecatch("_updateJobs", function(q) {
-      if (q.length === 0) {
-        self.jobs([new CPJob({name: "", idx: 0})]);
-        return
-      }
-      let curName = null;
-      let curJob = null;
+    self._updateQueues = function(queues) {
+      let result = [];
 
-      // Convert to nested representation
-      let rep = [];
-      for (let item of q) {
-        // Compatibility for older version data
-        if (item.job === null || item.job === undefined) {
-          item.job = "";
-        }
-        if (item.job !== curJob) {
-          rep.push([[]]);
-        } else if (item.name !== curName) {
-          rep[rep.length-1].push([]);
-        }
-        curJob = item.job;
-        curName = item.name;
-        let qsl = rep[rep.length-1].length;
-        rep[rep.length-1][qsl-1].push(item);
-      }
-      let jobs = [];
-      // In-place merge alike queuesets
-      for (let i = 0; i < rep.length; i++) {
-        let r = rep[i];
-        for (let j = 0; j < r.length; j++) {
-          for (let k = r.length-1; k > j; k--) {
-            if (r[k][0].name === r[j][0].name) {
-              r[j] = r[j].concat(r[k]);
-              r.splice(k,1);
+      // Preserve selections and expansions by traversing all queues before
+      // replacing them
+      let selections = {};
+      let expansions = {};
+      let drafts = {}
+      for (let q of self.queues()) {
+        for (let j of q.jobs()) {
+          if (j.draft()) {
+            drafts[j.id().toString()] = j;
+          }
+          if (j.selected()) {
+            selections[j.id().toString()] = true;
+          }
+          for (let s of j.sets()) {
+            if (s.expanded()) {
+              expansions[s.id.toString()] = true;
             }
           }
         }
-        jobs.push(new CPJob({name: rep[i][0][0].job || "", queuesets: r}));
       }
-      // Push an extra empty job on the end if the last job is configured
-      if (jobs.length < 1 || jobs[jobs.length-1].is_configured()) {
-        jobs.push(new CPJob());
+      for (let q of queues) {
+        for (let j of q.jobs) {
+          j.selected = selections[j.id.toString()];
+          for (let s of j.sets) {
+            s.expanded = expansions[s.id.toString()];
+          }
+        }
+        let cpq = new CPQueue(q, self.api, self.files, self.profile);
+
+        // Replace draft entries
+        let cpqj = cpq.jobs();
+        for (let i = 0; i < q.jobs.length; i++) {
+          let draft = drafts[cpqj[i].id()];
+          if (draft !== undefined) {
+            cpq.jobs.splice(i, 1, draft);
+          }
+        }
+        result.push(cpq);
+        if (cpq.name === 'local') {
+          self.defaultQueue = cpq;
+        }
       }
-      self.jobs(jobs);
-    });
+      self.queues(result);
+    };
 
     self._setState = function(state) {
-        self.log.info(`[${self.PLUGIN_ID}] updating jobs (len ${state.queue.length})`);
-        self._updateJobs(state.queue);
+        //self.log.info(`[${self.PLUGIN_ID}] updating queues (len ${state.queues.length})`);
+        self._updateQueues(state.queues);
         self.active(state.active);
+        self.active_set(state.active_set);
         self.status(state.status);
-        self.loading(false);
-        self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
+        self.statusType(state.statusType);
+        self.profile(state.profile);
+        self.printerState.continuousPrintStateString(state.status);
+        self.printerState.continuousPrintStateStatus(state.statusType);
+        //self.log.info(`[${self.PLUGIN_ID}] new state loaded`);
     };
 
-    // *** ko template methods ***
+    self.newEmptyJob = function() {
+      self.defaultQueue.newEmptyJob();
+    }
 
-    self.setActive = _ecatch("setActive", function(active) {
-        if (self.loading()) return;
-        self.api.setActive(active, self._setState);
-    });
-
-    self.remove = _ecatch("remove", function(e) {
-        if (self.loading()) return;
-        if (e.constructor.name === "CPJob") {
-            self.jobs.remove(e);
-        } else if (e.constructor.name === "CPQueueSet") {
-            for (let j of self.jobs()) {
-                j.queuesets.remove(e);
-            }
-        }
-        self._updateQueue();
-    });
-
-    self.requeueFailures = _ecatch("requeueFailures", function() {
-        if (self.loading()) return;
-        self.loading(true);
-        for (let j of self.jobs()) {
-          j.requeueFailures();
-        }
-        self._updateQueue();
-    });
-
-    self.clearCompleted = _ecatch("clearCompleted", function() {
-        if (self.loading()) return;
-        self.loading(true);
-        self.jobs(self.jobs().filter((j) => !j.is_complete()));
-        self._updateQueue();
-    });
-
-    self.clearAll = _ecatch("clearAll", function() {
-        if (self.loading()) return;
-        self.loading(true);
-        self.jobs([]);
-        self._updateQueue();
-    });
-
-    self._resolve = function(observable) {
-      if (typeof(observable) === 'undefined') {
-        return null;
-      } else if (typeof(observable) === 'function') {
-        return observable();
+    self.expand = function(vm) {
+      if (self.expanded() === vm) {
+        vm.expanded(false);
+        self.expanded(null);
+      } else {
+        vm.expanded(true);
+        self.expanded(vm);
       }
-      return observable;
     };
 
-    self.setSelected = _ecatch("setSelected", function(job, queueset) {
-        job = self._resolve(job);
-        queueset = self._resolve(queueset);
-        if (self.loading()) return;
-        let s = self.selected();
-        if (s !== null && s[0] == job && s[1] == queueset) {
-          self.selected(null);
-        } else {
-          self.selected([job, queueset]);
-        }
-    });
-
-    self.refreshQueue = _ecatch("refreshQueue", function() {
-        if (self.loading()) return;
-        self._loadState();
-    });
-
-    self.setJobName = _ecatch("setJobName", function(job, evt) {
-        if (self.loading()) return;
-        job.set_name(evt.target.value);
-        self._updateQueue();
-    });
-
-    self.setCount = _ecatch("setCount", function(vm, e) {
-      if (self.loading()) return;
-      let v = parseInt(e.target.value, 10);
-      if (isNaN(v) || v < 1) {
-        return;
-      }
-      vm.set_count(v);
-      self._updateQueue();
-    });
-
-    self.setMaterial = _ecatch("setMaterial", function(vm, idx, mat) {
-      vm.set_material(idx, mat);
-      self._updateQueue();
-    });
-
-    self.sortStart = _ecatch("sortStart", function(evt) {
+    self.draggingSet = ko.observable();
+    self.draggingJob = ko.observable();
+    self.sortStart = function(evt, vm) {
       // Faking server disconnect allows us to disable the default whole-page
       // file drag and drop behavior.
       self.files.onServerDisconnect();
-    });
+      self.draggingSet(vm.constructor.name === "CPSet");
+      self.draggingJob(vm.constructor.name === "CPJob");
+    };
 
-    self.sortEnd = _ecatch("sortEnd", function(_, item) {
-      if (self.loading()) return;
+    self.sortEnd = function(evt, vm, src) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
-      for (let j of self.jobs()) {
-        j.sort_end(item);
+      self.draggingSet(false);
+      self.draggingJob(false);
+
+      // If we're dragging a job out of the local queue and into a network queue,
+      // we must warn the user about the irreversable action before making the change.
+      // This fully replaces the default sort action
+      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
+        let targetQueue = ko.dataFor(evt.to);
+        // Undo the move done by CPSortable and trigger updates
+        // This is inefficient (i.e. could instead prevent the transfer) but that
+        // would require substantial edits to the CPSortable library.
+        targetQueue.jobs.splice(evt.newIndex, 1);
+        src.jobs.splice(evt.oldIndex, 0, vm);
+        src.jobs.valueHasMutated();
+        targetQueue.jobs.valueHasMutated();
+
+        return self.showSubmitJobDialog(vm, targetQueue);
       }
-      self._updateQueue();
-    });
+
+      // Sadly there's no "destination job" information, so we have to
+      // infer the index of the job based on the rendered HTML given by evt.to
+      if (vm.constructor.name === "CPJob") {
+        let jobs = self.defaultQueue.jobs();
+        let dest_idx = jobs.indexOf(vm);
+
+        let ids = []
+        for (let j of jobs) {
+          ids.push(j.id());
+        }
+        self.api.mv(self.api.JOB, {
+            id: vm.id(),
+            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
+        }, (result) => {});
+      }
+    };
 
     self.sortMove = function(evt) {
-      // Like must move to like (e.g. no dragging a queueset out of a job)
-      return (evt.from.id === evt.to.id);
+      // Like must move to like (e.g. no dragging a set out of a job)
+      if (evt.from.id !== evt.to.id) {
+        return false;
+      }
+      // Sets must only be dragged among draft jobs
+      if (evt.from.id === "queue_sets" && !evt.to.classList.contains("draft")) {
+        return false;
+      }
+      return true;
     };
 
     // This also fires on initial load
-    self.onTabChange = _ecatch("onTabChange", function(next, current) {
+    self.onTabChange = function(next, current) {
       self.log.info(`[${self.PLUGIN_ID}] onTabChange - ${self.TAB_ID} == ${current} vs ${next}`);
       if (current === self.TAB_ID && next !== self.TAB_ID) {
         // Navigating away - TODO clear hellow highlights
       } else if (current !== self.TAB_ID && next === self.TAB_ID) {
         // Reload in case other things added
         self._loadState();
+        self.refreshHistory();
       }
-    });
+    }
 
-    self.onDataUpdaterPluginMessage = _ecatch("onDataUpdaterPluginMessage", function(plugin, data) {
+    self.onDataUpdaterPluginMessage = function(plugin, data) {
         if (plugin != "continuousprint") return;
         var theme;
         switch(data["type"]) {
@@ -346,10 +267,14 @@ function CPViewModel(parameters) {
                 theme = 'success';
                 self._loadState();
                 break;
-            case "reload":
-                theme = 'success'
-                self._loadState();
-                break;
+            case "setstate":
+                data = JSON.parse(data["state"]);
+                console.log("got setstate", data);
+                return self._setState(data);
+            case "sethistory":
+                data = JSON.parse(data["history"]);
+                console.log("got sethistory", data);
+                return self._setHistory(data);
             default:
                 theme = "info";
                 break;
@@ -364,7 +289,79 @@ function CPViewModel(parameters) {
                 buttons: {closer: true, sticker: false}
             });
         }
+    };
+
+    self.hasSpoolManager = ko.observable(false);
+    self.badMaterialCount = ko.observable(0);
+    self.api.getSpoolManagerState(function(resp) {
+      let result = {};
+      let nbad = 0;
+      for (let spool of resp.allSpools) {
+        if (spool.material === null) {
+          nbad++;
+          continue;
+        }
+        let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
+        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
+      }
+      self.materials(Object.values(result));
+      self.badMaterialCount(nbad);
+      self.hasSpoolManager(true);
+    }, function(statusCode, errText) {
+      self.hasSpoolManager(statusCode !== 404);
     });
+
+
+		self.dialog = $("#cpq_submitDialog");
+		self.jobSendDetails = ko.observable();
+    self.jobSendTitle = ko.computed(function() {
+      let details = self.jobSendDetails();
+      if (details === undefined) {
+        return "";
+      }
+      return `Send ${details[0]._name()} to ${details[1].name}?`;
+    });
+    self.submitJob = function() {
+      let details = self.jobSendDetails();
+      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, self._setState);
+			self.dialog.modal('hide');
+    }
+		self.showSubmitJobDialog = function(job, queue) {
+      self.jobSendDetails([job, queue]);
+			self.dialog.modal({}).css({
+					width: 'auto',
+					'margin-left': function() { return -($(this).width() /2); }
+			});
+		}
+
+    /* ===== History Tab ===== */
+    self.history = ko.observableArray();
+    self.isDivider = function(data) {
+      return data instanceof CPHistoryDivider;
+    };
+
+    self._setHistory = function(data) {
+      let result = [];
+      let job = null;
+      let set = null;
+      for (let r of data) {
+        if (job !== r.job_name || set !== r.set_path) {
+          result.push(new CPHistoryDivider(r.queue_name, r.job_name, r.set_path));
+          job = r.job_name;
+          set = r.set_path;
+        }
+        result.push(new CPHistoryRow(r));
+      }
+      self.history(result);
+    };
+    self.refreshHistory = function() {
+      self.api.get(self.api.HISTORY, self._setHistory);
+    };
+    self.clearHistory = function() {
+      self.api.reset(self.api.HISTORY, null, () => {
+        self.entries([]);
+      });
+    };
 }
 
 

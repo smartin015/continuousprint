@@ -10,6 +10,17 @@ PrinterProfile:
     defaults:
       clearBed: "Pause"
       finished: "Generic Off"
+  - name: "Prusa Mini"
+    make: "Prusa"
+    model: "Mini"
+    width: 180
+    depth: 180
+    height: 180
+    formFactor: "rectangular"
+    selfClearing: true
+    defaults:
+      clearBed: "Prusa Mini"
+      finished: "Generic Off"
   - name: "Creality CR30"
     make: "Creality"
     model: "CR30"

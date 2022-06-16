@@ -12,9 +12,19 @@ const setActive = function(active=true, callback) {
     }).done(callback);
 };
 
+const addSet = function(data, callback) {
+    data = {...data, sd: false, count: 1, jobName: 'Job', jobDraft: true};
+    $.ajax({
+      url: "plugin/continuousprint/set/add",
+      type: "POST",
+      dataType: "json",
+      headers: {"X-Api-Key": UI_API_KEY},
+      data
+    }).done(callback)
+
 const getState = function(callback) {
     $.ajax({
-      url: "plugin/continuousprint/state",
+      url: "plugin/continuousprint/state/get",
       type: "GET",
       dataType: "json",
       headers: {"X-Api-Key":UI_API_KEY},
@@ -23,6 +33,9 @@ const getState = function(callback) {
 
 console.log("Stopping print queue");
 setActive(false, function(data) {console.log('stopped');});
+
+console.log("Adding new set/job");
+addSet({path: "example.gcode"}, function(data) {console.log(data);});
 
 console.log("Getting state");
 getState(function(data) {console.log(data);});
