@@ -27,7 +27,7 @@ GScript:
       G0 Z10 ; lift z by 10
       G90 ;back to absolute positioning
       M190 R25 ; set bed to 25 and wait for cooldown
-      
+
       ;clear the bed
       ;first column
       G0 X180 Y180 ;move to back corner
@@ -54,7 +54,7 @@ GScript:
       G0 Y180 ;wipe aft
 
       G28 ; home
-      
+
   - name: "Advance Belt Short"
     description: >
       This script works with a belt printer (specifically, a Creality CR-30). The belt is advanced to move

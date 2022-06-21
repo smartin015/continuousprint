@@ -28,6 +28,7 @@ jobs:
       - name: Generate Report
         run: |
                 pip install coverage
-                cd continuousprint && coverage run -m unittest '*_test.py'
+                cd continuousprint && coverage run -m unittest discover -p "*_test.py"
+
       - name: Upload to Codecov
         uses: codecov/codecov-action@v2

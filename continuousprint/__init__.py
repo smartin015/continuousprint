@@ -91,12 +91,7 @@ class ContinuousprintPlugin(
 
     def _setup_thirdparty_plugin_integration(self):
         # Turn on "restart on pause" when Obico plugin is detected (must be version 1.8.11 or higher for custom event hook)
-        if (
-            getattr(
-                octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None
-            )
-            is not None
-        ):
+        if getattr(octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None) is not None:
             self._logger.info(
                 "Has Obico plugin with custom events integration - enabling failure automation"
             )
