@@ -16,6 +16,7 @@ from octoprint.util import RepeatedTimer
 
 from peerprint.filesharing import Fileshare
 from .driver import Driver, Action as DA, Printer as DP
+from .analysis import CPQProfileAnalysisQueue
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
@@ -81,9 +82,13 @@ class ContinuousprintPlugin(
         except socket.gaierror:
             return socket.gethostbyname(hostname)
 
-    def _add_set(self, path, sd, draft=True):
+    def _add_set(self, path, sd, draft=True, profiles=[]):
+        meta = self._file_manager.get_metadata(FileDestinations.LOCAL, data['path'])
+        prof = meta.get('analysis', {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
+        if self._get_key(Keys.INFER_PROFILE) and prof is None:
+            self._set_add_awaiting_metadata[path] = (path, sd, draft, profiles)
         self._get_queue(DEFAULT_QUEUE).add_set(
-            "", dict(path=path, sd="true" if sd else "false", count=1, jobDraft=draft)
+            "", self._preprocess_set(dict(path=path, sd="true" if sd else "false", count=1, jobDraft=draft, profiles=profiles))
         )
         self._sync_state()
 
@@ -249,7 +254,17 @@ class ContinuousprintPlugin(
                     sd=payload["target"] != "local",
                     draft=(upload_action != "add_printable"),
                 )
-        if event == Events.PRINT_DONE:
+        elif event == Events.METADATA_ANALYSIS_FINISHED:
+            # If we auto-added a file to the queue before analysis finished,
+            # it's placed in a pending queue (see self._add_set). Now that 
+            # the processing is done, we actually add the set.
+            prof = payload["result"].get(CPQProfileAnalysisQueue.PROFILE_KEY)
+            path = payload["path"]
+            pend = self._set_add_awaiting_metadata.get(path)
+            if pend is not None:
+                self._add_set(*pend)
+                del self._set_add_awaiting_metadata[path]
+        elif event == Events.PRINT_DONE:
             self._update(DA.SUCCESS)
         elif event == Events.PRINT_FAILED:
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
@@ -295,6 +310,18 @@ class ContinuousprintPlugin(
 
     def _path_in_storage(self, path):
         return self._file_manager.path_in_storage(FileDestinations.LOCAL, path)
+
+    def _preprocess_set(self, data):
+        print("Preprocess set")
+        if not self._get_key(Keys.INFER_PROFILE) or data.get('profiles') is not None:
+            return data
+        else:
+            meta = self._file_manager.get_metadata(FileDestinations.LOCAL, data['path'])
+            prof = meta.get('analysis', {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
+            print("Resolved profile", prof)
+            if prof is not None and prof != "":
+                data['profiles'] = [prof]
+        return data
 
     def _update(self, a: DA):
         # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
@@ -442,6 +469,10 @@ class ContinuousprintPlugin(
     def support_gjob_format(*args, **kwargs):
         return dict(machinecode=dict(gjob=["gjob"]))
 
+    def cpq_analysis_queue(*args, **kwargs):
+        result = dict(gcode = CPQProfileAnalysisQueue)
+        return result
+
 
 __plugin_name__ = "Continuous Print"
 __plugin_pythoncompat__ = ">=3.7,<4"
@@ -457,5 +488,6 @@ def __plugin_load__():
         "octoprint.access.permissions": __plugin_implementation__.add_permissions,
         "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
         "octoprint.filemanager.extension_tree": __plugin_implementation__.support_gjob_format,
+        "octoprint.filemanager.analysis.factory": __plugin_implementation__.cpq_analysis_queue,
         # register to listen for "M118 //action:" commands
     }

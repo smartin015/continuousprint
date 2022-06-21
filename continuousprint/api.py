@@ -107,6 +107,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def _msg(self, data):
         pass
 
+    @abstractmethod
+    def _preprocess_set(self, data):
+        pass # Can auto-fill things, e.g. profile based on gcode analysis
+
     def popup(self, msg, type="popup"):
         return self._msg(dict(type=type, msg=msg))
 
@@ -150,9 +154,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.ADDSET)
     def add_set(self):
+        data = self._preprocess_set(dict(**flask.request.form))
         return json.dumps(
             self._get_queue(DEFAULT_QUEUE).add_set(
-                flask.request.form.get("job", ""), flask.request.form
+                data.get("job", ""), data
             )
         )
 

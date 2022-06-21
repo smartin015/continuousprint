@@ -122,3 +122,6 @@ test('resetSelected', () => {
   expect(v.jobs()[0].remaining()).toBe(1);
   expect(v.jobs()[0].sets()[0].remaining()).toBe(1);
 });
+
+
+TODO confirm profile resolution works when adding sets to a job

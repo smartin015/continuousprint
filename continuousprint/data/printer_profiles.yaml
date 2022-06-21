@@ -32,6 +32,9 @@ PrinterProfile:
     defaults:
       clearBed: "Advance Belt Short"
       finished: "Advance Belt Long"
+    extra_tags: 
+      - "CR"
+      - "30"
   - name: "Monoprice Mini Delta V2"
     make: "Monoprice"
     model: "Mini Delta V2"
