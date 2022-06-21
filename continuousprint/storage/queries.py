@@ -8,6 +8,9 @@ from pathlib import Path
 from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 
 
+MAX_COUNT = 999999
+
+
 def clearOldState():
     # On init, scrub the local DB for any state that may have been left around
     # due to an improper shutdown
@@ -163,7 +166,7 @@ def _upsertSet(set_id, data, job):
     )
 
     if data.get("count") is not None:
-        newCount = int(data["count"])
+        newCount = min(int(data["count"]), MAX_COUNT)
         inc = newCount - s.count
         s.count = newCount
         s.remaining = min(newCount, s.remaining + max(inc, 0))
@@ -194,7 +197,7 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             setattr(j, k, v)
 
         if data.get("count") is not None:
-            newCount = int(data["count"])
+            newCount = min(int(data["count"]), MAX_COUNT)
             inc = newCount - j.count
             j.remaining = min(newCount, j.remaining + max(inc, 0))
             j.count = newCount
