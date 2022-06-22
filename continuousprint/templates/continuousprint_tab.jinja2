@@ -25,6 +25,23 @@
         <button class="btn btn-danger btn-confirm" data-bind="click: submitJob">Confirm</button>
     </div>
 </div>
+<div id="cpq_removeConfirmDialog" class="modal hide fade">
+    <div class="modal-header">
+      <h3 class="modal-title">File exists in queue. Are you sure?</h3>
+    </div>
+    <div class="modal-body">
+        <p>
+          The file is currently present in the Continuous Print Queue.
+        <p>
+        <p>
+          If you delete this file, its queue entries will be skipped.
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-cancel" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        <button class="btn btn-danger btn-confirm" data-bind="click: removeConfirm">Confirm</button>
+    </div>
+</div>
 
 <ul class="nav nav-tabs">
   <li class="active"><a href="#continuousprint_tab_queues" data-toggle="tab">Queues</a></li>
@@ -169,10 +186,14 @@
                           <span data-bind="text: shortName"/>
                         </p>
                         <!-- ko if: !job.draft() -->
-                        <div style="width: 150px; text-align: center;" data-bind="hidden: profile_matches" title="Set profile doesn't match this printer and will be skipped">
+                        <div style="width: 150px; text-align: center;" data-bind="hidden: profile_matches() || missing_file()" title="Set profile doesn't match this printer and will be skipped">
                           <i class="fas fa-angle-double-right"  style="margin-top: 3px; opacity: 0.5;"></i>
                         </div>
-                        <div class="progress" data-bind="hidden: !profile_matches(), css: { 'progress-striped active': queue.active_sets().indexOf(id) !== -1 }">
+                        <div style="width: 150px; text-align: center;" data-bind="hidden: !missing_file()" title="File is missing; this will be skipped">
+                          <i class="fas fa-exclamation-triangle" style="color: #aa0000"></i>
+                        </div>
+
+                        <div class="progress" data-bind="hidden: !profile_matches() || missing_file(), css: { 'progress-striped active': queue.active_sets().indexOf(id) !== -1 }">
                           <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                           <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
                         </div>

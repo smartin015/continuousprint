@@ -132,6 +132,12 @@ class TestJobWithSet(DBTest):
         self.j.draft = True
         self.assertEqual(self.j.next_set(dict(name="baz")), None)
 
+    def testNextSetWithCustomFilterReject(self):
+        self.assertEqual(self.j.next_set(dict(name="baz"), lambda s: False), None)
+
+    def testNextSetWithCustomFilterAccept(self):
+        self.assertEqual(self.j.next_set(dict(name="baz"), lambda s: True), self.s)
+
     def testNextSetWithDifferentProfile(self):
         self.assertEqual(self.j.next_set(dict(name="bar")), None)
 

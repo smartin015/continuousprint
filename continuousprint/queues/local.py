@@ -24,9 +24,14 @@ class LocalQueue(AbstractEditableQueue):
         self._profile = profile
         j = queries.getAcquiredJob()
         self.job = j
-        self.set = j.next_set(self._profile) if j is not None else None
+        self.set = (
+            j.next_set(self._profile, self._set_path_exists) if j is not None else None
+        )
         self.strategy = strategy
         self.queries = queries
+
+    def _set_path_exists(self, s):
+        return Path(self._path_on_disk(s.path)).exists()
 
     # --------------------- Begin AbstractQueue ------------------
 
@@ -35,10 +40,12 @@ class LocalQueue(AbstractEditableQueue):
             return True
         if self.strategy != Strategy.IN_ORDER:
             raise NotImplementedError
-        p = self.queries.getNextJobInQueue(self.ns, self._profile)
+        p = self.queries.getNextJobInQueue(
+            self.ns, self._profile, self._set_path_exists
+        )
         if p is not None and self.queries.acquireJob(p):
             self.job = p
-            self.set = p.next_set(self._profile)
+            self.set = p.next_set(self._profile, self._set_path_exists)
             return True
         return False
 
@@ -54,9 +61,11 @@ class LocalQueue(AbstractEditableQueue):
             return False
 
         has_work = self.set.decrement(self._profile) is not None
-        earliest_job = self.queries.getNextJobInQueue(self.ns, self._profile)
+        earliest_job = self.queries.getNextJobInQueue(
+            self.ns, self._profile, self._set_path_exists
+        )
         if has_work and earliest_job == self.job and self.job.acquired:
-            self.set = self.job.next_set(self._profile)
+            self.set = self.job.next_set(self._profile, self._set_path_exists)
             return True
         else:
             self.release()
@@ -66,11 +75,16 @@ class LocalQueue(AbstractEditableQueue):
         active_set = self.get_set()
         if active_set is not None:
             active_set = active_set.id
+        jobs = [j.as_dict() for j in self.queries.getJobsAndSets(self.ns)]
+        for j in jobs:
+            for s in j["sets"]:
+                if not Path(self._path_on_disk(s["path"])).exists():
+                    s["missing_file"] = True
         return dataclasses.asdict(
             QueueData(
                 name=self.ns,
                 strategy=self.strategy.name,
-                jobs=[j.as_dict() for j in self.queries.getJobsAndSets(self.ns)],
+                jobs=jobs,
                 active_set=active_set,
             )
         )
