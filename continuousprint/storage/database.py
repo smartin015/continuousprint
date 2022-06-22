@@ -82,10 +82,15 @@ class JobView:
         # but we don't touch the job if there aren't any compatible/printable sets to begin with
         if nxt is None and any_printable:
             self.decrement()
-            nxt = self._next_set(profile, custom_filter)
-        return nxt
+            return self._next_set(profile, custom_filter)[0]
+        else:
+            return nxt
 
     def _next_set(self, profile, custom_filter):
+        # Return value: (set: SetView, any_printable: bool)
+        # Second argument is whether there's any printable sets
+        # for the given profile/filter. If this is False then
+        # decrementing the set/job won't do anything WRT set availability
         any_printable = False
         for s in self.sets:
             if custom_filter is not None and not custom_filter(s):
@@ -93,7 +98,7 @@ class JobView:
             printable = s.is_printable(profile)
             any_printable = any_printable or printable
             if s.remaining > 0 and printable:
-                return (s, None)
+                return (s, True)
         return (None, any_printable)
 
     @classmethod

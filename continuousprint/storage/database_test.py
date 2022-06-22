@@ -256,11 +256,6 @@ class TestSet(DBTest):
             profile_keys="p1,p2",
         )
 
-    def testDecrementWithDifferentProfile(self):
-        # using a different profile should decrement the job when there is no printable sets
-        self.s.decrement(dict(name="otherprof"))
-        self.assertEqual(self.j.remaining, 4)
-
     def testDecrementWithRemaining(self):
         self.s.decrement(dict(name="p1"))
         self.assertEqual(self.s.remaining, 4)

@@ -88,12 +88,15 @@ function CPViewModel(parameters) {
 					width: 'auto',
 					'margin-left': function() { return -($(this).width() /2); }
 			});
-    }
+    };
+    self.hideRemoveConfirmModal = function() {
+			self.rmDialog.modal('hide');
+    };
     self.removeConfirm = function() {
       remove_cb();
       remove_cb = null;
       self._loadState(); // Refresh to get new "file missing" states
-			self.rmDialog.modal('hide');
+      self.hideRemoveConfirmModal();
     };
 
     // Patch the files panel to prevent selecting/printing .gjob files
