@@ -140,7 +140,7 @@
               <!-- ko if: draft -->
               <input class="job-name" type="text" data-bind="textInput: _name, attr: {'_vkenabled': false}, event: {keypress: onEnter}"></input>
               <input class="repeats fa fa-text count-box" type="number" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: onEnter}"></input>
-              <div class="total" data-bind="text: length()"></div>
+              <div class="total" data-bind="text: $root.humanize(length())"></div>
               <!-- /ko -->
               <!-- ko if: !draft() -->
               <div class="job-name" data-bind="text: _name"></div>
@@ -148,8 +148,8 @@
                 <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                 <div data-bind="visible: queue.active_jobs().indexOf(id()) !== -1, style: { width: pct_active() }" class="bar active"></div>
               </div>
-              <div class="repeats" data-bind="text: completed() + '/' + count()"></div>
-              <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
+              <div class="repeats" data-bind="text: $root.humanize(completed()) + '/' + $root.humanize(count())"></div>
+              <div class="total" data-bind="text: $root.humanize(length_completed()) + '/' + $root.humanize(length())"></div>
               <!-- /ko -->
             </div>
           </div>
@@ -176,13 +176,13 @@
                           <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                           <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
                         </div>
-                        <div class="repeats" data-bind="text: completed() + '/' + count()"></div>
-                        <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
+                        <div class="repeats" data-bind="text: $root.humanize(completed()) + '/' + $root.humanize(count())"></div>
+                        <div class="total" data-bind="text: $root.humanize(length_completed()) + '/' + $root.humanize(length())"></div>
                         <!-- /ko -->
                         <!-- ko if: job.draft() -->
                         <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
                         <input class="fa fa-text count-box" type="number" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: job.onEnter}"></input>
-                        <div class="total" data-bind="text: length()"></div>
+                        <div class="total" data-bind="text: $root.humanize(length())"></div>
                         <!-- /ko -->
                       </div>
                       </div>

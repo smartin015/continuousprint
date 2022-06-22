@@ -334,6 +334,19 @@ function CPViewModel(parameters) {
 			});
 		}
 
+    self.humanize = function(num) {
+      // Humanizes numbers by condensing and adding units
+      if (num < 1000) {
+        return num.toString()
+      } else if (num < 100000) {
+        let k = (num/1000);
+        return ((k % 1 === 0) ? k : k.toFixed(1)) + 'k';
+      } else {
+        let m = (num/1000000);
+        return ((m % 1 === 0) ? m : m.toFixed(1)) + 'm';
+      }
+    };
+
     /* ===== History Tab ===== */
     self.history = ko.observableArray();
     self.isDivider = function(data) {
