@@ -90,15 +90,10 @@ class ContinuousprintPlugin(
     # --------------------- Begin StartupPlugin ---------------------
 
     def _setup_thirdparty_plugin_integration(self):
-        # Turn on "restart on pause" when TSD plugin is detected (must be version 1.8.11 or higher for custom event hook)
-        if (
-            getattr(
-                octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
-            )
-            is not None
-        ):
+        # Turn on "restart on pause" when Obico plugin is detected (must be version 1.8.11 or higher for custom event hook)
+        if getattr(octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None) is not None:
             self._logger.info(
-                "Has TSD plugin with custom events integration - enabling failure automation"
+                "Has Obico plugin with custom events integration - enabling failure automation"
             )
             self._set_key(Keys.RESTART_ON_PAUSE, True)
         else:
@@ -118,9 +113,9 @@ class ContinuousprintPlugin(
 
         # Try to fetch plugin-specific events, defaulting to None otherwise
 
-        # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
-        self.EVENT_TSD_COMMAND = getattr(
-            octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+        # This custom event is only defined when the Obico plugin is installed.
+        self.EVENT_OBICO_COMMAND = getattr(
+            octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None
         )
         # These events are only defined when OctoPrint-SpoolManager plugin is installed.
         self.EVENT_SPOOL_SELECTED = getattr(
@@ -261,7 +256,7 @@ class ContinuousprintPlugin(
                 self._update(DA.TICK)
         elif (
             is_current_path
-            and event == self.EVENT_TSD_COMMAND
+            and event == self.EVENT_OBICO_COMMAND
             and payload.get("cmd") == "pause"
             and payload.get("initiator") == "system"
         ):
