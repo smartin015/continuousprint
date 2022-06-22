@@ -68,6 +68,36 @@ function CPViewModel(parameters) {
     self.files.add = function(data) {
       self.defaultQueue.addFile(data);
     };
+    // Also patch file deletion, to show a modal if the file is in the queue
+    let oldRemove = self.files.removeFile;
+    let remove_cb = null;
+    self.files.removeFile = function(data, evt) {
+      for (let j of self.defaultQueue.jobs()) {
+        for (let s of j.sets()) {
+          if (s.path() === data.path) {
+            remove_cb = () => oldRemove(data, evt);
+            return self.showRemoveConfirmModal()
+          }
+        }
+      }
+      return oldRemove(data, evt);
+    };
+		self.rmDialog = $("#cpq_removeConfirmDialog");
+    self.showRemoveConfirmModal = function() {
+			self.rmDialog.modal({}).css({
+					width: 'auto',
+					'margin-left': function() { return -($(this).width() /2); }
+			});
+    };
+    self.hideRemoveConfirmModal = function() {
+			self.rmDialog.modal('hide');
+    };
+    self.removeConfirm = function() {
+      remove_cb();
+      remove_cb = null;
+      self._loadState(); // Refresh to get new "file missing" states
+      self.hideRemoveConfirmModal();
+    };
 
     // Patch the files panel to prevent selecting/printing .gjob files
     let oldEnableSelect = self.files.enableSelect;

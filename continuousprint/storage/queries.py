@@ -129,9 +129,11 @@ def getJob(jid):
     return Job.get(id=jid)
 
 
-def getNextJobInQueue(q, profile):
+def getNextJobInQueue(q, profile, custom_filter=None):
     for job in getJobsAndSets(q):
-        ns = job.next_set(profile)  # Only return a job which has a compatible next set
+        ns = job.next_set(
+            profile, custom_filter
+        )  # Only return a job which has a compatible next set
         if ns is not None:
             return job
 

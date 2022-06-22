@@ -73,20 +73,33 @@ class JobView:
         if self.remaining > 0:
             self.refresh_sets()
 
-    def next_set(self, profile):
+    def next_set(self, profile, custom_filter=None):
         if self.draft or self.queue.name == ARCHIVE_QUEUE or self.remaining == 0:
             return None
 
-        nxt = self._next_set(profile)
-        if nxt is None:  # We may need to decrement to actually get the next set
+        nxt, any_printable = self._next_set(profile, custom_filter)
+        # We may need to decrement to actually get the next set
+        # but we don't touch the job if there aren't any compatible/printable sets to begin with
+        if nxt is None and any_printable:
             self.decrement()
-            nxt = self._next_set(profile)
-        return nxt
+            return self._next_set(profile, custom_filter)[0]
+        else:
+            return nxt
 
-    def _next_set(self, profile):
+    def _next_set(self, profile, custom_filter):
+        # Return value: (set: SetView, any_printable: bool)
+        # Second argument is whether there's any printable sets
+        # for the given profile/filter. If this is False then
+        # decrementing the set/job won't do anything WRT set availability
+        any_printable = False
         for s in self.sets:
-            if s.is_printable(profile):
-                return s
+            if custom_filter is not None and not custom_filter(s):
+                continue
+            printable = s.is_printable(profile)
+            any_printable = any_printable or printable
+            if s.remaining > 0 and printable:
+                return (s, True)
+        return (None, any_printable)
 
     @classmethod
     def from_dict(self, data: dict):
@@ -154,7 +167,7 @@ class SetView:
 
     def is_printable(self, profile):
         profs = self.profiles()
-        if self.remaining > 0 and (len(profs) == 0 or profile["name"] in profs):
+        if len(profs) == 0 or profile["name"] in profs:
             return True
         return False
 
