@@ -392,14 +392,28 @@ def endRun(r, result: str, txn=None):
     r.save()
 
 
+def annotateLastRun(gcode, movie_path, thumb_path):
+    # Note: this query assumes that timelapse movie processing completes before
+    # the next print completes - this is almost always the case, but annotation may fail if the timelapse
+    # is extremely long and the next print extremely short. In this case, the run won't
+    # be annotated (but the timelapse will still exist, OctoPrint willing)
+    cur = Run.select().order_by(Run.start.desc()).limit(1).execute()
+    if len(cur) == 0:
+        return False
+    run = cur[0]
+    if (
+        run.movie_path is not None
+        or run.thumb_path is not None
+        or run.path.split("/")[-1] != gcode
+    ):
+        return False
+    run.movie_path = movie_path
+    run.thumb_path = thumb_path
+    return run.save() > 0
+
+
 def getHistory():
-    cur = (
-        Run.select(
-            Run.start, Run.end, Run.result, Run.queueName, Run.jobName, Run.path, Run.id
-        )
-        .order_by(Run.start.desc())
-        .limit(100)
-    ).execute()
+    cur = (Run.select().order_by(Run.start.desc()).limit(100)).execute()
 
     result = [
         dict(
@@ -410,6 +424,8 @@ def getHistory():
             job_name=c.jobName,
             set_path=c.path,
             run_id=c.id,
+            movie_path=c.movie_path,
+            thumb_path=c.thumb_path,
         )
         for c in cur
     ]

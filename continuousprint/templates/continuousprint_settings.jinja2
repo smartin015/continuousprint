@@ -255,6 +255,16 @@
             </select>
           </div>
         </div>
+        <div class="control-group" title="How to handle time lapses when running automation scripts">
+          <label class="control-label">Clearing/Finishing Timelapses</label>
+          <div class="controls">
+            <select data-bind="value: settings.settings.plugins.continuousprint.cp_automation_timelapse_action">
+              <option value="do_nothing">Do nothing</option>
+              <option value="auto_remove">Auto-remove</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
     </form>
   </div> <!-- settings_continuousprint_lan -->
 
