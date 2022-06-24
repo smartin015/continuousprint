@@ -366,6 +366,30 @@
   text-align: center;
 }
 
+#tab_plugin_continuousprint .timelapse_thumbnail {
+	position: relative;
+	display: inline-block;
+}
+
+#tab_plugin_continuousprint .timelapse_thumbnail > img {
+	display: none;
+	cursor: pointer;
+	position: absolute;
+	z-index: 1000;
+	top: 0;
+	max-width: 100px;
+	left: 18px;
+	border: 1px black solid;
+	padding: 5px;
+	background-color: white;
+}
+#tab_plugin_continuousprint .timelapse_thumbnail > i {
+	padding: 2px; /* So hover is maintained when mousing over to image */
+}
+#tab_plugin_continuousprint .timelapse_thumbnail:hover > img {
+  display: block;
+}
+
 #tab_plugin_continuousprint .separator {
   display: flex;
   justify-content: space-between;

@@ -13,6 +13,8 @@ from peewee import (
     JOIN,
     Check,
 )
+from playhouse.migrate import SqliteMigrator, migrate
+
 from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
@@ -237,6 +239,11 @@ class Run(Model):
     end = DateTimeField(null=True)
     result = CharField(null=True)
 
+    # Optional timelapse annotation for the run, set when
+    # OctoPrint finishes rendering the timelapse of the prior run
+    movie_path = CharField(null=True)
+    thumb_path = CharField(null=True)
+
     class Meta:
         database = DB.queues
 
@@ -268,7 +275,7 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 
 def populate():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.1")
+    StorageDetails.create(schemaVersion="0.0.2")
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
 
@@ -287,10 +294,23 @@ def init(db_path="queues.sqlite3", logger=None):
     else:
         try:
             details = StorageDetails.select().limit(1).execute()[0]
+            migrator = SqliteMigrator(db)
+            if details.schemaVersion == "0.0.1":
+                if logger is not None:
+                    logger.warning(f"Updating schema from {details.schemaVersion}")
+                # Added fields to Run
+                migrate(
+                    migrator.add_column("run", "movie_path", Run.movie_path),
+                    migrator.add_column("run", "thumb_path", Run.thumb_path),
+                )
+                details.schemaVersion = "0.0.2"
+                details.save()
+
+            if details.schemaVersion != "0.0.2":
+                raise Exception("Unknown DB schema version: " + details.schemaVersion)
+
             if logger is not None:
                 logger.debug("Storage schema version: " + details.schemaVersion)
-            if details.schemaVersion != "0.0.1":
-                raise Exception("Unknown DB schema version: " + details.schemaVersion)
         except Exception:
             raise Exception("Failed to fetch storage schema details!")
 

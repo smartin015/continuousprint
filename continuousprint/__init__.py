@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 
+import os
 import socket
 import json
 import time
@@ -13,6 +14,7 @@ import octoprint.filemanager
 from octoprint.filemanager.util import DiskFileWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
+import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
 from .driver import Driver, Action as DA, Printer as DP
@@ -225,6 +227,22 @@ class ContinuousprintPlugin(
 
     # ------------------------ Begin EventHandlerPlugin --------------------
 
+    def _delete_timelapse(self, full_path):
+        # This borrows heavily from `octoprint.timelapse.deleteTimelapse`
+        # (https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/server/api/timelapse.py#L175)
+        # We cannot use it directly as it's bundled into a Flask route
+        try:
+            thumb_path = octoprint.timelapse.create_thumbnail_path(full_path)
+            os.remove(full_path)
+            os.remove(thumb_path)
+            return True
+        except Exception:
+            self._logger.warning(
+                f"Failed to delete timelapse data ({full_path}, {thumb_path})"
+            )
+            self._logger.debug(traceback.format_exc())
+            return False
+
     def on_event(self, event, payload):
         if not hasattr(self, "d"):  # Ignore any messages arriving before init
             return
@@ -244,7 +262,29 @@ class ContinuousprintPlugin(
                     sd=payload["target"] != "local",
                     draft=(upload_action != "add_printable"),
                 )
-        if event == Events.PRINT_DONE:
+
+        if event == Events.MOVIE_DONE:
+            # Optionally delete time-lapses created from bed clearing/finishing scripts
+            temp_files_base = [f.split("/")[-1] for f in TEMP_FILES.values()]
+            if (
+                payload["gcode"] in temp_files_base
+                and self._get_key(Keys.AUTOMATION_TIMELAPSE_ACTION) == "auto_remove"
+            ):
+                if self._delete_timelapse(payload["movie"]):
+                    self._logger.info(
+                        f"Deleted temp file timelapse for {payload['gcode']}"
+                    )
+                return
+
+            thumb_path = octoprint.timelapse.create_thumbnail_path(payload["movie"])
+            if queries.annotateLastRun(payload["gcode"], payload["movie"], thumb_path):
+                self._logger.info(
+                    f"Annotated run of {payload['gcode']} with timelapse details"
+                )
+                self._sync_history()
+            return
+
+        elif event == Events.PRINT_DONE:
             self._update(DA.SUCCESS)
         elif event == Events.PRINT_FAILED:
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED

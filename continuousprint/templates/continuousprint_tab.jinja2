@@ -74,9 +74,13 @@
       <!-- /ko -->
       <!-- ko ifnot: $data.divider -->
       <div class="entry" data-bind="css: {'success': result().startsWith('success')}">
-          <div>
+          <div style="text-align: left">
             <i data-bind="css: icon_class"></i>
             <span data-bind="text:result"></span>
+            <div class="timelapse_thumbnail" data-bind="visible: thumbURL">
+              <i class="fas fa-film"></i>
+              <img data-bind="attr: {src: thumbURL}, click: showTimelapse"></img>
+            </div>
           </div>
           <div data-bind="text:duration"></div>
           <div data-bind="text:startedDate"></div>
