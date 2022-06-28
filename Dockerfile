@@ -1,5 +1,8 @@
 FROM python:3.7
 
+# Installing ffmpeg is needed for working with timelapses - this can be ommitted otherwise
+RUN apt-get update && apt-get -y install --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+
 RUN adduser oprint
 USER oprint
 

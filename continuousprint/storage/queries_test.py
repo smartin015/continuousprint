@@ -358,6 +358,8 @@ class TestMultiItemQueue(DBTest):
                     "run_id": 2,
                     "set_path": "b.gcode",
                     "queue_name": DEFAULT_QUEUE,
+                    "movie_path": None,
+                    "thumb_path": None,
                     "start": ANY,
                 },
                 {
@@ -367,6 +369,8 @@ class TestMultiItemQueue(DBTest):
                     "run_id": 1,
                     "set_path": "a.gcode",
                     "queue_name": DEFAULT_QUEUE,
+                    "movie_path": None,
+                    "thumb_path": None,
                     "start": ANY,
                 },
             ],
@@ -378,3 +382,12 @@ class TestMultiItemQueue(DBTest):
         self.assertNotEqual(Run.select().count(), 0)
         q.resetHistory()
         self.assertEqual(Run.select().count(), 0)
+
+    def testAnnotateLastRun(self):
+        s = Set.get(id=1)
+        r = q.beginRun(DEFAULT_QUEUE, s.job.name, s.path)
+        q.endRun(r, "success")
+        q.annotateLastRun(s.path, "movie_path.mp4", "thumb_path.png")
+        r = Run.get(id=r.id)
+        self.assertEqual(r.movie_path, "movie_path.mp4")
+        self.assertEqual(r.thumb_path, "thumb_path.png")

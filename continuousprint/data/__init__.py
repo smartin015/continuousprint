@@ -30,6 +30,10 @@ class Keys(Enum):
     BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
     MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
     NETWORK_NAME = ("cp_network_name", "Generic")
+    AUTOMATION_TIMELAPSE_ACTION = (
+        "cp_automation_timelapse_action",
+        "do_nothing",
+    )  # One of "do_nothing", "auto_remove"
     UPLOAD_ACTION = (
         "cp_upload_action",
         "do_nothing",

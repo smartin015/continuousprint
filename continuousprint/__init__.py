@@ -1,6 +1,7 @@
 # coding=utf-8
 from __future__ import absolute_import
 
+import os
 import socket
 import json
 import time
@@ -13,6 +14,7 @@ import octoprint.filemanager
 from octoprint.filemanager.util import DiskFileWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
+import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
 from .driver import Driver, Action as DA, Printer as DP
@@ -95,15 +97,10 @@ class ContinuousprintPlugin(
     # --------------------- Begin StartupPlugin ---------------------
 
     def _setup_thirdparty_plugin_integration(self):
-        # Turn on "restart on pause" when TSD plugin is detected (must be version 1.8.11 or higher for custom event hook)
-        if (
-            getattr(
-                octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
-            )
-            is not None
-        ):
+        # Turn on "restart on pause" when Obico plugin is detected (must be version 1.8.11 or higher for custom event hook)
+        if getattr(octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None) is not None:
             self._logger.info(
-                "Has TSD plugin with custom events integration - enabling failure automation"
+                "Has Obico plugin with custom events integration - enabling failure automation"
             )
             self._set_key(Keys.RESTART_ON_PAUSE, True)
         else:
@@ -123,9 +120,9 @@ class ContinuousprintPlugin(
 
         # Try to fetch plugin-specific events, defaulting to None otherwise
 
-        # This custom event is only defined when OctoPrint-TheSpaghettiDetective plugin is installed.
-        self.EVENT_TSD_COMMAND = getattr(
-            octoprint.events.Events, "PLUGIN_THESPAGHETTIDETECTIVE_COMMAND", None
+        # This custom event is only defined when the Obico plugin is installed.
+        self.EVENT_OBICO_COMMAND = getattr(
+            octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None
         )
         # These events are only defined when OctoPrint-SpoolManager plugin is installed.
         self.EVENT_SPOOL_SELECTED = getattr(
@@ -235,6 +232,22 @@ class ContinuousprintPlugin(
 
     # ------------------------ Begin EventHandlerPlugin --------------------
 
+    def _delete_timelapse(self, full_path):
+        # This borrows heavily from `octoprint.timelapse.deleteTimelapse`
+        # (https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/server/api/timelapse.py#L175)
+        # We cannot use it directly as it's bundled into a Flask route
+        try:
+            thumb_path = octoprint.timelapse.create_thumbnail_path(full_path)
+            os.remove(full_path)
+            os.remove(thumb_path)
+            return True
+        except Exception:
+            self._logger.warning(
+                f"Failed to delete timelapse data ({full_path}, {thumb_path})"
+            )
+            self._logger.debug(traceback.format_exc())
+            return False
+
     def on_event(self, event, payload):
         if not hasattr(self, "d"):  # Ignore any messages arriving before init
             return
@@ -254,6 +267,27 @@ class ContinuousprintPlugin(
                     sd=payload["target"] != "local",
                     draft=(upload_action != "add_printable"),
                 )
+
+        if event == Events.MOVIE_DONE:
+            # Optionally delete time-lapses created from bed clearing/finishing scripts
+            temp_files_base = [f.split("/")[-1] for f in TEMP_FILES.values()]
+            if (
+                payload["gcode"] in temp_files_base
+                and self._get_key(Keys.AUTOMATION_TIMELAPSE_ACTION) == "auto_remove"
+            ):
+                if self._delete_timelapse(payload["movie"]):
+                    self._logger.info(
+                        f"Deleted temp file timelapse for {payload['gcode']}"
+                    )
+                return
+
+            thumb_path = octoprint.timelapse.create_thumbnail_path(payload["movie"])
+            if queries.annotateLastRun(payload["gcode"], payload["movie"], thumb_path):
+                self._logger.info(
+                    f"Annotated run of {payload['gcode']} with timelapse details"
+                )
+                self._sync_history()
+            return
         elif event == Events.METADATA_ANALYSIS_FINISHED:
             # If we auto-added a file to the queue before analysis finished,
             # it's placed in a pending queue (see self._add_set). Now that 
@@ -276,7 +310,7 @@ class ContinuousprintPlugin(
                 self._update(DA.TICK)
         elif (
             is_current_path
-            and event == self.EVENT_TSD_COMMAND
+            and event == self.EVENT_OBICO_COMMAND
             and payload.get("cmd") == "pause"
             and payload.get("initiator") == "system"
         ):

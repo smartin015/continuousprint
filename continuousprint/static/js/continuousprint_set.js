@@ -21,6 +21,7 @@ function CPSet(data, job, api, profile) {
     return self.path().split(/[\\/]/).pop();
   });
   self.count = ko.observable(data.count);
+  self.missing_file = ko.observable(data.missing_file);
   self.remaining = ko.observable((data.remaining !== undefined) ? data.remaining : data.count);
   self.completed = ko.observable(data.count - self.remaining()); // Not computed to allow for edits without changing
   self.expanded = ko.observable(data.expanded);

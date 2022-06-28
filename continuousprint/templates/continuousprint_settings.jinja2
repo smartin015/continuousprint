@@ -118,12 +118,12 @@
       <fieldset>
         <legend>Failure Recovery</legend>
         <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
-          <p><strong>Plugin Needed:</strong> Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
+          <p><strong>Plugin Needed:</strong> Failure recovery requires <a href="https://www.obico.io/" target="_blank">Obico</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
           <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
         </div>
         <div data-bind="visible: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
           <p>
-            Failure recovery is enabled because <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> is installed.
+            Failure recovery is enabled because <a href="https://www.obico.io/" target="_blank">Obico</a> is installed.
           </p>
           <p>
             Read more about failure recovery settings in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.
@@ -255,6 +255,16 @@
             </select>
           </div>
         </div>
+        <div class="control-group" title="How to handle time lapses when running automation scripts">
+          <label class="control-label">Clearing/Finishing Timelapses</label>
+          <div class="controls">
+            <select data-bind="value: settings.settings.plugins.continuousprint.cp_automation_timelapse_action">
+              <option value="do_nothing">Do nothing</option>
+              <option value="auto_remove">Auto-remove</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
     </form>
   </div> <!-- settings_continuousprint_lan -->
 

@@ -39,6 +39,17 @@ function CPHistoryRow(data) {
     }
     return "in progress";
   });
+
+  if (data.movie_path && data.thumb_path) {
+    let movie_base = data.movie_path.split("/").pop();
+    let thumb_base = data.thumb_path.split("/").pop();
+    self.movieURL = ko.observable("/downloads/timelapse/" + encodeURIComponent(movie_base));
+    self.thumbURL = ko.observable("/downloads/timelapse/" + encodeURIComponent(thumb_base));
+  } else {
+    self.movieURL = ko.observable();
+    self.thumbURL = ko.observable();
+  }
+
   self.icon_class = ko.computed(function() {
     let r = self.result();
     switch (r) {
@@ -52,6 +63,11 @@ function CPHistoryRow(data) {
         return "";
     }
   });
+
+  self.showTimelapse = function() {
+    // Hook into the exiting TimelapseViewModel so we don't have to write our own preview code.
+    ko.dataFor($("#timelapse").get(0)).showTimelapsePreview({url: self.movieURL()});
+  }
 
   function pluralize(num, unit) {
     num = Math.round(num);

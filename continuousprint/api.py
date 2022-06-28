@@ -175,7 +175,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
-    @cpq_permission("EDITJOB")
+    @cpq_permission(Permission.EDITJOB)
     def mv_set(self):
         self._get_queue(DEFAULT_QUEUE).mv_set(
             int(flask.request.form["id"]),
