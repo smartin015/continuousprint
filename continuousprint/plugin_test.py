@@ -1,7 +1,13 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from collections import namedtuple
+from .storage.queries import getJobsAndSets
+from .storage.database import DEFAULT_QUEUE, ARCHIVE_QUEUE
+from unittest.mock import MagicMock, patch, ANY
+from .driver import Action as DA
 from octoprint.events import Events
 import logging
+import tempfile
+import json
 from .data import Keys
 from .plugin import CPQPlugin
 
@@ -16,7 +22,7 @@ class MockSettings:
         pass
 
     def get(self, k):
-        return self.s[k[0]]
+        return self.s.get(k[0])
 
     def set(self, k, v):
         self.s[k[0]] = v
@@ -68,37 +74,92 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._get_key(Keys.MATERIAL_SELECTION), True)  # Spoolmanager
         self.assertEqual(p._get_key(Keys.RESTART_ON_PAUSE), False)  # Obico
 
-    def testDB(self):
-        pass
+    def testDBNew(self):
+        p = mockplugin()
+        with tempfile.TemporaryDirectory() as td:
+            p._data_folder = td
+            p._init_db()
 
     def testDBWithLegacySettings(self):
-        pass
+        p = mockplugin()
+        p._set_key(
+            Keys.QUEUE,
+            json.dumps(
+                [
+                    {
+                        "name": "sample-cube-026.gcode",
+                        "path": "sample-cube-026.gcode",
+                        "sd": "false",
+                        "job": "",
+                        "materials": [],
+                        "run": 0,
+                        "start_ts": 1652377632,
+                        "end_ts": 1652381175,
+                        "result": "success",
+                        "retries": 2,
+                    }
+                ]
+            ),
+        )
+        with tempfile.TemporaryDirectory() as td:
+            p._data_folder = td
+            p._init_db()
+            self.assertEqual(len(getJobsAndSets(DEFAULT_QUEUE)), 1)
 
     def testFileshare(self):
-        pass
+        p = mockplugin()
+        fs = MagicMock()
+        p.get_local_ip = MagicMock(return_value="111.111.111.111")
+        p._file_manager.path_on_disk.return_value = "/testpath"
+
+        p._init_fileshare(fs_cls=fs)
+
+        fs.assert_called_with("111.111.111.111:0", "/testpath", logging.getLogger())
 
     def testQueues(self):
-        pass
-
-    def testLANQueues(self):
-        pass
+        p = mockplugin()
+        QT = namedtuple("MockQueue", ["name", "addr"])
+        p._queries.getQueues.return_value = [
+            QT(name="LAN", addr="0.0.0.0:0"),
+            QT(name=DEFAULT_QUEUE, addr=None),
+            QT(name=ARCHIVE_QUEUE, addr=None),
+        ]
+        p._fileshare = None
+        p._init_queues(lancls=MagicMock(), localcls=MagicMock())
+        self.assertEqual(len(p.q.queues), 2)  # 2 queues created, archive skipped
 
     def testDriver(self):
-        pass
+        p = mockplugin()
+        p.q = MagicMock()
+        p._sync_state = MagicMock()
+        p._printer_profile = None
+        p._spool_manager = None
+
+        p._init_driver(srcls=MagicMock(), dcls=MagicMock())
+        self.assertNotEqual(p.d, None)
 
 
 class TestEventHandling(unittest.TestCase):
     def setUp(self):
-        pass
+        self.p = mockplugin()
+        self.p._spool_manager = None
+        self.p._printer_profile = None
+        self.p.d = MagicMock()
+        self.p.q = MagicMock()
+        self.p._sync_state = MagicMock()
 
     def testTick(self):
-        pass
+        self.p.tick()
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testTickExceptionHandled(self):
-        pass
+        self.p.d.action.side_effect = Exception("whoops")
+        self.p.tick()  # does *not* raise exception
+        self.p.d.action.assert_called()
 
     def testUploadNoAction(self):
-        pass
+        self.p.on_event(Events.UPLOAD, dict())
+        self.p.d.action.assert_not_called()
 
     def testUploadAddPrintable(self):
         pass

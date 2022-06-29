@@ -75,9 +75,9 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _on_settings_updated(self):
         self.d.set_retry_on_pause(
-            self._get_key(Keys.RESTART_ON_PAUSE),
-            int(self._get_key(Keys.RESTART_MAX_RETRIES)),
-            int(self._get_key(Keys.RESTART_MAX_TIME)),
+            self._get_key(Keys.RESTART_ON_PAUSE, False),
+            int(self._get_key(Keys.RESTART_MAX_RETRIES, 0)),
+            int(self._get_key(Keys.RESTART_MAX_TIME, 0)),
         )
 
     def _set_key(self, k, v):
@@ -156,11 +156,11 @@ class CPQPlugin(ContinuousPrintAPI):
             octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
         )
 
-    def _init_fileshare(self):
+    def _init_fileshare(self, fs_cls=Fileshare):
         fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
         fileshare_addr = f"{self.get_local_ip()}:0"
         self._logger.info(f"Starting fileshare with address {fileshare_addr}")
-        self._fileshare = Fileshare(fileshare_addr, fileshare_dir, self._logger)
+        self._fileshare = fs_cls(fileshare_addr, fileshare_dir, self._logger)
         self._fileshare.connect()
 
     def _init_db(self):
@@ -182,15 +182,17 @@ class CPQPlugin(ContinuousPrintAPI):
 
         self._queries.clearOldState()
 
-    def _init_queues(self):
-        self._printer_profile = PRINTER_PROFILES[self._get_key(Keys.PRINTER_PROFILE)]
+    def _init_queues(self, lancls=LANQueue, localcls=LocalQueue):
+        self._printer_profile = PRINTER_PROFILES.get(
+            self._get_key(Keys.PRINTER_PROFILE)
+        )
         self.q = MultiQueue(
             self._queries, Strategy.IN_ORDER, self._sync_history
         )  # TODO set strategy for this and all other queue creations
         for q in self._queries.getQueues():
             if q.addr is not None:
                 try:
-                    lq = LANQueue(
+                    lq = lancls(
                         q.name,
                         q.addr,
                         self._logger,
@@ -209,7 +211,7 @@ class CPQPlugin(ContinuousPrintAPI):
             elif q.name != ARCHIVE_QUEUE:
                 self.q.add(
                     q.name,
-                    LocalQueue(
+                    localcls(
                         self._queries,
                         q.name,
                         Strategy.IN_ORDER,
@@ -219,8 +221,8 @@ class CPQPlugin(ContinuousPrintAPI):
                     ),
                 )
 
-    def _init_driver(self):
-        self._runner = ScriptRunner(
+    def _init_driver(self, srcls=ScriptRunner, dcls=Driver):
+        self._runner = srcls(
             self.popup,
             self._get_key,
             self._file_manager,
@@ -230,7 +232,7 @@ class CPQPlugin(ContinuousPrintAPI):
             Keys,
             TEMP_FILES,
         )
-        self.d = Driver(
+        self.d = dcls(
             queue=self.q,
             script_runner=self._runner,
             logger=self._logger,
@@ -273,13 +275,15 @@ class CPQPlugin(ContinuousPrintAPI):
         if (
             event == Events.UPLOAD
         ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
-            upload_action = self._get_key(Keys.UPLOAD_ACTION)
+            upload_action = self._get_key(Keys.UPLOAD_ACTION, "do_nothing")
             if upload_action != "do_nothing":
                 self._add_set(
                     path=payload["path"],
                     sd=payload["target"] != "local",
                     draft=(upload_action != "add_printable"),
                 )
+            else:
+                return
 
         if event == Events.MOVIE_DONE:
             # Optionally delete time-lapses created from bed clearing/finishing scripts
