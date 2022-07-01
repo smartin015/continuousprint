@@ -8,10 +8,10 @@ from octoprint.events import Events
 import logging
 import tempfile
 import json
-from .data import Keys
+from .data import Keys, TEMP_FILES
 from .plugin import CPQPlugin
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class MockSettings:
@@ -147,13 +147,14 @@ class TestEventHandling(unittest.TestCase):
         self.p.d = MagicMock()
         self.p.q = MagicMock()
         self.p._sync_state = MagicMock()
+        self.p._setup_thirdparty_plugin_integration()
 
     def testTick(self):
         self.p.tick()
         self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testTickExceptionHandled(self):
-        self.p.d.action.side_effect = Exception("whoops")
+        self.p.d.action.side_effect = Exception("testing exception")
         self.p.tick()  # does *not* raise exception
         self.p.d.action.assert_called()
 
@@ -162,51 +163,144 @@ class TestEventHandling(unittest.TestCase):
         self.p.d.action.assert_not_called()
 
     def testUploadAddPrintable(self):
-        pass
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(Events.UPLOAD, dict(path="testpath", target="local"))
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath")
 
     def testTempFileMovieDone(self):
-        pass
+        self.p._set_key(Keys.AUTOMATION_TIMELAPSE_ACTION, "auto_remove")
+        self.p._delete_timelapse = MagicMock()
+        self.p.on_event(
+            Events.MOVIE_DONE,
+            dict(gcode=list(TEMP_FILES.values())[0].split("/")[-1], movie="test.mp4"),
+        )
+        self.p._delete_timelapse.assert_called_with("test.mp4")
 
     def testQueueRunMovieDone(self):
-        pass
+        self.p._sync_history = MagicMock()
+        self.p.on_event(Events.MOVIE_DONE, dict(gcode="a.gcode", movie="a.mp4"))
+        self.p._queries.annotateLastRun.assert_called_with("a.gcode", "a.mp4", ANY)
 
     def testPrintDone(self):
-        pass
+        self.p.on_event(Events.PRINT_DONE, dict())
+        self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY)
 
     def testPrintFailed(self):
-        pass
+        self.p.on_event(Events.PRINT_FAILED, dict())
+        self.p.d.action.assert_called_with(DA.FAILURE, ANY, ANY, ANY)
 
     def testPrintCancelledByUser(self):
-        pass
+        self.p.on_event(Events.PRINT_CANCELLED, dict(user="admin"))
+        self.p.d.action.assert_called_with(DA.DEACTIVATE, ANY, ANY, ANY)
 
     def testPrintCancelledBySystem(self):
-        pass
+        self.p.on_event(Events.PRINT_CANCELLED, dict())
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testObicoPauseCommand(self):
-        pass
+        self.p._printer.get_current_job.return_value = dict(
+            file=dict(name="test.gcode")
+        )
+        self.p.d.current_path.return_value = "test.gcode"
+        self.p.EVENT_OBICO_COMMAND = "obico_cmd"
+
+        self.p.on_event("obico_cmd", dict(cmd="pause", initiator="system"))
+        self.p.d.action.assert_called_with(DA.SPAGHETTI, ANY, ANY, ANY)
+
+    def testObicoPauseByUser(self):
+        # User pause events (e.g. through the Obico UI) should not trigger automation
+        self.p._printer.get_current_job.return_value = dict(
+            file=dict(name="test.gcode")
+        )
+        self.p.d.current_path.return_value = "test.gcode"
+        self.p.EVENT_OBICO_COMMAND = "obico_cmd"
+
+        self.p.on_event("obico_cmd", dict(cmd="pause", initiator="user"))
+        self.p.d.action.assert_not_called()
 
     def testSpoolSelected(self):
-        pass
+        self.p.EVENT_SPOOL_SELECTED = "spool_selected"
+        self.p.on_event("spool_selected", dict())
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testSpoolDeselected(self):
-        pass
+        self.p.EVENT_SPOOL_DESELECTED = "spool_desel"
+        self.p.on_event("spool_desel", dict())
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testPrintPaused(self):
-        pass
+        self.p._printer.get_current_job.return_value = dict(
+            file=dict(name="test.gcode")
+        )
+        self.p.d.current_path.return_value = "test.gcode"
+        self.p.on_event(Events.PRINT_PAUSED, dict())
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testPrintResumed(self):
-        pass
+        self.p._printer.get_current_job.return_value = dict(
+            file=dict(name="test.gcode")
+        )
+        self.p.d.current_path.return_value = "test.gcode"
+        self.p.on_event(Events.PRINT_RESUMED, dict())
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testPrinterOperational(self):
-        pass
+        self.p._printer.get_state_id.return_value = "OPERATIONAL"
+        self.p.on_event(Events.PRINTER_STATE_CHANGED, dict())
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
 
     def testSettingsUpdated(self):
-        pass
+        self.p.on_event(Events.SETTINGS_UPDATED, dict())
+        self.p.d.set_retry_on_pause.assert_called()
 
 
 class TestGetters(unittest.TestCase):
+    def setUp(self):
+        self.p = mockplugin()
+        self.p._spool_manager = None
+        self.p._printer_profile = None
+        self.p.d = MagicMock()
+        self.p.q = MagicMock()
+        self.p._sync_state = MagicMock()
+        self.p._plugin_manager.plugins.get.return_value = None
+        self.p._setup_thirdparty_plugin_integration()
+
     def testStateJSON(self):
-        pass
+        QT = namedtuple("MockQueue", ["name", "rank"])
+
+        class TQ:
+            def __init__(self, name):
+                self.name = name
+
+            def as_dict(self):
+                return dict(name=self.name)
+
+        self.p._queries.getQueues.return_value = [
+            QT(name=ARCHIVE_QUEUE, rank=2),
+            QT(name=DEFAULT_QUEUE, rank=1),
+            QT(name="asdf", rank=5),
+        ]
+        self.p.q.queues = dict(
+            [("asdf", TQ("asdf")), (DEFAULT_QUEUE, TQ(DEFAULT_QUEUE))]
+        )
+        self.p.d.status = "test"
+        self.p.d.status_type.name = "testing"
+        self.assertEqual(
+            json.loads(self.p._state_json()),
+            {
+                "active": True,
+                "profile": None,
+                "queues": [{"name": "local", "rank": 1}, {"name": "asdf", "rank": 5}],
+                "status": "test",
+                "statusType": "testing",
+            },
+        )
 
     def testHistoryJSON(self):
-        pass
+        self.p._queries.getHistory.return_value = [dict(run_id=1), dict(run_id=2)]
+        self.p.q.run = 2
+        self.assertEqual(
+            json.loads(self.p._history_json()),
+            [{"run_id": 1}, {"run_id": 2, "active": True}],
+        )
