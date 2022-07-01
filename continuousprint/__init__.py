@@ -1,49 +1,20 @@
 # coding=utf-8
 from __future__ import absolute_import
 
-import os
-import socket
-import json
-import time
-import traceback
-from pathlib import Path
 import octoprint.plugin
-import octoprint.util
-from octoprint.events import Events
-import octoprint.filemanager
-from octoprint.filemanager.util import DiskFileWrapper
-from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
-import octoprint.timelapse
 
-from peerprint.filesharing import Fileshare
-from .driver import Driver, Action as DA, Printer as DP
-from .queues.lan import LANQueue
-from .queues.multi import MultiQueue
-from .queues.local import LocalQueue
-from .storage.database import (
-    migrateFromSettings,
-    init as init_db,
-    DEFAULT_QUEUE,
-    ARCHIVE_QUEUE,
-)
 from .data import (
     PRINTER_PROFILES,
     GCODE_SCRIPTS,
     Keys,
-    PRINT_FILE_DIR,
-    TEMP_FILES,
     ASSETS,
     TEMPLATES,
     update_info,
 )
 from .storage import queries
-from .script_runner import ScriptRunner
-from .api import ContinuousPrintAPI, Permission as CPQPermission
-
+from .api import Permission as CPQPermission
 from .plugin import CPQPlugin
-
-UPDATE_PD = 1
 
 
 class ContinuousprintPlugin(

@@ -1,5 +1,4 @@
 # coding=utf-8
-from __future__ import absolute_import
 
 import os
 import socket
@@ -7,13 +6,8 @@ import json
 import time
 import traceback
 from pathlib import Path
-import octoprint.plugin
-import octoprint.util
 from octoprint.events import Events
-import octoprint.filemanager
-from octoprint.filemanager.util import DiskFileWrapper
 from octoprint.filemanager.destinations import FileDestinations
-from octoprint.util import RepeatedTimer
 import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
