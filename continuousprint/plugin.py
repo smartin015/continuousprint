@@ -223,8 +223,6 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger,
             self._printer,
             self._sync_state,
-            Keys,
-            TEMP_FILES,
         )
         self.d = dcls(
             queue=self.q,

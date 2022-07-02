@@ -52,6 +52,9 @@ class Driver:
         self.max_retries = 0
         self.retry_threshold_seconds = 0
         self.max_startup_attempts = 3
+        self.managed_cooldown = False
+        self.cooldown_threshold = 0
+        self.cooldown_timeout = 0
         self.first_print = True
         self._runner = script_runner
         self._update_ui = False
@@ -242,8 +245,26 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._runner.clear_bed()
-        return self._state_clearing
+        if self.managed_cooldown:
+            self._runner.start_cooldown()
+            self.cooldown_start = time.time()
+            self._logger.info(
+                f"Cooldown initiated (threshold={self.cooldown_threshold}, timeout={self.cooldown_timeout})"
+            )
+            return self._state_cooldown
+        else:
+            self._runner.clear_bed()
+            return self._state_clearing
+
+    def _state_cooldown(self, a: Action, p: Printer):
+        if p.bed_temp < self.cooldown_threshold:
+            self._logger.info(
+                f"Cooldown threshold of {self.cooldown_threshold} has been met"
+            )
+            return self._state_clearing
+        elif (time.time() - self.cooldown_start) > (60 * self.cooldown_timeout):
+            self._logger.info(f"Timeout of {self.cooldown_timeout} minutes exceeded")
+            return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
         if a == Action.SUCCESS:
@@ -281,6 +302,11 @@ class Driver:
             self.status = status
             self.status_type = status_type
             self._logger.info(status)
+
+    def set_managed_cooldown(self, enabled, threshold, timeout):
+        self.managed_cooldown = enabled
+        self.cooldown_threshold = threshold
+        self.cooldown_timeout = timeout
 
     def set_retry_on_pause(
         self, enabled, max_retries=3, retry_threshold_seconds=60 * 60

@@ -99,6 +99,9 @@ class TestFromInactive(unittest.TestCase):
         self.d.action(DA.FAILURE, DP.IDLE)
         self.assertEqual(self.d.state.__name__, self.d._state_inactive.__name__)
 
+    def test_bed_clearing_cooldown(self):
+        raise NotImplementedError
+
     def test_finishing_failure(self):
         self.d.state = self.d._state_finishing
         self.d.action(DA.FAILURE, DP.IDLE)
