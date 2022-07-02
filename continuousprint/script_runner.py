@@ -80,7 +80,7 @@ class ScriptRunner:
 
         try:
             self._logger.info(f"Attempting to print {path} (sd={item.sd})")
-            self._printer.select_file(path, item.sd, printAfterSelect=True)
+            self._printer.select_file(path, sd=item.sd, printAfterSelect=True)
         except InvalidFileLocation as e:
             self._logger.error(e)
             self._msg("File not found: " + path, type="error")

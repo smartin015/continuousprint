@@ -61,12 +61,21 @@ class Driver:
         self._cur_path = None
         self._cur_materials = []
 
-    def action(self, a: Action, p: Printer, path: str = None, materials: list = []):
+    def action(
+        self,
+        a: Action,
+        p: Printer,
+        path: str = None,
+        materials: list = [],
+        bed_temp=None,
+    ):
         self._logger.debug(f"{a.name}, {p.name}, path={path}, materials={materials}")
         if path is not None:
             self._cur_path = path
         if len(materials) > 0:
             self._cur_materials = materials
+        if bed_temp is not None:
+            self._bed_temp = bed_temp
 
         # Deactivation must be allowed on all states, so we hande it here for
         # completeness.
@@ -257,7 +266,7 @@ class Driver:
             return self._state_clearing
 
     def _state_cooldown(self, a: Action, p: Printer):
-        if p.bed_temp < self.cooldown_threshold:
+        if self._bed_temp < self.cooldown_threshold:
             self._logger.info(
                 f"Cooldown threshold of {self.cooldown_threshold} has been met"
             )
