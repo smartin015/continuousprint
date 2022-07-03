@@ -274,6 +274,8 @@ class Driver:
         elif (time.time() - self.cooldown_start) > (60 * self.cooldown_timeout):
             self._logger.info(f"Timeout of {self.cooldown_timeout} minutes exceeded")
             return self._state_clearing
+        else:
+            self._set_status("Cooling down")
 
     def _state_clearing(self, a: Action, p: Printer):
         if a == Action.SUCCESS:
@@ -316,6 +318,9 @@ class Driver:
         self.managed_cooldown = enabled
         self.cooldown_threshold = threshold
         self.cooldown_timeout = timeout
+        self._logger.debug(
+            f"Managed cooldown: {enabled} (threshold {threshold}C, timeout {timeout}min)"
+        )
 
     def set_retry_on_pause(
         self, enabled, max_retries=3, retry_threshold_seconds=60 * 60
