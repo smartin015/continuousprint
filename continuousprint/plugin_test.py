@@ -151,7 +151,7 @@ class TestEventHandling(unittest.TestCase):
 
     def testTick(self):
         self.p.tick()
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testTickExceptionHandled(self):
         self.p.d.action.side_effect = Exception("testing exception")
@@ -184,19 +184,19 @@ class TestEventHandling(unittest.TestCase):
 
     def testPrintDone(self):
         self.p.on_event(Events.PRINT_DONE, dict())
-        self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY, ANY)
 
     def testPrintFailed(self):
         self.p.on_event(Events.PRINT_FAILED, dict())
-        self.p.d.action.assert_called_with(DA.FAILURE, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.FAILURE, ANY, ANY, ANY, ANY)
 
     def testPrintCancelledByUser(self):
         self.p.on_event(Events.PRINT_CANCELLED, dict(user="admin"))
-        self.p.d.action.assert_called_with(DA.DEACTIVATE, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.DEACTIVATE, ANY, ANY, ANY, ANY)
 
     def testPrintCancelledBySystem(self):
         self.p.on_event(Events.PRINT_CANCELLED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testObicoPauseCommand(self):
         self.p._printer.get_current_job.return_value = dict(
@@ -206,7 +206,7 @@ class TestEventHandling(unittest.TestCase):
         self.p.EVENT_OBICO_COMMAND = "obico_cmd"
 
         self.p.on_event("obico_cmd", dict(cmd="pause", initiator="system"))
-        self.p.d.action.assert_called_with(DA.SPAGHETTI, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.SPAGHETTI, ANY, ANY, ANY, ANY)
 
     def testObicoPauseByUser(self):
         # User pause events (e.g. through the Obico UI) should not trigger automation
@@ -222,12 +222,12 @@ class TestEventHandling(unittest.TestCase):
     def testSpoolSelected(self):
         self.p.EVENT_SPOOL_SELECTED = "spool_selected"
         self.p.on_event("spool_selected", dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testSpoolDeselected(self):
         self.p.EVENT_SPOOL_DESELECTED = "spool_desel"
         self.p.on_event("spool_desel", dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testPrintPaused(self):
         self.p._printer.get_current_job.return_value = dict(
@@ -235,7 +235,7 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p.d.current_path.return_value = "test.gcode"
         self.p.on_event(Events.PRINT_PAUSED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testPrintResumed(self):
         self.p._printer.get_current_job.return_value = dict(
@@ -243,12 +243,12 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p.d.current_path.return_value = "test.gcode"
         self.p.on_event(Events.PRINT_RESUMED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testPrinterOperational(self):
         self.p._printer.get_state_id.return_value = "OPERATIONAL"
         self.p.on_event(Events.PRINTER_STATE_CHANGED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testSettingsUpdated(self):
         self.p.on_event(Events.SETTINGS_UPDATED, dict())
