@@ -50,8 +50,8 @@ class Keys(Enum):
 PRINT_FILE_DIR = "ContinuousPrint"
 TEMP_FILES = dict(
     [
-        (k, f"{PRINT_FILE_DIR}/{k}.gcode")
-        for k in [Keys.FINISHED_SCRIPT.setting, Keys.CLEARING_SCRIPT.setting]
+        (k.setting, f"{PRINT_FILE_DIR}/{k.setting}.gcode")
+        for k in [Keys.FINISHED_SCRIPT, Keys.CLEARING_SCRIPT, Keys.BED_COOLDOWN_SCRIPT]
     ]
 )
 

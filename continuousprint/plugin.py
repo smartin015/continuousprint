@@ -73,6 +73,11 @@ class CPQPlugin(ContinuousPrintAPI):
             int(self._get_key(Keys.RESTART_MAX_RETRIES, 0)),
             int(self._get_key(Keys.RESTART_MAX_TIME, 0)),
         )
+        self.d.set_managed_cooldown(
+            self._get_key(Keys.BED_COOLDOWN_ENABLED, False),
+            int(self._get_key(Keys.BED_COOLDOWN_THRESHOLD, 0)),
+            int(self._get_key(Keys.BED_COOLDOWN_TIMEOUT, 0)),
+        )
 
     def _set_key(self, k, v):
         return self._settings.set([k.setting], v)
@@ -223,8 +228,6 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger,
             self._printer,
             self._sync_state,
-            Keys,
-            TEMP_FILES,
         )
         self.d = dcls(
             queue=self.q,
@@ -368,7 +371,11 @@ class CPQPlugin(ContinuousPrintAPI):
                     "SpoolManager getSelectedSpoolInformations() returned error; skipping material assignment"
                 )
 
-        if self.d.action(a, p, path, materials):
+        bed_temp = self._printer.get_current_temperatures().get("bed")
+        if bed_temp is not None:
+            bed_temp = bed_temp.get("actual", 0)
+
+        if self.d.action(a, p, path, materials, bed_temp):
             self._sync_state()
 
         run = self.q.get_run()
