@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import MagicMock
 from .abstract import Strategy
 from .lan import LANQueue
-from ..storage.database import JobView
+from ..storage.database import JobView, SetView
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -36,7 +36,7 @@ class TestLANQueueConnected(LANQueueTest):
         self.q.lan = MagicMock()
         self.q.lan.q = MagicMock()
         self.q.lan.q.getPeers.return_value = {
-            "a": dict(fs_addr="123"),
+            "a": dict(fs_addr="123", profile="abc"),
         }
 
     def test_resolve_set_failed_bad_peer(self):
@@ -48,17 +48,43 @@ class TestLANQueueConnected(LANQueueTest):
         self.assertEqual(self.q.resolve_set("a", "hash", "path"), "/dir/path")
         self.fs.fetch.assert_called_with("123", "hash", unpack=True)
 
-    def test_submit_job(self):
-        self.fs.post.return_value = "hash"
+    def _jbase(self):
         j = JobView()
         j.id = 1
         j.name = "j1"
-        j.sets = []
+        s = SetView()
+        s.path = "a.gcode"
+        s.id = 2
+        s.sd = False
+        s.count = 1
+        s.remaining = 1
+        s.profile_keys = ""
+        s.rank = 1
+        s.material_keys = ""
+        j.sets = [s]
         j.count = 1
         j.draft = False
         j.created = 100
         j.remaining = 1
         j.acquired = False
+        return j
+
+    def test_submit_job_no_profile(self):
+        result = self.q.submit_job(self._jbase())
+        self.assertRegex(str(result), "failed")
+        self.fs.post.assert_not_called()
+
+    def test_submit_job_no_match(self):
+        j = self._jbase()
+        j.sets[0].profile_keys = "def"
+        result = self.q.submit_job(j)
+        self.assertRegex(str(result), "failed")
+        self.fs.post.assert_not_called()
+
+    def test_submit_job(self):
+        self.fs.post.return_value = "hash"
+        j = self._jbase()
+        j.sets[0].profile_keys = "def,abc"
         self.q.submit_job(j)
         self.fs.post.assert_called()
         self.q.lan.q.setJob.assert_called_with(
@@ -67,7 +93,18 @@ class TestLANQueueConnected(LANQueueTest):
                 "name": "j1",
                 "count": 1,
                 "draft": False,
-                "sets": [],
+                "sets": [
+                    {
+                        "path": "a.gcode",
+                        "count": 1,
+                        "materials": [],
+                        "profiles": ["def", "abc"],
+                        "id": 2,
+                        "rank": 1,
+                        "sd": False,
+                        "remaining": 1,
+                    }
+                ],
                 "created": 100,
                 "id": 1,
                 "remaining": 1,
