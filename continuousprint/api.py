@@ -203,9 +203,14 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def submit_job(self):
         j = queries.getJob(int(flask.request.form["id"]))
         # Submit to the queue and remove from its origin
-        self._get_queue(flask.request.form["queue"]).submit_job(j)
-        self._logger.debug(self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id]))
-        return self._state_json()
+        err = self._get_queue(flask.request.form["queue"]).submit_job(j)
+        if err is None:
+            self._logger.debug(
+                self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id])
+            )
+            return self._state_json()
+        else:
+            return json.dumps(dict(error=str(err)))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/edit", methods=["POST"])

@@ -74,7 +74,36 @@ class LANQueue(AbstractJobQueue):
 
     # --------- AbstractJobQueue implementation ------
 
+    def _validate_job(self, j: JobView) -> str:
+        peer_profiles = set(
+            [
+                p.get("profile", dict()).get("name", "UNKNOWN")
+                for p in self.lan.q.getPeers().values()
+            ]
+        )
+
+        for s in j.sets:
+            sprof = set(s.profiles())
+            # All sets in the job *must* have an assigned profile
+            if len(sprof) == 0:
+                return f"validation for job {j.name} failed - set {s.path} has no assigned profile"
+
+            # At least one printer in the queue must have a compatible proile
+            if len(peer_profiles.intersection(sprof)) == 0:
+                return f"validation for job {j.name} failed - no match for set {s.path} with profiles {sprof}, candidates {peer_profiles}"
+
+            # All set paths must resolve to actual files
+            fullpath = self._path_on_disk(s.path)
+            if not Path(fullpath).exists():
+                return (
+                    f"validation for job {j.name} failed - file not found at {fullpath}"
+                )
+
     def submit_job(self, j: JobView) -> bool:
+        err = self._validate_job(j)
+        if err is not None:
+            self._logger.warning(err)
+            return Exception(err)
         filepaths = dict([(s.path, self._path_on_disk(s.path)) for s in j.sets])
         manifest = j.as_dict()
         if manifest.get("created") is None:
