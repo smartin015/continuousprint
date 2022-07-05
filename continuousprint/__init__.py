@@ -1,461 +1,85 @@
 # coding=utf-8
 from __future__ import absolute_import
 
-import os
-import socket
-import json
-import time
-import traceback
-from pathlib import Path
 import octoprint.plugin
-import octoprint.util
-from octoprint.events import Events
-import octoprint.filemanager
-from octoprint.filemanager.util import DiskFileWrapper
-from octoprint.filemanager.destinations import FileDestinations
 from octoprint.util import RepeatedTimer
-import octoprint.timelapse
 
-from peerprint.filesharing import Fileshare
-from .driver import Driver, Action as DA, Printer as DP
-from .analysis import CPQProfileAnalysisQueue
-from .queues.lan import LANQueue
-from .queues.multi import MultiQueue
-from .queues.local import LocalQueue
-from .storage.database import (
-    migrateFromSettings,
-    init as init_db,
-    DEFAULT_QUEUE,
-    ARCHIVE_QUEUE,
-)
 from .data import (
     PRINTER_PROFILES,
     GCODE_SCRIPTS,
     Keys,
-    PRINT_FILE_DIR,
-    TEMP_FILES,
     ASSETS,
     TEMPLATES,
     update_info,
 )
 from .storage import queries
-from .script_runner import ScriptRunner
-from .api import ContinuousPrintAPI, Permission as CPQPermission
-
-UPDATE_PD = 1
+from .api import Permission as CPQPermission
+from .plugin import CPQPlugin
+from .analysis import CPQProfileAnalysisQueue
 
 
 class ContinuousprintPlugin(
+    octoprint.plugin.BlueprintPlugin,
     octoprint.plugin.SettingsPlugin,
     octoprint.plugin.TemplatePlugin,
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.StartupPlugin,
     octoprint.plugin.EventHandlerPlugin,
-    ContinuousPrintAPI,
 ):
-    def _on_queue_update(self, q, now=time.time()):
-        self._logger.debug("_on_queue_update")
-        self._sync_state()
 
-    def _on_settings_updated(self):
-        self.d.set_retry_on_pause(
-            self._get_key(Keys.RESTART_ON_PAUSE),
-            int(self._get_key(Keys.RESTART_MAX_RETRIES)),
-            int(self._get_key(Keys.RESTART_MAX_TIME)),
-        )
+    # -------------------- Begin BlueprintPlugin --------------------
 
-    def _set_key(self, k, v):
-        return self._settings.set([k.setting], v)
+    def get_blueprint(self):
+        # called before on_startup, but we need the plugin to provide the blueprint
+        self.on_startup()
+        return self._plugin.get_blueprint()
 
-    def _get_key(self, k, default=None):
-        v = self._settings.get([k.setting])
-        return v if v is not None else default
+    def get_blueprint_kwargs(self):
+        return self._plugin.get_blueprint_kwargs()
 
-    def _add_folder(self, path):
-        return self._file_manager.add_folder(
-            FileDestinations.LOCAL, self._path_in_storage(path)
-        )
+    def is_blueprint_protected(self):
+        return self._plugin.is_blueprint_protected()
 
-    def _get_local_ip(self):
-        # https://stackoverflow.com/a/57355707
-        hostname = socket.gethostname()
-        try:
-            return socket.gethostbyname(f"{hostname}.local")
-        except socket.gaierror:
-            return socket.gethostbyname(hostname)
+    def get_blueprint_api_prefixes(self):
+        return self._plugin.get_blueprint_api_prefixes()
 
-    def _add_set(self, path, sd, draft=True, profiles=[]):
-        meta = self._file_manager.get_metadata(FileDestinations.LOCAL, data['path'])
-        prof = meta.get('analysis', {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
-        if self._get_key(Keys.INFER_PROFILE) and prof is None:
-            self._set_add_awaiting_metadata[path] = (path, sd, draft, profiles)
-        self._get_queue(DEFAULT_QUEUE).add_set(
-            "", self._preprocess_set(dict(path=path, sd="true" if sd else "false", count=1, jobDraft=draft, profiles=profiles))
-        )
-        self._sync_state()
+    # --------------------- End BlueprintPlugin --------------------
 
     # --------------------- Begin StartupPlugin ---------------------
 
-    def _setup_thirdparty_plugin_integration(self):
-        # Turn on "restart on pause" when Obico plugin is detected (must be version 1.8.11 or higher for custom event hook)
-        if getattr(octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None) is not None:
-            self._logger.info(
-                "Has Obico plugin with custom events integration - enabling failure automation"
+    def on_startup(self, host=None, port=None):
+        if not hasattr(self, "_plugin"):
+            self._plugin = CPQPlugin(
+                self._printer,
+                self._settings,
+                self._file_manager,
+                self._plugin_manager,
+                queries,
+                self.get_plugin_data_folder(),
+                self._logger,
+                self._identifier,
+                self._basefolder,
             )
-            self._set_key(Keys.RESTART_ON_PAUSE, True)
-        else:
-            self._set_key(Keys.RESTART_ON_PAUSE, False)
-
-        # SpoolManager plugin isn't required, but does enable material-based printing if it exists
-        # Code based loosely on https://github.com/OllisGit/OctoPrint-PrintJobHistory/ (see _getPluginInformation)
-        smplugin = self._plugin_manager.plugins.get("SpoolManager")
-        if smplugin is not None and smplugin.enabled:
-            self._spool_manager = smplugin.implementation
-            self._logger.info("SpoolManager found - enabling material selection")
-            self._set_key(Keys.MATERIAL_SELECTION, True)
-        else:
-            self._spool_manager = None
-            self._set_key(Keys.MATERIAL_SELECTION, False)
-        self._settings.save()
-
-        # Try to fetch plugin-specific events, defaulting to None otherwise
-
-        # This custom event is only defined when the Obico plugin is installed.
-        self.EVENT_OBICO_COMMAND = getattr(
-            octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None
-        )
-        # These events are only defined when OctoPrint-SpoolManager plugin is installed.
-        self.EVENT_SPOOL_SELECTED = getattr(
-            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_SELECTED", None
-        )
-        self.EVENT_SPOOL_DESELECTED = getattr(
-            octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
-        )
 
     def on_after_startup(self):
-        self._setup_thirdparty_plugin_integration()
-
-        init_db(
-            db_path=Path(self.get_plugin_data_folder()) / "queue.sqlite3",
-            logger=self._logger,
-        )
-
-        fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
-        fileshare_addr = f"{self._get_local_ip()}:0"
-        self._logger.info(f"Starting fileshare with address {fileshare_addr}")
-        self._fileshare = Fileshare(fileshare_addr, fileshare_dir, self._logger)
-        self._fileshare.connect()
-
-        # Migrate from old JSON state if needed
-        state_data = self._get_key(Keys.QUEUE)
-        try:
-            if state_data is not None and state_data != "[]":
-                settings_state = json.loads(state_data)
-                migrateFromSettings(settings_state)
-                self._get_key(Keys.QUEUE)
-        except Exception:
-            self._logger.error(f"Could not migrate old json state: {state_data}")
-            self._logger.error(traceback.format_exc())
-
-        queries.clearOldState()
-
-        self._printer_profile = PRINTER_PROFILES[
-            self._get_key(data.Keys.PRINTER_PROFILE)
-        ]
-        self.q = MultiQueue(
-            queries, queues.abstract.Strategy.IN_ORDER, self._sync_history
-        )  # TODO set strategy for this and all other queue creations
-        for q in queries.getQueues():
-            if q.addr is not None:
-                try:
-                    lq = LANQueue(
-                        q.name,
-                        q.addr,
-                        self._logger,
-                        queues.abstract.Strategy.IN_ORDER,
-                        self._on_queue_update,
-                        self._fileshare,
-                        self._printer_profile,
-                        self._path_on_disk,
-                    )
-                    lq.connect()
-                    self.q.add(q.name, lq)
-                except ValueError:
-                    self._logger.error(
-                        f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
-                    )
-            elif q.name != ARCHIVE_QUEUE:
-                self.q.add(
-                    q.name,
-                    LocalQueue(
-                        queries,
-                        q.name,
-                        queues.abstract.Strategy.IN_ORDER,
-                        self._printer_profile,
-                        self._path_on_disk,
-                        self._add_folder,
-                    ),
-                )
-
-        self._runner = ScriptRunner(
-            self.popup,
-            self._get_key,
-            self._file_manager,
-            self._logger,
-            self._printer,
-            self._sync_state,
-            Keys,
-            data.TEMP_FILES,
-        )
-        self.d = Driver(
-            queue=self.q,
-            script_runner=self._runner,
-            logger=self._logger,
-        )
-        self._update(DA.DEACTIVATE)  # Initializes and passes printer state
-        self._on_settings_updated()
+        self._plugin.start()
 
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
         # timer with a periodic tick ensures that the driver knows what the state of the printer is.
-        self.watchdog = RepeatedTimer(5.0, self._on_watchdog)
+        self.watchdog = RepeatedTimer(5.0, self._plugin.tick)
         self.watchdog.start()
         self._logger.info("Continuous Print Plugin started")
-
-    def _on_watchdog(self):
-        # Catch/pass all exceptions to prevent errors from stopping the repeated timer.
-        try:
-            self._update(DA.TICK)
-        except Exception:
-            traceback.print_exc()
 
     # ------------------------ End StartupPlugin ---------------------------
 
     # ------------------------ Begin EventHandlerPlugin --------------------
 
-    def _delete_timelapse(self, full_path):
-        # This borrows heavily from `octoprint.timelapse.deleteTimelapse`
-        # (https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/server/api/timelapse.py#L175)
-        # We cannot use it directly as it's bundled into a Flask route
-        try:
-            thumb_path = octoprint.timelapse.create_thumbnail_path(full_path)
-            os.remove(full_path)
-            os.remove(thumb_path)
-            return True
-        except Exception:
-            self._logger.warning(
-                f"Failed to delete timelapse data ({full_path}, {thumb_path})"
-            )
-            self._logger.debug(traceback.format_exc())
-            return False
-
     def on_event(self, event, payload):
-        if not hasattr(self, "d"):  # Ignore any messages arriving before init
+        if not hasattr(self, "_plugin"):
             return
-        if event is None:
-            return
-
-        current_file = self._printer.get_current_job().get("file", {}).get("name")
-        is_current_path = current_file == self.d.current_path()
-
-        if (
-            event == Events.UPLOAD
-        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
-            upload_action = self._get_key(Keys.UPLOAD_ACTION)
-            if upload_action != "do_nothing":
-                self._add_set(
-                    path=payload["path"],
-                    sd=payload["target"] != "local",
-                    draft=(upload_action != "add_printable"),
-                )
-
-        if event == Events.MOVIE_DONE:
-            # Optionally delete time-lapses created from bed clearing/finishing scripts
-            temp_files_base = [f.split("/")[-1] for f in TEMP_FILES.values()]
-            if (
-                payload["gcode"] in temp_files_base
-                and self._get_key(Keys.AUTOMATION_TIMELAPSE_ACTION) == "auto_remove"
-            ):
-                if self._delete_timelapse(payload["movie"]):
-                    self._logger.info(
-                        f"Deleted temp file timelapse for {payload['gcode']}"
-                    )
-                return
-
-            thumb_path = octoprint.timelapse.create_thumbnail_path(payload["movie"])
-            if queries.annotateLastRun(payload["gcode"], payload["movie"], thumb_path):
-                self._logger.info(
-                    f"Annotated run of {payload['gcode']} with timelapse details"
-                )
-                self._sync_history()
-            return
-        elif event == Events.METADATA_ANALYSIS_FINISHED:
-            # If we auto-added a file to the queue before analysis finished,
-            # it's placed in a pending queue (see self._add_set). Now that 
-            # the processing is done, we actually add the set.
-            prof = payload["result"].get(CPQProfileAnalysisQueue.PROFILE_KEY)
-            path = payload["path"]
-            pend = self._set_add_awaiting_metadata.get(path)
-            if pend is not None:
-                self._add_set(*pend)
-                del self._set_add_awaiting_metadata[path]
-        elif event == Events.PRINT_DONE:
-            self._update(DA.SUCCESS)
-        elif event == Events.PRINT_FAILED:
-            # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
-            self._update(DA.FAILURE)
-        elif event == Events.PRINT_CANCELLED:
-            if payload.get("user") is not None:
-                self._update(DA.DEACTIVATE)
-            else:
-                self._update(DA.TICK)
-        elif (
-            is_current_path
-            and event == self.EVENT_OBICO_COMMAND
-            and payload.get("cmd") == "pause"
-            and payload.get("initiator") == "system"
-        ):
-            self._update(DA.SPAGHETTI)
-        elif event == self.EVENT_SPOOL_SELECTED:
-            self._update(DA.TICK)
-        elif event == self.EVENT_SPOOL_DESELECTED:
-            self._update(DA.TICK)
-        elif is_current_path and event == Events.PRINT_PAUSED:
-            self._update(DA.TICK)
-        elif is_current_path and event == Events.PRINT_RESUMED:
-            self._update(DA.TICK)
-        elif (
-            event == Events.PRINTER_STATE_CHANGED
-            and self._printer.get_state_id() == "OPERATIONAL"
-        ):
-            self._update(DA.TICK)
-        elif event == Events.SETTINGS_UPDATED:
-            self._on_settings_updated()
+        return self._plugin.on_event(event, payload)
 
     # ----------------------- End EventHandlerPlugin --------------------
-
-    #  ---------------------- Begin ContinuousPrintAPI -------------------
-
-    def _msg(self, data):
-        # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
-        self._plugin_manager.send_plugin_message(self._identifier, data)
-
-    def _path_on_disk(self, path):
-        return self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
-
-    def _path_in_storage(self, path):
-        return self._file_manager.path_in_storage(FileDestinations.LOCAL, path)
-
-    def _preprocess_set(self, data):
-        print("Preprocess set")
-        if not self._get_key(Keys.INFER_PROFILE) or data.get('profiles') is not None:
-            return data
-        else:
-            meta = self._file_manager.get_metadata(FileDestinations.LOCAL, data['path'])
-            prof = meta.get('analysis', {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
-            print("Resolved profile", prof)
-            if prof is not None and prof != "":
-                data['profiles'] = [prof]
-        return data
-
-    def _update(self, a: DA):
-        # Access current file via `get_current_job` instead of `is_current_file` because the latter may go away soon
-        # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterInterface.is_current_file
-        # Avoid using payload.get('path') as some events may not express path info.
-        path = self._printer.get_current_job().get("file", {}).get("name")
-        pstate = self._printer.get_state_id()
-        p = DP.BUSY
-        if pstate == "OPERATIONAL":
-            p = DP.IDLE
-        elif pstate == "PAUSED":
-            p = DP.PAUSED
-
-        materials = []
-        if self._spool_manager is not None:
-            # We need *all* selected spools for all tools, so we must look it up from the plugin itself
-            # (event payload also excludes color hex string which is needed for our identifiers)
-            try:
-                materials = self._spool_manager.api_getSelectedSpoolInformations()
-                materials = [
-                    f"{m['material']}_{m['colorName']}_{m['color']}"
-                    if m is not None
-                    else None
-                    for m in materials
-                ]
-            except Exception:
-                self._logger.warning(
-                    "SpoolManager getSelectedSpoolInformations() returned error; skipping material assignment"
-                )
-
-        if self.d.action(a, p, path, materials):
-            self._sync_state()
-
-        run = self.q.get_run()
-        if run is not None:
-            run = run.as_dict()
-        netname = self._get_key(Keys.NETWORK_NAME)
-        self.q.update_peer_state(netname, p.name, run, self._printer_profile)
-
-    def _state_json(self):
-        # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump
-        # (e.g. 1.4.1 -> 2.0.0).
-        db_qs = dict([(q.name, q.rank) for q in queries.getQueues()])
-        qs = [
-            dict(q.as_dict(), rank=db_qs[name])
-            for name, q in self.q.queues.items()
-            if name != "archive"
-        ]
-        qs.sort(key=lambda q: q["rank"])
-
-        active = self.d.state != self.d._state_inactive if hasattr(self, "d") else False
-        resp = {
-            "active": active,
-            "profile": self._get_key(Keys.PRINTER_PROFILE),
-            "status": "Initializing" if not hasattr(self, "d") else self.d.status,
-            "statusType": "INIT" if not hasattr(self, "d") else self.d.status_type.name,
-            "queues": qs,
-        }
-        return json.dumps(resp)
-
-    def _history_json(self):
-        h = queries.getHistory()
-
-        if self.q.run is not None:
-            for row in h:
-                if row["run_id"] == self.q.run:
-                    row["active"] = True
-                    break
-        return json.dumps(h)
-
-    def _get_queue(self, name):
-        return self.q.get(name)
-
-    def _commit_queues(self, added, removed):
-        for name in removed:
-            self.q.remove(name)
-        for a in added:
-            try:
-                lq = LANQueue(
-                    a["name"],
-                    a["addr"],
-                    self._logger,
-                    queues.abstract.Strategy.IN_ORDER,
-                    self._on_queue_update,
-                    self._fileshare,
-                    self._printer_profile,
-                    self._path_on_disk,
-                )  # TODO specify strategy
-                lq.connect()
-                self.q.add(a["name"], lq)
-            except ValueError:
-                self._logger.error(
-                    f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
-                )
-
-        # We trigger state update rather than returning it here, because this is called by the settings viewmodel
-        # (not the main viewmodel that displays the queues)
-        self._sync_state()
-
-    # ----------------------- End ContinuousPrintAPI -----------------
 
     # ---------------------- Begin SettingsPlugin --------------------
 
@@ -471,7 +95,7 @@ class ContinuousprintPlugin(
         return dict(
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
-            local_ip=self._get_local_ip(),
+            local_ip=self._plugin.get_local_ip(),
         )
 
     def get_template_configs(self):
@@ -497,14 +121,13 @@ class ContinuousprintPlugin(
     def resume_action_handler(self, comm, line, action, *args, **kwargs):
         if not action == "queuego":
             return
-        self._update(DA.ACTIVATE)
-        self._sync_state()
+        self._plugin.resume_action()
 
     def support_gjob_format(*args, **kwargs):
         return dict(machinecode=dict(gjob=["gjob"]))
 
     def cpq_analysis_queue(*args, **kwargs):
-        result = dict(gcode = CPQProfileAnalysisQueue)
+        result = dict(gcode=CPQProfileAnalysisQueue)
         return result
 
 
@@ -523,5 +146,4 @@ def __plugin_load__():
         "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
         "octoprint.filemanager.extension_tree": __plugin_implementation__.support_gjob_format,
         "octoprint.filemanager.analysis.factory": __plugin_implementation__.cpq_analysis_queue,
-        # register to listen for "M118 //action:" commands
     }

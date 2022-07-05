@@ -3,13 +3,22 @@ import sys
 from continuousprint.data import PRINTER_PROFILES
 
 
-def _strip_nonalpha(s):
-    return re.sub('[^0-9a-zA-Z]+', ' ', s)
+def _strip_nonalpha(s: str):
+    print(s)
+    assert type(s) is str
+    return re.sub("[^0-9a-zA-Z]+", " ", s)
+
 
 PROFILES = list(PRINTER_PROFILES.keys())
-CANDIDATES = [set(_strip_nonalpha(k).split()).union(set(PRINTER_PROFILES[k].get('extra_tags', []))) for k in PROFILES]
+CANDIDATES = [
+    set(_strip_nonalpha(k).split()).union(
+        set(PRINTER_PROFILES[k].get("extra_tags", []))
+    )
+    for k in PROFILES
+]
 
-class KiriMotoProcessor():
+
+class KiriMotoProcessor:
     @classmethod
     def header_match(self, hdr):
         for line in hdr:
@@ -18,12 +27,15 @@ class KiriMotoProcessor():
         return False
 
     @classmethod
-    def get_profile(self, hdr):
+    def get_profile(self, hdr) -> str:
         for line in hdr:
             if line.startswith("; Target:"):
                 return re.match("; Target: (.*)", line)[1]
+        return ""
+
 
 def token_string_match(profstr):
+    print("token_string_match", profstr)
     # Remove non-alpha characters from profile string
     # Convert all into bag-of-words
     p = set(_strip_nonalpha(profstr).split())
@@ -37,9 +49,12 @@ def token_string_match(profstr):
         return None
     max_index = scores.index(max_score)
     return PROFILES[max_index]
-    
 
-PROCESSORS = [(cls.header_match, cls.get_profile) for cls in [KiriMotoProcessor]]
+
+PROCESSORS = [
+    (cls.__name__, cls.header_match, cls.get_profile) for cls in [KiriMotoProcessor]
+]
+
 
 def get_header(path: str):
     hdr = []
@@ -50,13 +65,18 @@ def get_header(path: str):
             hdr.append(line)
     return hdr
 
-def get_profile(path: str):
-    hdr = get_header(path)
-    for hdr_match, getprof in PROCESSORS:
+
+def get_profile(hdr: list):
+    for name, hdr_match, getprof in PROCESSORS:
         if hdr_match(hdr):
-            return token_string_match(getprof(hdr))
+            sys.stderr.write(f"File matched with {name}\n")
+            profstr = getprof(hdr)
+            return token_string_match(profstr)
 
 
 if __name__ == "__main__":
-    import sys
-    print(get_profile(sys.argv[1]))
+    sys.stderr.write("=== Continuous Print Profile Inference ===\n")
+    hdr = get_header(sys.argv[1])
+    sys.stdout.write(get_profile(hdr))
+    sys.stdout.flush()
+    sys.stderr.write("\n=== End Inference ===\n")

@@ -10,6 +10,7 @@ PrinterProfile:
     defaults:
       clearBed: "Pause"
       finished: "Generic Off"
+    extra_tags: []
   - name: "Prusa Mini"
     make: "Prusa"
     model: "Mini"
@@ -21,6 +22,7 @@ PrinterProfile:
     defaults:
       clearBed: "Prusa Mini"
       finished: "Generic Off"
+    extra_tags: []
   - name: "Creality CR30"
     make: "Creality"
     model: "CR30"
@@ -32,7 +34,7 @@ PrinterProfile:
     defaults:
       clearBed: "Advance Belt Short"
       finished: "Advance Belt Long"
-    extra_tags: 
+    extra_tags:
       - "CR"
       - "30"
   - name: "Monoprice Mini Delta V2"
@@ -46,3 +48,4 @@ PrinterProfile:
     defaults:
       clearBed: "Pause"
       finished: "Generic Off"
+    extra_tags: []

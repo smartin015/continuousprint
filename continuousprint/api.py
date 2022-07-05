@@ -109,7 +109,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
 
     @abstractmethod
     def _preprocess_set(self, data):
-        pass # Can auto-fill things, e.g. profile based on gcode analysis
+        pass  # Can auto-fill things, e.g. profile based on gcode analysis
 
     def popup(self, msg, type="popup"):
         return self._msg(dict(type=type, msg=msg))
@@ -156,9 +156,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def add_set(self):
         data = self._preprocess_set(dict(**flask.request.form))
         return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).add_set(
-                data.get("job", ""), data
-            )
+            self._get_queue(DEFAULT_QUEUE).add_set(data.get("job", ""), data)
         )
 
     # PRIVATE API METHOD - may change without warning.
@@ -208,9 +206,14 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def submit_job(self):
         j = queries.getJob(int(flask.request.form["id"]))
         # Submit to the queue and remove from its origin
-        self._get_queue(flask.request.form["queue"]).submit_job(j)
-        self._logger.debug(self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id]))
-        return self._state_json()
+        err = self._get_queue(flask.request.form["queue"]).submit_job(j)
+        if err is None:
+            self._logger.debug(
+                self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id])
+            )
+            return self._state_json()
+        else:
+            return json.dumps(dict(error=str(err)))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/edit", methods=["POST"])
