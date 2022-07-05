@@ -315,7 +315,7 @@ function CPViewModel(parameters) {
                 title: 'Continuous Print',
                 text: data.msg,
                 type: theme,
-                hide: true,
+                hide: (theme !== 'danger'),
                 buttons: {closer: true, sticker: false}
             });
         }
@@ -353,7 +353,13 @@ function CPViewModel(parameters) {
     });
     self.submitJob = function() {
       let details = self.jobSendDetails();
-      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, self._setState);
+      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, (result) => {
+        if (result.error) {
+          self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
+        } else {
+          self._setState(result);
+        }
+      });
 			self.dialog.modal('hide');
     }
 		self.showSubmitJobDialog = function(job, queue) {
