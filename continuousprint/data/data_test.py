@@ -29,6 +29,7 @@ class TestPrinterProfiles(unittest.TestCase):
                             "formFactor",
                             "selfClearing",
                             "defaults",
+                            "extra_tags",
                         ]
                     ),
                 )

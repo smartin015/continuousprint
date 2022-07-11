@@ -122,3 +122,30 @@ test('resetSelected', () => {
   expect(v.jobs()[0].remaining()).toBe(1);
   expect(v.jobs()[0].sets()[0].remaining()).toBe(1);
 });
+
+test('addFile (profile inference disabled)', () => {
+  let v = init(njobs=0);
+  v.addFile({name: "foo", path: "foo.gcode", origin: "local", gcodeAnalysis: {continuousprint_profile: "testprof"}});
+  expect(v.api.add).toHaveBeenCalledWith(v.api.SET, {
+     "count": 1,
+     "job": null,
+     "jobName": "Job 1",
+     "name": "foo",
+     "path": "foo.gcode",
+     "sd": false,
+  }, expect.any(Function));
+});
+
+test('addFile (profile inference enabled)', () => {
+  let v = init(njobs=0);
+  v.addFile({name: "foo", path: "foo.gcode", origin: "local", gcodeAnalysis: {continuousprint_profile: "testprof"}}, true);
+  expect(v.api.add).toHaveBeenCalledWith(v.api.SET, {
+     "count": 1,
+     "job": null,
+     "jobName": "Job 1",
+     "name": "foo",
+     "path": "foo.gcode",
+     "sd": false,
+     "profiles": ["testprof"],
+  }, expect.any(Function));
+});

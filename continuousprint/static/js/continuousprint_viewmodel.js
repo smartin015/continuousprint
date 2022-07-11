@@ -30,6 +30,7 @@ function CPViewModel(parameters) {
     self.loginState = parameters[1];
     self.files = parameters[2];
     self.printerProfiles = parameters[3];
+    self.settings = parameters[4];
     self.cpPrinterProfiles = CP_PRINTER_PROFILES;
     self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
     self.status = ko.observable("Initializing...");
@@ -43,7 +44,7 @@ function CPViewModel(parameters) {
     self.expanded = ko.observable(null);
     self.profile = ko.observable('');
 
-    self.api = parameters[4] || new CPAPI();
+    self.api = parameters[5] || new CPAPI();
 
 
     self.api.init(self.loading,
@@ -66,7 +67,7 @@ function CPViewModel(parameters) {
 
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
-      self.defaultQueue.addFile(data);
+      self.defaultQueue.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
     };
     // Also patch file deletion, to show a modal if the file is in the queue
     let oldRemove = self.files.removeFile;

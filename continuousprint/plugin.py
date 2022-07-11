@@ -11,6 +11,7 @@ from octoprint.filemanager.destinations import FileDestinations
 import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
+from .analysis import CPQProfileAnalysisQueue
 from .driver import Driver, Action as DA, Printer as DP
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
@@ -55,6 +56,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._data_folder = data_folder
         self._logger = logger
         self._identifier = identifier
+        self._set_add_awaiting_metadata = dict()
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -103,11 +105,42 @@ class CPQPlugin(ContinuousPrintAPI):
         except socket.gaierror:
             return socket.gethostbyname(hostname)
 
-    def _add_set(self, path, sd, draft=True):
-        self._get_queue(DEFAULT_QUEUE).add_set(
-            "", dict(path=path, sd="true" if sd else "false", count=1, jobDraft=draft)
-        )
-        self._sync_state()
+    def _add_set(self, path, sd, draft=True, profiles=[]):
+        # We may need to delay adding a file if it hasn't yet finished analysis
+        meta = self._file_manager.get_metadata(FileDestinations.LOCAL, path)
+        prof = meta.get("analysis", {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
+        if (
+            self._get_key(Keys.INFER_PROFILE)
+            and prof is None
+            and self._set_add_awaiting_metadata.get(path) is None
+        ):
+            self._logger.debug(f"Delaying add_set() of {path} until analysis completes")
+            self._set_add_awaiting_metadata[path] = (path, sd, draft, profiles)
+        else:
+            self._get_queue(DEFAULT_QUEUE).add_set(
+                "",
+                self._preprocess_set(
+                    dict(
+                        path=path,
+                        sd="true" if sd else "false",
+                        count=1,
+                        jobDraft=draft,
+                        profiles=profiles,
+                    )
+                ),
+            )
+            self._sync_state()
+
+    def _preprocess_set(self, data):
+        if not self._get_key(Keys.INFER_PROFILE) or len(data.get("profiles", [])) > 0:
+            return data
+
+        meta = self._file_manager.get_metadata(FileDestinations.LOCAL, data["path"])
+        prof = meta.get("analysis", {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
+        self._logger.debug(f"Path {data['path']} profile: {prof}")
+        if prof is not None and prof != "":
+            data["profiles"] = [prof]
+        return data
 
     def _path_on_disk(self, path):
         return self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
@@ -268,6 +301,19 @@ class CPQPlugin(ContinuousPrintAPI):
 
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
+
+        if event == Events.METADATA_ANALYSIS_FINISHED:
+            # If we auto-added a file to the queue before analysis finished,
+            # it's placed in a pending queue (see self._add_set). Now that
+            # the processing is done, we actually add the set.
+            # prof = payload["result"].get(CPQProfileAnalysisQueue.PROFILE_KEY)
+            path = payload["path"]
+            pend = self._set_add_awaiting_metadata.get(path)
+            if pend is not None:
+                self._logger.debug(f"Handling pending add_set() for {path}")
+                self._add_set(*pend)
+                del self._set_add_awaiting_metadata[path]
+            return
 
         if (
             event == Events.UPLOAD

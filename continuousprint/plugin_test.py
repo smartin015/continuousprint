@@ -1,5 +1,6 @@
 import unittest
 from collections import namedtuple
+from .analysis import CPQProfileAnalysisQueue
 from .storage.queries import getJobsAndSets
 from .storage.database import DEFAULT_QUEUE, ARCHIVE_QUEUE
 from unittest.mock import MagicMock, patch, ANY
@@ -157,6 +158,51 @@ class TestEventHandling(unittest.TestCase):
         self.p.d.action.side_effect = Exception("testing exception")
         self.p.tick()  # does *not* raise exception
         self.p.d.action.assert_called()
+
+    def testMetadataAnalysisFinishedNonePending(self):
+        self.p._set_key(Keys.INFER_PROFILE, True)
+        self.p.on_event(
+            Events.METADATA_ANALYSIS_FINISHED,
+            dict(result={CPQProfileAnalysisQueue.PROFILE_KEY: "asdf"}, path="a.gcode"),
+        )
+        self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
+
+    def testMetadataAnslysisFinishedWithPending(self):
+        self.p._set_key(Keys.INFER_PROFILE, True)
+        self.p._file_manager.get_metadata.return_value = dict()
+        self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
+        self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
+        self.p.on_event(
+            Events.METADATA_ANALYSIS_FINISHED,
+            dict(result={CPQProfileAnalysisQueue.PROFILE_KEY: "asdf"}, path="a.gcode"),
+        )
+        self.p._get_queue(DEFAULT_QUEUE).add_set.assert_called_with(
+            "",
+            {
+                "path": "a.gcode",
+                "sd": "false",
+                "count": 1,
+                "jobDraft": True,
+                "profiles": [],
+            },
+        )
+
+    def testAddSetWithPending(self):
+        self.p._set_key(Keys.INFER_PROFILE, True)
+        self.p._file_manager.get_metadata.return_value = dict()
+        self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
+        self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
+        self.p._add_set(path="a.gcode", sd=False)  # Second attempt passes through
+        self.p._get_queue(DEFAULT_QUEUE).add_set.assert_called_with(
+            "",
+            {
+                "path": "a.gcode",
+                "sd": "false",
+                "count": 1,
+                "jobDraft": True,
+                "profiles": [],
+            },
+        )
 
     def testUploadNoAction(self):
         self.p.on_event(Events.UPLOAD, dict())
