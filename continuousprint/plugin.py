@@ -109,8 +109,11 @@ class CPQPlugin(ContinuousPrintAPI):
         # We may need to delay adding a file if it hasn't yet finished analysis
         meta = self._file_manager.get_metadata(FileDestinations.LOCAL, path)
         prof = meta.get("analysis", {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
-        # TODO confirm analysis has started for this file
-        if self._get_key(Keys.INFER_PROFILE) and prof is None:
+        if (
+            self._get_key(Keys.INFER_PROFILE)
+            and prof is None
+            and self._set_add_awaiting_metadata.get(path) is None
+        ):
             self._logger.debug(f"Delaying add_set() of {path} until analysis completes")
             self._set_add_awaiting_metadata[path] = (path, sd, draft, profiles)
         else:

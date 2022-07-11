@@ -1,51 +1,567 @@
 PrinterProfile:
-  - name: "Generic"
-    make: "Generic"
-    model: "Generic"
+  - name: Generic
+    make: Generic
+    model: Generic
     width: 150
     depth: 150
     height: 150
-    formFactor: "rectangular"
+    formFactor: rectangular
     selfClearing: false
     defaults:
-      clearBed: "Pause"
-      finished: "Generic Off"
+      clearBed: Pause
+      finished: Generic Off
     extra_tags: []
-  - name: "Prusa Mini"
-    make: "Prusa"
-    model: "Mini"
+  - name: Prusa Mini
+    make: Prusa
+    model: Mini
     width: 180
     depth: 180
     height: 180
-    formFactor: "rectangular"
+    formFactor: rectangular
     selfClearing: true
     defaults:
-      clearBed: "Prusa Mini"
-      finished: "Generic Off"
+      clearBed: Prusa Mini
+      finished: Generic Off
     extra_tags: []
-  - name: "Creality CR30"
-    make: "Creality"
-    model: "CR30"
+  - name: Creality CR30
+    make: Creality
+    model: CR30
     width: 200
     depth: 1000
     height: 200
-    formFactor: "rectangular"
+    formFactor: rectangular
     selfClearing: true
     defaults:
-      clearBed: "Advance Belt Short"
-      finished: "Advance Belt Long"
+      clearBed: Advance Belt Short
+      finished: Advance Belt Long
     extra_tags:
-      - "CR"
-      - "30"
-  - name: "Monoprice Mini Delta V2"
-    make: "Monoprice"
-    model: "Mini Delta V2"
+      - CR
+      - 30
+  - name: Monoprice Mini Delta V2
+    make: Monoprice
+    model: Mini Delta V2
     width: 110
     depth: 110
     height: 120
-    formFactor: "circular"
+    formFactor: circular
     selfClearing: false
     defaults:
-      clearBed: "Pause"
-      finished: "Generic Off"
+      clearBed: Pause
+      finished: Generic Off
     extra_tags: []
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 260
+    extra_tags: []
+    formFactor: rectangular
+    height: 310
+    make: Creality
+    model: Sermoon D1
+    name: Creality Sermoon D1
+    selfClearing: false
+    width: 280
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 250
+    extra_tags: []
+    formFactor: rectangular
+    height: 200
+    make: MakerGear
+    model: M2
+    name: MakerGear M2
+    selfClearing: false
+    width: 200
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 150
+    extra_tags: []
+    formFactor: rectangular
+    height: 150
+    make: XYZ
+    model: daVinci Mini w
+    name: XYZ daVinci Mini w
+    selfClearing: false
+    width: 150
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 145
+    extra_tags: []
+    formFactor: rectangular
+    height: 140
+    make: IMADE3D
+    model: JellyBOX Original nzl-0.4
+    name: IMADE3D JellyBOX Original nzl-0.4
+    selfClearing: false
+    width: 170
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 250
+    extra_tags: []
+    formFactor: rectangular
+    height: 400
+    make: Creality
+    model: Ender 6
+    name: Creality Ender 6
+    selfClearing: false
+    width: 250
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 140
+    extra_tags: []
+    formFactor: rectangular
+    height: 140
+    make: Flashforge
+    model: Finder
+    name: Flashforge Finder
+    selfClearing: false
+    width: 140
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 210
+    extra_tags: []
+    formFactor: rectangular
+    height: 320
+    make: Atom
+    model: v2
+    name: Atom v2
+    selfClearing: false
+    width: 210
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 210
+    extra_tags: []
+    formFactor: rectangular
+    height: 210
+    make: Prusa
+    model: i3 MK2S
+    name: Prusa i3 MK2S
+    selfClearing: false
+    width: 250
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 300
+    extra_tags: []
+    formFactor: rectangular
+    height: 400
+    make: Creality
+    model: CR-10S-Pro
+    name: Creality CR-10S-Pro
+    selfClearing: false
+    width: 300
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 400
+    extra_tags: []
+    formFactor: rectangular
+    height: 450
+    make: Anycubic
+    model: Chiron
+    name: Anycubic Chiron
+    selfClearing: false
+    width: 400
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 200
+    extra_tags: []
+    formFactor: rectangular
+    height: 180
+    make: Wanhao
+    model: Duplicator_6
+    name: Wanhao Duplicator_6
+    selfClearing: false
+    width: 200
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 300
+    extra_tags: []
+    formFactor: rectangular
+    height: 170
+    make: SainSmart
+    model: Infi-20
+    name: SainSmart Infi-20
+    selfClearing: true
+    width: 200
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 305
+    extra_tags: []
+    formFactor: rectangular
+    height: 305
+    make: TypeA
+    model: Series1
+    name: TypeA Series1
+    selfClearing: false
+    width: 305
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 190
+    extra_tags: []
+    formFactor: rectangular
+    height: 200
+    make: Cubicon
+    model: Single+
+    name: Cubicon Single+
+    selfClearing: false
+    width: 240
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 280
+    extra_tags: []
+    formFactor: rectangular
+    height: 180
+    make: Leapfrog
+    model: CreatrHS
+    name: Leapfrog CreatrHS
+    selfClearing: false
+    width: 270
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 200
+    extra_tags: []
+    formFactor: rectangular
+    height: 180
+    make: Wanhao
+    model: Duplicator_i3
+    name: Wanhao Duplicator_i3
+    selfClearing: false
+    width: 200
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 250
+    extra_tags: []
+    formFactor: rectangular
+    height: 300
+    make: Flashforge
+    model: Guider II
+    name: Flashforge Guider II
+    selfClearing: false
+    width: 280
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 150
+    extra_tags: []
+    formFactor: rectangular
+    height: 150
+    make: XYZ
+    model: daVinci Jr Pro
+    name: XYZ daVinci Jr Pro
+    selfClearing: false
+    width: 150
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 310
+    extra_tags: []
+    formFactor: rectangular
+    height: 305
+    make: Raise3D
+    model: N2
+    name: Raise3D N2
+    selfClearing: false
+    width: 310
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 220
+    extra_tags: []
+    formFactor: rectangular
+    height: 300
+    make: Creality
+    model: Ender 5
+    name: Creality Ender 5
+    selfClearing: false
+    width: 220
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 240
+    extra_tags: []
+    formFactor: rectangular
+    height: 260
+    make: DeltaMaker
+    model: Original
+    name: DeltaMaker Original
+    selfClearing: false
+    width: 240
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 210
+    extra_tags: []
+    formFactor: rectangular
+    height: 210
+    make: Prusa
+    model: i3 MK3S+
+    name: Prusa i3 MK3S+
+    selfClearing: false
+    width: 250
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 300
+    extra_tags: []
+    formFactor: rectangular
+    height: 400
+    make: Creality
+    model: CR-10S
+    name: Creality CR-10S
+    selfClearing: false
+    width: 300
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 300
+    extra_tags: []
+    formFactor: rectangular
+    height: 300
+    make: GridBot
+    model: Two
+    name: GridBot Two
+    selfClearing: false
+    width: 300
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 165
+    extra_tags: []
+    formFactor: rectangular
+    height: 140
+    make: IMADE3D
+    model: JellyBOX3 nzl-0.4
+    name: IMADE3D JellyBOX3 nzl-0.4
+    selfClearing: false
+    width: 180
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 145
+    extra_tags: []
+    formFactor: rectangular
+    height: 150
+    make: Wanhao
+    model: Duplicator_4s
+    name: Wanhao Duplicator_4s
+    selfClearing: false
+    width: 225
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 220
+    extra_tags: []
+    formFactor: rectangular
+    height: 300
+    make: Creality
+    model: Ender 3
+    name: Creality Ender 3
+    selfClearing: false
+    width: 220
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 103
+    extra_tags: []
+    formFactor: rectangular
+    height: 78
+    make: Ulio3D
+    model: ''
+    name: Ulio3D
+    selfClearing: false
+    width: 103
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 175
+    extra_tags: []
+    formFactor: rectangular
+    height: 150
+    make: Makerbot
+    model: Replicator2
+    name: Makerbot Replicator2
+    selfClearing: false
+    width: 300
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 300
+    extra_tags: []
+    formFactor: rectangular
+    height: 300
+    make: FolgerTech
+    model: FT5
+    name: FolgerTech FT5
+    selfClearing: false
+    width: 300
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 223
+    extra_tags: []
+    formFactor: rectangular
+    height: 205
+    make: Ultimaker
+    model: Ultimaker2
+    name: Ultimaker Ultimaker2
+    selfClearing: false
+    width: 223
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 370
+    extra_tags: []
+    formFactor: rectangular
+    height: 455
+    make: Anycubic
+    model: Predator
+    name: Anycubic Predator
+    selfClearing: false
+    width: 370
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 240
+    extra_tags: []
+    formFactor: rectangular
+    height: 480
+    make: DeltaMaker
+    model: 2T
+    name: DeltaMaker 2T
+    selfClearing: false
+    width: 240
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 103
+    extra_tags: []
+    formFactor: rectangular
+    height: 78
+    make: Ulio3D
+    model: Purge
+    name: Ulio3D Purge
+    selfClearing: false
+    width: 103
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 305
+    extra_tags: []
+    formFactor: rectangular
+    height: 305
+    make: TypeA
+    model: Series1Pro
+    name: TypeA Series1Pro
+    selfClearing: false
+    width: 305
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 155
+    extra_tags: []
+    formFactor: rectangular
+    height: 140
+    make: IMADE3D
+    model: JellyBOX2 nzl-0.4
+    name: IMADE3D JellyBOX2 nzl-0.4
+    selfClearing: false
+    width: 177
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 260
+    extra_tags: []
+    formFactor: rectangular
+    height: 320
+    make: FLSUN
+    model: QQ-S
+    name: FLSUN QQ-S
+    selfClearing: false
+    width: 260
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 150
+    extra_tags: []
+    formFactor: rectangular
+    height: 150
+    make: Cubicon
+    model: Style
+    name: Cubicon Style
+    selfClearing: false
+    width: 150
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 205
+    extra_tags: []
+    formFactor: rectangular
+    height: 575
+    make: Wanhao
+    model: Duplicator_5s
+    name: Wanhao Duplicator_5s
+    selfClearing: false
+    width: 305
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 210
+    extra_tags: []
+    formFactor: rectangular
+    height: 205
+    make: Anycubic
+    model: i3 Mega
+    name: Anycubic i3 Mega
+    selfClearing: false
+    width: 210
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 125
+    extra_tags: []
+    formFactor: rectangular
+    height: 125
+    make: Snapmaker
+    model: Original
+    name: Snapmaker Original
+    selfClearing: false
+    width: 125
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 222
+    extra_tags: []
+    formFactor: rectangular
+    height: 222
+    make: Anycubic
+    model: Kobra
+    name: Anycubic Kobra
+    selfClearing: false
+    width: 222
+  - defaults:
+      clearBed: Pause
+      finished: Generic Off
+    depth: 300
+    extra_tags: []
+    formFactor: rectangular
+    height: 300
+    make: GridBot
+    model: One
+    name: GridBot One
+    selfClearing: false
+    width: 300

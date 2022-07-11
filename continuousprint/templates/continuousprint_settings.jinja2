@@ -165,7 +165,7 @@
         </div>
       </fieldset>
     </form>
-  </div> <!-- continuousprint_settings_behaviors -->
+  </div> <!-- continuousprint_settings_integrations -->
 
 
   <div id="settings_continuousprint_networking" class="tab-pane">
@@ -262,6 +262,12 @@
               <option value="do_nothing">Do nothing</option>
               <option value="auto_remove">Auto-remove</option>
             </select>
+          </div>
+        </div>
+        <div class="control-group" title="Automatically try to assign printer profiles based on .gcode file contents - this may only work for some printers / slicers">
+          <label class="control-label">Auto-assign printer profiles</label>
+          <div class="controls">
+            <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_infer_profile">
           </div>
         </div>
       </fieldset>
