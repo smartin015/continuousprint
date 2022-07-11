@@ -4,7 +4,6 @@ from continuousprint.data import PRINTER_PROFILES
 
 
 def _strip_nonalpha(s: str):
-    print(s)
     assert type(s) is str
     return re.sub("[^0-9a-zA-Z]+", " ", s)
 
@@ -35,7 +34,6 @@ class KiriMotoProcessor:
 
 
 def token_string_match(profstr):
-    print("token_string_match", profstr)
     # Remove non-alpha characters from profile string
     # Convert all into bag-of-words
     p = set(_strip_nonalpha(profstr).split())
