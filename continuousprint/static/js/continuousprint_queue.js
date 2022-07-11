@@ -241,7 +241,7 @@ function CPQueue(data, api, files, profile) {
       });
     }
 
-    self.addFile = function(data) {
+    self.addFile = function(data, infer_profile=false) {
         if (data.path.endsWith('.gjob')) {
           // .gjob import has a different API path
           return self.importJob(data.path);
@@ -263,9 +263,12 @@ function CPQueue(data, api, files, profile) {
             sd: (data.origin !== "local"),
             count: 1,
         };
-        let prof = (data.gcodeAnalysis || {}).continuousprint_profile;
-        if (prof) {
-          set_data.profiles = [prof];
+
+        if (infer_profile) {
+          let prof = (data.gcodeAnalysis || {}).continuousprint_profile;
+          if (prof) {
+            set_data.profiles = [prof];
+          }
         }
 
         // Adding to a draft job does not invoke the API

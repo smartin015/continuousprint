@@ -45,6 +45,7 @@ $(function() {
           "loginStateViewModel",
           "filesViewModel",
           "printerProfilesViewModel",
+          "settingsViewModel",
         ],
         elements: ["#tab_plugin_continuousprint"]
     });

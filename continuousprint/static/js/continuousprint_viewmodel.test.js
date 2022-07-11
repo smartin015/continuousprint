@@ -10,6 +10,7 @@ function mocks(filename="test.gcode") {
     {}, // loginState only used in continuousprint.js
     {onServerDisconnect: jest.fn(), onServerConnect: jest.fn(), removeFile: jest.fn()},
     {currentProfileData: () => {return {extruder: {count: () => 1}}}},
+    {settings: {plugins: {continuousprint: {cp_infer_profile: () => false}}}},
     {
       init: jest.fn(),
       setActive: jest.fn(),
@@ -89,7 +90,7 @@ test('files.add', () => {
   let data = {name: 'new file', path: 'test.gcode', origin: 'local'};
   v.api.add = (_, data, cb) => cb({job_id: 2, set_: {...data, materials: []}});
   v.files.add(data);
-  expect(v.defaultQueue.addFile).toHaveBeenCalledWith(data);
+  expect(v.defaultQueue.addFile).toHaveBeenCalledWith(data, false);
 });
 
 test('sortStart turns off default drag-drop', () => {
