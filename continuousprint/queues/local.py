@@ -117,13 +117,13 @@ class LocalQueue(AbstractEditableQueue):
     def rm_multi(self, job_ids=[], set_ids=[]) -> dict:
         return self.queries.remove(job_ids=job_ids, set_ids=set_ids)
 
-    def import_job(self, gjob_path: str) -> dict:
+    def import_job(self, gjob_path: str, draft=True) -> dict:
         out_dir = str(Path(gjob_path).stem)
         self._mkdir(out_dir)
         manifest, filepaths = unpack_job(
             self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
         )
-        return self.queries.importJob(self.ns, manifest, out_dir)
+        return self.queries.importJob(self.ns, manifest, out_dir, draft)
 
     def export_job(self, job_id: int, dest_dir: str) -> str:
         j = self.queries.getJob(job_id)

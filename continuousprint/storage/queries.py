@@ -32,7 +32,7 @@ def releaseJob(j) -> bool:
     return True
 
 
-def importJob(qname, manifest: dict, dirname: str):
+def importJob(qname, manifest: dict, dirname: str, draft=False):
     q = Queue.get(name=qname)
 
     # Manifest may have "remaining" values set incorrectly for new job; ensure
@@ -42,6 +42,7 @@ def importJob(qname, manifest: dict, dirname: str):
     j.id = None
     j.queue = q
     j.rank = _rankEnd()
+    j.draft = draft
     j.save()
     for s in j.sets:
         # Prepend new folder as initial path is relative to root
@@ -138,7 +139,7 @@ def getNextJobInQueue(q, profile, custom_filter=None):
             return job
 
 
-def _upsertSet(set_id, data, job):
+def _upsertSet(set_id, data, job, clear_completed=False):
     # Called internally from updateJob
     try:
         s = Set.get(id=set_id)
@@ -171,7 +172,9 @@ def _upsertSet(set_id, data, job):
         newCount = min(int(data["count"]), MAX_COUNT)
         inc = newCount - s.count
         s.count = newCount
-        s.remaining = min(newCount, s.remaining + max(inc, 0))
+        s.remaining = (
+            newCount if clear_completed else min(newCount, s.remaining + max(inc, 0))
+        )
         # Boost job remaining if we would cause it to be incomplete
         job_remaining = s.job.remaining
         if inc > 0 and job_remaining == 0:
@@ -198,10 +201,20 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
                 continue
             setattr(j, k, v)
 
+        clear_sets = False
         if data.get("count") is not None:
             newCount = min(int(data["count"]), MAX_COUNT)
             inc = newCount - j.count
             j.remaining = min(newCount, j.remaining + max(inc, 0))
+
+            # Edge case: clear sets if we are adding 1 to a completed job,
+            # as this is otherwise suppressed by job-end accounting.
+            clear_sets = newCount > j.count
+            if clear_sets:
+                for s in j.sets:
+                    if s.remaining != 0:
+                        clear_sets = False
+                        break
             j.count = newCount
 
         j.save()
@@ -215,7 +228,7 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             # Update new sets and ensure proper order
             for i, s in enumerate(data["sets"]):
                 s["rank"] = float(i)
-                _upsertSet(s["id"], s, j)
+                _upsertSet(s["id"], s, j, clear_completed=clear_sets)
         return Job.get(id=job_id).as_dict()
 
 

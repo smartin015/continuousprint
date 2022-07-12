@@ -334,11 +334,17 @@ class CPQPlugin(ContinuousPrintAPI):
         ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
             upload_action = self._get_key(Keys.UPLOAD_ACTION, "do_nothing")
             if upload_action != "do_nothing":
-                self._add_set(
-                    path=payload["path"],
-                    sd=payload["target"] != "local",
-                    draft=(upload_action != "add_printable"),
-                )
+                if payload["path"].endswith(".gcode"):
+                    self._add_set(
+                        path=payload["path"],
+                        sd=payload["target"] != "local",
+                        draft=(upload_action != "add_printable"),
+                    )
+                elif payload["path"].endswith(".gjob"):
+                    self._get_queue(DEFAULT_QUEUE).import_job(
+                        payload["path"], draft=(upload_action != "add_printable")
+                    )
+                    self._sync_state()
             else:
                 return
 
