@@ -139,7 +139,7 @@ def getNextJobInQueue(q, profile, custom_filter=None):
             return job
 
 
-def _upsertSet(set_id, data, job, clear_completed=False):
+def _upsertSet(set_id, data, job):
     # Called internally from updateJob
     try:
         s = Set.get(id=set_id)
@@ -172,9 +172,7 @@ def _upsertSet(set_id, data, job, clear_completed=False):
         newCount = min(int(data["count"]), MAX_COUNT)
         inc = newCount - s.count
         s.count = newCount
-        s.remaining = (
-            newCount if clear_completed else min(newCount, s.remaining + max(inc, 0))
-        )
+        s.remaining = min(newCount, s.remaining + max(inc, 0))
         # Boost job remaining if we would cause it to be incomplete
         job_remaining = s.job.remaining
         if inc > 0 and job_remaining == 0:
@@ -216,7 +214,6 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
                         clear_sets = False
                         break
             j.count = newCount
-
         j.save()
 
         if data.get("sets") is not None:
@@ -228,7 +225,11 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             # Update new sets and ensure proper order
             for i, s in enumerate(data["sets"]):
                 s["rank"] = float(i)
-                _upsertSet(s["id"], s, j, clear_completed=clear_sets)
+                _upsertSet(s["id"], s, j)
+
+        if clear_sets:
+            j.refresh_sets()
+
         return Job.get(id=job_id).as_dict()
 
 
