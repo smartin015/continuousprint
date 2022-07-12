@@ -208,11 +208,25 @@ class TestEventHandling(unittest.TestCase):
         self.p.on_event(Events.UPLOAD, dict())
         self.p.d.action.assert_not_called()
 
+    def testUploadAddPrintableInvalidFile(self):
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.xlsx", target="local"))
+        self.p._add_set.assert_not_called()
+
     def testUploadAddPrintable(self):
         self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
         self.p._add_set = MagicMock()
-        self.p.on_event(Events.UPLOAD, dict(path="testpath", target="local"))
-        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath")
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.gcode", target="local"))
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.gcode")
+
+    def testUploadAddPrintableGJob(self):
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.gjob", target="local"))
+        self.p._get_queue(DEFAULT_QUEUE).import_job.assert_called_with(
+            "testpath.gjob", draft=False
+        )
 
     def testTempFileMovieDone(self):
         self.p._set_key(Keys.AUTOMATION_TIMELAPSE_ACTION, "auto_remove")

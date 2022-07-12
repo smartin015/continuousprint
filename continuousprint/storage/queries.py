@@ -32,7 +32,7 @@ def releaseJob(j) -> bool:
     return True
 
 
-def importJob(qname, manifest: dict, dirname: str):
+def importJob(qname, manifest: dict, dirname: str, draft=False):
     q = Queue.get(name=qname)
 
     # Manifest may have "remaining" values set incorrectly for new job; ensure
@@ -42,6 +42,7 @@ def importJob(qname, manifest: dict, dirname: str):
     j.id = None
     j.queue = q
     j.rank = _rankEnd()
+    j.draft = draft
     j.save()
     for s in j.sets:
         # Prepend new folder as initial path is relative to root
@@ -198,12 +199,21 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
                 continue
             setattr(j, k, v)
 
+        clear_sets = False
         if data.get("count") is not None:
             newCount = min(int(data["count"]), MAX_COUNT)
             inc = newCount - j.count
             j.remaining = min(newCount, j.remaining + max(inc, 0))
-            j.count = newCount
 
+            # Edge case: clear sets if we are adding 1 to a completed job,
+            # as this is otherwise suppressed by job-end accounting.
+            clear_sets = newCount > j.count
+            if clear_sets:
+                for s in j.sets:
+                    if s.remaining != 0:
+                        clear_sets = False
+                        break
+            j.count = newCount
         j.save()
 
         if data.get("sets") is not None:
@@ -216,6 +226,10 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             for i, s in enumerate(data["sets"]):
                 s["rank"] = float(i)
                 _upsertSet(s["id"], s, j)
+
+        if clear_sets:
+            j.refresh_sets()
+
         return Job.get(id=job_id).as_dict()
 
 

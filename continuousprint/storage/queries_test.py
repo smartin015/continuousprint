@@ -126,6 +126,16 @@ class TestSingleItemQueue(DBTest):
         q.updateJob(1, dict(sets=[dict(id=1, profiles=["a", "b"])]))
         self.assertEqual(Set.get(id=1).profiles(), ["a", "b"])
 
+    def testUpdateJobIncrementCompleted(self):
+        # Incrementing the count of a completed job should refresh all sets within the job
+        j = Job.get(id=1)
+        s = Set.get(id=1)
+        s.remaining = 0
+        s.save()
+
+        q.updateJob(1, dict(count=j.count + 1))
+        self.assertEqual(Set.get(id=1).remaining, 1)
+
     def testRemoveJob(self):
         q.remove(job_ids=[1])
         self.assertEqual(len(q.getJobsAndSets(DEFAULT_QUEUE)), 0)  # No jobs or sets

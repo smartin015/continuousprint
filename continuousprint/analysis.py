@@ -1,4 +1,4 @@
-from octoprint.filemanager.analysis import AbstractAnalysisQueue
+from octoprint.filemanager.analysis import AbstractAnalysisQueue, AnalysisAborted
 from octoprint.util.platform import CLOSE_FDS
 from octoprint.util import dict_merge
 
