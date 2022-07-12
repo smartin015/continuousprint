@@ -46,6 +46,7 @@ function mocks() {
           },
         },
       },
+      exchanging: () => false,
     },
     {
       onServerDisconnect: jest.fn(),
@@ -77,6 +78,27 @@ test('valid model change updates settings scripts', () => {
   v.modelChanged();
   expect(v.settings.settings.plugins.continuousprint.cp_bed_clearing_script).toHaveBeenCalledWith("test1");
   expect(v.settings.settings.plugins.continuousprint.cp_queue_finished_script).toHaveBeenCalledWith("test2");
+});
+
+test('"auto" address allows submit', () =>{
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
+  v.queues.push({name: 'asdf', addr: 'auto'});
+  v.onSettingsBeforeSave();
+  expect(v.settings.exchanging()).toEqual(false);
+});
+
+test('invalid address blocks submit', () =>{
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
+  v.queues.push({name: 'asdf', addr: 'something_invalid'});
+  v.onSettingsBeforeSave();
+  expect(v.settings.exchanging()).toEqual(true);
+});
+
+test('valid address allows submit', () =>{
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
+  v.queues.push({name: 'asdf', addr: '192.168.1.69:13337'});
+  v.onSettingsBeforeSave();
+  expect(v.settings.exchanging()).toEqual(false);
 });
 
 test('invalid model change is ignored', () => {

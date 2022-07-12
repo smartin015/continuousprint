@@ -185,15 +185,11 @@
   <div id="settings_continuousprint_queues" class="tab-pane">
     <form class="form-horizontal">
       <legend>Queues</legend>
-      <div class="alert alert-info">
-        <p>
-        <strong>IMPORTANT:</strong> These settings are <strong>early Alpha</strong> and not yet proven.
-        </p>
-        <p>Expect sharp edges - please report feedback and bugs to <a href="https://github.com/smartin015/continuousprint/issues/35" target="_blank">this issue</a>.
-        </p>
-      </div>
       <p>
         <strong>Renaming a queue will delete the original queue and create a new one</strong> - jobs will not transfer over.
+      </p>
+      <p>
+        <strong>Changing the address of a queue requires a restart</strong> before the new address is used.
       </p>
       <p>
         Read <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">this guide</a> to learn how to best configure network queues.
@@ -203,7 +199,7 @@
         <i class="fas fa-exclamation-circle"></i> One or more queues have an invalid address configured.
         </p>
         <p>
-        All queues (other than the local queue) must have an address of the form <i>ip_address:port</i>, with a port value of 5000 or higher.
+        All queues (other than the local queue) must have an address of "auto" or of the form <i>ip_address:port</i>, with a port value of 5000 or higher.
         </p>
       </div>
       <div class="alert alert-error" data-bind="hidden: allValidQueueNames">

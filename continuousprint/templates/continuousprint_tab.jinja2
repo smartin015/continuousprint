@@ -128,7 +128,10 @@
         </div>
         <div style="flex: 1; text-align: right">
           <span data-bind="visible: $root.queues().length > 1, text: name"></span>
-          <span data-bind="text: details, attr: {title: fullDetails}" style="cursor: pointer; display: inline-block"></span>
+          <span data-bind="attr: {title: fullDetails}, visible: details() !== ''" style="cursor: pointer; display: inline-block">
+            <span data-bind="text: details"></span>
+            <i class="fas fa-info-circle"></i>
+          </span>
         </div>
       </div>
 
@@ -144,7 +147,7 @@
         Hint: click New Job above or the <i class="fas fa-plus"></i> next to a file to add it to the queue.
         </div>
         <div class="hint" data-bind="visible: jobs().length == 0 && name !== 'local'">
-          Hint: drag a job here from the local queue to submit it.
+          Hint: drag a job here from the local queue to submit it to printers on the network.
         </div>
         <div data-bind="cpsortable: {foreach: jobs, as: 'job', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading(), 'local': name === 'local', 'highlight': $root.draggingJob}" style="width: 100%">
         <div class="accordion-group job" data-bind="css: {acquired: acquiredBy() !== undefined, draft: draft, shiftsel: queue.shiftsel() === $index()}">
