@@ -32,6 +32,7 @@ class DB:
 
 
 DEFAULT_QUEUE = "local"
+LAN_QUEUE = "LAN"
 ARCHIVE_QUEUE = "archive"
 
 
@@ -276,6 +277,7 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 def populate():
     DB.queues.create_tables(MODELS)
     StorageDetails.create(schemaVersion="0.0.2")
+    Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
 

@@ -97,6 +97,18 @@ class CPQPlugin(ContinuousPrintAPI):
         self._update(DA.ACTIVATE)
         self._sync_state()
 
+    def get_open_port(self):
+        # https://stackoverflow.com/a/2838309
+        # Note that this is vulnerable to race conditions in that
+        # the port is open when it's assigned, but could be reassigned
+        # before the caller can use it.
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("", 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
     def get_local_ip(self):
         # https://stackoverflow.com/a/57355707
         hostname = socket.gethostname()
@@ -226,7 +238,9 @@ class CPQPlugin(ContinuousPrintAPI):
                 try:
                     lq = lancls(
                         q.name,
-                        q.addr,
+                        q.addr
+                        if q.addr.lower() != "auto"
+                        else f"{self.get_local_ip()}:{self.get_open_port()}",
                         self._logger,
                         Strategy.IN_ORDER,
                         self._on_queue_update,
@@ -471,7 +485,9 @@ class CPQPlugin(ContinuousPrintAPI):
             try:
                 lq = LANQueue(
                     a["name"],
-                    a["addr"],
+                    a["addr"]
+                    if a["addr"].lower() != "auto"
+                    else f"{self.get_local_ip()}:{self.get_open_port()}",
                     self._logger,
                     Strategy.IN_ORDER,
                     self._on_queue_update,

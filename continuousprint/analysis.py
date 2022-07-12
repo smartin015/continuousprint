@@ -2,8 +2,10 @@ from octoprint.filemanager.analysis import AbstractAnalysisQueue
 from octoprint.util.platform import CLOSE_FDS
 from octoprint.util import dict_merge
 
+
 class CPQProfileAnalysisQueue(AbstractAnalysisQueue):
     """This queue attempts to resolve the profiles for which a gcode has been created."""
+
     PROFILE_KEY = "continuousprint_profile"
 
     def __init__(self, finished_callback):
@@ -15,6 +17,7 @@ class CPQProfileAnalysisQueue(AbstractAnalysisQueue):
     def _do_analysis(self, high_priority=False):
         import sys
         import sarge
+
         if self._current.analysis and self._current.analysis.get(self.PROFILE_KEY):
             return self._current.analysis
 
