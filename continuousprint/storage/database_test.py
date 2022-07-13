@@ -4,6 +4,7 @@ import logging
 from .database import (
     migrateFromSettings,
     init as init_db,
+    PermView,
     Queue,
     Job,
     Set,
@@ -12,7 +13,29 @@ from .database import (
 )
 import tempfile
 
+
 # logging.basicConfig(level=logging.DEBUG)
+class PermTest(unittest.TestCase):
+    def _p(self, perms, owner, group):
+        p = PermView()
+        p.perms = perms
+        p.owner = owner
+        p.group = group
+        return p
+
+    def testCanReadParameterized(self):
+        U = "u"
+        G = "g"
+        X = "x"
+        for own, grp, perms, want in [
+            (X, X, 0b000000100, True),  # Any read
+            (X, G, 0b000100000, True),  # Group read
+            (U, X, 0b100000000, True),  # User read
+            (U, G, 0b000000000, False),  # No perms
+        ]:
+            p = self._p(perms, own, grp)
+            with self.subTest(own=own, grp=grp, perms=p.permstr(), want=want):
+                self.assertEqual(p.can_read(U, [G]), want)
 
 
 class DBTest(unittest.TestCase):

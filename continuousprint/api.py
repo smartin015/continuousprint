@@ -2,6 +2,8 @@ import octoprint.plugin
 from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
+from octoprint.server import current_user
+from octoprint.server.api.access import get_user
 import flask
 import json
 from .storage import queries
@@ -121,6 +123,13 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
 
     def _sync_history(self):
         return self._sync("history", self._history_json())
+
+    def _get_user():
+        # https://flask-login.readthedocs.io/en/latest/#your-user-class
+        # https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/server/api/access.py#L171
+        usr = get_user(current_user.get_id())
+        print(usr)
+        return usr
 
     # Public method - returns the full state of the plugin in JSON format.
     # See `_state_json()` for return values.
