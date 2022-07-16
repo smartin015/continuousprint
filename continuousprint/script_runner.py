@@ -56,9 +56,8 @@ class ScriptRunner:
         self._printer.set_temperature("bed", 0)  # turn bed off
 
     def clear_bed(self):
-        if self._get_key(Keys.BED_COOLDOWN_ENABLED):
-            self.wait_for_bed_cooldown()
-        return self._execute_gcode(Keys.CLEARING_SCRIPT)
+        self._msg("Clearing bed")
+        self._execute_gcode(Keys.CLEARING_SCRIPT)
 
     def start_print(self, item):
         self._msg(f"{item.job.name}: printing {item.path}")

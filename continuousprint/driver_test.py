@@ -108,8 +108,10 @@ class TestFromInactive(unittest.TestCase):
             DA.TICK, DP.IDLE, bed_temp=21
         )  # -> stays in cooldown since bed temp too high
         self.assertEqual(self.d.state.__name__, self.d._state_cooldown.__name__)
+        self.d._runner.clear_bed.assert_not_called()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=19)  # -> exits cooldown
         self.assertEqual(self.d.state.__name__, self.d._state_clearing.__name__)
+        self.d._runner.clear_bed.assert_called()
 
     def test_bed_clearing_cooldown_timeout(self):
         self.d.set_managed_cooldown(True, 20, 60)
@@ -121,8 +123,10 @@ class TestFromInactive(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE, bed_temp=21)
         self.assertEqual(self.d.state.__name__, self.d._state_cooldown.__name__)
         self.d.cooldown_start = orig_start - 60 * 61
+        self.d._runner.clear_bed.assert_not_called()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=21)  # exit due to timeout
         self.assertEqual(self.d.state.__name__, self.d._state_clearing.__name__)
+        self.d._runner.clear_bed.assert_called()
 
     def test_finishing_failure(self):
         self.d.state = self.d._state_finishing
