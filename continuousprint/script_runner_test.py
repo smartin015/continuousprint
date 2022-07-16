@@ -37,7 +37,6 @@ class TestScriptRunner(unittest.TestCase):
         self.s._printer.cancel_print.assert_called()
 
     def test_clear_bed(self):
-        self.s._get_key.return_value = False  # cooldown disabled
         self.s.clear_bed()
         self.s._printer.select_file.assert_called_with(
             "ContinuousPrint/cp_bed_clearing_script.gcode",

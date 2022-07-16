@@ -266,16 +266,21 @@ class Driver:
             return self._state_clearing
 
     def _state_cooldown(self, a: Action, p: Printer):
+        clear = False
         if self._bed_temp < self.cooldown_threshold:
             self._logger.info(
                 f"Cooldown threshold of {self.cooldown_threshold} has been met"
             )
-            return self._state_clearing
+            clear = True
         elif (time.time() - self.cooldown_start) > (60 * self.cooldown_timeout):
             self._logger.info(f"Timeout of {self.cooldown_timeout} minutes exceeded")
-            return self._state_clearing
+            clear = True
         else:
             self._set_status("Cooling down")
+
+        if clear:
+            self._runner.clear_bed()
+            return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
         if a == Action.SUCCESS:
