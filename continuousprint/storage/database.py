@@ -25,6 +25,39 @@ import yaml
 import time
 
 
+class PermView:
+    def _allowed(self, user, groups, action_mask):
+        action_mask = action_mask & 0x7
+        return (
+            (user == self.owner and (self.perms >> 6) & action_mask != 0)
+            or (self.group in groups and (self.perms >> 3) & action_mask != 0)
+            or (self.perms & action_mask != 0)
+        )
+
+    def permstr(self):
+        r = "".join(
+            reversed(
+                ["xwr"[i % 3] if (self.perms & (1 << i)) else "-" for i in range(9)]
+            )
+        )
+        return f"{r[0:3]} {r[3:6]} {r[6:]}"
+
+    def can_read(self, user, groups):
+        return self._allowed(user, groups, 0x4)
+
+    def can_write(self, user, groups):
+        return self._allowed(user, groups, 0x2)
+
+    def can_exec(self, user, groups):
+        return self._allowed(user, groups, 0x1)
+
+
+class PermModel(Model):
+    perms = IntegerField(default=0b111100100)
+    owner = CharField(default="admin")
+    group = CharField(null=True)
+
+
 # Defer initialization
 class DB:
     # Adding foreign_keys pragma is necessary for ON DELETE behavior
@@ -43,7 +76,7 @@ class StorageDetails(Model):
         database = DB.queues
 
 
-class Queue(Model):
+class Queue(PermView, PermModel):
     name = CharField(unique=True)
     created = DateTimeField(default=datetime.datetime.now)
     rank = FloatField()
@@ -62,7 +95,7 @@ class Queue(Model):
         return q
 
 
-class JobView:
+class JobView(PermView):
     """The job view contains functions used to manipulate an underlying Job model.
 
     This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)"""
@@ -127,7 +160,7 @@ class JobView:
         return d
 
 
-class Job(Model, JobView):
+class Job(PermModel, JobView):
     queue = ForeignKeyField(Queue, backref="jobs", on_delete="CASCADE")
     name = CharField()
     rank = FloatField()
@@ -154,7 +187,7 @@ class Job(Model, JobView):
         Set.update(remaining=Set.count).where(Set.job == self).execute()
 
 
-class SetView:
+class SetView(PermView):
     """See JobView for rationale for this class."""
 
     def _csv2list(self, v):
@@ -196,7 +229,7 @@ class SetView:
         )
 
 
-class Set(Model, SetView):
+class Set(PermModel, SetView):
     path = CharField()
     sd = BooleanField()
     job = ForeignKeyField(Job, backref="sets", on_delete="CASCADE")
@@ -229,7 +262,7 @@ class Set(Model, SetView):
         return Set(**s)
 
 
-class Run(Model):
+class Run(PermView, PermModel):
     # Runs are totally decoupled from queues, jobs, and sets - this ensures that
     # the run history persists even if the other items are deleted
     queueName = CharField()
@@ -277,9 +310,11 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 def populate():
     DB.queues.create_tables(MODELS)
     StorageDetails.create(schemaVersion="0.0.2")
-    Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
-    Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
-    Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
+    Queue.create(
+        name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1, mask=0b111111111
+    )
+    Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0, mask=0b111111111)
+    Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1, mask=0b111111111)
 
 
 def init(db_path="queues.sqlite3", logger=None):

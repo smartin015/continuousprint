@@ -89,44 +89,44 @@ class LocalQueue(AbstractEditableQueue):
             )
         )
 
-    def remove_jobs(self, job_ids):
-        return self.rm_multi(job_ids=job_ids)
+    def remove_jobs(self, job_ids, creds):
+        return self.rm_multi(job_ids=job_ids, creds=creds)
 
-    def reset_jobs(self, job_ids):
-        return self.queries.resetJobs(job_ids)
+    def reset_jobs(self, job_ids, creds):
+        return self.queries.resetJobs(job_ids, creds=creds)
 
     # -------------- end AbstractQueue ------------------
 
     # -------------- begin AbstractEditableQueue -----------
 
-    def add_job(self, name="") -> JobView:
-        return self.queries.newEmptyJob(self.ns, name)
+    def add_job(self, creds, name="") -> JobView:
+        return self.queries.newEmptyJob(self.ns, name, creds=creds)
 
-    def add_set(self, job_id, data) -> SetView:
-        return self.queries.appendSet(self.ns, job_id, data)
+    def add_set(self, job_id, data, creds) -> SetView:
+        return self.queries.appendSet(self.ns, job_id, data, creds=creds)
 
-    def mv_set(self, set_id, after_id, dest_job):
-        return self.queries.moveSet(set_id, after_id, dest_job)
+    def mv_set(self, set_id, after_id, dest_job, creds):
+        return self.queries.moveSet(set_id, after_id, dest_job, creds=creds)
 
-    def mv_job(self, job_id, after_id):
-        return self.queries.moveJob(job_id, after_id)
+    def mv_job(self, job_id, after_id, creds):
+        return self.queries.moveJob(job_id, after_id, creds=creds)
 
-    def edit_job(self, job_id, data):
-        return self.queries.updateJob(job_id, data)
+    def edit_job(self, job_id, data, creds):
+        return self.queries.updateJob(job_id, data, creds=creds)
 
-    def rm_multi(self, job_ids=[], set_ids=[]) -> dict:
-        return self.queries.remove(job_ids=job_ids, set_ids=set_ids)
+    def rm_multi(self, creds, job_ids=[], set_ids=[]) -> dict:
+        return self.queries.remove(job_ids=job_ids, set_ids=set_ids, creds=creds)
 
-    def import_job(self, gjob_path: str, draft=True) -> dict:
+    def import_job(self, gjob_path: str, creds, draft=True) -> dict:
         out_dir = str(Path(gjob_path).stem)
         self._mkdir(out_dir)
         manifest, filepaths = unpack_job(
             self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
         )
-        return self.queries.importJob(self.ns, manifest, out_dir, draft)
+        return self.queries.importJob(self.ns, manifest, out_dir, draft, creds=creds)
 
-    def export_job(self, job_id: int, dest_dir: str) -> str:
-        j = self.queries.getJob(job_id)
+    def export_job(self, job_id: int, dest_dir: str, creds) -> str:
+        j = self.queries.getJob(job_id, creds=creds)
         filepaths = dict([(s.path, self._path_on_disk(s.path)) for s in j.sets])
         with tempfile.NamedTemporaryFile(
             suffix=".gjob", dir=dest_dir, delete=False
