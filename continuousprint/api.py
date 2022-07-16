@@ -2,14 +2,30 @@ import octoprint.plugin
 from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
-from octoprint.server import current_user
-from octoprint.server.api.access import get_user
 import flask
 import json
+from collections import namedtuple
 from .storage import queries
-from .storage.database import DEFAULT_QUEUE
+from .storage.database import DEFAULT_QUEUE, Queue, Set, Job
 from .driver import Action as DA
 from abc import ABC, abstractmethod
+
+
+Creds = namedtuple("Credentials", ["user", "groups", "admin"])
+
+
+def get_creds():
+    # https://flask-login.readthedocs.io/en/latest/#your-user-class
+    # https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/server/api/access.py#L171
+    from flask_login import current_user
+    from octoprint.server import userManager
+
+    usr = userManager.find_user(current_user.get_name())
+    return Creds(
+        usr.get_id(),
+        [g.get_name() for g in usr.groups],
+        Permissions.PLUGIN_CONTINUOUSPRINT_QUEUE_ADMIN.can(),
+    )
 
 
 class Permission(Enum):
@@ -43,6 +59,11 @@ class Permission(Enum):
         "Allows for adding/removing queues and rearranging them",
         True,
     )
+    QUEUE_ADMIN = (
+        "Queue administrator",
+        "Skip user/group permissions checks when performing operations",
+        True,
+    )
 
     def __init__(self, longname, desc, dangerous):
         self.longname = longname
@@ -60,12 +81,12 @@ class Permission(Enum):
         )
 
 
-def cpq_permission(perm: Permission):
+def cpq_permission(perm: Permission, field=None):
     def cpq_permission_decorator(func):
         def cpq_permission_wrapper(*args, **kwargs):
             if not getattr(Permissions, f"PLUGIN_CONTINUOUSPRINT_{perm.name}").can():
                 return flask.make_response(f"Insufficient Rights ({perm.name})", 403)
-            return func(*args, **kwargs)
+            return func(*args, **kwargs, creds=get_creds())
 
         # the BlueprintPlugin decorator used below relies on the original function name
         # to map the function to an HTTP handler
@@ -128,13 +149,6 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def _sync_history(self):
         return self._sync("history", self._history_json())
 
-    def _get_user():
-        # https://flask-login.readthedocs.io/en/latest/#your-user-class
-        # https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/server/api/access.py#L171
-        usr = get_user(current_user.get_id())
-        print(usr)
-        return usr
-
     # Public method - returns the full state of the plugin in JSON format.
     # See `_state_json()` for return values.
     # IMPORTANT: Non-additive changes to this method MUST be done via MAJOR version bump
@@ -150,7 +164,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/set_active", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.STARTSTOP)
-    def set_active(self):
+    def set_active(self, creds):
         self._update(
             DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
         )
@@ -162,17 +176,17 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/set/add", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.ADDSET)
-    def add_set(self):
+    def add_set(self, creds):
         data = self._preprocess_set(dict(**flask.request.form))
         return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).add_set(data.get("job", ""), data)
+            self._get_queue(DEFAULT_QUEUE).add_set(data.get("job", ""), data, creds)
         )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/add", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.ADDJOB)
-    def add_job(self):
+    def add_job(self, creds):
         return json.dumps(
             self._get_queue(DEFAULT_QUEUE)
             .add_job(flask.request.form.get("name"))
@@ -183,7 +197,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def mv_set(self):
+    def mv_set(self, creds):
         self._get_queue(DEFAULT_QUEUE).mv_set(
             int(flask.request.form["id"]),
             int(
@@ -199,7 +213,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def mv_job(self):
+    def mv_job(self, creds):
         self._get_queue(DEFAULT_QUEUE).mv_job(
             int(flask.request.form["id"]),
             int(
@@ -212,7 +226,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/submit", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.ADDJOB)
-    def submit_job(self):
+    def submit_job(self, creds):
         j = queries.getJob(int(flask.request.form["id"]))
         # Submit to the queue and remove from its origin
         err = self._get_queue(flask.request.form["queue"]).submit_job(j)
@@ -228,15 +242,17 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/edit", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def edit_job(self):
+    def edit_job(self, creds):
         data = json.loads(flask.request.form.get("json"))
-        return json.dumps(self._get_queue(DEFAULT_QUEUE).edit_job(data["id"], data))
+        return json.dumps(
+            self._get_queue(DEFAULT_QUEUE).edit_job(data["id"], data, creds)
+        )
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/import", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.ADDJOB)
-    def import_job(self):
+    def import_job(self, creds):
         return json.dumps(
             self._get_queue(flask.request.form["queue"])
             .import_job(flask.request.form["path"])
@@ -247,7 +263,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/export", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EXPORTJOB)
-    def export_job(self):
+    def export_job(self, creds):
         job_ids = [int(jid) for jid in flask.request.form.getlist("job_ids[]")]
         results = []
         root_dir = self._path_on_disk("/")
@@ -262,7 +278,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/rm", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def rm_job(self):
+    def rm_job(self, creds):
         return json.dumps(
             self._get_queue(flask.request.form["queue"]).remove_jobs(
                 flask.request.form.getlist("job_ids[]")
@@ -273,7 +289,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/set/rm", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def rm_set(self):
+    def rm_set(self, creds):
         return json.dumps(
             self._get_queue(DEFAULT_QUEUE).rm_multi(
                 set_ids=flask.request.form.getlist("set_ids[]")
@@ -284,7 +300,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/job/reset", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
-    def reset_multi(self):
+    def reset_multi(self, creds):
         return json.dumps(
             self._get_queue(flask.request.form["queue"]).reset_jobs(
                 flask.request.form.getlist("job_ids[]")
@@ -295,14 +311,14 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/history/get", methods=["GET"])
     @restricted_access
     @cpq_permission(Permission.GETHISTORY)
-    def get_history(self):
+    def get_history(self, creds):
         return self._history_json()
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/history/reset", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.CLEARHISTORY)
-    def reset_history(self):
+    def reset_history(self, creds):
         queries.resetHistory()
         return json.dumps("OK")
 
@@ -310,14 +326,14 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @octoprint.plugin.BlueprintPlugin.route("/queues/get", methods=["GET"])
     @restricted_access
     @cpq_permission(Permission.GETQUEUES)
-    def get_queues(self):
+    def get_queues(self, creds):
         return json.dumps([q.as_dict() for q in queries.getQueues()])
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/queues/edit", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITQUEUES)
-    def edit_queues(self):
+    def edit_queues(self, creds):
         queues = json.loads(flask.request.form.get("json"))
         (absent_names, added) = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)

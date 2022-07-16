@@ -23,19 +23,41 @@ class PermTest(unittest.TestCase):
         p.group = group
         return p
 
-    def testCanReadParameterized(self):
+    def testParameterized(self):
         U = "u"
         G = "g"
         X = "x"
-        for own, grp, perms, want in [
-            (X, X, 0b000000100, True),  # Any read
-            (X, G, 0b000100000, True),  # Group read
-            (U, X, 0b100000000, True),  # User read
-            (U, G, 0b000000000, False),  # No perms
+        for own, grp, perms, wantRead, wantWrite, wantExec in [
+            (U, G, 0b000000000, False, False, False),  # No perms
+            (U, G, 0b111111111, True, True, True),  # All perms
+            (X, X, 0b000000100, True, False, False),  # Any read
+            (X, G, 0b000100000, True, False, False),  # Group read
+            (X, X, 0b000100000, False, False, False),  # Group read, wrong user
+            (U, X, 0b100000000, True, False, False),  # User read
+            (X, X, 0b100000000, False, False, False),  # User read, wrong user
+            (X, X, 0b000000010, False, True, False),  # Any write
+            (X, G, 0b000010000, False, True, False),  # Group write
+            (X, X, 0b000010000, False, False, False),  # Group write, wrong user
+            (U, X, 0b010000000, False, True, False),  # User write
+            (X, X, 0b010000000, False, False, False),  # User write, wrong user
+            (X, X, 0b000000001, False, False, True),  # Any exec
+            (X, G, 0b000001000, False, False, True),  # Group exec
+            (X, X, 0b000001000, False, False, False),  # Group exec, wrong user
+            (U, X, 0b001000000, False, False, True),  # User exec
+            (X, X, 0b001000000, False, False, False),  # User exec, wrong user
         ]:
             p = self._p(perms, own, grp)
-            with self.subTest(own=own, grp=grp, perms=p.permstr(), want=want):
-                self.assertEqual(p.can_read(U, [G]), want)
+            with self.subTest(
+                own=own,
+                grp=grp,
+                perms=p.permstr(),
+                wantRead=wantRead,
+                wantWrite=wantWrite,
+                wantExec=wantExec,
+            ):
+                self.assertEqual(p.can_read(U, [G]), wantRead)
+                self.assertEqual(p.can_write(U, [G]), wantWrite)
+                self.assertEqual(p.can_exec(U, [G]), wantExec)
 
 
 class DBTest(unittest.TestCase):

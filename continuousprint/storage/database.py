@@ -1,7 +1,6 @@
 from peewee import (
     Model,
     SqliteDatabase,
-    Field,
     CharField,
     DateTimeField,
     IntegerField,
@@ -28,7 +27,7 @@ import time
 
 class PermView:
     def _allowed(self, user, groups, action_mask):
-        self.perms = self.perms & 0x7
+        action_mask = action_mask & 0x7
         return (
             (user == self.owner and (self.perms >> 6) & action_mask != 0)
             or (self.group in groups and (self.perms >> 3) & action_mask != 0)
@@ -53,10 +52,10 @@ class PermView:
         return self._allowed(user, groups, 0x1)
 
 
-class PermModel:
-    mask = IntegerField()
-    owner = CharField()
-    group = CharField()
+class PermModel(Model):
+    perms = IntegerField(default=0b111100100)
+    owner = CharField(default="admin")
+    group = CharField(null=True)
 
 
 # Defer initialization
@@ -311,9 +310,11 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 def populate():
     DB.queues.create_tables(MODELS)
     StorageDetails.create(schemaVersion="0.0.2")
-    Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
-    Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
-    Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
+    Queue.create(
+        name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1, mask=0b111111111
+    )
+    Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0, mask=0b111111111)
+    Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1, mask=0b111111111)
 
 
 def init(db_path="queues.sqlite3", logger=None):

@@ -32,7 +32,7 @@ def releaseJob(j) -> bool:
     return True
 
 
-def importJob(qname, manifest: dict, dirname: str, draft=False):
+def importJob(qname, manifest: dict, dirname: str, creds, draft=False):
     q = Queue.get(name=qname)
 
     # Manifest may have "remaining" values set incorrectly for new job; ensure
@@ -126,7 +126,7 @@ def getJobsAndSets(queue):
     ).execute()
 
 
-def getJob(jid):
+def getJob(jid, creds=None):
     return Job.get(id=jid)
 
 
@@ -182,13 +182,20 @@ def _upsertSet(set_id, data, job):
     s.save()
 
 
-def updateJob(job_id, data, queue=DEFAULT_QUEUE):
-    with DB.queues.atomic():
+def updateJob(job_id, data, creds=None, queue=DEFAULT_QUEUE):
+    print("updateJob", creds)
+
+    with DB.queues.atomic() as txn:
         try:
             j = Job.get(id=job_id)
         except Job.DoesNotExist:
             q = Queue.get(name=queue)
-            j = newEmptyJob(q)
+            j = newEmptyJob(q, creds)
+
+        if not creds.admin and not j.can_write(creds.user, creds.groups):
+            txn.rollback()
+            raise Exception("Cannot write to job with id {j.id}: permission denied")
+
         for k, v in data.items():
             if k in (
                 "id",
@@ -291,12 +298,12 @@ def _moveImpl(cls, src, dest_id: int, retried=False):
         src.save()
 
 
-def moveJob(src_id: int, dest_id: int):
+def moveJob(src_id: int, dest_id: int, creds):
     j = Job.get(id=src_id)
     return _moveImpl(Job, j, dest_id)
 
 
-def moveSet(src_id: int, dest_id: int, dest_job: int):
+def moveSet(src_id: int, dest_id: int, dest_job: int, creds):
     s = Set.get(id=src_id)
     if dest_job == -1:
         j = newEmptyJob(s.job.queue)
@@ -307,19 +314,21 @@ def moveSet(src_id: int, dest_id: int, dest_job: int):
     _moveImpl(Set, s, dest_id)
 
 
-def newEmptyJob(q, name="", rank=_rankEnd):
+def newEmptyJob(q, creds, name="", rank=_rankEnd):
     if type(q) == str:
         q = Queue.get(name=q)
     j = Job.create(
         queue=q,
         rank=rank(),
         name=name,
+        owner=creds.owner,
+        group=None,
         count=1,
     )
     return j
 
 
-def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
+def appendSet(queue: str, jid, data: dict, creds=None, rank=_rankEnd):
     q = Queue.get(name=queue)
     try:
         if jid != "":
@@ -353,7 +362,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
     return dict(job_id=j.id, set_=s.as_dict())
 
 
-def remove(queue_ids: list = [], job_ids: list = [], set_ids: list = []):
+def remove(queue_ids: list = [], job_ids: list = [], set_ids: list = [], creds=None):
     result = {}
     with DB.queues.atomic():
         if len(queue_ids) > 0:
