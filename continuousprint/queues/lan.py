@@ -90,21 +90,19 @@ class LANQueue(AbstractJobQueue):
 
             # At least one printer in the queue must have a compatible proile
             if len(peer_profiles.intersection(sprof)) == 0:
-                return f"validation for job {j.name} failed - no match for set {s.path} with profiles {sprof}, candidates {peer_profiles}"
+                return f"validation for job {j.name} failed - no match for set {s.path} with profiles {sprof} (connected printer profiles: {peer_profiles})"
 
             # All set paths must resolve to actual files
-            fullpath = self._path_on_disk(s.path)
-            if not Path(fullpath).exists():
-                return (
-                    f"validation for job {j.name} failed - file not found at {fullpath}"
-                )
+            fullpath = self._path_on_disk(s.path, s.sd)
+            if fullpath is None or not Path(fullpath).exists():
+                return f"validation for job {j.name} failed - file not found at {s.path} (is it stored on disk and not SD?)"
 
     def submit_job(self, j: JobView) -> bool:
         err = self._validate_job(j)
         if err is not None:
             self._logger.warning(err)
             return Exception(err)
-        filepaths = dict([(s.path, self._path_on_disk(s.path)) for s in j.sets])
+        filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
         manifest = j.as_dict()
         if manifest.get("created") is None:
             manifest["created"] = int(time.time())
@@ -155,14 +153,17 @@ class LANQueue(AbstractJobQueue):
         if self.lan is None or self.lan.q is None:
             return False
         (job, s) = self._peek()
-        self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
-        if job is not None and s is not None and self.lan.q.acquireJob(job.id):
-            self.job = job
-            self.set = s
-            self._logger.debug("acquire() success")
-            return True
+        if job is not None and s is not None:
+            if self.lan.q.acquireJob(job.id):
+                self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
+                self.job = job
+                self.set = s
+                self._logger.debug("acquire() success")
+                return True
+            else:
+                self._logger.debug("acquire() failed")
+                return False
         else:
-            self._logger.debug("acquire() failed or job/set not given")
             return False
 
     def release(self) -> None:

@@ -75,6 +75,8 @@ def get_profile(hdr: list):
 if __name__ == "__main__":
     sys.stderr.write("=== Continuous Print Profile Inference ===\n")
     hdr = get_header(sys.argv[1])
-    sys.stdout.write(get_profile(hdr))
+    prof = get_profile(hdr)
+    if prof is not None:
+        sys.stdout.write(prof)
     sys.stdout.flush()
     sys.stderr.write("\n=== End Inference ===\n")

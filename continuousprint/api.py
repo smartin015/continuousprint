@@ -96,7 +96,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         pass
 
     @abstractmethod
-    def _path_on_disk(self, path):
+    def _path_on_disk(self, path, sd):
         pass
 
     @abstractmethod
@@ -240,13 +240,19 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EXPORTJOB)
     def export_job(self):
         job_ids = [int(jid) for jid in flask.request.form.getlist("job_ids[]")]
-        results = []
-        root_dir = self._path_on_disk("/")
+        results = {"paths": [], "errors": []}
+        root_dir = self._path_on_disk("/", sd=False)
         for jid in job_ids:
             self._logger.debug(f"Exporting job with ID {jid}")
-            path = self._get_queue(DEFAULT_QUEUE).export_job(jid, root_dir)
-            results.append(self._path_in_storage(path))
-            self._logger.debug(f"Export job {jid} to {path}")
+            try:
+                path = self._get_queue(DEFAULT_QUEUE).export_job(jid, root_dir)
+            except ValueError as e:
+                e = str(e)
+                self._logger.error(e)
+                results["errors"].append(e)
+                continue
+            results["paths"].append(self._path_in_storage(path))
+            self._logger.debug(f"Exported job {jid} to {path}")
         return json.dumps(results)
 
     # PRIVATE API METHOD - may change without warning.

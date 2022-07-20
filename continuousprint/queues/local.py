@@ -31,7 +31,15 @@ class LocalQueue(AbstractEditableQueue):
         self.queries = queries
 
     def _set_path_exists(self, s):
-        return Path(self._path_on_disk(s.path)).exists()
+        if type(s) == dict:
+            path = self._path_on_disk(s["path"], s["sd"])
+        else:
+            path = self._path_on_disk(s.path, s.sd)
+        if (
+            path is None
+        ):  # For SD cards etc. assume existence if we can't interrogate the storage layer
+            return True
+        return Path(path).exists()
 
     # --------------------- Begin AbstractQueue ------------------
 
@@ -78,7 +86,7 @@ class LocalQueue(AbstractEditableQueue):
         jobs = [j.as_dict() for j in self.queries.getJobsAndSets(self.ns)]
         for j in jobs:
             for s in j["sets"]:
-                if not Path(self._path_on_disk(s["path"])).exists():
+                if not self._set_path_exists(s):
                     s["missing_file"] = True
         return dataclasses.asdict(
             QueueData(
@@ -127,7 +135,13 @@ class LocalQueue(AbstractEditableQueue):
 
     def export_job(self, job_id: int, dest_dir: str) -> str:
         j = self.queries.getJob(job_id)
-        filepaths = dict([(s.path, self._path_on_disk(s.path)) for s in j.sets])
+        filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
+        for name, fp in filepaths.items():
+            if fp is None:
+                raise ValueError(
+                    f"{j.name} failed to resolve path for {name} (export jobs with files on disk, not SD)"
+                )
+
         with tempfile.NamedTemporaryFile(
             suffix=".gjob", dir=dest_dir, delete=False
         ) as tf:
