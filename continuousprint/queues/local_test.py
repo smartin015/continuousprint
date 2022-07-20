@@ -113,3 +113,15 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
                 QueueData(name="testQueue", strategy="IN_ORDER", jobs=[], active_set=2)
             ),
         )
+
+
+# TODO test SD card behavior on importing/exporting and printing
+# class TestSD(unittest.TestCase):
+#    def testSDExport(self):
+#        raise NotImplementedError
+#
+#    def testSDImport(self):
+#        raise NotImplementedError
+#
+#    def testSDPrintExists(self):
+#        raise NotImplementedError

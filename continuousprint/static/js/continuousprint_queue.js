@@ -199,13 +199,24 @@ function CPQueue(data, api, files, profile) {
     self.exportSelected = function() {
       let d = self._getSelections();
       self.api.export(self.api.JOB, {job_ids: d.job_ids}, (result) => {
-          new PNotify({
-              title: 'Continuous Print',
-              text: `Exported jobs to 'files' panel: \n - ${result.join('\n - ')}`,
-              type: 'success',
-              hide: true,
-              buttons: {closer: true, sticker: false}
-          });
+          if (result.errors.length > 0) {
+            new PNotify({
+                title: 'Continuous Print',
+                text: `Error(s) during export: \n - ${result.errors.join('\n - ')}`,
+                type: 'error',
+                hide: false,
+                buttons: {closer: true, sticker: false}
+            });
+          }
+          if (result.paths.length > 0) {
+            new PNotify({
+                title: 'Continuous Print',
+                text: `Exported jobs to 'files' panel: \n - ${result.paths.join('\n - ')}`,
+                type: 'success',
+                hide: true,
+                buttons: {closer: true, sticker: false}
+            });
+          }
           // Reload the file panel to show the new file
           self.files.requestData({force: true});
 

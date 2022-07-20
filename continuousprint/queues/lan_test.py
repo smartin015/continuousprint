@@ -22,7 +22,7 @@ class LANQueueTest(unittest.TestCase):
             self.ucb,
             self.fs,
             dict(name="profile"),
-            lambda path: path,
+            lambda path, sd: path,
         )
 
 

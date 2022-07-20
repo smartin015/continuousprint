@@ -7,6 +7,7 @@ import time
 import traceback
 from pathlib import Path
 from octoprint.events import Events
+from octoprint.filemanager import NoSuchStorage
 from octoprint.filemanager.destinations import FileDestinations
 import octoprint.timelapse
 
@@ -119,7 +120,9 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _add_set(self, path, sd, draft=True, profiles=[]):
         # We may need to delay adding a file if it hasn't yet finished analysis
-        meta = self._file_manager.get_metadata(FileDestinations.LOCAL, path)
+        meta = self._file_manager.get_metadata(
+            FileDestinations.SDCARD if sd else FileDestinations.LOCAL, path
+        )
         prof = meta.get("analysis", {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
         if (
             self._get_key(Keys.INFER_PROFILE)
@@ -147,15 +150,29 @@ class CPQPlugin(ContinuousPrintAPI):
         if not self._get_key(Keys.INFER_PROFILE) or len(data.get("profiles", [])) > 0:
             return data
 
-        meta = self._file_manager.get_metadata(FileDestinations.LOCAL, data["path"])
-        prof = meta.get("analysis", {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
+        try:
+            meta = self._file_manager.get_metadata(
+                FileDestinations.SDCARD if data.get("sd") else FileDestinations.LOCAL,
+                data["path"],
+            )
+        except NoSuchStorage:
+            return data
+
+        prof = meta.get("analysis") if meta is not None else None
+        if prof is not None:
+            prof = prof.get(CPQProfileAnalysisQueue.PROFILE_KEY)
         self._logger.debug(f"Path {data['path']} profile: {prof}")
         if prof is not None and prof != "":
             data["profiles"] = [prof]
         return data
 
-    def _path_on_disk(self, path):
-        return self._file_manager.path_on_disk(FileDestinations.LOCAL, path)
+    def _path_on_disk(self, path: str, sd: bool):
+        try:
+            return self._file_manager.path_on_disk(
+                FileDestinations.SDCARD if sd else FileDestinations.LOCAL, path
+            )
+        except NoSuchStorage:
+            return None
 
     def _path_in_storage(self, path):
         return self._file_manager.path_in_storage(FileDestinations.LOCAL, path)
@@ -201,7 +218,7 @@ class CPQPlugin(ContinuousPrintAPI):
         )
 
     def _init_fileshare(self, fs_cls=Fileshare):
-        fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/")
+        fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/", sd=False)
         fileshare_addr = f"{self.get_local_ip()}:0"
         self._logger.info(f"Starting fileshare with address {fileshare_addr}")
         self._fileshare = fs_cls(fileshare_addr, fileshare_dir, self._logger)
