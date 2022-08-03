@@ -10,6 +10,10 @@ In addition to providing a local queue by default, Continuous Print also configu
 
     LAN queues are intended for trusted, local (LAN) networks only - not for cross-network (WAN) use cases. Using LAN queues across networks is insecure and strongly discouraged.
 
+!!! Info
+
+    **If you upgraded from v2.0.0 or earlier**, the default LAN queue will not be added (a compatibility measure). If you don't see the default LAn queue, please read and follow [Additional LAN Queues](#additional-lan-queues) for instructions on how to set up your own.
+
 ## Setup
 
 By default, Continuous Print creates a queue called "LAN" that printers on the network will automatically join.
@@ -80,8 +84,9 @@ It's straightforward to add additional LAN queues, or remove/modify the default 
 4. Click the "Add Queue" button to add a new LAN queue.
 5. Fill in the inputs, but keep in mind:
     * Each queue must have a unique name (which cannot be `local` and `archive` - these are reserved)
-    * Address:Port must be of the form `ip_address:port` (e.g. `192.168.1.43:6789`)
+    * Address:Port must be either set to `auto` or have the form of `ip_address:port` (e.g. `192.168.1.43:6789`)
         * A hostname of `localhost` will only connect to other OctoPrint instances on the same host. If you're unsure what to specify here, try `0.0.0.0` which [binds to all IP addresses on the host](https://en.wikipedia.org/wiki/0.0.0.0).
+        * If `auto` is used, an IP address and port will be selected automatically - this will probably work, but may not be correct for more complicated network setups.
     * Access control may be a factor if you're using a port number below 1024 (see [privileged ports](https://www.w3.org/Daemon/User/Installation/PrivilegedPorts.html))
     * You may experience silent failures if you specify a port that's already in use by another process.
     * All LAN queues are only visible to other devices on the same network, unless you've taken steps to expose ports (NOT recommended).
