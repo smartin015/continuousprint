@@ -101,7 +101,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     }
     self.allValidQueueAddr = ko.computed(function() {
       for (let q of self.queues()) {
-        if (q.name === 'local') {
+        if (q.name === 'local' || q.addr.toLowerCase() === "auto") {
           continue;
         }
         let sp = q.addr.split(':');

@@ -24,9 +24,22 @@ class LocalQueue(AbstractEditableQueue):
         self._profile = profile
         j = queries.getAcquiredJob()
         self.job = j
-        self.set = j.next_set(self._profile) if j is not None else None
+        self.set = (
+            j.next_set(self._profile, self._set_path_exists) if j is not None else None
+        )
         self.strategy = strategy
         self.queries = queries
+
+    def _set_path_exists(self, s):
+        if type(s) == dict:
+            path = self._path_on_disk(s["path"], s["sd"])
+        else:
+            path = self._path_on_disk(s.path, s.sd)
+        if (
+            path is None
+        ):  # For SD cards etc. assume existence if we can't interrogate the storage layer
+            return True
+        return Path(path).exists()
 
     # --------------------- Begin AbstractQueue ------------------
 
@@ -35,10 +48,12 @@ class LocalQueue(AbstractEditableQueue):
             return True
         if self.strategy != Strategy.IN_ORDER:
             raise NotImplementedError
-        p = self.queries.getNextJobInQueue(self.ns, self._profile)
+        p = self.queries.getNextJobInQueue(
+            self.ns, self._profile, self._set_path_exists
+        )
         if p is not None and self.queries.acquireJob(p):
             self.job = p
-            self.set = p.next_set(self._profile)
+            self.set = p.next_set(self._profile, self._set_path_exists)
             return True
         return False
 
@@ -54,9 +69,11 @@ class LocalQueue(AbstractEditableQueue):
             return False
 
         has_work = self.set.decrement(self._profile) is not None
-        earliest_job = self.queries.getNextJobInQueue(self.ns, self._profile)
+        earliest_job = self.queries.getNextJobInQueue(
+            self.ns, self._profile, self._set_path_exists
+        )
         if has_work and earliest_job == self.job and self.job.acquired:
-            self.set = self.job.next_set(self._profile)
+            self.set = self.job.next_set(self._profile, self._set_path_exists)
             return True
         else:
             self.release()
@@ -66,11 +83,16 @@ class LocalQueue(AbstractEditableQueue):
         active_set = self.get_set()
         if active_set is not None:
             active_set = active_set.id
+        jobs = [j.as_dict() for j in self.queries.getJobsAndSets(self.ns)]
+        for j in jobs:
+            for s in j["sets"]:
+                if not self._set_path_exists(s):
+                    s["missing_file"] = True
         return dataclasses.asdict(
             QueueData(
                 name=self.ns,
                 strategy=self.strategy.name,
-                jobs=[j.as_dict() for j in self.queries.getJobsAndSets(self.ns)],
+                jobs=jobs,
                 active_set=active_set,
             )
         )
@@ -103,17 +125,23 @@ class LocalQueue(AbstractEditableQueue):
     def rm_multi(self, job_ids=[], set_ids=[]) -> dict:
         return self.queries.remove(job_ids=job_ids, set_ids=set_ids)
 
-    def import_job(self, gjob_path: str) -> dict:
+    def import_job(self, gjob_path: str, draft=True) -> dict:
         out_dir = str(Path(gjob_path).stem)
         self._mkdir(out_dir)
         manifest, filepaths = unpack_job(
             self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
         )
-        return self.queries.importJob(self.ns, manifest, out_dir)
+        return self.queries.importJob(self.ns, manifest, out_dir, draft)
 
     def export_job(self, job_id: int, dest_dir: str) -> str:
         j = self.queries.getJob(job_id)
-        filepaths = dict([(s.path, self._path_on_disk(s.path)) for s in j.sets])
+        filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
+        for name, fp in filepaths.items():
+            if fp is None:
+                raise ValueError(
+                    f"{j.name} failed to resolve path for {name} (export jobs with files on disk, not SD)"
+                )
+
         with tempfile.NamedTemporaryFile(
             suffix=".gjob", dir=dest_dir, delete=False
         ) as tf:

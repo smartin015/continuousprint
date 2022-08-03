@@ -132,6 +132,12 @@ class TestJobWithSet(DBTest):
         self.j.draft = True
         self.assertEqual(self.j.next_set(dict(name="baz")), None)
 
+    def testNextSetWithCustomFilterReject(self):
+        self.assertEqual(self.j.next_set(dict(name="baz"), lambda s: False), None)
+
+    def testNextSetWithCustomFilterAccept(self):
+        self.assertEqual(self.j.next_set(dict(name="baz"), lambda s: True), self.s)
+
     def testNextSetWithDifferentProfile(self):
         self.assertEqual(self.j.next_set(dict(name="bar")), None)
 
@@ -249,11 +255,6 @@ class TestSet(DBTest):
             material_keys="m1,m2",
             profile_keys="p1,p2",
         )
-
-    def testDecrementWithDifferentProfile(self):
-        # using a different profile should decrement the job when there is no printable sets
-        self.s.decrement(dict(name="otherprof"))
-        self.assertEqual(self.j.remaining, 4)
 
     def testDecrementWithRemaining(self):
         self.s.decrement(dict(name="p1"))

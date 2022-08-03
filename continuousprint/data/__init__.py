@@ -30,10 +30,15 @@ class Keys(Enum):
     BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
     MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
     NETWORK_NAME = ("cp_network_name", "Generic")
+    AUTOMATION_TIMELAPSE_ACTION = (
+        "cp_automation_timelapse_action",
+        "do_nothing",
+    )  # One of "do_nothing", "auto_remove"
     UPLOAD_ACTION = (
         "cp_upload_action",
         "do_nothing",
     )  # One of "do_nothing", "add_draft", "add_printable"
+    INFER_PROFILE = ("cp_infer_profile", True)
 
     def __init__(self, setting, default):
         self.setting = setting
@@ -46,8 +51,8 @@ class Keys(Enum):
 PRINT_FILE_DIR = "ContinuousPrint"
 TEMP_FILES = dict(
     [
-        (k, f"{PRINT_FILE_DIR}/{k}.gcode")
-        for k in [Keys.FINISHED_SCRIPT.setting, Keys.CLEARING_SCRIPT.setting]
+        (k.setting, f"{PRINT_FILE_DIR}/{k.setting}.gcode")
+        for k in [Keys.FINISHED_SCRIPT, Keys.CLEARING_SCRIPT, Keys.BED_COOLDOWN_SCRIPT]
     ]
 )
 

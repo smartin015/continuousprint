@@ -25,6 +25,23 @@
         <button class="btn btn-danger btn-confirm" data-bind="click: submitJob">Confirm</button>
     </div>
 </div>
+<div id="cpq_removeConfirmDialog" class="modal hide fade">
+    <div class="modal-header">
+      <h3 class="modal-title">File exists in queue. Are you sure?</h3>
+    </div>
+    <div class="modal-body">
+        <p>
+          The file is currently present in the Continuous Print Queue.
+        <p>
+        <p>
+          If you delete this file, its queue entries will be skipped.
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-cancel" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        <button class="btn btn-danger btn-confirm" data-bind="click: removeConfirm">Confirm</button>
+    </div>
+</div>
 
 <ul class="nav nav-tabs">
   <li class="active"><a href="#continuousprint_tab_queues" data-toggle="tab">Queues</a></li>
@@ -57,9 +74,13 @@
       <!-- /ko -->
       <!-- ko ifnot: $data.divider -->
       <div class="entry" data-bind="css: {'success': result().startsWith('success')}">
-          <div>
+          <div style="text-align: left">
             <i data-bind="css: icon_class"></i>
             <span data-bind="text:result"></span>
+            <div class="timelapse_thumbnail" data-bind="visible: thumbURL">
+              <i class="fas fa-film"></i>
+              <img data-bind="attr: {src: thumbURL}, click: showTimelapse"></img>
+            </div>
           </div>
           <div data-bind="text:duration"></div>
           <div data-bind="text:startedDate"></div>
@@ -107,7 +128,10 @@
         </div>
         <div style="flex: 1; text-align: right">
           <span data-bind="visible: $root.queues().length > 1, text: name"></span>
-          <span data-bind="text: details, attr: {title: fullDetails}" style="cursor: pointer; display: inline-block"></span>
+          <span data-bind="attr: {title: fullDetails}, visible: details() !== ''" style="cursor: pointer; display: inline-block">
+            <span data-bind="text: details"></span>
+            <i class="fas fa-info-circle"></i>
+          </span>
         </div>
       </div>
 
@@ -123,7 +147,7 @@
         Hint: click New Job above or the <i class="fas fa-plus"></i> next to a file to add it to the queue.
         </div>
         <div class="hint" data-bind="visible: jobs().length == 0 && name !== 'local'">
-          Hint: drag a job here from the local queue to submit it.
+          Hint: drag a job here from the local queue to submit it to printers on the network.
         </div>
         <div data-bind="cpsortable: {foreach: jobs, as: 'job', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading(), 'local': name === 'local', 'highlight': $root.draggingJob}" style="width: 100%">
         <div class="accordion-group job" data-bind="css: {acquired: acquiredBy() !== undefined, draft: draft, shiftsel: queue.shiftsel() === $index()}">
@@ -140,7 +164,7 @@
               <!-- ko if: draft -->
               <input class="job-name" type="text" data-bind="textInput: _name, attr: {'_vkenabled': false}, event: {keypress: onEnter}"></input>
               <input class="repeats fa fa-text count-box" type="number" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: onEnter}"></input>
-              <div class="total" data-bind="text: length()"></div>
+              <div class="total" data-bind="text: $root.humanize(length())"></div>
               <!-- /ko -->
               <!-- ko if: !draft() -->
               <div class="job-name" data-bind="text: _name"></div>
@@ -148,8 +172,8 @@
                 <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                 <div data-bind="visible: queue.active_jobs().indexOf(id()) !== -1, style: { width: pct_active() }" class="bar active"></div>
               </div>
-              <div class="repeats" data-bind="text: completed() + '/' + count()"></div>
-              <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
+              <div class="repeats" data-bind="text: $root.humanize(completed()) + '/' + $root.humanize(count())"></div>
+              <div class="total" data-bind="text: $root.humanize(length_completed()) + '/' + $root.humanize(length())"></div>
               <!-- /ko -->
             </div>
           </div>
@@ -169,20 +193,24 @@
                           <span data-bind="text: shortName"/>
                         </p>
                         <!-- ko if: !job.draft() -->
-                        <div style="width: 150px; text-align: center;" data-bind="hidden: profile_matches" title="Set profile doesn't match this printer and will be skipped">
+                        <div style="width: 150px; text-align: center;" data-bind="hidden: profile_matches() || missing_file()" title="Set profile doesn't match this printer and will be skipped">
                           <i class="fas fa-angle-double-right"  style="margin-top: 3px; opacity: 0.5;"></i>
                         </div>
-                        <div class="progress" data-bind="hidden: !profile_matches(), css: { 'progress-striped active': queue.active_sets().indexOf(id) !== -1 }">
+                        <div style="width: 150px; text-align: center;" data-bind="hidden: !missing_file()" title="File is missing; this will be skipped">
+                          <i class="fas fa-exclamation-triangle" style="color: #aa0000"></i>
+                        </div>
+
+                        <div class="progress" data-bind="hidden: !profile_matches() || missing_file(), css: { 'progress-striped active': queue.active_sets().indexOf(id) !== -1 }">
                           <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                           <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
                         </div>
-                        <div class="repeats" data-bind="text: completed() + '/' + count()"></div>
-                        <div class="total" data-bind="text: length_completed() + '/' + length()"></div>
+                        <div class="repeats" data-bind="text: $root.humanize(completed()) + '/' + $root.humanize(count())"></div>
+                        <div class="total" data-bind="text: $root.humanize(length_completed()) + '/' + $root.humanize(length())"></div>
                         <!-- /ko -->
                         <!-- ko if: job.draft() -->
                         <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
                         <input class="fa fa-text count-box" type="number" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: job.onEnter}"></input>
-                        <div class="total" data-bind="text: length()"></div>
+                        <div class="total" data-bind="text: $root.humanize(length())"></div>
                         <!-- /ko -->
                       </div>
                       </div>

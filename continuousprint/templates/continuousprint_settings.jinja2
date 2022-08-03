@@ -118,12 +118,12 @@
       <fieldset>
         <legend>Failure Recovery</legend>
         <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
-          <p><strong>Plugin Needed:</strong> Failure recovery requires <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
+          <p><strong>Plugin Needed:</strong> Failure recovery requires <a href="https://www.obico.io/" target="_blank">Obico</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
           <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
         </div>
         <div data-bind="visible: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
           <p>
-            Failure recovery is enabled because <a href="https://www.thespaghettidetective.com/" target="_blank">The Spaghetti Detective</a> is installed.
+            Failure recovery is enabled because <a href="https://www.obico.io/" target="_blank">Obico</a> is installed.
           </p>
           <p>
             Read more about failure recovery settings in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.
@@ -165,7 +165,7 @@
         </div>
       </fieldset>
     </form>
-  </div> <!-- continuousprint_settings_behaviors -->
+  </div> <!-- continuousprint_settings_integrations -->
 
 
   <div id="settings_continuousprint_networking" class="tab-pane">
@@ -185,15 +185,11 @@
   <div id="settings_continuousprint_queues" class="tab-pane">
     <form class="form-horizontal">
       <legend>Queues</legend>
-      <div class="alert alert-info">
-        <p>
-        <strong>IMPORTANT:</strong> These settings are <strong>early Alpha</strong> and not yet proven.
-        </p>
-        <p>Expect sharp edges - please report feedback and bugs to <a href="https://github.com/smartin015/continuousprint/issues/35" target="_blank">this issue</a>.
-        </p>
-      </div>
       <p>
         <strong>Renaming a queue will delete the original queue and create a new one</strong> - jobs will not transfer over.
+      </p>
+      <p>
+        <strong>Changing the address of a queue requires a restart</strong> before the new address is used.
       </p>
       <p>
         Read <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">this guide</a> to learn how to best configure network queues.
@@ -203,7 +199,7 @@
         <i class="fas fa-exclamation-circle"></i> One or more queues have an invalid address configured.
         </p>
         <p>
-        All queues (other than the local queue) must have an address of the form <i>ip_address:port</i>, with a port value of 5000 or higher.
+        All queues (other than the local queue) must have an address of "auto" or of the form <i>ip_address:port</i>, with a port value of 5000 or higher.
         </p>
       </div>
       <div class="alert alert-error" data-bind="hidden: allValidQueueNames">
@@ -255,6 +251,22 @@
             </select>
           </div>
         </div>
+        <div class="control-group" title="How to handle time lapses when running automation scripts">
+          <label class="control-label">Clearing/Finishing Timelapses</label>
+          <div class="controls">
+            <select data-bind="value: settings.settings.plugins.continuousprint.cp_automation_timelapse_action">
+              <option value="do_nothing">Do nothing</option>
+              <option value="auto_remove">Auto-remove</option>
+            </select>
+          </div>
+        </div>
+        <div class="control-group" title="Automatically try to assign printer profiles based on .gcode file contents - this may only work for some printers / slicers">
+          <label class="control-label">Auto-assign printer profiles</label>
+          <div class="controls">
+            <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_infer_profile">
+          </div>
+        </div>
+      </fieldset>
     </form>
   </div> <!-- settings_continuousprint_lan -->
 

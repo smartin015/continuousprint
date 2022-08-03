@@ -82,7 +82,7 @@ class TestLocalQueue(IntegrationTest):
     """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
 
     def newQueue(self):
-        return LocalQueue(
+        lq = LocalQueue(
             queries,
             DEFAULT_QUEUE,
             Strategy.IN_ORDER,
@@ -90,6 +90,9 @@ class TestLocalQueue(IntegrationTest):
             MagicMock(),
             MagicMock(),
         )
+        # Override path existence
+        lq._set_path_exists = lambda p: True
+        return lq
 
     def test_retries_failure(self):
         queries.appendSet(

@@ -8,6 +8,9 @@ from pathlib import Path
 from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 
 
+MAX_COUNT = 999999
+
+
 def clearOldState():
     # On init, scrub the local DB for any state that may have been left around
     # due to an improper shutdown
@@ -29,7 +32,7 @@ def releaseJob(j) -> bool:
     return True
 
 
-def importJob(qname, manifest: dict, dirname: str):
+def importJob(qname, manifest: dict, dirname: str, draft=False):
     q = Queue.get(name=qname)
 
     # Manifest may have "remaining" values set incorrectly for new job; ensure
@@ -39,6 +42,7 @@ def importJob(qname, manifest: dict, dirname: str):
     j.id = None
     j.queue = q
     j.rank = _rankEnd()
+    j.draft = draft
     j.save()
     for s in j.sets:
         # Prepend new folder as initial path is relative to root
@@ -126,9 +130,11 @@ def getJob(jid):
     return Job.get(id=jid)
 
 
-def getNextJobInQueue(q, profile):
+def getNextJobInQueue(q, profile, custom_filter=None):
     for job in getJobsAndSets(q):
-        ns = job.next_set(profile)  # Only return a job which has a compatible next set
+        ns = job.next_set(
+            profile, custom_filter
+        )  # Only return a job which has a compatible next set
         if ns is not None:
             return job
 
@@ -163,7 +169,7 @@ def _upsertSet(set_id, data, job):
     )
 
     if data.get("count") is not None:
-        newCount = int(data["count"])
+        newCount = min(int(data["count"]), MAX_COUNT)
         inc = newCount - s.count
         s.count = newCount
         s.remaining = min(newCount, s.remaining + max(inc, 0))
@@ -193,12 +199,21 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
                 continue
             setattr(j, k, v)
 
+        clear_sets = False
         if data.get("count") is not None:
-            newCount = int(data["count"])
+            newCount = min(int(data["count"]), MAX_COUNT)
             inc = newCount - j.count
             j.remaining = min(newCount, j.remaining + max(inc, 0))
-            j.count = newCount
 
+            # Edge case: clear sets if we are adding 1 to a completed job,
+            # as this is otherwise suppressed by job-end accounting.
+            clear_sets = newCount > j.count
+            if clear_sets:
+                for s in j.sets:
+                    if s.remaining != 0:
+                        clear_sets = False
+                        break
+            j.count = newCount
         j.save()
 
         if data.get("sets") is not None:
@@ -211,6 +226,10 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             for i, s in enumerate(data["sets"]):
                 s["rank"] = float(i)
                 _upsertSet(s["id"], s, j)
+
+        if clear_sets:
+            j.refresh_sets()
+
         return Job.get(id=job_id).as_dict()
 
 
@@ -387,14 +406,28 @@ def endRun(r, result: str, txn=None):
     r.save()
 
 
+def annotateLastRun(gcode, movie_path, thumb_path):
+    # Note: this query assumes that timelapse movie processing completes before
+    # the next print completes - this is almost always the case, but annotation may fail if the timelapse
+    # is extremely long and the next print extremely short. In this case, the run won't
+    # be annotated (but the timelapse will still exist, OctoPrint willing)
+    cur = Run.select().order_by(Run.start.desc()).limit(1).execute()
+    if len(cur) == 0:
+        return False
+    run = cur[0]
+    if (
+        run.movie_path is not None
+        or run.thumb_path is not None
+        or run.path.split("/")[-1] != gcode
+    ):
+        return False
+    run.movie_path = movie_path
+    run.thumb_path = thumb_path
+    return run.save() > 0
+
+
 def getHistory():
-    cur = (
-        Run.select(
-            Run.start, Run.end, Run.result, Run.queueName, Run.jobName, Run.path, Run.id
-        )
-        .order_by(Run.start.desc())
-        .limit(100)
-    ).execute()
+    cur = (Run.select().order_by(Run.start.desc()).limit(100)).execute()
 
     result = [
         dict(
@@ -405,6 +438,8 @@ def getHistory():
             job_name=c.jobName,
             set_path=c.path,
             run_id=c.id,
+            movie_path=c.movie_path,
+            thumb_path=c.thumb_path,
         )
         for c in cur
     ]

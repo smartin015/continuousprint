@@ -96,7 +96,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         pass
 
     @abstractmethod
-    def _path_on_disk(self, path):
+    def _path_on_disk(self, path, sd):
         pass
 
     @abstractmethod
@@ -106,6 +106,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @abstractmethod
     def _msg(self, data):
         pass
+
+    @abstractmethod
+    def _preprocess_set(self, data):
+        pass  # Can auto-fill things, e.g. profile based on gcode analysis
 
     def popup(self, msg, type="popup"):
         return self._msg(dict(type=type, msg=msg))
@@ -150,10 +154,9 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.ADDSET)
     def add_set(self):
+        data = self._preprocess_set(dict(**flask.request.form))
         return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).add_set(
-                flask.request.form.get("job", ""), flask.request.form
-            )
+            self._get_queue(DEFAULT_QUEUE).add_set(data.get("job", ""), data)
         )
 
     # PRIVATE API METHOD - may change without warning.
@@ -170,7 +173,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
     @restricted_access
-    @cpq_permission("EDITJOB")
+    @cpq_permission(Permission.EDITJOB)
     def mv_set(self):
         self._get_queue(DEFAULT_QUEUE).mv_set(
             int(flask.request.form["id"]),
@@ -203,9 +206,14 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def submit_job(self):
         j = queries.getJob(int(flask.request.form["id"]))
         # Submit to the queue and remove from its origin
-        self._get_queue(flask.request.form["queue"]).submit_job(j)
-        self._logger.debug(self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id]))
-        return self._state_json()
+        err = self._get_queue(flask.request.form["queue"]).submit_job(j)
+        if err is None:
+            self._logger.debug(
+                self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id])
+            )
+            return self._state_json()
+        else:
+            return json.dumps(dict(error=str(err)))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/edit", methods=["POST"])
@@ -232,13 +240,19 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EXPORTJOB)
     def export_job(self):
         job_ids = [int(jid) for jid in flask.request.form.getlist("job_ids[]")]
-        results = []
-        root_dir = self._path_on_disk("/")
+        results = {"paths": [], "errors": []}
+        root_dir = self._path_on_disk("/", sd=False)
         for jid in job_ids:
             self._logger.debug(f"Exporting job with ID {jid}")
-            path = self._get_queue(DEFAULT_QUEUE).export_job(jid, root_dir)
-            results.append(self._path_in_storage(path))
-            self._logger.debug(f"Export job {jid} to {path}")
+            try:
+                path = self._get_queue(DEFAULT_QUEUE).export_job(jid, root_dir)
+            except ValueError as e:
+                e = str(e)
+                self._logger.error(e)
+                results["errors"].append(e)
+                continue
+            results["paths"].append(self._path_in_storage(path))
+            self._logger.debug(f"Exported job {jid} to {path}")
         return json.dumps(results)
 
     # PRIVATE API METHOD - may change without warning.

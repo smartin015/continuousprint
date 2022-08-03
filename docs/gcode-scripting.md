@@ -8,6 +8,12 @@ When Continuous Print is managing the queue, this script is run after every prin
 
 Your cleaning script should remove all 3D print material from the build area to make way for the next print.
 
+### Optional: Use BedReady to check bed state
+
+[OctoPrint-BedReady](https://plugins.octoprint.org/plugins/bedready/) is a plugin that checks the webcam image of the bed against a refrence image where the bed is clear.
+
+If you install BedReady, you can add an automated check that the bed is clear for the next print by adding `@BEDREADY` onto the end of your bed clearing script.
+
 ## Queue finished scripts
 
 This script is run after all prints in the queue have been printed. Use this script to put the machine in a safe resting state. Note that the last print will have already been cleared by the bed cleaning script (above).

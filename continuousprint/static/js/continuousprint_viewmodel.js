@@ -30,6 +30,7 @@ function CPViewModel(parameters) {
     self.loginState = parameters[1];
     self.files = parameters[2];
     self.printerProfiles = parameters[3];
+    self.settings = parameters[4];
     self.cpPrinterProfiles = CP_PRINTER_PROFILES;
     self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
     self.status = ko.observable("Initializing...");
@@ -43,7 +44,7 @@ function CPViewModel(parameters) {
     self.expanded = ko.observable(null);
     self.profile = ko.observable('');
 
-    self.api = parameters[4] || new CPAPI();
+    self.api = parameters[5] || new CPAPI();
 
 
     self.api.init(self.loading,
@@ -66,7 +67,37 @@ function CPViewModel(parameters) {
 
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
-      self.defaultQueue.addFile(data);
+      self.defaultQueue.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
+    };
+    // Also patch file deletion, to show a modal if the file is in the queue
+    let oldRemove = self.files.removeFile;
+    let remove_cb = null;
+    self.files.removeFile = function(data, evt) {
+      for (let j of self.defaultQueue.jobs()) {
+        for (let s of j.sets()) {
+          if (s.path() === data.path) {
+            remove_cb = () => oldRemove(data, evt);
+            return self.showRemoveConfirmModal()
+          }
+        }
+      }
+      return oldRemove(data, evt);
+    };
+		self.rmDialog = $("#cpq_removeConfirmDialog");
+    self.showRemoveConfirmModal = function() {
+			self.rmDialog.modal({}).css({
+					width: 'auto',
+					'margin-left': function() { return -($(this).width() /2); }
+			});
+    };
+    self.hideRemoveConfirmModal = function() {
+			self.rmDialog.modal('hide');
+    };
+    self.removeConfirm = function() {
+      remove_cb();
+      remove_cb = null;
+      self._loadState(); // Refresh to get new "file missing" states
+      self.hideRemoveConfirmModal();
     };
 
     // Patch the files panel to prevent selecting/printing .gjob files
@@ -285,7 +316,7 @@ function CPViewModel(parameters) {
                 title: 'Continuous Print',
                 text: data.msg,
                 type: theme,
-                hide: true,
+                hide: (theme !== 'danger'),
                 buttons: {closer: true, sticker: false}
             });
         }
@@ -323,7 +354,13 @@ function CPViewModel(parameters) {
     });
     self.submitJob = function() {
       let details = self.jobSendDetails();
-      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, self._setState);
+      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, (result) => {
+        if (result.error) {
+          self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
+        } else {
+          self._setState(result);
+        }
+      });
 			self.dialog.modal('hide');
     }
 		self.showSubmitJobDialog = function(job, queue) {
@@ -333,6 +370,19 @@ function CPViewModel(parameters) {
 					'margin-left': function() { return -($(this).width() /2); }
 			});
 		}
+
+    self.humanize = function(num) {
+      // Humanizes numbers by condensing and adding units
+      if (num < 1000) {
+        return num.toString()
+      } else if (num < 100000) {
+        let k = (num/1000);
+        return ((k % 1 === 0) ? k : k.toFixed(1)) + 'k';
+      } else {
+        let m = (num/1000000);
+        return ((m % 1 === 0) ? m : m.toFixed(1)) + 'm';
+      }
+    };
 
     /* ===== History Tab ===== */
     self.history = ko.observableArray();

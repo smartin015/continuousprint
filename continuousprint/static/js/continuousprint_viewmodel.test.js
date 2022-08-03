@@ -8,8 +8,9 @@ function mocks(filename="test.gcode") {
       filename: jest.fn(() => filename)
     },
     {}, // loginState only used in continuousprint.js
-    {onServerDisconnect: jest.fn(), onServerConnect: jest.fn()},
+    {onServerDisconnect: jest.fn(), onServerConnect: jest.fn(), removeFile: jest.fn()},
     {currentProfileData: () => {return {extruder: {count: () => 1}}}},
+    {settings: {plugins: {continuousprint: {cp_infer_profile: () => false}}}},
     {
       init: jest.fn(),
       setActive: jest.fn(),
@@ -47,8 +48,11 @@ function items(njobs = 1, nsets = 2) {
   return jobs;
 }
 
-function init(njobs = 1, filename="test.gcode") {
-  let v = new VM(mocks(filename=filename));
+function init(njobs = 1, ms=null) {
+  if (!ms) {
+    ms = mocks(filename="test.gcode");
+  }
+  let v = new VM(ms);
   v._setState({
     active: false,
     status: 'Test Status',
@@ -86,7 +90,7 @@ test('files.add', () => {
   let data = {name: 'new file', path: 'test.gcode', origin: 'local'};
   v.api.add = (_, data, cb) => cb({job_id: 2, set_: {...data, materials: []}});
   v.files.add(data);
-  expect(v.defaultQueue.addFile).toHaveBeenCalledWith(data);
+  expect(v.defaultQueue.addFile).toHaveBeenCalledWith(data, false);
 });
 
 test('sortStart turns off default drag-drop', () => {
@@ -188,4 +192,29 @@ test('_setHistory', () => {
   ]);
   let ents = v.history();
   expect(ents.length).toEqual(4); // Include dividers
+});
+
+test('removeFile shows dialog', () => {
+  let m = mocks();
+  let rmfile = m[2].removeFile;
+  let v = init(1, m);
+  v.showRemoveConfirmModal = jest.fn();
+
+  v.files.removeFile(DATA, {});
+
+  expect(v.showRemoveConfirmModal).toHaveBeenCalled();
+  expect(rmfile).not.toHaveBeenCalled();
+});
+
+test('removeConfirm calls removeFile', () => {
+  let m = mocks();
+  let rmfile = m[2].removeFile;
+  let v = init(1, m);
+  v.showRemoveConfirmModal = jest.fn();
+  v.hideRemoveConfirmModal = jest.fn();
+  v.files.removeFile(DATA, {});
+
+  v.removeConfirm();
+
+  expect(rmfile).toHaveBeenCalled();
 });
