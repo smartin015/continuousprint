@@ -13,7 +13,7 @@
     
     
       
-        <title>Printer Profiles - Continuous Print</title>
+        <title>Action Commands - Continuous Print</title>
       
     
     
@@ -64,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#printer-profiles" class="md-skip">
+        <a href="#action-commands" class="md-skip">
           Skip to content
         </a>
       
@@ -97,7 +97,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Printer Profiles
+              Action Commands
             
           </span>
         </div>
@@ -323,80 +323,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Printer Profiles
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../printer-profiles/" class="md-nav__link">
         Printer Profiles
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#why-have-profiles" class="md-nav__link">
-    Why have profiles?
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setting-your-printers-profile" class="md-nav__link">
-    Setting your printer's profile
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#automatic-profile-assignment" class="md-nav__link">
-    Automatic profile assignment
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#assigning-and-removing-printer-profiles-tofrom-sets" class="md-nav__link">
-    Assigning and removing printer profiles to/from Sets
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#behavior" class="md-nav__link">
-    Behavior
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -422,11 +353,66 @@
 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../action-commands/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Action Commands
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         Action Commands
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#standard-action-commands" class="md-nav__link">
+    Standard Action Commands
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#custom-actions-for-continuous-print" class="md-nav__link">
+    Custom actions for Continuous Print
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#firmware-support-for-action-commands" class="md-nav__link">
+    Firmware support for Action Commands
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -488,36 +474,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-have-profiles" class="md-nav__link">
-    Why have profiles?
+  <a href="#standard-action-commands" class="md-nav__link">
+    Standard Action Commands
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#setting-your-printers-profile" class="md-nav__link">
-    Setting your printer's profile
+  <a href="#custom-actions-for-continuous-print" class="md-nav__link">
+    Custom actions for Continuous Print
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#automatic-profile-assignment" class="md-nav__link">
-    Automatic profile assignment
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#assigning-and-removing-printer-profiles-tofrom-sets" class="md-nav__link">
-    Assigning and removing printer profiles to/from Sets
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#behavior" class="md-nav__link">
-    Behavior
+  <a href="#firmware-support-for-action-commands" class="md-nav__link">
+    Firmware support for Action Commands
   </a>
   
 </li>
@@ -536,29 +508,22 @@
                 
 
 
-<h1 id="printer-profiles">Printer Profiles</h1>
-<p><strong>Printer Profiles restrict the make/model of printer that's allowed to print certain files.</strong></p>
-<h2 id="why-have-profiles">Why have profiles?</h2>
-<p>3D print slicers generate a <code>*.gcode</code> file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).</p>
-<p>In the case of a single printer running a single OctoPrint instance, this doesn't usually matter - typically only compatible GCODE files will end up in the Files list. But with <a href="/lan-queues">LAN Queues</a>, multiple kinds of printers may be vying for the same print Job and compatibility becomes a problem.</p>
-<h2 id="setting-your-printers-profile">Setting your printer's profile</h2>
-<p>In <code>Settings &gt; Plugins &gt; Continuous Print</code>, in the <code>Scripts &gt; Printer Profile</code> section, select the manufacturer and model of your printer. If your printer is not present in the list, follow <a href="https://smartin015.github.io/continuousprint/gcode-scripting/#contributing">these directions</a> to add it.</p>
-<p>When you click <code>Save</code>, this profile will be associated with your printer.</p>
-<h2 id="automatic-profile-assignment">Automatic profile assignment</h2>
-<p>Starting with version <code>2.1.0</code>, Continuous Print will attempt to automatically infer the correct printer profile for gcode files added to the queue. This currently only works for <a href="https://grid.space/kiri/">Kiri:Moto slicer</a>. If you want your slicer to be supported, <a href="https://github.com/smartin015/continuousprint/issues/new?assignees=&amp;labels=&amp;template=feature_request.md">open a Feature Request</a> and include an example gcode script that you've sliced as an example.</p>
-<h2 id="assigning-and-removing-printer-profiles-tofrom-sets">Assigning and removing printer profiles to/from Sets</h2>
-<ol>
-<li>Click the edit (pencil) button on a Job in your queue to enter edit mode.</li>
-<li>Expand your desired Set by clicking the triangle next to its name.</li>
-<li>Next to <code>Profiles:</code> you will see a drop-down. Click this and select a matching profile for your printer.</li>
-<li>A new label should appear with the profile name. You can add additional profiles if your Set can be printed by other printers.</li>
-<li>Remove any unwanted profiles by clicking the <code>X</code> next to them.</li>
-<li>Click the "Save" button at the bottom of the Job to save your changes.</li>
-</ol>
-<h2 id="behavior">Behavior</h2>
-<p><strong>If a Set has no associated profiles, any printer will attempt to print it.</strong> This is fine if you have all the same type of printer, but becomes a hazard if you have multiple incompatible printers sharing the same LAN queue (e.g. a continuous belt printer and a small delta printer).</p>
-<p><strong>If a Set has one or more associated profiles, your printer will only print it if the printer's profile is present</strong>. For instance: a printer with the <code>Generic</code> profile will not print a Set with only a <code>Creality CR30</code> profile.</p>
-<p><strong>All sets within jobs in <a href="/lan-queues">LAN queues</a> MUST have an assigned profile</strong>, or else you will not be able to submit them. This is to ensure that gcode files areprinted only by the correct printer.</p>
+<h1 id="action-commands">Action Commands</h1>
+<p>If you interact with your 3D printer using its display (touchscreen, LCD, or similar), you may be interested in action commands.</p>
+<p><strong>Action Commands are messages sent by the printer to OctoPrint when a user performs an action on the printer's display.</strong></p>
+<h2 id="standard-action-commands">Standard Action Commands</h2>
+<p>OctoPrint supports several actions out of the box - see <a href="https://docs.octoprint.org/en/master/features/action_commands.html">here</a> for more details.</p>
+<p>Proper handling of these commands by Continuous Print is <a href="https://github.com/smartin015/continuousprint/issues/95">still under development</a>.</p>
+<p><strong>Your printer firmware must also support action commands</strong> for this to work (see <a href="#firmware-support-for-action-commands">Firmware Support for Action Commands</a> below).</p>
+<h2 id="custom-actions-for-continuous-print">Custom actions for Continuous Print</h2>
+<p>Currently, the Continuous Print plugin supports a single custom action command:</p>
+<pre><code>// action:queuego
+</code></pre>
+<p>When received from the printer, this message instructs the Continuous Print plugin to start managing the queue - equivalent to clicking "Start Managing" on the UI.</p>
+<p><strong>This command is non-standard and requires additions to firmware</strong> - in particular, a custom menu entry must be added in <a href="https://github.com/MarlinFirmware/Marlin/blob/2.0.x/Marlin/Configuration_adv.h#L3900">CUSTOM_MENU_MAIN of Configuration_adv.h for Marlin firmware</a> which issues a <code>M118 //action:queuego</code> command.</p>
+<h2 id="firmware-support-for-action-commands">Firmware support for Action Commands</h2>
+<p>Not all printers support Action Commands - it depends on the firmware they're running. The easiest way to know if your printer supports action commands is to watch the Terminal tab in OctoPrint for occurrences of <code>// action:&lt;command&gt;</code>. If these appear e.g. when a print is cancelled from the printer's interface, then it's supported.</p>
+<p>Adding support for action commands for your printer involves updating the printer's firmware, which is a device-specific process. Check for user-contributed firmwares which include this support - for Marlin-based firmwares for instance, you want to ensure <code>HOST_ACTION_COMMANDS</code> is defined in the firmware (see <a href="https://github.com/MarlinFirmware/Marlin/blob/2.0.x/Marlin/Configuration_adv.h#L4004">here</a>).</p>
 
               
             </article>
@@ -574,7 +539,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../material-selection/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Material Selection" rel="prev">
+        <a href="../managed-bed-cooldown/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Managed Bed Cooldown" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -583,20 +548,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Material Selection
+              Managed Bed Cooldown
             </div>
           </div>
         </a>
       
       
         
-        <a href="../managed-bed-cooldown/" class="md-footer__link md-footer__link--next" aria-label="Next: Managed Bed Cooldown" rel="next">
+        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Managed Bed Cooldown
+              Contributing
             </div>
           </div>
           <div class="md-footer__button md-icon">

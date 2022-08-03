@@ -9,7 +9,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.11">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
     
     
       
@@ -17,11 +17,12 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.8c5ef100.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.1d29e8d0.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.9647289d.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
         
+      
       
     
     
@@ -271,19 +272,6 @@
     Add prints to the queue
   </a>
   
-    <nav class="md-nav" aria-label="Add prints to the queue">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#use-sets-and-jobs-to-group-your-print-files" class="md-nav__link">
-    Use Sets and Jobs to group your print files
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -294,8 +282,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inspect-queue-items" class="md-nav__link">
-    Inspect queue items
+  <a href="#inspect-finished-prints" class="md-nav__link">
+    Inspect finished prints
   </a>
   
 </li>
@@ -457,6 +445,21 @@
   
   
     <li class="md-nav__item">
+      <a href="../action-commands/" class="md-nav__link">
+        Action Commands
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
         Contributing
       </a>
@@ -524,19 +527,6 @@
     Add prints to the queue
   </a>
   
-    <nav class="md-nav" aria-label="Add prints to the queue">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#use-sets-and-jobs-to-group-your-print-files" class="md-nav__link">
-    Use Sets and Jobs to group your print files
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -547,8 +537,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inspect-queue-items" class="md-nav__link">
-    Inspect queue items
+  <a href="#inspect-finished-prints" class="md-nav__link">
+    Inspect finished prints
   </a>
   
 </li>
@@ -599,40 +589,24 @@
 <p>That's it! Now let's configure it to work with your printer.</p>
 <div class="admonition tip">
 <p class="admonition-title">Want cool features?</p>
-<p>There's <a href="github.com/smartin015/continuousprint/issues">much more automation on the way</a>!</p>
+<p>There's <a href="https://github.com/smartin015/continuousprint/labels/enhancement">much more automation on the way</a>!</p>
 <p>To help speed up development and get features early (and if you don't mind the odd bug here and there), turn on <code>Release Candidates</code> under <code>Settings -&gt; Software Update</code> (more info <a href="https://community.octoprint.org/t/how-to-use-the-release-channels-to-help-test-release-candidates/402">here</a>)</p>
 </div>
 <h2 id="configure-the-plugin">Configure the plugin</h2>
 <p>Go to <code>Settings</code> -&gt; <code>Continuous Print</code> and ensure the bed cleaning and queue finished scripts are correct for your 3D printer.</p>
-<p>You can also enable settings here for compatibility with <a href="https://www.thespaghettidetective.com/">The Spaghetti Detective</a> for automatic retries when the print starts failing.</p>
+<p><strong>If you select your printer's make and model from the settings drop down, default scripts will be automatically configured.</strong> If you don't see your printer in the listand want to add it, see the <a href="/gcode-scripting#contributing">GCODE Scripting contributing section</a></p>
 <h2 id="add-prints-to-the-queue">Add prints to the queue</h2>
 <ol>
 <li>Navigate to the file you wish to add in the Files dialog on the left of the page.</li>
 <li>Add it to the print queue by clicking the <code>+</code> button to the right of the file name.</li>
 <li>If you want to print more than one, you can click multiple times to add more copies, or set a specific count in the <code>Continuous Print</code> tab.</li>
+<li>Push "Save" to save your print job and make it available for printing.</li>
 </ol>
-<h3 id="use-sets-and-jobs-to-group-your-print-files">Use Sets and Jobs to group your print files</h3>
-<p>The queue is made up of two levels: sets and jobs.</p>
-<p><strong>Sets</strong> are a single print file, printed one or more times. You created a set by following the "Add prints to the queue" step above.</p>
-<p><strong>Jobs</strong> are a collection of sets, printed one or more times.</p>
-<p>By default, every print file you add (as a set) is appended to a default, unnamed job at the end of the queue. If you give this job a name (by clicking the title box, typing a name, then hitting enter or clicking away) it will stop collecting new prints and a new default job will be created</p>
-<p><strong>Example 1: Batched</strong></p>
-<p>Let's consider an empty queue. If you add <code>A.gcode</code> with 5 copies and <code>B.gcode</code> with 5 copies, the print order will be:</p>
-<p><code>A A A A A B B B B B</code></p>
-<p>This is great if you want all of your <code>A</code> files to print before all your <code>B</code> files, e.g. if you're working on a project that uses <code>A</code> but plan use <code>B</code> for something later.</p>
-<p><strong>Example 2: Interleaved</strong></p>
-<p>Let's start again with an empty queue, but now suppose we add <code>A.gcode</code> with 1 copy, <code>B.gcode</code> with 1 copy, then set the job count to <code>5</code>. The print order will now be:</p>
-<p><code>A B A B A B A B A B</code></p>
-<p>This is exactly the pattern you would want if you were, for example, printing a box with <code>A.gcode</code> as the base and <code>B.gcode</code> as the lid. Each box would be completed in order, so you can use the first box without waiting for all the bases to print, then for the first lid to print.</p>
-<p>You can mix and match</p>
-<h2 id="start-the-queue">Start the queue</h2>
-<div class="admonition warning">
-<p class="admonition-title">Safety check!</p>
-<p>If you glossed over "Configure the plugin" above, read it now. Seriously.</p>
-<p>You can permanently damage your printer if you don't set up the correct GCODE instructions to a
-clear the bed and finish the queue.</p>
-<p>Supporting specific printer profiles is <a href="https://github.com/smartin015/continuousprint/issues/21">on the to-do list</a>, but not yet available, so you'll have to do this on your own for now.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>See <a href="/advanced-queuing">Queueing Basics</a> to learn more about how to group your prints into sets and jobs.</p>
 </div>
+<h2 id="start-the-queue">Start the queue</h2>
 <p>The print queue won't start your prints just yet. To run the queue:</p>
 <ol>
 <li>Click the 'Continuous Print` tab (it may be hidden in the extra tabs fold-out on the right)</li>
@@ -640,10 +614,9 @@ clear the bed and finish the queue.</p>
 <li>Click <code>Start Managing</code>.</li>
 </ol>
 <p>The plugin will wait until your printer is ready to start a print, then it'll begin with the top of the queue and proceed until the bottom.</p>
-<p>Note that when it's time to clear the print bed or finish up, a temporary <code>cp\_\*.gcode</code> file will appear in your local files, and disappear when it completes. This is a change from older "gcode injecting" behavior that is necessary to support <a href="https://docs.octoprint.org/en/master/features/atcommands.html">at-commands</a> in the clearing and finish scripts.</p>
-<h2 id="inspect-queue-items">Inspect queue items</h2>
-<p>As the print queue is managed and prints complete, you can see the status of individual prints by clicking the small triangle to the left of any individual queue item.</p>
-<p>This opens a sub-panel showing individual print stats and results.</p>
+<p>Note that the default behavior is to pause after every print to wait for you to remove the printed part - to keep printing, just press the "Resume" button on the OctoPrint UI. You can learn more about how to configure the gcode scripts <a href="/gcode-scripting">here</a> if you want to further automate your printing.</p>
+<h2 id="inspect-finished-prints">Inspect finished prints</h2>
+<p>As the print queue is managed and prints complete, you can see the status of individual prints by clicking on the "History" tab in the plugin tab window. The progress bar on particular prints and jobs will also fill in as prints complete.</p>
 <h2 id="stop-the-queue">Stop the queue</h2>
 <p>When all prints are finished, the plugin stops managing the queue and waits for you to start it again.</p>
 <p>If you need to stop early, click <code>Stop Managing</code>.</p>
@@ -652,13 +625,14 @@ clear the bed and finish the queue.</p>
 <p>The queue may not be managed any more, but <strong>any currently running print will continue printing</strong>  unless you cancel it with the <code>Cancel</code> button.</p>
 </div>
 <h2 id="clean-up-the-queue">Clean up the queue</h2>
-<p>Click the triple-dot menu in the top right corner of the plugin tab for several convenient queue cleanup options. You can also remove individual queue items with the red <code>X</code> next to the item.</p>
+<p>You can delete completed print jobs by selecting them (using the check box on the left) and pressing the trash can icon.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <p>If at any point you're stuck or see unexpected behavior or bugs, please file a <a href="https://github.com/smartin015/continuousprint/issues/new?assignees=&amp;labels=bug&amp;template=bug_report.md&amp;title=">bug report</a>.</p>
 <p><strong>Be sure to include system info and browser logs</strong> so the problem can be quickly diagnosed and fixed.</p>
 
               
             </article>
+            
           </div>
         </div>
         
@@ -666,7 +640,8 @@ clear the bed and finish the queue.</p>
       
         <footer class="md-footer">
   
-    <nav class="md-footer__inner md-grid" aria-label="Footer">
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
         <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home" rel="prev">
@@ -721,10 +696,10 @@ clear the bed and finish the queue.</p>
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.748e2769.min.js"></script>
+      <script src="../assets/javascripts/bundle.6c7ad80a.min.js"></script>
       
     
   </body>

@@ -9,7 +9,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.11">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
     
     
       
@@ -17,11 +17,12 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.8c5ef100.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.1d29e8d0.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.9647289d.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
         
+      
       
     
     
@@ -328,11 +329,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#behavior" class="md-nav__link">
-    Behavior
+  <a href="#setup" class="md-nav__link">
+    Setup
   </a>
   
-    <nav class="md-nav" aria-label="Behavior">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#submit-a-job" class="md-nav__link">
+    Submit a job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cancel-a-job" class="md-nav__link">
+    Cancel a job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#details" class="md-nav__link">
+    Details
+  </a>
+  
+    <nav class="md-nav" aria-label="Details">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -356,36 +378,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#additional-lan-queues" class="md-nav__link">
+    Additional LAN Queues
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    Setup
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#add-a-lan-queue" class="md-nav__link">
-    Add a LAN queue
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#submit-a-job" class="md-nav__link">
-    Submit a job
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cancel-a-job" class="md-nav__link">
-    Cancel a job
-  </a>
   
 </li>
       
@@ -450,6 +451,21 @@
   
   
     <li class="md-nav__item">
+      <a href="../action-commands/" class="md-nav__link">
+        Action Commands
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
         Contributing
       </a>
@@ -499,11 +515,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#behavior" class="md-nav__link">
-    Behavior
+  <a href="#setup" class="md-nav__link">
+    Setup
   </a>
   
-    <nav class="md-nav" aria-label="Behavior">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#submit-a-job" class="md-nav__link">
+    Submit a job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cancel-a-job" class="md-nav__link">
+    Cancel a job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#details" class="md-nav__link">
+    Details
+  </a>
+  
+    <nav class="md-nav" aria-label="Details">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -527,36 +564,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#additional-lan-queues" class="md-nav__link">
+    Additional LAN Queues
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#setup" class="md-nav__link">
-    Setup
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#add-a-lan-queue" class="md-nav__link">
-    Add a LAN queue
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#submit-a-job" class="md-nav__link">
-    Submit a job
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cancel-a-job" class="md-nav__link">
-    Cancel a job
-  </a>
   
 </li>
       
@@ -576,25 +592,41 @@
 
 <h1 id="lan-queues">LAN Queues</h1>
 <p><strong>A LAN queue is a local network queue that multiple 3D printers print from.</strong></p>
+<p>It's not unusual to have multiple 3D printers - in home workshops, in the prototyping industry, and even for 3D printing services (e.g. Shapeways) and manufacturers that manage hundreds/thousands of them.</p>
+<p>In addition to providing a local queue by default, Continuous Print also configures a default LAN queue that will automatically link any other printers on your local network. Printers can then coordinate together over the network to print jobs from the same queue.</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
-<p>This feature is only available in <code>v2.0.0</code> or higher.</p>
-</div>
-<p>It's not unusual to have multiple 3D printers - in home workshops, in the prototyping industry, and even for 3D printing services (e.g. Shapeways) and manufacturers that manage hundreds/thousands of them.</p>
-<p>Continuous Print provides a single, local queue by default - managed by a single printer with a single instance of OctoPrint. But by adding LAN queues, multiple printers can coordinate together over the network to print jobs from the same queue(s).</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>This feature is not yet proven. If you encounter problems, please read this guide thoroughly before <a href="https://github.com/smartin015/continuousprint/issues/new/choose">creating an issue</a> if you're unable to resolve them.</p>
-</div>
-<div class="admonition danger">
-<p class="admonition-title">Danger</p>
 <p>LAN queues are intended for trusted, local (LAN) networks only - not for cross-network (WAN) use cases. Using LAN queues across networks is insecure and strongly discouraged.</p>
 </div>
-<h2 id="behavior">Behavior</h2>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p><strong>If you upgraded from v2.0.0 or earlier</strong>, the default LAN queue will not be added (a compatibility measure). If you don't see the default LAn queue, please read and follow <a href="#additional-lan-queues">Additional LAN Queues</a> for instructions on how to set up your own.</p>
+</div>
+<h2 id="setup">Setup</h2>
+<p>By default, Continuous Print creates a queue called "LAN" that printers on the network will automatically join.</p>
+<p><strong>You will need a working instance of OctoPrint (with the Continuous Print plugin installed) for every printer you wish to have join the queue.</strong></p>
+<p>See what printers are connected to the queue by hovering your mouse over the queue name:</p>
+<p><img alt="Hover Example" src="/hover_viz.png" /></p>
+<p>If printers are missing from this list, make sure they have OctoPrint and Continous Print installed and enabled, and that they are on the same local network. See <a href="#additional-lan-queues">Additional LAN Queues</a> below if you need more advanced LAN queue configuration.</p>
+<h2 id="submit-a-job">Submit a job</h2>
+<p>Submitting a job is as simple as dragging it from the "local" queue to your LAN queue. After confirming that you wish to submit your job, the job will be moved out of the local queue and into the LAN queue.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Currently, LAN queue submission is somewhat destructive - the job cannot be modified or reverted once it's submitted, only deleted.</p>
+<p>If you have a very complex job to submit, consider <a href="/gjob-files">saving it</a> before submission so you have a backup.</p>
+</div>
+<h2 id="cancel-a-job">Cancel a job</h2>
+<ol>
+<li>Click the checkbox next to the job in your LAN queue.</li>
+<li>Click the trash can icon that appears.</li>
+</ol>
+<p>The job will disappear from the LAN queue and no longer be printed. Note that a job cannot be deleted if a printer is actively printing it.</p>
+<h2 id="details">Details</h2>
 <h3 id="lan-queues-manage-jobs-not-setsfiles">LAN Queues manage Jobs, not Sets/Files</h3>
 <p>Queues operate at the level of a Job (see <a href="/advanced-queuing/#sets-and-jobs">Sets and Jobs</a> for disambiguation). All work described by the job will be completed by the printer which acquires it. In other words, <strong>the work within a job will not be distributed across printers</strong>. This is to ensure compatability with future work to support WAN / decentralized network printing, ensuring that all prints of any job are guaranteed to end up in the same physical location.</p>
 <h3 id="queue-strategies">Queue Strategies</h3>
-<p>When a printer is done with its job, it will choose the next one based on whichever strategy is configured for the queue it's printing from. There is currently only one strategy:</p>
+<p>When a printer is done with its job, it will choose the next one based on whichever strategy is configured for the queue it's printing from.</p>
+<p>There is currently only one strategy:</p>
 <ul>
 <li><strong>In-Order</strong> prints linearly down the queue from top to bottom, one job at a time.</li>
 </ul>
@@ -607,10 +639,12 @@
 <li>Use exactly the same make and model of printer for all members of the LAN queue</li>
 <li>Configure the correct <a href="/printer-profiles">profiles</a> for all Sets so that each type of printer has its own compatible <code>*.gcode</code> files to fully print the job.</li>
 </ol>
-<h2 id="setup">Setup</h2>
-<p>By default, no LAN queues are configured and all prints are local to the specific instance of Octoprint.</p>
-<p><strong>You will need a working instance of OctoPrint (with the Continuous Print plugin installed) for every printer you wish to have join the queue.</strong></p>
-<h2 id="add-a-lan-queue">Add a LAN queue</h2>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>For users of <a href="https://grid.space/kiri/">Kiri:Moto slicer</a>, the second mitigation is automatic: gcode files are automatically analyzed and the printer profile applied when they are added to the queue. See the <a href="/printer-profiles">Printer Profiles</a> page for more details.</p>
+</div>
+<h3 id="additional-lan-queues">Additional LAN Queues</h3>
+<p>It's straightforward to add additional LAN queues, or remove/modify the default LAN queue if desired:</p>
 <ol>
 <li>Open OctoPrint's settings page</li>
 <li>Click through to Continuous Print</li>
@@ -618,8 +652,9 @@
 <li>Click the "Add Queue" button to add a new LAN queue.</li>
 <li>Fill in the inputs, but keep in mind:<ul>
 <li>Each queue must have a unique name (which cannot be <code>local</code> and <code>archive</code> - these are reserved)</li>
-<li>Address:Port must be of the form <code>ip_address:port</code> (e.g. <code>192.168.1.43:6789</code>)<ul>
+<li>Address:Port must be either set to <code>auto</code> or have the form of <code>ip_address:port</code> (e.g. <code>192.168.1.43:6789</code>)<ul>
 <li>A hostname of <code>localhost</code> will only connect to other OctoPrint instances on the same host. If you're unsure what to specify here, try <code>0.0.0.0</code> which <a href="https://en.wikipedia.org/wiki/0.0.0.0">binds to all IP addresses on the host</a>.</li>
+<li>If <code>auto</code> is used, an IP address and port will be selected automatically - this will probably work, but may not be correct for more complicated network setups.</li>
 </ul>
 </li>
 <li>Access control may be a factor if you're using a port number below 1024 (see <a href="https://www.w3.org/Daemon/User/Installation/PrivilegedPorts.html">privileged ports</a>)</li>
@@ -630,22 +665,10 @@
 <li>When you've finished configuring your queues, click <code>Save</code>.</li>
 </ol>
 <p>If everything is working properly, you'll see the changes reflected in the queues on the Continuous Print tab with the queue(s) you added. It will show no other peers connected to it, but that's because we still have to set them up. Complete steps 1-6 for all remaining printers, and you should see them as peers when you look at the header of the queue.</p>
-<h2 id="submit-a-job">Submit a job</h2>
-<p>Submitting a job is as simple as dragging it from the "local" queue to your LAN queue. After confirming that you wish to submit your job, the job will disappear from the local queue and show up on the LAN queue.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Currently, LAN queue submission is somewhat destructive - the job cannot be modified or reverted once it's submitted, only deleted.</p>
-<p>If you have a very complex job to submit, consider <a href="/gjob-files">saving it</a> before submission so you have a backup.</p>
-</div>
-<h2 id="cancel-a-job">Cancel a job</h2>
-<ol>
-<li>Click the checkbox next to the job in your LAN queue.</li>
-<li>Click the trash can icon that appears.</li>
-</ol>
-<p>The job will disappear from the LAN queue and no longer be printed. Note that a job may not be deleted if a printer is actively printing it.</p>
 
               
             </article>
+            
           </div>
         </div>
         
@@ -653,7 +676,8 @@
       
         <footer class="md-footer">
   
-    <nav class="md-footer__inner md-grid" aria-label="Footer">
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
         <a href="../failure-recovery/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Failure Recovery" rel="prev">
@@ -708,10 +732,10 @@
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.748e2769.min.js"></script>
+      <script src="../assets/javascripts/bundle.6c7ad80a.min.js"></script>
       
     
   </body>

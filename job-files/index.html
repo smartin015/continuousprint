@@ -9,7 +9,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.11">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
     
     
       
@@ -17,11 +17,12 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.8c5ef100.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.1d29e8d0.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.9647289d.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
         
+      
       
     
     
@@ -305,15 +306,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#creating-a-gjob" class="md-nav__link">
-    Creating a gjob
+  <a href="#creating-a-gjob-file" class="md-nav__link">
+    Creating a .gjob file
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#loading-a-gjob" class="md-nav__link">
-    Loading a gjob
+  <a href="#loading-a-gjob-file" class="md-nav__link">
+    Loading a .gjob file
   </a>
   
 </li>
@@ -416,6 +417,21 @@
   
   
     <li class="md-nav__item">
+      <a href="../action-commands/" class="md-nav__link">
+        Action Commands
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
         Contributing
       </a>
@@ -472,15 +488,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#creating-a-gjob" class="md-nav__link">
-    Creating a gjob
+  <a href="#creating-a-gjob-file" class="md-nav__link">
+    Creating a .gjob file
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#loading-a-gjob" class="md-nav__link">
-    Loading a gjob
+  <a href="#loading-a-gjob-file" class="md-nav__link">
+    Loading a .gjob file
   </a>
   
 </li>
@@ -508,21 +524,18 @@
 
 <h1 id="job-files">Job Files</h1>
 <p><strong><code>.gjob</code> files store everything that a printer needs to print a Continuous Print job</strong>.</p>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>This feature is only available in <code>v2.0.0</code> or higher.</p>
-</div>
 <h2 id="why-create-a-new-file-type">Why create a new file type?</h2>
 <p>3D print slicers generate a <code>*.gcode</code> file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).</p>
-<p>Similarly, GCODE doesn't allow for quickly changing the number and type of objects which are printed - which is something Continuous Print does as a base feature. Other metadata (like <a href="/material-selection">material types</a> and <a href="/printer-profiles">printer profile</a> supported by the GCODE file) are also non-standard and stored in a slicer-specific way.</p>
+<p>Similarly, GCODE doesn't allow for quickly changing the number and type of objects which are printed - which is something Continuous Print does as a base feature.</p>
+<p>Other metadata (like <a href="/material-selection">material types</a> and <a href="/printer-profiles">printer profile</a> supported by the GCODE file) are also non-standard and stored in a slicer-specific way, if at all.</p>
 <p>For these reasons, it becomes useful to define the <code>.gjob</code> file type.</p>
-<h2 id="creating-a-gjob">Creating a gjob</h2>
+<h2 id="creating-a-gjob-file">Creating a .gjob file</h2>
 <ol>
 <li>Click the check box next to one or more Jobs in the Queues tab to select them.</li>
 <li>Click the save (floppy disk) icon that appears at the top of the queue to save to <code>.gjob</code>.</li>
 </ol>
 <p>All saved <code>.gjob</code> files will appear in the Files panel on the left.</p>
-<h2 id="loading-a-gjob">Loading a gjob</h2>
+<h2 id="loading-a-gjob-file">Loading a .gjob file</h2>
 <p>To load a <code>.gjob</code> file, click the <code>+</code> button next to a <code>.gjob</code> file in the Files panel.</p>
 <p>The job will be inserted at the bottom of the queue in an edit mode - make any desired changes, then hit Save.</p>
 <h2 id="technical-details">Technical Details</h2>
@@ -531,6 +544,7 @@
 
               
             </article>
+            
           </div>
         </div>
         
@@ -538,7 +552,8 @@
       
         <footer class="md-footer">
   
-    <nav class="md-footer__inner md-grid" aria-label="Footer">
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
         <a href="../advanced-queuing/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Queuing Basics" rel="prev">
@@ -593,10 +608,10 @@
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.748e2769.min.js"></script>
+      <script src="../assets/javascripts/bundle.6c7ad80a.min.js"></script>
       
     
   </body>
