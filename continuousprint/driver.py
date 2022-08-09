@@ -1,4 +1,5 @@
 import time
+from multiprocessing import Lock
 from enum import Enum, auto
 
 
@@ -41,6 +42,7 @@ class Driver:
         script_runner,
         logger,
     ):
+        self.mutex = Lock()
         self._logger = logger
         self.status = None
         self.status_type = StatusType.NORMAL
@@ -69,30 +71,35 @@ class Driver:
         materials: list = [],
         bed_temp=None,
     ):
-        self._logger.debug(f"{a.name}, {p.name}, path={path}, materials={materials}")
-        if path is not None:
-            self._cur_path = path
-        if len(materials) > 0:
-            self._cur_materials = materials
-        if bed_temp is not None:
-            self._bed_temp = bed_temp
+        # Given that some calls to action() come from a watchdog timer, we hold a mutex when performing the action
+        # so the state is updated in a thread safe way.
+        with self.mutex:
+            self._logger.debug(
+                f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}"
+            )
+            if path is not None:
+                self._cur_path = path
+            if len(materials) > 0:
+                self._cur_materials = materials
+            if bed_temp is not None:
+                self._bed_temp = bed_temp
 
-        # Deactivation must be allowed on all states, so we hande it here for
-        # completeness.
-        if a == Action.DEACTIVATE and self.state != self._state_inactive:
-            nxt = self._state_inactive
-        else:
-            nxt = self.state(a, p)
+            # Deactivation must be allowed on all states, so we hande it here for
+            # completeness.
+            if a == Action.DEACTIVATE and self.state != self._state_inactive:
+                nxt = self._state_inactive
+            else:
+                nxt = self.state(a, p)
 
-        if nxt is not None:
-            self._logger.info(f"{self.state.__name__} -> {nxt.__name__}")
-            self.state = nxt
-            self._update_ui = True
+            if nxt is not None:
+                self._logger.info(f"{self.state.__name__} -> {nxt.__name__}")
+                self.state = nxt
+                self._update_ui = True
 
-        if self._update_ui:
-            self._update_ui = False
-            return True
-        return False
+            if self._update_ui:
+                self._update_ui = False
+                return True
+            return False
 
     def _state_unknown(self, a: Action, p: Printer):
         pass
@@ -245,8 +252,12 @@ class Driver:
         # Clear bed if we have a next queue item, otherwise run finishing script
         item = self.q.get_set_or_acquire()
         if item is not None:
+            self._logger.debug(
+                f'_state_success next item "{item.path}" (remaining={item.remaining}, job remaining={item.job.remaining}) --> _start_clearing'
+            )
             return self._state_start_clearing
         else:
+            self._logger.debug("_state_success no next item --> _start_finishing")
             return self._state_start_finishing
 
     def _state_start_clearing(self, a: Action, p: Printer):

@@ -276,7 +276,8 @@ function CPQueue(data, api, files, profile) {
         };
 
         if (infer_profile) {
-          let prof = (data.gcodeAnalysis || {}).continuousprint_profile;
+          // See CPQProfileAnalysisQueue for metadata path key constants
+          let prof = (data.continuousprint || {}).profile;
           if (prof) {
             set_data.profiles = [prof];
           }

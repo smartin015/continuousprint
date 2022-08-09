@@ -169,11 +169,11 @@ class TestEventHandling(unittest.TestCase):
 
     def testMetadataAnslysisFinishedWithPending(self):
         self.p._set_key(Keys.INFER_PROFILE, True)
-        self.p._file_manager.get_metadata.return_value = dict()
+        self.p._file_manager.get_additional_metadata.return_value = dict()
         self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
         self.p.on_event(
-            Events.METADATA_ANALYSIS_FINISHED,
+            CPQPlugin.CPQ_ANALYSIS_FINISHED,
             dict(result={CPQProfileAnalysisQueue.PROFILE_KEY: "asdf"}, path="a.gcode"),
         )
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_called_with(
@@ -189,7 +189,7 @@ class TestEventHandling(unittest.TestCase):
 
     def testAddSetWithPending(self):
         self.p._set_key(Keys.INFER_PROFILE, True)
-        self.p._file_manager.get_metadata.return_value = dict()
+        self.p._file_manager.get_additional_metadata.return_value = dict()
         self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
         self.p._add_set(path="a.gcode", sd=False)  # Second attempt passes through

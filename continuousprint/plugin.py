@@ -8,6 +8,7 @@ import traceback
 from pathlib import Path
 from octoprint.events import Events
 from octoprint.filemanager import NoSuchStorage
+from octoprint.filemanager.analysis import AnalysisQueue, QueueEntry
 from octoprint.filemanager.destinations import FileDestinations
 import octoprint.timelapse
 
@@ -36,6 +37,8 @@ from .script_runner import ScriptRunner
 
 
 class CPQPlugin(ContinuousPrintAPI):
+    CPQ_ANALYSIS_FINISHED = "CPQ_ANALYSIS_FINISHED"
+
     def __init__(
         self,
         printer,
@@ -65,6 +68,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._init_fileshare()
         self._init_queues()
         self._init_driver()
+        self._init_analysis_queue()
 
     def _on_queue_update(self, q, now=time.time()):
         self._logger.debug("_on_queue_update")
@@ -120,10 +124,15 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _add_set(self, path, sd, draft=True, profiles=[]):
         # We may need to delay adding a file if it hasn't yet finished analysis
-        meta = self._file_manager.get_metadata(
-            FileDestinations.SDCARD if sd else FileDestinations.LOCAL, path
+        meta = self._file_manager.get_additional_metadata(
+            FileDestinations.SDCARD if sd else FileDestinations.LOCAL,
+            path,
+            CPQProfileAnalysisQueue.META_KEY,
         )
-        prof = meta.get("analysis", {}).get(CPQProfileAnalysisQueue.PROFILE_KEY)
+        prof = (
+            meta.get(CPQProfileAnalysisQueue.PROFILE_KEY) if meta is not None else None
+        )
+        self._logger.info(f"_add_set {prof}")
         if (
             self._get_key(Keys.INFER_PROFILE)
             and prof is None
@@ -151,16 +160,17 @@ class CPQPlugin(ContinuousPrintAPI):
             return data
 
         try:
-            meta = self._file_manager.get_metadata(
+            meta = self._file_manager.get_additional_metadata(
                 FileDestinations.SDCARD if data.get("sd") else FileDestinations.LOCAL,
                 data["path"],
+                CPQProfileAnalysisQueue.META_KEY,
             )
         except NoSuchStorage:
             return data
 
-        prof = meta.get("analysis") if meta is not None else None
-        if prof is not None:
-            prof = prof.get(CPQProfileAnalysisQueue.PROFILE_KEY)
+        prof = (
+            meta.get(CPQProfileAnalysisQueue.PROFILE_KEY) if meta is not None else None
+        )
         self._logger.debug(f"Path {data['path']} profile: {prof}")
         if prof is not None and prof != "":
             data["profiles"] = [prof]
@@ -301,6 +311,76 @@ class CPQPlugin(ContinuousPrintAPI):
         self._update(DA.DEACTIVATE)  # Initializes and passes printer state
         self._on_settings_updated()
 
+    def _init_analysis_queue(self):
+        self._logger.debug("Creating CPQ analysis queue and checking for backlog")
+        self._analysis_queue = AnalysisQueue(dict(gcode=CPQProfileAnalysisQueue))
+        self._analysis_queue.register_finish_callback(self._on_analysis_finished)
+        import threading
+
+        thread = threading.Thread(target=self._enqueue_analysis_backlog)
+        thread.daemon = True
+        thread.start()
+
+    def _profile_from_path(self, path):
+        self._logger.info(f"_profile_from_path {path}")
+        if path.split(".")[-1] not in ("gcode", "gco"):
+            return None
+        meta = self._file_manager.get_additional_metadata(
+            FileDestinations.LOCAL, path, CPQProfileAnalysisQueue.META_KEY
+        )
+        if meta is not None:
+            return meta.get(CPQProfileAnalysisQueue.PROFILE_KEY)
+
+    def _backlog_from_file_list(self, data):
+        # Recursively walks the output of FileManager.list_files() and selects
+        # files which have no CPQ analysis provided
+        # See https://docs.octoprint.org/en/master/modules/filemanager.html?highlight=get_additional_metadata#octoprint.filemanager.storage.LocalFileStorage.list_files
+        backlog = []
+        for k, v in data.items():
+            if v["type"] == "folder":
+                backlog += self._backlog_from_file_list(v["children"])
+            elif self._profile_from_path(v["path"]) is None:
+                self._logger.debug(f"File {v['path']} needs analysis")
+                backlog.append(v["path"])
+        return backlog
+
+    def _enqueue_analysis_backlog(self):
+        # This loosely follows FileManager._determine_analysis_backlog to push un-analyzed files onto our custom AnalysisQueue - see
+        # https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/filemanager/__init__.py#L301
+        self._logger.debug("Searching files for backlogged CPQ analysis")
+        counter = 0
+        file_list = self._file_manager.list_files(destinations=FileDestinations.LOCAL)[
+            FileDestinations.LOCAL
+        ]
+        self._logger.debug("FileList: {file_list}")
+        for path in self._backlog_from_file_list(file_list):
+            if self._enqueue(path):
+                counter += 1
+        if counter > 0:
+            self._logger.info(f"Enqueued {counter} files for CPQ analysis")
+
+    def _enqueue(self, path, high_priority=False):
+        queue_entry = QueueEntry(
+            name=path.split("/")[-1],
+            path=path,
+            type="gcode",
+            location=FileDestinations.LOCAL,
+            absolute_path=self._file_manager.path_on_disk(FileDestinations.LOCAL, path),
+            printer_profile=None,  # self._printer_profile_manager.get_default(),
+            analysis=None,
+        )
+        return self._analysis_queue.enqueue(queue_entry, high_priority=high_priority)
+
+    def _on_analysis_finished(self, entry, result):
+        self._file_manager.set_additional_metadata(
+            FileDestinations.LOCAL,
+            entry.path,
+            CPQProfileAnalysisQueue.META_KEY,
+            result,
+            overwrite=True,
+        )
+        self.on_event(self.CPQ_ANALYSIS_FINISHED, dict(path=entry.path, result=result))
+
     def tick(self):
         # Catch/pass all exceptions to prevent errors from stopping the repeated timer.
         try:
@@ -333,17 +413,25 @@ class CPQPlugin(ContinuousPrintAPI):
         current_file = self._printer.get_current_job().get("file", {}).get("name")
         is_current_path = current_file == self.d.current_path()
 
-        if event == Events.METADATA_ANALYSIS_FINISHED:
+        if event == self.CPQ_ANALYSIS_FINISHED:
             # If we auto-added a file to the queue before analysis finished,
             # it's placed in a pending queue (see self._add_set). Now that
             # the processing is done, we actually add the set.
-            # prof = payload["result"].get(CPQProfileAnalysisQueue.PROFILE_KEY)
             path = payload["path"]
+            self._logger.debug(f"Handling completed analysis for {path}")
             pend = self._set_add_awaiting_metadata.get(path)
             if pend is not None:
                 self._logger.debug(f"Handling pending add_set() for {path}")
                 self._add_set(*pend)
                 del self._set_add_awaiting_metadata[path]
+            return
+        if (
+            event == Events.FILE_ADDED
+            and self._profile_from_path(payload["path"]) is None
+        ):
+            # Added files should be checked for metadata and enqueued into CPQ custom analysis
+            if self._enqueue(payload["path"]):
+                self._logger.debug(f"Enqueued newly added file {payload['path']}")
             return
 
         if (
