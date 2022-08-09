@@ -156,7 +156,9 @@ class TestEventHandling(unittest.TestCase):
         self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testTickExceptionHandled(self):
-        self.p.d.action.side_effect = Exception("testing exception")
+        self.p.d.action.side_effect = Exception(
+            "testing exception - ignore this, part of a unit test"
+        )
         self.p.tick()  # does *not* raise exception
         self.p.d.action.assert_called()
 
@@ -386,14 +388,12 @@ class TestAnalysis(unittest.TestCase):
         self.p._analysis_queue.enqueue.assert_not_called()
 
     def testInitAnalysisNoBacklog(self):
-        self.p._file_manager.get_additional_metadata.return_value = dict(
-            profile="TestProfile"
-        )  # All files have analysis
         self.p._file_manager.list_files.return_value = dict(
             local=dict(
                 file1=dict(
                     type="machinecode",
                     path="a.gcode",
+                    continuousprint=dict(profile="TestProfile"),
                 )
             )
         )
@@ -402,9 +402,6 @@ class TestAnalysis(unittest.TestCase):
         self.p._analysis_queue.enqueue.assert_not_called()
 
     def testInitAnalysisWithBacklog(self):
-        self.p._file_manager.get_additional_metadata.return_value = (
-            None  # All files have no analysis
-        )
         self.p._file_manager.list_files.return_value = dict(
             local=dict(
                 file1=dict(

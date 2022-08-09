@@ -57,7 +57,7 @@ class CPQProfileAnalysisQueue(AbstractAnalysisQueue):
             self._logger.info(f"Got output: {output!r}")
 
             result = {}
-            result["profile"] = output.strip()
+            result[self.PROFILE_KEY] = output.strip()
 
             if self._current.analysis and isinstance(self._current.analysis, dict):
                 return dict_merge(result, self._current.analysis)

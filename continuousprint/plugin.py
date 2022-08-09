@@ -132,7 +132,6 @@ class CPQPlugin(ContinuousPrintAPI):
         prof = (
             meta.get(CPQProfileAnalysisQueue.PROFILE_KEY) if meta is not None else None
         )
-        self._logger.info(f"_add_set {prof}")
         if (
             self._get_key(Keys.INFER_PROFILE)
             and prof is None
@@ -343,9 +342,11 @@ class CPQPlugin(ContinuousPrintAPI):
         for k, v in data.items():
             if v["type"] == "folder":
                 backlog += self._backlog_from_file_list(v["children"])
-            elif self._profile_from_path(v["path"]) is None:
-                self._logger.debug(f"File {v['path']} needs analysis")
+            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None:
+                self._logger.debug(f"File \"{v['path']}\" needs analysis")
                 backlog.append(v["path"])
+            else:
+                self._logger.debug(f"File \"{v['path']}\" already analyzed")
         return backlog
 
     def _enqueue_analysis_backlog(self):
@@ -356,7 +357,6 @@ class CPQPlugin(ContinuousPrintAPI):
         file_list = self._file_manager.list_files(destinations=FileDestinations.LOCAL)[
             FileDestinations.LOCAL
         ]
-        self._logger.debug("FileList: {file_list}")
         for path in self._backlog_from_file_list(file_list):
             if self._enqueue(path):
                 counter += 1
@@ -425,8 +425,14 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger.debug(f"Handling completed analysis for {path}")
             pend = self._set_add_awaiting_metadata.get(path)
             if pend is not None:
-                self._logger.debug(f"Handling pending add_set() for {path}")
-                self._add_set(*pend)
+                (path, sd, draft, profiles) = pend
+                prof = payload["result"][CPQProfileAnalysisQueue.PROFILE_KEY]
+                if (profiles is None or profiles == []) and prof != "":
+                    profiles = [prof]
+                self._logger.debug(
+                    f"Handling pending add_set() for {path} with profiles={profiles}"
+                )
+                self._add_set(path, sd, draft, profiles)
                 del self._set_add_awaiting_metadata[path]
             return
         if (
