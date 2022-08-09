@@ -311,15 +311,19 @@ class CPQPlugin(ContinuousPrintAPI):
         self._update(DA.DEACTIVATE)  # Initializes and passes printer state
         self._on_settings_updated()
 
-    def _init_analysis_queue(self):
+    def _init_analysis_queue(self, cls=AnalysisQueue, async_backlog=True):
         self._logger.debug("Creating CPQ analysis queue and checking for backlog")
-        self._analysis_queue = AnalysisQueue(dict(gcode=CPQProfileAnalysisQueue))
+        self._analysis_queue = cls(dict(gcode=CPQProfileAnalysisQueue))
         self._analysis_queue.register_finish_callback(self._on_analysis_finished)
-        import threading
 
-        thread = threading.Thread(target=self._enqueue_analysis_backlog)
-        thread.daemon = True
-        thread.start()
+        if async_backlog:
+            import threading
+
+            thread = threading.Thread(target=self._enqueue_analysis_backlog)
+            thread.daemon = True
+            thread.start()
+        else:
+            self._enqueue_analysis_backlog()
 
     def _profile_from_path(self, path):
         self._logger.info(f"_profile_from_path {path}")
