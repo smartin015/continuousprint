@@ -6,7 +6,8 @@ from octoprint.util import dict_merge
 class CPQProfileAnalysisQueue(AbstractAnalysisQueue):
     """This queue attempts to resolve the profiles for which a gcode has been created."""
 
-    PROFILE_KEY = "continuousprint_profile"
+    META_KEY = "continuousprint"
+    PROFILE_KEY = "profile"
 
     def __init__(self, finished_callback):
         AbstractAnalysisQueue.__init__(self, finished_callback)

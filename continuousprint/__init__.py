@@ -15,7 +15,6 @@ from .data import (
 from .storage import queries
 from .api import Permission as CPQPermission
 from .plugin import CPQPlugin
-from .analysis import CPQProfileAnalysisQueue
 
 
 class ContinuousprintPlugin(
@@ -126,10 +125,6 @@ class ContinuousprintPlugin(
     def support_gjob_format(*args, **kwargs):
         return dict(machinecode=dict(gjob=["gjob"]))
 
-    def cpq_analysis_queue(*args, **kwargs):
-        result = dict(gcode=CPQProfileAnalysisQueue)
-        return result
-
 
 __plugin_name__ = "Continuous Print"
 __plugin_pythoncompat__ = ">=3.7,<4"
@@ -145,5 +140,4 @@ def __plugin_load__():
         "octoprint.access.permissions": __plugin_implementation__.add_permissions,
         "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
         "octoprint.filemanager.extension_tree": __plugin_implementation__.support_gjob_format,
-        "octoprint.filemanager.analysis.factory": __plugin_implementation__.cpq_analysis_queue,
     }

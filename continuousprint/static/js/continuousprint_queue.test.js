@@ -125,7 +125,7 @@ test('resetSelected', () => {
 
 test('addFile (profile inference disabled)', () => {
   let v = init(njobs=0);
-  v.addFile({name: "foo", path: "foo.gcode", origin: "local", gcodeAnalysis: {continuousprint_profile: "testprof"}});
+  v.addFile({name: "foo", path: "foo.gcode", origin: "local", continuousprint: {profile: "testprof"}});
   expect(v.api.add).toHaveBeenCalledWith(v.api.SET, {
      "count": 1,
      "job": null,
@@ -138,7 +138,7 @@ test('addFile (profile inference disabled)', () => {
 
 test('addFile (profile inference enabled)', () => {
   let v = init(njobs=0);
-  v.addFile({name: "foo", path: "foo.gcode", origin: "local", gcodeAnalysis: {continuousprint_profile: "testprof"}}, true);
+  v.addFile({name: "foo", path: "foo.gcode", origin: "local", continuousprint: {profile: "testprof"}}, true);
   expect(v.api.add).toHaveBeenCalledWith(v.api.SET, {
      "count": 1,
      "job": null,

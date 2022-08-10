@@ -3,7 +3,8 @@ from collections import namedtuple
 from .analysis import CPQProfileAnalysisQueue
 from .storage.queries import getJobsAndSets
 from .storage.database import DEFAULT_QUEUE, ARCHIVE_QUEUE
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch, ANY, call
+from octoprint.filemanager.analysis import QueueEntry
 from .driver import Action as DA
 from octoprint.events import Events
 import logging
@@ -155,7 +156,9 @@ class TestEventHandling(unittest.TestCase):
         self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
 
     def testTickExceptionHandled(self):
-        self.p.d.action.side_effect = Exception("testing exception")
+        self.p.d.action.side_effect = Exception(
+            "testing exception - ignore this, part of a unit test"
+        )
         self.p.tick()  # does *not* raise exception
         self.p.d.action.assert_called()
 
@@ -167,13 +170,13 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
 
-    def testMetadataAnslysisFinishedWithPending(self):
+    def testMetadataAnalysisFinishedWithPending(self):
         self.p._set_key(Keys.INFER_PROFILE, True)
-        self.p._file_manager.get_metadata.return_value = dict()
+        self.p._file_manager.get_additional_metadata.return_value = dict()
         self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
         self.p.on_event(
-            Events.METADATA_ANALYSIS_FINISHED,
+            CPQPlugin.CPQ_ANALYSIS_FINISHED,
             dict(result={CPQProfileAnalysisQueue.PROFILE_KEY: "asdf"}, path="a.gcode"),
         )
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_called_with(
@@ -183,13 +186,13 @@ class TestEventHandling(unittest.TestCase):
                 "sd": "false",
                 "count": 1,
                 "jobDraft": True,
-                "profiles": [],
+                "profiles": ["asdf"],
             },
         )
 
     def testAddSetWithPending(self):
         self.p._set_key(Keys.INFER_PROFILE, True)
-        self.p._file_manager.get_metadata.return_value = dict()
+        self.p._file_manager.get_additional_metadata.return_value = dict()
         self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
         self.p._add_set(path="a.gcode", sd=False)  # Second attempt passes through
@@ -314,6 +317,14 @@ class TestEventHandling(unittest.TestCase):
         self.p.on_event(Events.SETTINGS_UPDATED, dict())
         self.p.d.set_retry_on_pause.assert_called()
 
+    def testFileAddedWithNoAnalysis(self):
+        self.p._init_analysis_queue(cls=MagicMock(), async_backlog=False)
+        self.p._file_manager.get_additional_metadata.return_value = (
+            None  # No existing analysis
+        )
+        self.p.on_event(Events.FILE_ADDED, dict(path="a.gcode"))
+        self.p._analysis_queue.enqueue.assert_called()
+
 
 class TestGetters(unittest.TestCase):
     def setUp(self):
@@ -363,4 +374,89 @@ class TestGetters(unittest.TestCase):
         self.assertEqual(
             json.loads(self.p._history_json()),
             [{"run_id": 1}, {"run_id": 2, "active": True}],
+        )
+
+
+class TestAnalysis(unittest.TestCase):
+    def setUp(self):
+        self.p = mockplugin()
+
+    def testInitAnalysisNoFiles(self):
+        self.p._file_manager.list_files.return_value = dict(local=dict())
+        self.p._init_analysis_queue(cls=MagicMock(), async_backlog=False)
+        self.p._analysis_queue.register_finish_callback.assert_called()
+        self.p._analysis_queue.enqueue.assert_not_called()
+
+    def testInitAnalysisNoBacklog(self):
+        self.p._file_manager.list_files.return_value = dict(
+            local=dict(
+                file1=dict(
+                    type="machinecode",
+                    path="a.gcode",
+                    continuousprint=dict(profile="TestProfile"),
+                )
+            )
+        )
+        self.p._init_analysis_queue(cls=MagicMock(), async_backlog=False)
+        self.p._analysis_queue.register_finish_callback.assert_called()
+        self.p._analysis_queue.enqueue.assert_not_called()
+
+    def testInitAnalysisWithBacklog(self):
+        self.p._file_manager.list_files.return_value = dict(
+            local=dict(
+                file1=dict(
+                    type="machinecode",
+                    path="a.gcode",
+                ),
+                folder1=dict(
+                    type="folder",
+                    children=dict(
+                        file2=dict(
+                            type="machinecode",
+                            path="b.gcode",
+                        )
+                    ),
+                ),
+            )
+        )
+        self.p._init_analysis_queue(cls=MagicMock(), async_backlog=False)
+        self.p._analysis_queue.register_finish_callback.assert_called()
+        # Note that python injects some __bool__() calls which is apparently due to threading checks
+        # https://gist.github.com/adamf/aaeb8971b8304a24fe034d5ac4710f09
+        self.p._analysis_queue.enqueue.assert_has_calls(
+            [
+                call(
+                    QueueEntry(
+                        name="a.gcode",
+                        path=ANY,
+                        type="gcode",
+                        location="local",
+                        absolute_path=ANY,
+                        printer_profile=ANY,
+                        analysis=ANY,
+                    ),
+                    high_priority=False,
+                ),
+                call(
+                    QueueEntry(
+                        name="b.gcode",
+                        path=ANY,
+                        type="gcode",
+                        location="local",
+                        absolute_path=ANY,
+                        printer_profile=ANY,
+                        analysis=ANY,
+                    ),
+                    high_priority=False,
+                ),
+            ],
+            any_order=True,
+        )
+
+    def testAnalysisCompleted(self):
+        entry = MagicMock()
+        entry.path = "a.gcode"
+        self.p._on_analysis_finished(entry, dict(profile="TestProfile"))
+        self.p._file_manager.set_additional_metadata.assert_called_with(
+            ANY, "a.gcode", ANY, ANY, overwrite=True
         )
