@@ -5,6 +5,7 @@ import socket
 import json
 import time
 import traceback
+import random
 from pathlib import Path
 from octoprint.events import Events
 from octoprint.filemanager import NoSuchStorage
@@ -36,6 +37,17 @@ from .script_runner import ScriptRunner
 
 
 class CPQPlugin(ContinuousPrintAPI):
+    # See `octoprint/printer/__init.py` `get_state_id()` for state strings
+    PRINTER_DISCONNECTED_STATES = ("CLOSED", "CLOSED_WITH_ERROR", "OFFLINE", "UNKNOWN")
+    PRINTER_CONNECTING_STATES = (
+        "OPEN_SERIAL",
+        "DETECT_SERIAL",
+        "DETECT_BAUDRATE",
+        "CONNECTING",
+    )
+    RECONNECT_WINDOW_SIZE = 5.0
+    MAX_WINDOW_EXP = 6
+
     def __init__(
         self,
         printer,
@@ -58,6 +70,8 @@ class CPQPlugin(ContinuousPrintAPI):
         self._logger = logger
         self._identifier = identifier
         self._set_add_awaiting_metadata = dict()
+        self._reconnect_attempts = 0
+        self._next_reconnect = 0
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -301,6 +315,32 @@ class CPQPlugin(ContinuousPrintAPI):
         self._update(DA.DEACTIVATE)  # Initializes and passes printer state
         self._on_settings_updated()
 
+    def _handle_printer_state_reconnect(self, pstate, now=None):
+        # Called on _update() - handles auto-reconnecting when configured and the printer ends in a terminal state.
+        # This is an opt-in feature, as printers may not reconnect safely (e.g. MP Mini Delta V2 auto-homes on reconnect)
+        if not self._get_key(Keys.AUTO_RECONNECT, False):
+            return
+
+        if now is None:
+            now = time.time()
+
+        if pstate not in self.PRINTER_DISCONNECTED_STATES:
+            self._reconnect_attempts = 0
+            self._next_reconnect = 0
+        elif pstate in self.PRINTER_CONNECTING_STATES:
+            pass  # Wait for the connection attempt to succeed or fail
+        elif now > self._next_reconnect:
+            self._reconnect_attempts += 1
+            window_sec = self.RECONNECT_WINDOW_SIZE * (
+                2 ** min(self._reconnect_attempts, self.MAX_WINDOW_EXP)
+            )
+            delay = self.RECONNECT_WINDOW_SIZE + (window_sec * random.random())
+            self._next_reconnect = now + delay
+            msg = f"Reconnecting to printer (attempt {self._reconnect_attempts}, next attempt after ~{round(delay)}s)"
+            self._logger.info(msg)
+            self._msg(dict(msg=msg, type="popup"))
+            self._printer.connect()  # No arguments --> all auto-detected
+
     def tick(self):
         # Catch/pass all exceptions to prevent errors from stopping the repeated timer.
         try:
@@ -436,6 +476,8 @@ class CPQPlugin(ContinuousPrintAPI):
             p = DP.IDLE
         elif pstate == "PAUSED":
             p = DP.PAUSED
+
+        self._handle_printer_state_reconnect(pstate)
 
         materials = []
         if self._spool_manager is not None:

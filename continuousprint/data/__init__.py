@@ -39,6 +39,7 @@ class Keys(Enum):
         "do_nothing",
     )  # One of "do_nothing", "add_draft", "add_printable"
     INFER_PROFILE = ("cp_infer_profile", True)
+    AUTO_RECONNECT = ("cp_auto_reconnect", False)
 
     def __init__(self, setting, default):
         self.setting = setting
