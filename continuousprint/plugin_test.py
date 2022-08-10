@@ -170,7 +170,7 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p._get_queue(DEFAULT_QUEUE).add_set.assert_not_called()
 
-    def testMetadataAnslysisFinishedWithPending(self):
+    def testMetadataAnalysisFinishedWithPending(self):
         self.p._set_key(Keys.INFER_PROFILE, True)
         self.p._file_manager.get_additional_metadata.return_value = dict()
         self.p._add_set(path="a.gcode", sd=False)  # Gets queued, no metadata
@@ -186,7 +186,7 @@ class TestEventHandling(unittest.TestCase):
                 "sd": "false",
                 "count": 1,
                 "jobDraft": True,
-                "profiles": [],
+                "profiles": ["asdf"],
             },
         )
 
