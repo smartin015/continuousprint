@@ -377,6 +377,58 @@ class TestGetters(unittest.TestCase):
         )
 
 
+class TestAutoReconnect(unittest.TestCase):
+    def setUp(self):
+        self.p = mockplugin()
+
+    def testOfflineAutoReconnectDisabledByDefault(self):
+        # No need to _set_key here, since it should be off by default (prevent unexpected
+        # gantry action on startup)
+        self.p._handle_printer_state_reconnect("CLOSED")
+        self.p._printer.connect.assert_not_called()
+
+    def testReconnect(self):
+        self.p._set_key(Keys.AUTO_RECONNECT, True)
+        self.p._handle_printer_state_reconnect("CLOSED")
+        self.p._printer.connect.assert_called()
+        self.p._printer.reset_mock()
+
+        # Reconnect success shouldn't cause connect() to be called again
+        self.p._handle_printer_state_reconnect("OPERATIONAL")
+        self.p._printer.connect.assert_not_called()
+
+    def testBackoff(self):
+        # Ensure we wait at least CPQPlugin.RECONNECT_WINDOW_SIZE before trying to
+        # reconnect after a prior attempt
+        NOW = 5
+        self.p._set_key(Keys.AUTO_RECONNECT, True)
+        self.p._handle_printer_state_reconnect("CLOSED", now=NOW)
+        self.p._printer.reset_mock()
+
+        # Wait time is at least the reconnect window size - early calls
+        # should do nothing
+        self.p._handle_printer_state_reconnect(
+            "CLOSED", now=NOW + CPQPlugin.RECONNECT_WINDOW_SIZE * 0.9
+        )
+        self.p._printer.connect.assert_not_called()
+
+        # Wait time is at most X + 2*X, where X is reconnect size
+        after_wait = NOW + 3.1 * CPQPlugin.RECONNECT_WINDOW_SIZE
+        self.p._handle_printer_state_reconnect("CLOSED", now=after_wait)
+        self.p._printer.connect.assert_called()
+
+    def testWaitsForTerminalState(self):
+        # Ensure we wait until the printer has finished trying to connect before attempting another reconnect
+        self.p._set_key(Keys.AUTO_RECONNECT, True)
+        NOW = 5
+        self.p._handle_printer_state_reconnect("CLOSED", now=NOW)
+        self.p._printer.reset_mock()
+
+        after_wait = NOW + 3.1 * CPQPlugin.RECONNECT_WINDOW_SIZE
+        self.p._handle_printer_state_reconnect("CONNECTING", now=after_wait)
+        self.p._printer.connect.assert_not_called()
+
+
 class TestAnalysis(unittest.TestCase):
     def setUp(self):
         self.p = mockplugin()

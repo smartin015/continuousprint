@@ -266,6 +266,12 @@
             <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_infer_profile">
           </div>
         </div>
+        <div class="control-group" title="Attempt to reconnect if the printer goes offline - think carefully about your printer's behavior when the serial port opens before enabling this feature.">
+          <label class="control-label">Auto-reconnect to printer</label>
+          <div class="controls">
+            <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_auto_reconnect">
+          </div>
+        </div>
       </fieldset>
     </form>
   </div> <!-- settings_continuousprint_lan -->
