@@ -71,7 +71,6 @@ class CPQPlugin(ContinuousPrintAPI):
         self._init_analysis_queue()
 
     def _on_queue_update(self, q, now=time.time()):
-        self._logger.debug("_on_queue_update")
         self._sync_state()
 
     def _on_settings_updated(self):

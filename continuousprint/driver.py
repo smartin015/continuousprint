@@ -36,6 +36,9 @@ def timeAgo(elapsed):
 
 
 class Driver:
+    # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
+    PRINTING_IDLE_BREAKOUT_SEC = 10.0
+
     def __init__(
         self,
         queue,
@@ -49,6 +52,7 @@ class Driver:
         self._set_status("Initializing")
         self.q = queue
         self.state = self._state_unknown
+        self.idle_start_ts = None
         self.retries = 0
         self.retry_on_pause = False
         self.max_retries = 0
@@ -77,6 +81,12 @@ class Driver:
             self._logger.debug(
                 f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}"
             )
+
+            if p == Printer.IDLE and self.idle_start_ts is None:
+                self.idle_start_ts = time.time()
+            elif p != Printer.IDLE and self.idle_start_ts is not None:
+                self.idle_start_ts = None
+
             if path is not None:
                 self._cur_path = path
             if len(materials) > 0:
@@ -212,8 +222,14 @@ class Driver:
                 self._set_status("Waiting for printer to be ready")
         elif p == Printer.PAUSED:
             return self._state_paused
-        elif p == Printer.IDLE:  # Idle state without event; assume success
-            return self._state_success
+        elif (
+            p == Printer.IDLE
+            and time.time() - self.idle_start_ts > self.PRINTING_IDLE_BREAKOUT_SEC
+        ):
+            # Idle state without event; assume we somehow missed the SUCCESS action
+            # We wait for a period of idleness to prevent idle-before-success events
+            # from double-completing prints.
+            return self._state_failure
 
     def _state_paused(self, a: Action, p: Printer):
         self._set_status("Paused", StatusType.NEEDS_ACTION)
