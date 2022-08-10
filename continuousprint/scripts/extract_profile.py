@@ -40,8 +40,12 @@ def token_string_match(profstr):
 
     scores = [len(p.intersection(c)) for c in CANDIDATES]
     sys.stderr.write(f"Scoring '{profstr}':\n")
-    for i in range(len(scores)):
-        sys.stderr.write(f"- {PROFILES[i]}: {scores[i]}\n")
+    desc = sorted(zip(PROFILES, scores), key=lambda x: x[1], reverse=True)
+    for p, s in desc[:4]:
+        if s == 0:
+            continue
+        sys.stderr.write(f"- {p}: {s}\n")
+    sys.stderr.write("- ...\n")
     max_score = max(scores)
     if max_score < 2:
         return None

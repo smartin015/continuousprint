@@ -109,7 +109,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
 
     @abstractmethod
     def _preprocess_set(self, data):
-        pass  # Can auto-fill things, e.g. profile based on gcode analysis
+        pass  # Used to auto-fill underspecified sets, e.g. add profile based on gcode analysis
 
     def popup(self, msg, type="popup"):
         return self._msg(dict(type=type, msg=msg))
@@ -154,20 +154,24 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.ADDSET)
     def add_set(self):
-        data = self._preprocess_set(dict(**flask.request.form))
-        return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).add_set(data.get("job", ""), data)
-        )
+        if flask.request.form.get("json"):
+            data = self._preprocess_set(json.loads(flask.request.form.get("json")))
+        else:
+            # For backwards compatibility - this originally wasn't passed as a single json field
+            data = self._preprocess_set(dict(**flask.request.form))
+        jid = data.get("job")
+        if jid is None:
+            jid = ""
+        return json.dumps(self._get_queue(DEFAULT_QUEUE).add_set(jid, data))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/add", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.ADDJOB)
     def add_job(self):
+        data = json.loads(flask.request.form.get("json"))
         return json.dumps(
-            self._get_queue(DEFAULT_QUEUE)
-            .add_job(flask.request.form.get("name"))
-            .as_dict()
+            self._get_queue(DEFAULT_QUEUE).add_job(data.get("name")).as_dict()
         )
 
     # PRIVATE API METHOD - may change without warning.

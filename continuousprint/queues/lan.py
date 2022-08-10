@@ -136,17 +136,13 @@ class LANQueue(AbstractJobQueue):
             key=lambda j: j["created"]
         )  # Always creation order - there is no reordering in lan queue
         for data in jobs:
-            self._logger.debug(data)
             acq = data.get("acquired_by_")
             if acq is not None and acq != self.addr:
-                self._logger.debug(f"Skipping job; acquired by {acq}")
                 continue  # Acquired by somebody else, so don't consider for scheduling
             job = LANJobView(data, self)
             s = job.next_set(self._profile)
             if s is not None:
                 return (job, s)
-            else:
-                self._logger.debug(f"Skipping job {job.name}; no compatible sets")
         return (None, None)
 
     def acquire(self) -> bool:
