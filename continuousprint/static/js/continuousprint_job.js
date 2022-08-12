@@ -53,9 +53,9 @@ function CPJob(obj, peers, api, profile) {
 
   self._update = function(result) {
     self.draft(result.draft);
-    self.count(result.count);
-    self.remaining(result.remaining); // Adjusted when count is mutated
-    self.completed(result.count - result.remaining); // Adjusted when count is mutated
+    self.count(result.count); // Adjusted when remaining is mutated
+    self.remaining(result.remaining);
+    self.completed(result.count - result.remaining); // Adjusted when remaining is mutated
     self.id(result.id); // May change if no id to start with
     self._name(result.name);
     let cpss = [];
@@ -98,24 +98,35 @@ function CPJob(obj, peers, api, profile) {
   self.editCancel = function() {
     api.edit(api.JOB, {id: self.id(), draft: false}, self._update);
   }
+  self.onBlur = function(vm, e) {
+    let cl = e.target.classList;
+    let v = parseInt(e.target.value, 10);
+    if (isNaN(v)) {
+      return;
+    }
+    vm.count(vm.completed() + v);
+  }
   self.editEnd = function() {
     let data = self.as_object();
     data.draft = false;
     api.edit(api.JOB, data, self._update);
   }
 
-  self.length = ko.computed(function() {
-    let l = 0;
-    let c = self.count();
-    for (let qs of self.sets()) {
-      l += qs.count()*c;
+  self._safeParse = function(v) {
+    v = parseInt(v, 10);
+    if (isNaN(v)) {
+      return 0;
     }
-    return l;
-  });
-  self.length_completed = ko.computed(function() {
-    let r = 0;
+    return v;
+  }
+
+  self.totals = ko.computed(function() {
+    let r = {count: 0, completed: 0, remaining: 0, total: 0};
     for (let qs of self.sets()) {
-      r += qs.length_completed();
+      r.remaining += self._safeParse(qs.remaining());
+      r.total += self._safeParse(qs.length_remaining());
+      r.count += self._safeParse(qs.count());
+      r.completed += self._safeParse(qs.completed());
     }
     return r;
   });

@@ -23,7 +23,7 @@ function CPSet(data, job, api, profile) {
   self.count = ko.observable(data.count);
   self.missing_file = ko.observable(data.missing_file);
   self.remaining = ko.observable((data.remaining !== undefined) ? data.remaining : data.count);
-  self.completed = ko.observable(data.count - self.remaining()); // Not computed to allow for edits without changing
+  self.completed = ko.observable((data.completed !== undefined) ? data.completed : 0);
   self.expanded = ko.observable(data.expanded);
   self.mats = ko.observable(data.materials || []);
   self.profiles = ko.observableArray(data.profiles || []);
@@ -57,17 +57,23 @@ function CPSet(data, job, api, profile) {
       profiles: self.profiles(),
     };
   }
-  self.length = ko.computed(function() {
-    return job.count() * self.count();
-  });
-  self.length_completed = ko.computed(function() {
-    let job_completed = job.completed();
-    if (job_completed === job.count()) {
-      job_completed -= 1; // Prevent double-counting the end of the job
+  self.length_remaining = ko.computed(function() {
+    let c = parseInt(self.count(), 10);
+    let r = parseInt(self.remaining(), 10);
+    let jr = parseInt(job.remaining(), 10);
+    if (isNaN(c) || isNaN(r) || isNaN(jr)) {
+      return ' ';
     }
-    return self.completed() + self.count()*job_completed;
-    return result;
+    return Math.max(0, (jr-1) * c + r);
   });
+  self.onCountFocus = function() {
+    self._tmp_count = self.count();
+  };
+  self.onCountBlur = function() {
+    if (self.count() !== self._tmp_count) {
+      self.remaining(self.count());
+    };
+  };
   self.remove = function() {
     // Just remove from UI - actual removal happens when saving the job
     job.sets.remove(self);
@@ -122,7 +128,6 @@ function CPSet(data, job, api, profile) {
   });
 
   // ==== Mutation methods ====
-
   self.set_material = function(t, v) {
     if (v === "Any") {
       v = '';

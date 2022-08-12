@@ -176,6 +176,7 @@ class SetView:
 
     def decrement(self, profile):
         self.remaining = max(0, self.remaining - 1)
+        self.completed += 1
         self.save()  # Save must occur before job is observed
         return self.job.next_set(profile)
 
@@ -193,6 +194,7 @@ class SetView:
             rank=self.rank,
             sd=self.sd,
             remaining=self.remaining,
+            completed=self.completed,
         )
 
 
@@ -203,7 +205,17 @@ class Set(Model, SetView):
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count >= 0")])
     remaining = IntegerField(
-        default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
+        # Unlike Job, Sets can have remaining > count if the user wants to print
+        # additional sets as a one-off correction (e.g. a print fails)
+        default=1,
+        constraints=[Check("remaining >= 0")],
+    )
+    completed = IntegerField(
+        # Due to one-off corrections to "remaining", it's important to track
+        # completions separately as completed + remaining != count
+        # This is different from jobs, where this equation holds.
+        default=0,
+        constraints=[Check("completed >= 0")],
     )
 
     # This is a CSV of material key strings referencing SpoolManager entities
@@ -276,7 +288,7 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 
 def populate():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.2")
+    StorageDetails.create(schemaVersion="0.0.3")
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
@@ -308,7 +320,12 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.schemaVersion = "0.0.2"
                 details.save()
 
-            if details.schemaVersion != "0.0.2":
+            if details.schemaVersion == "0.0.2":
+                raise Exception(
+                    "TODO remove constraint on Sets that remaining must not exceed count, add completed field to Sets"
+                )
+
+            if details.schemaVersion != "0.0.3":
                 raise Exception("Unknown DB schema version: " + details.schemaVersion)
 
             if logger is not None:
