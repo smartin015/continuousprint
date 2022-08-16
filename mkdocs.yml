@@ -1,6 +1,7 @@
 site_name: Continuous Print
 theme:
   name: material
+  logo: ./CPQ_white.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -18,6 +19,8 @@ theme:
         name: Switch to light mode
 markdown_extensions:
   - admonition
+extra_css:
+    - style.css
 nav:
   - Home: index.md
   - 'getting-started.md'
