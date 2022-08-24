@@ -41,12 +41,16 @@ test('onSetModified existing', () => {
   expect(j.sets()[1].path()).toBe('asdf');
 });
 
-test('length and length_completed', () => {
-  let j = new Job({count: 3, remaining: 1, sets: sets()}, [], api());
+test('totals', () => {
+  let j = new Job({count: 3, completed: 1, remaining: 1, sets: sets()}, [], api());
   // 2 jobs done, each with 2 sets of 2 --> 8
   // plus an extra 1 each in current run --> 10
-  expect(j.length_completed()).toBe(10);
-  expect(j.length()).toBe(12);
+  expect(j.totals()).toStrictEqual({
+    completed: 0,
+    count: 4,
+    remaining: 2,
+    total: 2,
+  });
 });
 
 test('checkFraction', () => {

@@ -321,9 +321,31 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.save()
 
             if details.schemaVersion == "0.0.2":
-                raise Exception(
-                    "TODO remove constraint on Sets that remaining must not exceed count, add completed field to Sets"
-                )
+                # Constraint removal isn't allowed in sqlite, so we have
+                # to recreate the table and move the entries over.
+                # We also added a new `completed` field, so some calculation is needed.
+                class TempSet(Set):
+                    pass
+
+                if logger is not None:
+                    logger.warning(
+                        f"Beginning migration to v0.0.3 - {Set.select().count()} sets to migrate"
+                    )
+                with db.atomic():
+                    TempSet.create_table(safe=True)
+                    for s in TempSet.select().execute():
+                        t = TempSet()
+                        for f in Set._meta.sorted_field_names:
+                            setattr(t, f, getattr(s, f))
+                        t.completed = max(0, t.count - t.remaining)
+                        if logger is not None:
+                            logger.warning(f"Migrating set {s.path} to schema v0.0.3")
+                        t.save()
+
+                Set.drop_table(safe=True)
+                db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
+                details.schemaVersion = "0.0.3"
+                details.save()
 
             if details.schemaVersion != "0.0.3":
                 raise Exception("Unknown DB schema version: " + details.schemaVersion)

@@ -36,6 +36,7 @@ def mockplugin():
         settings=MockSettings(),
         file_manager=MagicMock(),
         plugin_manager=MagicMock(),
+        fire_event=MagicMock(),
         queries=MagicMock(),
         data_folder=None,
         logger=logging.getLogger(),

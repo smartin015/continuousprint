@@ -61,6 +61,7 @@ class CPQPlugin(ContinuousPrintAPI):
         logger,
         identifier,
         basefolder,
+        fire_event,
     ):
         self._basefolder = basefolder
         self._printer = printer
@@ -74,6 +75,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._set_add_awaiting_metadata = dict()
         self._reconnect_attempts = 0
         self._next_reconnect = 0
+        self._fire_event = fire_event
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -313,6 +315,7 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger,
             self._printer,
             self._sync_state,
+            self._fire_event,
         )
         self.d = dcls(
             queue=self.q,
