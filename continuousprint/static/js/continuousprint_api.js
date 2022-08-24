@@ -58,6 +58,7 @@ class CPAPI {
   }
 
   add(type, data, cb) {
+    data = {json: JSON.stringify(data)};
     this._call(type, 'add', data, cb);
   }
 
