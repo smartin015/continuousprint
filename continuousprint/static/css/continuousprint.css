@@ -4,6 +4,11 @@
     --cpq-pad2: 20px;
 }
 
+@font-face {
+  font-family: Cabin Regular;
+  src: url(../ttf/Cabin/Cabin-Regular.ttf);
+}
+
 #files .cpq-gjob div[title="Load"] {
   display: none !important;
 }
@@ -194,6 +199,19 @@
 }
 #tab_plugin_continuousprint .accordion-body.collapse.in {
   max-height: 500px;
+}
+.cpq_logo {
+  height: 40px;
+  float: left;
+}
+#settings_plugin_continuousprint .cpq_title {
+  font-family: "Cabin Regular";
+  font-size: 2em;
+  display: flex;
+  align-items: center;
+}
+#settings_plugin_continuousprint .cpq_title > img {
+  width: 71px;
 }
 #tab_plugin_continuousprint .queue-header, #settings_continuousprint_queues .queue-header {
   display: flex;

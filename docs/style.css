@@ -1,0 +1,8 @@
+@font-face {
+  font-family: "Cabin Regular";
+  src: url("./Cabin-Regular.ttf");
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Cabin Regular";
+}
