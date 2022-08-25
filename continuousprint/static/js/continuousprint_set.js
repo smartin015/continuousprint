@@ -121,10 +121,17 @@ function CPSet(data, job, api, profile) {
     return result;
   });
   self.pct_complete = ko.computed(function() {
-    return Math.max(0, Math.round(100 * self.completed()/self.count())) + '%';
+    let cplt = self.completed()
+    let total = cplt + self.remaining();
+    return Math.max(0, Math.round(100 * cplt/total)) + '%';
   });
   self.pct_active = ko.computed(function() {
-    return Math.max(0, Math.round(100 / self.count())) + '%';
+    return Math.max(0, Math.round(100 / (self.completed() + self.remaining()))) + '%';
+  });
+  self.progress_text = ko.computed(function() {
+    let cplt = self.completed()
+    let total = cplt + self.remaining();
+    return `${cplt}/${total}`;
   });
 
   // ==== Mutation methods ====

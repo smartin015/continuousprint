@@ -45,7 +45,9 @@ test('pct_complete', () => {
 
 test('pct_active', () => {
   let i = new CPSet(data(), job, api());
-  i.count(5); // remaining/completed not a factor for pct_active
+  i.count(5);
+  i.remaining(3);
+  i.completed(2);
   expect(i.pct_active()).toBe("20%");
 });
 

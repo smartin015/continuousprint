@@ -8,6 +8,7 @@ from .database import (
     Job,
     Set,
     Run,
+    StorageDetails,
     DEFAULT_QUEUE,
 )
 import tempfile
@@ -18,7 +19,7 @@ import tempfile
 class DBTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.NamedTemporaryFile(delete=True)
-        init_db(self.tmp.name, logger=logging.getLogger())
+        self.db = init_db(self.tmp.name, logger=logging.getLogger())
         self.q = Queue.get(name=DEFAULT_QUEUE)
 
     def tearDown(self):
@@ -91,6 +92,30 @@ class TestMigration(DBTest):
         s = Set.get(id=1)
         self.assertEqual(s.count, 2)
         self.assertEqual(s.remaining, 1)
+
+    def testMigrationSchemav2tov3(self):
+        details = StorageDetails.select().limit(1).execute()[0]
+        details.schemaVersion = "0.0.2"
+        details.save()
+        q = Queue.get(name=DEFAULT_QUEUE)
+        j = Job.create(name="j", queue_id=q.id, rank=0)
+        s = Set.create(
+            path="foo.gcode",
+            remaining=3,
+            count=5,
+            completed=0,
+            sd=False,
+            job_id=j.id,
+            rank=1,
+        )
+
+        self.db = init_db(self.tmp.name, logger=logging.getLogger())
+
+        # Destination set both exists and has computed `completed` field.
+        # We don't actually check whether the constraints were properly applied, just assume that
+        # new table creation takes care of it.
+        s2 = Set.get(s.id)
+        self.assertEqual(s2.completed, s.count - s.remaining)
 
 
 class TestEmptyJob(DBTest):

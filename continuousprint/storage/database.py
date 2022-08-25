@@ -333,14 +333,15 @@ def init(db_path="queues.sqlite3", logger=None):
                     )
                 with db.atomic():
                     TempSet.create_table(safe=True)
-                    for s in TempSet.select().execute():
-                        t = TempSet()
+                    for s in Set.select().execute():
+                        attrs = {}
                         for f in Set._meta.sorted_field_names:
-                            setattr(t, f, getattr(s, f))
-                        t.completed = max(0, t.count - t.remaining)
+                            attrs[f] = getattr(s, f)
+                        attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
+                        print(attrs)
+                        TempSet.create(**attrs)
                         if logger is not None:
                             logger.warning(f"Migrating set {s.path} to schema v0.0.3")
-                        t.save()
 
                 Set.drop_table(safe=True)
                 db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
@@ -354,6 +355,8 @@ def init(db_path="queues.sqlite3", logger=None):
                 logger.debug("Storage schema version: " + details.schemaVersion)
         except Exception:
             raise Exception("Failed to fetch storage schema details!")
+
+    return db
 
 
 def migrateFromSettings(data: list):
@@ -399,6 +402,7 @@ def migrateFromSettings(data: list):
                 rank=len(j.sets),
                 count=1,
                 remaining=0,
+                completed=0,
                 material_keys=mkeys,
             )
         else:

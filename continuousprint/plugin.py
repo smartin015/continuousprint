@@ -405,6 +405,8 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger.info(f"Enqueued {counter} files for CPQ analysis")
 
     def _enqueue(self, path, high_priority=False):
+        if path in TEMP_FILES.values():
+            return False  # Exclude temp files from analysis
         queue_entry = QueueEntry(
             name=path.split("/")[-1],
             path=path,
