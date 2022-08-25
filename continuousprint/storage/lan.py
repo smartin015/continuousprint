@@ -43,6 +43,7 @@ class LANSetView(SetView):
         for attr in ("path", "count"):
             setattr(self, attr, data[attr])
         self.remaining = data.get("remaining", self.count)
+        self.completed = data.get("completed", 0)
         self.material_keys = ",".join(data.get("materials", []))
         self.profile_keys = ",".join(data.get("profiles", []))
         self._resolved = None

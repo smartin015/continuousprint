@@ -94,18 +94,18 @@ function CPQueue(data, api, files, profile) {
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.length_completed() === 0);
+            j.onChecked(j.sets().length !== 0 && j.totals().completed === 0);
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
-            let lc = j.length_completed();
-            j.onChecked(lc > 0 && lc < j.length());
+            let t = j.totals();
+            j.onChecked(t.remaining > 0 && t.remaining < t.count);
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.length_completed() >= j.length());
+            j.onChecked(j.sets().length !== 0 && j.totals().remaining == 0);
           }
           break;
         default:

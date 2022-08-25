@@ -152,12 +152,18 @@ def _upsertSet(set_id, data, job):
     for k, v in data.items():
         if k in (
             "id",
-            "count",
-            "remaining",
             "materials",
             "profiles",
         ):  # ignored or handled below
             continue
+
+        # parse and limit integer values
+        if k in (
+            "count",
+            "remaining",
+        ):
+            v = min(int(v), MAX_COUNT)
+
         setattr(s, k, v)
     s.job = job
 
@@ -167,18 +173,6 @@ def _upsertSet(set_id, data, job):
     s.profile_keys = ",".join(
         ["" if p is None else p for p in data.get("profiles", [])]
     )
-
-    if data.get("count") is not None:
-        newCount = min(int(data["count"]), MAX_COUNT)
-        inc = newCount - s.count
-        s.count = newCount
-        s.remaining = min(newCount, s.remaining + max(inc, 0))
-        # Boost job remaining if we would cause it to be incomplete
-        job_remaining = s.job.remaining
-        if inc > 0 and job_remaining == 0:
-            job_remaining = 1
-            s.job.remaining = 1
-            s.job.save()
     s.save()
 
 
@@ -189,32 +183,18 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
         except Job.DoesNotExist:
             q = Queue.get(name=queue)
             j = newEmptyJob(q)
+
         for k, v in data.items():
             if k in (
                 "id",
-                "count",
-                "remaining",
                 "sets",
             ):  # ignored or handled separately
                 continue
+
+            # Parse and bound integer values
+            if k in ("count", "remaining"):
+                v = min(int(v), MAX_COUNT)
             setattr(j, k, v)
-
-        clear_sets = False
-        if data.get("count") is not None:
-            newCount = min(int(data["count"]), MAX_COUNT)
-            inc = newCount - j.count
-            j.remaining = min(newCount, j.remaining + max(inc, 0))
-
-            # Edge case: clear sets if we are adding 1 to a completed job,
-            # as this is otherwise suppressed by job-end accounting.
-            clear_sets = newCount > j.count
-            if clear_sets:
-                for s in j.sets:
-                    if s.remaining != 0:
-                        clear_sets = False
-                        break
-            j.count = newCount
-        j.save()
 
         if data.get("sets") is not None:
             # Remove any missing sets
@@ -227,9 +207,7 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
                 s["rank"] = float(i)
                 _upsertSet(s["id"], s, j)
 
-        if clear_sets:
-            j.refresh_sets()
-
+        j.save()
         return Job.get(id=job_id).as_dict()
 
 

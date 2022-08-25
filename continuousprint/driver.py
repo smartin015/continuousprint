@@ -127,7 +127,9 @@ class Driver:
         if p == Printer.IDLE:
             self._set_status("Inactive (click Start Managing)")
         else:
-            self._set_status("Inactive (active print continues unmanaged)")
+            self._set_status(
+                "Inactive (active print continues unmanaged)", StatusType.NEEDS_ACTION
+            )
 
     def _state_idle(self, a: Action, p: Printer):
         self.q.release()

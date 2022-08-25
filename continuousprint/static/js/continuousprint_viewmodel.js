@@ -43,6 +43,7 @@ function CPViewModel(parameters) {
     self.defaultQueue = null;
     self.expanded = ko.observable(null);
     self.profile = ko.observable('');
+    self.showStats = ko.observable(false);
 
     self.api = parameters[5] || new CPAPI();
 
@@ -383,6 +384,17 @@ function CPViewModel(parameters) {
         return ((m % 1 === 0) ? m : m.toFixed(1)) + 'm';
       }
     };
+
+    self.hasDraftJob = ko.computed(function() {
+      for (let q of self.queues()) {
+        for (let j of q.jobs()) {
+          if (j.draft()) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
 
     /* ===== History Tab ===== */
     self.history = ko.observableArray();

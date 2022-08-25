@@ -59,6 +59,7 @@ class TestLANQueueConnected(LANQueueTest):
         s.sd = False
         s.count = 1
         s.remaining = 1
+        s.completed = 0
         s.profile_keys = ""
         s.rank = 1
         s.material_keys = ""
@@ -112,6 +113,7 @@ class TestLANQueueConnected(LANQueueTest):
                             "rank": 1,
                             "sd": False,
                             "remaining": 1,
+                            "completed": 0,
                         }
                     ],
                     "created": 100,

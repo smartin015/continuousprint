@@ -22,9 +22,8 @@ function api() {
 }
 test('aggregate observables', () => {
   let i = new CPSet(data(), job, api());
-  expect(i.length()).toBe(6);
   expect(i.path()).toBe("item.gcode");
-  expect(i.length_completed()).toBe(5);
+  expect(i.length_remaining()).toBe(1);
 });
 
 test('materials', () => {
@@ -40,29 +39,31 @@ test('pct_complete', () => {
   let i = new CPSet(data(), job, api());
   i.count(5);
   i.remaining(3);
+  i.completed(2);
   expect(i.pct_complete()).toBe("40%");
 });
 
 test('pct_active', () => {
   let i = new CPSet(data(), job, api());
   i.count(5);
+  i.remaining(3);
+  i.completed(2);
   expect(i.pct_active()).toBe("20%");
 });
 
-test('length_completed', () => {
+test('shortName', () => {
+  let i = new CPSet({path: "/foo/bar.gcode"}, job, api());
+  expect(i.shortName()).toEqual("bar.gcode");
+});
+
+test('length_remaining', () => {
   let i = new CPSet(data(count=1), {count: () => 1, remaining: () => 1, completed: () => 0});
-  expect(i.length_completed()).toBe(0);
+  expect(i.length_remaining()).toBe(1);
 
-  // Completing a job should increase the length
+  // Completing a job should decrease the length
   i.remaining(0);
   i.completed(1);
-  expect(i.length_completed()).toBe(1);
-
-  // Job completion shouldn't double-count
-  i = new CPSet(data(count=1), {count: () => 1, remaining: () => 0, completed: () => 1});
-  i.remaining(0);
-  i.completed(1);
-  expect(i.length_completed()).toBe(1);
+  expect(i.length_remaining()).toBe(0);
 });
 
 test('set_material', () => {

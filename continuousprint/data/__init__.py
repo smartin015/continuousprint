@@ -12,6 +12,14 @@ with open(os.path.join(base, "gcode_scripts.yaml"), "r") as f:
     GCODE_SCRIPTS = dict((d["name"], d) for d in yaml.safe_load(f.read())["GScript"])
 
 
+class CustomEvents(Enum):
+    START_PRINT = "continuousprint_start_print"
+    COOLDOWN = "continuousprint_cooldown"
+    CLEAR_BED = "continuousprint_clear_bed"
+    FINISH = "continuousprint_finish"
+    CANCEL = "continuousprint_cancel"
+
+
 class Keys(Enum):
     # TODO migrate old setting names to enum names
     QUEUE = ("cp_queue", None)

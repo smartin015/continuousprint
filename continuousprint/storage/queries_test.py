@@ -126,16 +126,6 @@ class TestSingleItemQueue(DBTest):
         q.updateJob(1, dict(sets=[dict(id=1, profiles=["a", "b"])]))
         self.assertEqual(Set.get(id=1).profiles(), ["a", "b"])
 
-    def testUpdateJobIncrementCompleted(self):
-        # Incrementing the count of a completed job should refresh all sets within the job
-        j = Job.get(id=1)
-        s = Set.get(id=1)
-        s.remaining = 0
-        s.save()
-
-        q.updateJob(1, dict(count=j.count + 1))
-        self.assertEqual(Set.get(id=1).remaining, 1)
-
     def testRemoveJob(self):
         q.remove(job_ids=[1])
         self.assertEqual(len(q.getJobsAndSets(DEFAULT_QUEUE)), 0)  # No jobs or sets
@@ -238,50 +228,36 @@ class TestSingleItemQueue(DBTest):
         self.assertEqual(Job.get(id=j.id).remaining, 1)
 
     def testUpdateJobCount(self):
+        q.updateJob(1, dict(count=5, remaining=5))
         j = Job.get(id=1)
-        for before, after in [
-            ((1, 1), (2, 2)),
-            ((2, 2), (1, 1)),
-            ((2, 1), (1, 1)),
-            ((2, 1), (3, 2)),
-            ((5, 3), (2, 2)),
-        ]:
-            with self.subTest(f"(count,remaining) {before} -> {after}"):
-                j.count = before[0]
-                j.remaining = before[1]
-                j.save()
+        self.assertEqual(j.count, 5)
+        self.assertEqual(j.remaining, 5)
 
-                q.updateJob(j.id, dict(count=after[0]))
-                j2 = Job.get(id=j.id)
-                self.assertEqual(j2.count, after[0])
-                self.assertEqual(j2.remaining, after[1])
-
-    def testUpdateSetCount(self):
+    def testUpdateJobCountZeros(self):
+        q.updateJob(1, dict(count=0, remaining=0))
         j = Job.get(id=1)
-        s = Set.get(id=1)
-        for before, after in [
-            # (set count, set remaining, job remaining)
-            ((1, 1, 1), (2, 2, 1)),
-            ((2, 2, 1), (1, 1, 1)),
-            ((4, 2, 1), (3, 2, 1)),
-            ((1, 1, 0), (2, 2, 1)),  # Set now runnable, so refresh job
-            ((2, 0, 0), (1, 0, 0)),  # Set no remaining, so don't refresh job
-        ]:
-            with self.subTest(
-                f"(set.count,set.remaining,job.remaining) {before} -> {after}"
-            ):
-                s.count = before[0]
-                s.remaining = before[1]
-                s.save()
-                j.remaining = before[2]
-                j.count = max(before[2], 1)
-                j.save()
+        self.assertEqual(j.count, 0)
+        self.assertEqual(j.remaining, 0)
 
-                q.updateJob(j.id, dict(sets=[dict(id=s.id, count=after[0])]))
-                s2 = Set.get(id=s.id)
-                self.assertEqual(s2.count, after[0])
-                self.assertEqual(s2.remaining, after[1])
-                self.assertEqual(s2.job.remaining, after[2])
+    def testUpdateJobInvalid(self):
+        # Can't have remaining > count for jobs (sets are fine though)
+        with self.assertRaises(Exception):
+            q.updateJob(1, dict(count=1, remaining=2))
+
+        # Negative count not allowed
+        with self.assertRaises(Exception):
+            q.updateJob(1, dict(count=-5))
+
+        # Negative remaining not allowed
+        with self.assertRaises(Exception):
+            q.updateJob(1, dict(remaining=-5))
+
+    def testUpdateSetCountAndRemaining(self):
+        # Note that remaining can exceed count
+        q.updateJob(1, dict(sets=[dict(id=1, count=10, remaining=15)]))
+        s2 = Set.get(id=1)
+        self.assertEqual(s2.count, 10)
+        self.assertEqual(s2.remaining, 15)
 
 
 class TestMultiItemQueue(DBTest):

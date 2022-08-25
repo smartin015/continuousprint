@@ -145,6 +145,12 @@
   padding-right: var(--cpq-pad);
   padding-top: var(--cpq-pad);
 }
+#tab_plugin_continuousprint .job.draft .job-gutter .text-error {
+  width: 100%;
+  line-height: 1;
+  text-align: right;
+  padding-right: var(--cpq-pad2);
+}
 #tab_plugin_continuousprint .job .floatedit {
   position: absolute;
   top: var(--cpq-pad2);
@@ -170,16 +176,56 @@
   margin-bottom: 0;
   line-height: 1.6;
 }
-#tab_plugin_continuousprint .queue-row-container .total {
-  width: 40px;
+#tab_plugin_continuousprint .total,
+#tab_plugin_continuousprint .completed,
+#tab_plugin_continuousprint .remaining,
+#tab_plugin_continuousprint .count {
+  width: 67px;
   text-align: center;
+  margin-left: var(--cpq-pad);
+  padding: 2px;
+  border: 1px transparent solid;
 }
 #tab_plugin_continuousprint .loading {
   opacity: 0.3;
   cursor: default !important;
 }
+#tab_plugin_continuousprint .edit-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  opacity: 0.5;
+}
+#tab_plugin_continuousprint .job-stats {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  border-top: 2px #ccc solid;
+}
+#tab_plugin_continuousprint .has_title {
+  cursor: help;
+}
+#tab_plugin_continuousprint .has_title > sup {
+  opacity: 0.5;
+}
+#tab_plugin_continuousprint .progresstext {
+  width: 100%;
+  position: absolute;
+  text-align:center;
+}
+#tab_plugin_continuousprint .set_warning {
+  flex: 1;
+  text-align: center;
+}
+#tab_plugin_continuousprint .draft .set_warning {
+  flex: 0;
+}
+#tab_plugin_continuousprint .sets .progress {
+  margin-left: 17px;
+}
 #tab_plugin_continuousprint .progress {
-  width: 150px;
+  position: relative;
+  flex: 1;
   display: flex; /* allow for stacking progresses in jobs */
 }
 #tab_plugin_continuousprint .accordion-heading-button {
@@ -217,13 +263,9 @@
   display: flex;
   justify-content: space-between;
   font-weight: bold;
-  padding: var(--cpq-pad) 8px 0 28px;
   opacity: 0.5;
   margin-left: 55px;
-}
-#tab_plugin_continuousprint .repeats {
-  width: 85px;
-  text-align: center;
+  align-items: flex-end;
 }
 #tab_plugin_continuousprint .queue-header > div, #settings_continuousprint_queues .queue-header > div {
   text-align: center;
@@ -285,12 +327,11 @@
 }
 
 #tab_plugin_continuousprint .count-box{
-  text-align: left;
   min-width:30px;
-  max-width: 30px;
   max-height:15px;
-  margin-bottom: 3px;
   -moz-appearance: textfield;
+  text-align: center;
+  border: 1px #ccc solid !important;
 }
 #tab_plugin_continuousprint .count-box::-webkit-outer-spin-button,
 #tab_plugin_continuousprint .count-box::-webkit-inner-spin-button {
