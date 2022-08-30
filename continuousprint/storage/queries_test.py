@@ -300,22 +300,6 @@ class TestMultiItemQueue(DBTest):
                 q.moveJob(*moveArgs)
                 self.assertEqual([j.id for j in q.getJobsAndSets(DEFAULT_QUEUE)], want)
 
-    def testMoveSet(self):
-        for (desc, moveArgs, want) in [
-            ("FirstToLast", (1, 2, 1), [2, 1, 3, 4]),
-            ("LastToFirst", (2, -1, 1), [2, 1, 3, 4]),
-            ("DiffJob", (1, 3, 2), [2, 3, 1, 4]),
-            ("NewJob", (1, -1, -1), [2, 3, 4, 1]),
-        ]:
-            with self.subTest(f"{desc}: moveSet({moveArgs})"):
-                q.moveSet(*moveArgs)
-                set_order = [
-                    (s["id"], s["rank"])
-                    for j in q.getJobsAndSets(DEFAULT_QUEUE)
-                    for s in j.as_dict()["sets"]
-                ]
-                self.assertEqual(set_order, [(w, ANY) for w in want])
-
     def testGetNextJobAfterDecrement(self):
         j = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)
         s = j.sets[0]

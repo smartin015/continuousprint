@@ -227,35 +227,22 @@ function CPViewModel(parameters) {
       self.draggingSet(false);
       self.draggingJob(false);
 
-      // If we're dragging a job out of the local queue and into a network queue,
-      // we must warn the user about the irreversable action before making the change.
-      // This fully replaces the default sort action
-      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
-        let targetQueue = ko.dataFor(evt.to);
-        // Undo the move done by CPSortable and trigger updates
-        // This is inefficient (i.e. could instead prevent the transfer) but that
-        // would require substantial edits to the CPSortable library.
-        targetQueue.jobs.splice(evt.newIndex, 1);
-        src.jobs.splice(evt.oldIndex, 0, vm);
-        src.jobs.valueHasMutated();
-        targetQueue.jobs.valueHasMutated();
-
-        return self.showSubmitJobDialog(vm, targetQueue);
-      }
-
       // Sadly there's no "destination job" information, so we have to
       // infer the index of the job based on the rendered HTML given by evt.to
       if (vm.constructor.name === "CPJob") {
         let jobs = self.defaultQueue.jobs();
-        let dest_idx = jobs.indexOf(vm);
+        let destq = ko.dataFor(evt.to);
+        let dest_idx = destq.jobs().indexOf(vm);
 
         let ids = []
         for (let j of jobs) {
           ids.push(j.id());
         }
         self.api.mv(self.api.JOB, {
+            src_queue: src.name,
+            dest_queue: ko.dataFor(evt.to).name,
             id: vm.id(),
-            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
+            after_id: (dest_idx > 0) ? destq.jobs()[dest_idx-1].id() : null
         }, (result) => {});
       }
     };
@@ -342,35 +329,6 @@ function CPViewModel(parameters) {
     }, function(statusCode, errText) {
       self.hasSpoolManager(statusCode !== 404);
     });
-
-
-		self.dialog = $("#cpq_submitDialog");
-		self.jobSendDetails = ko.observable();
-    self.jobSendTitle = ko.computed(function() {
-      let details = self.jobSendDetails();
-      if (details === undefined) {
-        return "";
-      }
-      return `Send ${details[0]._name()} to ${details[1].name}?`;
-    });
-    self.submitJob = function() {
-      let details = self.jobSendDetails();
-      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, (result) => {
-        if (result.error) {
-          self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
-        } else {
-          self._setState(result);
-        }
-      });
-			self.dialog.modal('hide');
-    }
-		self.showSubmitJobDialog = function(job, queue) {
-      self.jobSendDetails([job, queue]);
-			self.dialog.modal({}).css({
-					width: 'auto',
-					'margin-left': function() { return -($(this).width() /2); }
-			});
-		}
 
     self.humanize = function(num) {
       // Humanizes numbers by condensing and adding units

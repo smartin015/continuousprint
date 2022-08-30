@@ -95,7 +95,8 @@ A couple of optional changes can improve your developer flow:
 Edit OctoPrint's yaml config to turn off minification and ignore startup errors (at `continuousprint/volume/config.yaml` in the Docker container, else in your OctoPrint install path):
 
 ```
-ignoreIncompleteStartup: true
+server:
+  ignoreIncompleteStartup: true
 devel:
   webassets:
     bundle: false

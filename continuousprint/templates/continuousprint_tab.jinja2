@@ -1,31 +1,3 @@
-<div id="cpq_submitDialog" class="modal hide fade">
-    <div class="modal-header">
-    <img src="plugin/continuousprint/static/img/CPQ.svg" alt="Continuous Print" style="height: 60px;" class="cpq_logo">
-    <h2 class="modal-title" data-bind="text:jobSendTitle"></h2>
-    </div>
-    <div class="modal-body">
-      <div class="alert">
-        <p>
-        <i class="fas fa-exclamation-triangle"></i>
-          The job's progress will be reset, and it cannot be edited or transferred once submitted (only deleted).
-        </p>
-      </div>
-      <div class="alert">
-        <p>
-        <i class="fas fa-exclamation-triangle"></i>
-          It is your responsibility to ensure that the job you send is compatible with <strong>all</strong>
-          printers connected to the destination queue.
-        </p>
-        <p>
-          <strong>Failure to do so may cause damage to your printers.</strong>
-        </p>
-      </div>
-    </div>
-    <div class="modal-footer">
-        <button class="btn btn-cancel" data-dismiss="modal" aria-hidden="true">Cancel</button>
-        <button class="btn btn-danger btn-confirm" data-bind="click: submitJob">Confirm</button>
-    </div>
-</div>
 <div id="cpq_removeConfirmDialog" class="modal hide fade">
     <div class="modal-header">
       <a href="https://smartin015.github.io/continuousprint/"><img src="plugin/continuousprint/static/img/CPQ.svg" alt="Continuous Print" style="height: 60px;" class="cpq_logo"></a>
@@ -174,7 +146,7 @@
           <!-- /ko -->
           <div class="accordion-heading job-header">
             <div class="queue-row-container">
-            <i class="fas fa-grip-vertical" data-bind="style: {visibility: (draft() || queue.name !== 'local') ? 'hidden' : null}"></i>
+            <i class="fas fa-grip-vertical"></i>
               <i style="cursor: pointer" data-bind="hidden: draft() || (acquiredBy() && $root.active()), css: selected() ? 'fas fa-check-square' : 'far fa-square', event: {mousedown: queue.onChecked}"></i>
               <i data-bind="visible: acquiredBy(), attr: {title: 'Printer: ' + acquiredBy()}" class="fas fa-cube"></i>
               <!-- ko if: draft -->

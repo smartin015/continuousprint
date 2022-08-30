@@ -1,4 +1,4 @@
-from .abstract import Strategy, QueueData, AbstractEditableQueue
+from .abstract import Strategy, QueueData, AbstractFactoryQueue
 import tempfile
 import os
 from ..storage.database import JobView, SetView
@@ -7,7 +7,7 @@ from pathlib import Path
 import dataclasses
 
 
-class LocalQueue(AbstractEditableQueue):
+class LocalQueue(AbstractFactoryQueue):
     def __init__(
         self,
         queries,
@@ -98,7 +98,7 @@ class LocalQueue(AbstractEditableQueue):
         )
 
     def remove_jobs(self, job_ids):
-        return self.rm_multi(job_ids=job_ids)
+        return self.queries.remove(job_ids=job_ids)
 
     def reset_jobs(self, job_ids):
         return self.queries.resetJobs(job_ids)
@@ -107,14 +107,22 @@ class LocalQueue(AbstractEditableQueue):
 
     # -------------- begin AbstractEditableQueue -----------
 
-    def add_job(self, name="") -> JobView:
-        return self.queries.newEmptyJob(self.ns, name)
+    def get_job_view(self, job_id):
+        return self.queries.getJob(job_id)
 
-    def add_set(self, job_id, data) -> SetView:
-        return self.queries.appendSet(self.ns, job_id, data)
-
-    def mv_set(self, set_id, after_id, dest_job):
-        return self.queries.moveSet(set_id, after_id, dest_job)
+    def import_job_from_view(self, v):
+        manifest = v.as_dict()
+        # TODO make transaction, move to storage/queries.py
+        j = self.add_job()
+        for (k, v) in manifest.items():
+            if k in ("peer_", "sets", "id", "acquired"):
+                continue
+            setattr(j, k, v)
+        j.save()
+        for s in manifest["sets"]:
+            del s["id"]
+            self.add_set(j.id, s)
+        return j.id
 
     def mv_job(self, job_id, after_id):
         return self.queries.moveJob(job_id, after_id)
@@ -122,8 +130,15 @@ class LocalQueue(AbstractEditableQueue):
     def edit_job(self, job_id, data):
         return self.queries.updateJob(job_id, data)
 
-    def rm_multi(self, job_ids=[], set_ids=[]) -> dict:
-        return self.queries.remove(job_ids=job_ids, set_ids=set_ids)
+    # ------------------- end AbstractEditableQueue ---------------
+
+    # ------------ begin AbstractFactoryQueue ------
+
+    def add_job(self, name="") -> JobView:
+        return self.queries.newEmptyJob(self.ns, name)
+
+    def add_set(self, job_id, data) -> SetView:
+        return self.queries.appendSet(self.ns, job_id, data)
 
     def import_job(self, gjob_path: str, draft=True) -> dict:
         out_dir = str(Path(gjob_path).stem)
@@ -150,4 +165,4 @@ class LocalQueue(AbstractEditableQueue):
             os.rename(tf.name, path)
             return path
 
-    # ------------------- end AbstractEditableQueue ---------------
+    # ------------------- end AbstractFactoryQueue ---------------

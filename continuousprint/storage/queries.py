@@ -274,17 +274,6 @@ def moveJob(src_id: int, dest_id: int):
     return _moveImpl(Job, j, dest_id)
 
 
-def moveSet(src_id: int, dest_id: int, dest_job: int):
-    s = Set.get(id=src_id)
-    if dest_job == -1:
-        j = newEmptyJob(s.job.queue)
-    else:
-        j = Job.get(id=dest_job)
-    s.job = j
-    s.save()
-    _moveImpl(Set, s, dest_id)
-
-
 def newEmptyJob(q, name="", rank=_rankEnd):
     if type(q) == str:
         q = Queue.get(name=q)

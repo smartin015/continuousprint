@@ -1,12 +1,14 @@
+import uuid
+from bisect import bisect_left
 from peerprint.lan_queue import LANPrintQueue
 from ..storage.lan import LANJobView
 from ..storage.database import JobView
 from pathlib import Path
-from .abstract import AbstractJobQueue, QueueData, Strategy
+from .abstract import AbstractEditableQueue, QueueData, Strategy
 import dataclasses
 
 
-class LANQueue(AbstractJobQueue):
+class LANQueue(AbstractEditableQueue):
     def __init__(
         self,
         ns,
@@ -72,61 +74,7 @@ class LANQueue(AbstractJobQueue):
         gjob_dirpath = self._fileshare.fetch(peerstate["fs_addr"], hash_, unpack=True)
         return str(Path(gjob_dirpath) / path)
 
-    # --------- AbstractJobQueue implementation ------
-
-    def _validate_job(self, j: JobView) -> str:
-        peer_profiles = set(
-            [
-                p.get("profile", dict()).get("name", "UNKNOWN")
-                for p in self.lan.q.getPeers().values()
-            ]
-        )
-
-        for s in j.sets:
-            sprof = set(s.profiles())
-            # All sets in the job *must* have an assigned profile
-            if len(sprof) == 0:
-                return f"validation for job {j.name} failed - set {s.path} has no assigned profile"
-
-            # At least one printer in the queue must have a compatible proile
-            if len(peer_profiles.intersection(sprof)) == 0:
-                return f"validation for job {j.name} failed - no match for set {s.path} with profiles {sprof} (connected printer profiles: {peer_profiles})"
-
-            # All set paths must resolve to actual files
-            fullpath = self._path_on_disk(s.path, s.sd)
-            if fullpath is None or not Path(fullpath).exists():
-                return f"validation for job {j.name} failed - file not found at {s.path} (is it stored on disk and not SD?)"
-
-    def submit_job(self, j: JobView) -> bool:
-        err = self._validate_job(j)
-        if err is not None:
-            self._logger.warning(err)
-            return Exception(err)
-        filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
-        manifest = j.as_dict()
-        if manifest.get("created") is None:
-            manifest["created"] = int(time.time())
-        # Note: postJob strips fields from manifest in-place
-        hash_ = self._fileshare.post(manifest, filepaths)
-        self.lan.q.setJob(hash_, manifest)
-
-    def reset_jobs(self, job_ids) -> dict:
-        for jid in job_ids:
-            j = self.lan.q.jobs.get(jid)
-            if j is None:
-                continue
-            (addr, manifest) = j
-
-            manifest["remaining"] = manifest["count"]
-            for s in manifest.get("sets", []):
-                s["remaining"] = s["count"]
-            self.lan.q.setJob(jid, manifest, addr=addr)
-
-    def remove_jobs(self, job_ids) -> dict:
-        for jid in job_ids:
-            self.lan.q.removeJob(jid)
-
-    # --------- AbstractQueue implementation --------
+    # --------- begin AbstractQueue --------
 
     def _peek(self):
         if self.lan is None or self.lan.q is None:
@@ -190,10 +138,8 @@ class LANQueue(AbstractJobQueue):
         jobs = []
         peers = {}
         if self.lan.q is not None:
+            # Note: getJobs() returns jobs in list order
             jobs = self.lan.q.getJobs()
-            jobs.sort(
-                key=lambda j: j["created"]
-            )  # Always creation order - there is no reordering in lan queue
             peers = self.lan.q.getPeers()
 
         return dataclasses.asdict(
@@ -206,3 +152,91 @@ class LANQueue(AbstractJobQueue):
                 active_set=self._active_set(),
             )
         )
+
+    def reset_jobs(self, job_ids) -> dict:
+        for jid in job_ids:
+            j = self.lan.q.jobs.get(jid)
+            if j is None:
+                continue
+            (addr, manifest) = j
+
+            manifest["remaining"] = manifest["count"]
+            for s in manifest.get("sets", []):
+                s["remaining"] = s["count"]
+            self.lan.q.setJob(jid, manifest, addr=addr)
+
+    def remove_jobs(self, job_ids) -> dict:
+        for jid in job_ids:
+            self.lan.q.removeJob(jid)
+
+    # --------- end AbstractQueue ------
+
+    # --------- AbstractEditableQueue implementation ------
+
+    def get_job_view(self, job_id):
+        peer, manifest = self.lan.q.jobs[job_id]
+        manifest["peer_"] = peer
+        return LANJobView(manifest, self)
+
+    def import_job_from_view(self, j):
+        err = self._validate_job(j)
+        if err is not None:
+            self._logger.warning(err)
+            return Exception(err)
+        filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
+        manifest = j.as_dict()
+        if manifest.get("created") is None:
+            manifest["created"] = int(time.time())
+        # Note: postJob strips fields from manifest in-place
+        manifest["hash"] = self._fileshare.post(manifest, filepaths)
+        if manifest.get("id") is None:
+            manifest["id"] = self._gen_uuid()
+        self.lan.q.setJob(manifest["id"], manifest)
+        return manifest["id"]
+
+    def mv_job(self, job_id, after_id):
+        self.lan.q.jobs.mv(job_id, after_id)
+
+    def _validate_job(self, j: JobView) -> str:
+        peer_profiles = set(
+            [
+                p.get("profile", dict()).get("name", "UNKNOWN")
+                for p in self.lan.q.getPeers().values()
+            ]
+        )
+
+        for s in j.sets:
+            sprof = set(s.profiles())
+            # All sets in the job *must* have an assigned profile
+            if len(sprof) == 0:
+                return f"validation for job {j.name} failed - set {s.path} has no assigned profile"
+
+            # At least one printer in the queue must have a compatible proile
+            if len(peer_profiles.intersection(sprof)) == 0:
+                return f"validation for job {j.name} failed - no match for set {s.path} with profiles {sprof} (connected printer profiles: {peer_profiles})"
+
+            # All set paths must resolve to actual files
+            fullpath = self._path_on_disk(s.path, s.sd)
+            if fullpath is None or not Path(fullpath).exists():
+                return f"validation for job {j.name} failed - file not found at {s.path} (is it stored on disk and not SD?)"
+
+    def _gen_uuid(self) -> str:
+        while True:
+            result = uuid.uuid4()
+            if not self.lan.q.hasJob(result):
+                return str(result)
+
+    def edit_job(self, j: JobView) -> bool:
+        err = self._validate_job(j)
+        if err is not None:
+            self._logger.warning(err)
+            return Exception(err)
+        filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
+        manifest = j.as_dict()
+        if manifest.get("created") is None:
+            manifest["created"] = int(time.time())
+        # Note: postJob strips fields from manifest in-place
+        manifest["hash"] = self._fileshare.post(manifest, filepaths)
+        if manifest.get("id") is None:
+            manifest["id"] = self._gen_uuid()
+        self.lan.q.setJob(manifest["id"], manifest)
