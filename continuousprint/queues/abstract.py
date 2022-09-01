@@ -84,6 +84,7 @@ class AbstractEditableQueue(AbstractQueue):
 
     @abstractmethod
     def import_job_from_view(self, job_view):
+        """Imports a JobView into storage. Returns ID of the imported job"""
         pass
 
 

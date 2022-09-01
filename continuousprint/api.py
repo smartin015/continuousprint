@@ -188,11 +188,13 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
 
         # Transfer into dest queue first
         if dq != sq:
-            src_id = dq.import_job_from_view(sq.get_job_view(src_id))
+            new_id = dq.import_job_from_view(sq.get_job_view(src_id))
+            sq.remove_jobs([src_id])
+            src_id = new_id
 
         # Finally, move the job
         dq.mv_job(src_id, after_id)
-        return json.dumps("ok")
+        return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/edit", methods=["POST"])
@@ -200,7 +202,8 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITJOB)
     def edit_job(self):
         data = json.loads(flask.request.form.get("json"))
-        return json.dumps(self._get_queue(DEFAULT_QUEUE).edit_job(data["id"], data))
+        q = self._get_queue(data["queue"])
+        return json.dumps(q.edit_job(data["id"], data))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/import", methods=["POST"])

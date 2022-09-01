@@ -256,6 +256,10 @@ function CPViewModel(parameters) {
       if (evt.from.id === "queue_sets" && !evt.to.classList.contains("draft")) {
         return false;
       }
+      // No dragging items in non-ready queues
+      if (evt.to.classList.contains("loading")) {
+        return false;
+      }
       return true;
     };
 

@@ -4,14 +4,26 @@ import tempfile
 from datetime import datetime
 from unittest.mock import MagicMock
 from .abstract import Strategy
+from .abstract_test import (
+    AbstractQueueTests,
+    EditableQueueTests,
+    testJob as makeAbstractTestJob,
+)
 from .lan import LANQueue
 from ..storage.database import JobView, SetView
+from peerprint.lan_queue_test import LANQueueLocalTest as PeerPrintLANTest
 
 # logging.basicConfig(level=logging.DEBUG)
 
 
-class LANQueueTest(unittest.TestCase):
+class LANQueueTest(unittest.TestCase, PeerPrintLANTest):
     def setUp(self):
+        PeerPrintLANTest.setUp(self)  # Generate peerprint LANQueue as self.q
+        self.q.q.syncPeer(
+            dict(profile=dict(name="profile")), addr=self.q.q.addr
+        )  # Helps pass validation
+        ppq = self.q  # Rename to make way for CPQ LANQueue
+
         self.ucb = MagicMock()
         self.fs = MagicMock()
         self.q = LANQueue(
@@ -24,6 +36,23 @@ class LANQueueTest(unittest.TestCase):
             dict(name="profile"),
             lambda path, sd: path,
         )
+        self.q.lan = ppq
+        self.q._path_exists = lambda p: True  # Override path check for validation
+
+
+class TestAbstractImpl(AbstractQueueTests, LANQueueTest):
+    def setUp(self):
+        LANQueueTest.setUp(self)
+        self.jid = self.q.import_job_from_view(makeAbstractTestJob(0))
+
+
+class TestEditableImpl(EditableQueueTests, LANQueueTest):
+    def setUp(self):
+        LANQueueTest.setUp(self)
+        self.jids = [
+            self.q.import_job_from_view(makeAbstractTestJob(i))
+            for i in range(EditableQueueTests.NUM_TEST_JOBS)
+        ]
 
 
 class TestLANQueueNoConnection(LANQueueTest):

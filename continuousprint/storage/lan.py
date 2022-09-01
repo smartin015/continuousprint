@@ -17,8 +17,8 @@ class LANJobView(JobView):
         self.id = manifest["id"]
         self.peer = manifest["peer_"]
         self.sets = []
-        self.draft = False
-        self.acquired = None
+        self.draft = manifest.get("draft", False)
+        self.acquired = manifest.get("acquired", False)
         self.sets = [LANSetView(s, self, i) for i, s in enumerate(manifest["sets"])]
 
     def save(self):

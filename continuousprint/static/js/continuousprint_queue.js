@@ -31,6 +31,7 @@ function CPQueue(data, api, files, profile) {
     self.shiftsel = ko.observable(-1);
     self.details = ko.observable("");
     self.fullDetails = ko.observable("");
+    self.ready = ko.observable(data.name === 'local' || Object.keys(data.peers).length > 0);
     if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);
       if (pkeys.length === 0) {
@@ -291,7 +292,7 @@ function CPQueue(data, api, files, profile) {
         set_data['job'] = null;
         // Invoking API causes a new job to be created
         self.api.add(self.api.SET, set_data, (response) => {
-          return self._pushJob({id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]});
+          return self._pushJob({queue: self.name, id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]});
         });
     };
 

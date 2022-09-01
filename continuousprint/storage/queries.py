@@ -188,6 +188,7 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             if k in (
                 "id",
                 "sets",
+                "queue",
             ):  # ignored or handled separately
                 continue
 
@@ -234,10 +235,11 @@ def _rankEnd():
     return time.time()
 
 
-def _moveImpl(cls, src, dest_id: int, retried=False):
-    if dest_id == -1:
+def _moveImpl(cls, src, dest_id, retried=False):
+    if dest_id is None:
         destRank = 0
     else:
+        dest_id = int(dest_id)
         destRank = cls.get(id=dest_id).rank
 
     # Get the next object having a rank beyond the destination rank,

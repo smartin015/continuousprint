@@ -20,7 +20,7 @@ function CPJob(obj, peers, api, profile) {
   }
   var self = this;
 
-  obj = {...{sets: [], name: "", draft: false, count: 1, queue: "default", id: -1}, ...obj};
+  obj = {...{sets: [], name: "", draft: false, count: 1, id: -1}, ...obj};
   if (obj.remaining === undefined) {
     obj.remaining = obj.count;
   }
@@ -82,7 +82,7 @@ function CPJob(obj, peers, api, profile) {
   }
 
   self.editStart = function() {
-    api.edit(api.JOB, {id: self.id(), draft: true}, () => {
+    api.edit(api.JOB, {queue: obj.queue, id: self.id(), draft: true}, () => {
       self.draft(true);
     });
   }
@@ -96,7 +96,7 @@ function CPJob(obj, peers, api, profile) {
     self.sets.push(newqs);
  }
   self.editCancel = function() {
-    api.edit(api.JOB, {id: self.id(), draft: false}, self._update);
+    api.edit(api.JOB, {queue: obj.queue, id: self.id(), draft: false}, self._update);
   }
   self.onBlur = function(vm, e) {
     let cl = e.target.classList;
@@ -109,6 +109,7 @@ function CPJob(obj, peers, api, profile) {
   self.editEnd = function() {
     let data = self.as_object();
     data.draft = false;
+    data.queue = obj.queue;
     api.edit(api.JOB, data, self._update);
   }
 
