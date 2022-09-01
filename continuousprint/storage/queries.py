@@ -235,19 +235,24 @@ def _rankEnd():
     return time.time()
 
 
-def _moveImpl(cls, src, dest_id, retried=False):
+def _moveImpl(src, dest_id, retried=False):
     if dest_id is None:
         destRank = 0
     else:
         dest_id = int(dest_id)
-        destRank = cls.get(id=dest_id).rank
+        destRank = Job.get(id=dest_id).rank
 
     # Get the next object having a rank beyond the destination rank,
     # so we can then split the difference
     # Note the unary '&' operator and the expressions wrapped in parens (a limitation of peewee)
     postRank = (
-        cls.select(cls.rank)
-        .where((cls.rank > destRank) & (cls.id != src.id))
+        Job.select(Job.rank)
+        .where(
+            (Job.rank > destRank)
+            & (Job.id != src.id)
+            & (Job.queue.name != ARCHIVE_QUEUE)
+        )
+        .order_by(Job.rank)
         .limit(1)
         .execute()
     )
@@ -257,13 +262,16 @@ def _moveImpl(cls, src, dest_id, retried=False):
         postRank = MAX_RANK
     # Pick the target value as the midpoint between the two ranks
     candidate = abs(postRank - destRank) / 2 + min(postRank, destRank)
+    print(
+        f"_moveImpl abs({postRank} - {destRank})/2 + min({postRank}, {destRank}) = {candidate}"
+    )
 
     # We may end up with an invalid candidate if we hit a singularity - in this case, rebalance all the
     # rows and try again
     if candidate <= destRank or candidate >= postRank:
         if not retried:
-            _rankBalance(cls)
-            _moveImpl(cls, src, dest_id, retried=True)
+            _rankBalance(Job)
+            _moveImpl(src, dest_id, retried=True)
         else:
             raise Exception("Could not rebalance job rank to move job")
     else:
@@ -273,7 +281,7 @@ def _moveImpl(cls, src, dest_id, retried=False):
 
 def moveJob(src_id: int, dest_id: int):
     j = Job.get(id=src_id)
-    return _moveImpl(Job, j, dest_id)
+    return _moveImpl(j, dest_id)
 
 
 def newEmptyJob(q, name="", rank=_rankEnd):

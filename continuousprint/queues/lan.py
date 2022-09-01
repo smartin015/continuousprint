@@ -1,7 +1,7 @@
 import uuid
 from bisect import bisect_left
 from peerprint.lan_queue import LANPrintQueue, ChangeType
-from ..storage.lan import LANJobView
+from ..storage.lan import LANJobView, LANSetView
 from ..storage.database import JobView
 from pathlib import Path
 from .abstract import AbstractEditableQueue, QueueData, Strategy
@@ -41,8 +41,12 @@ class LANQueue(AbstractEditableQueue):
         self.lan.connect()
 
     def _compare_peer(self, prev, nxt):
-        if prev is None:
+        if prev is None and nxt is not None:
             return True
+        if prev is not None and nxt is None:
+            return True
+        if prev is None and nxt is None:
+            return False
         for k in ("status", "run"):
             if prev.get(k) != nxt.get(k):
                 return True
@@ -225,7 +229,7 @@ class LANQueue(AbstractEditableQueue):
     def get_job_view(self, job_id):
         return LANJobView(self._get_job(job_id), self)
 
-    def import_job_from_view(self, j):
+    def import_job_from_view(self, j, jid=None):
         err = self._validate_job(j)
         if err is not None:
             self._logger.warning(err)
@@ -234,10 +238,9 @@ class LANQueue(AbstractEditableQueue):
         manifest = j.as_dict()
         if manifest.get("created") is None:
             manifest["created"] = int(time.time())
-        # Note: postJob strips fields from manifest in-place
+        # Note: post mutates manifest by stripping fields
         manifest["hash"] = self._fileshare.post(manifest, filepaths)
-        if manifest.get("id") is None:
-            manifest["id"] = self._gen_uuid()
+        manifest["id"] = jid if jid is not None else self._gen_uuid()
         self.lan.q.setJob(manifest["id"], manifest)
         return manifest["id"]
 
@@ -283,5 +286,13 @@ class LANQueue(AbstractEditableQueue):
         for (k, v) in data.items():
             if k in ("id", "peer_", "queue"):
                 continue
-            setattr(j, k, v)
-        self.import_job_from_view(j)
+            if k == "sets":
+                j.updateSets(
+                    v
+                )  # Set data must be translated into views, done by updateSets()
+            else:
+                setattr(j, k, v)
+
+        # Exchange the old job for the new job (reuse job ID)
+        jid = self.import_job_from_view(j, j.id)
+        return self._get_job(jid)

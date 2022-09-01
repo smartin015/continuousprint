@@ -102,8 +102,19 @@ class EditableQueueTests(JobEqualityTests):
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (0, 2, 1, 3)])
 
+    def test_mv_to_front(self):
+        self.q.mv_job(self.jids[2], None)
+        jids = [j["id"] for j in self.q.as_dict()["jobs"]]
+        self.assertEqual(jids, [self.jids[i] for i in (2, 0, 1, 3)])
+
+    def test_mv_to_back(self):
+        self.q.mv_job(self.jids[2], self.jids[3])
+        jids = [j["id"] for j in self.q.as_dict()["jobs"]]
+        self.assertEqual(jids, [self.jids[i] for i in (0, 1, 3, 2)])
+
     def test_edit_job(self):
-        self.q.edit_job(self.jids[0], dict(draft=True))
+        result = self.q.edit_job(self.jids[0], dict(draft=True))
+        self.assertEqual(result, self.q.as_dict()["jobs"][0])
         self.assertEqual(self.q.as_dict()["jobs"][0]["draft"], True)
 
     def test_get_job_view(self):
