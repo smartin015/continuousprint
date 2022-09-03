@@ -74,9 +74,13 @@ class AbstractQueueTests(JobEqualityTests):
     def test_decrement_and_reset(self):
         self.assertEqual(self.q.acquire(), True)
         self.assertEqual(self.q.decrement(), True)  # Work remains
-        self.assertEqual(self.q.get_set().remaining, 1)
+        got = self.q.get_set()
+        self.assertEqual(got.remaining, 1)
+        self.assertEqual(got.completed, 1)
         self.q.reset_jobs([self.jid])
-        self.assertEqual(self.q.as_dict()["jobs"][0]["sets"][0]["remaining"], 2)
+        got = self.q.as_dict()["jobs"][0]["sets"][0]
+        self.assertEqual(got["remaining"], 2)
+        self.assertEqual(got["completed"], 0)
 
     def test_remove_jobs(self):
         self.assertEqual(self.q.remove_jobs([self.jid])["jobs_deleted"], 1)
@@ -117,6 +121,20 @@ class EditableQueueTests(JobEqualityTests):
         self.assertEqual(result, self.q.as_dict()["jobs"][0])
         self.assertEqual(self.q.as_dict()["jobs"][0]["draft"], True)
 
+    def test_edit_job_then_decrement_persists_changes(self):
+        self.assertEqual(self.q.acquire(), True)
+        self.assertEqual(self.q.as_dict()["jobs"][0]["acquired"], True)
+        self.assertEqual(len(self.q.as_dict()["jobs"][0]["sets"]), 1)
+
+        # Edit the acquired job, adding a new set
+        newsets = [testJob(0).sets[0].as_dict()]  # Same as existing
+        newsets.append(testJob(100).sets[0].as_dict())  # New set
+        self.q.edit_job(self.jids[0], dict(sets=newsets))
+
+        # Value after decrement should be consistent, i.e. not regress to prior acquired-job value
+        self.q.decrement()
+        self.assertEqual(len(self.q.as_dict()["jobs"][0]["sets"]), 2)
+
     def test_get_job_view(self):
         self.assertJobsEqual(self.q.get_job_view(self.jids[0]), testJob(0))
 
@@ -124,6 +142,15 @@ class EditableQueueTests(JobEqualityTests):
         j = testJob(10)
         jid = self.q.import_job_from_view(j)
         self.assertJobsEqual(self.q.get_job_view(jid), j)
+
+    def test_import_job_from_view_persists_completion_and_remaining(self):
+        j = testJob(10)
+        j.sets[0].completed = 3
+        j.sets[0].remaining = 5
+        jid = self.q.import_job_from_view(j)
+        got = self.q.get_job_view(jid).sets[0]
+        self.assertEqual(got.completed, j.sets[0].completed)
+        self.assertEqual(got.remaining, j.sets[0].remaining)
 
 
 class AbstractFactoryQueueTests(JobEqualityTests):

@@ -11,6 +11,13 @@ from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 MAX_COUNT = 999999
 
 
+def getint(d, k, default=0):
+    v = d.get(k, default)
+    if type(v) == str:
+        v = int(v)
+    return v
+
+
 def clearOldState():
     # On init, scrub the local DB for any state that may have been left around
     # due to an improper shutdown
@@ -262,9 +269,9 @@ def _moveImpl(src, dest_id, retried=False):
         postRank = MAX_RANK
     # Pick the target value as the midpoint between the two ranks
     candidate = abs(postRank - destRank) / 2 + min(postRank, destRank)
-    print(
-        f"_moveImpl abs({postRank} - {destRank})/2 + min({postRank}, {destRank}) = {candidate}"
-    )
+    # print(
+    #    f"_moveImpl abs({postRank} - {destRank})/2 + min({postRank}, {destRank}) = {candidate}"
+    # )
 
     # We may end up with an invalid candidate if we hit a singularity - in this case, rebalance all the
     # rows and try again
@@ -314,7 +321,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
     if j.is_dirty():
         j.save()
 
-    count = int(data["count"])
+    count = getint(data, "count")
     sd = data.get("sd", "false")
     s = Set.create(
         path=data["path"],
@@ -323,7 +330,8 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
         material_keys=",".join(data.get("materials", "")),
         profile_keys=",".join(data.get("profiles", "")),
         count=count,
-        remaining=count,
+        remaining=getint(data, "remaining", count),
+        completed=getint(data, "completed"),
         job=j,
     )
 
@@ -363,7 +371,11 @@ def resetJobs(job_ids: list):
             updated += (
                 Job.update(remaining=Job.count).where(Job.id.in_(job_ids)).execute()
             )
-        updated += Set.update(remaining=Set.count).where(Set.job.in_(job_ids)).execute()
+        updated += (
+            Set.update(remaining=Set.count, completed=0)
+            .where(Set.job.in_(job_ids))
+            .execute()
+        )
         return dict(num_updated=updated)
 
 

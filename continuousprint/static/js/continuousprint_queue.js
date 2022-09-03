@@ -253,6 +253,15 @@ function CPQueue(data, api, files, profile) {
       });
     }
 
+    self.hasDraftJobs = function() {
+      for (let j of self.jobs()) {
+        if (j.draft()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     self.addFile = function(data, infer_profile=false) {
         if (data.path.endsWith('.gjob')) {
           // .gjob import has a different API path

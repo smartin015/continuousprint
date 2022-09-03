@@ -219,12 +219,14 @@ class TestSingleItemQueue(DBTest):
         j = Job.get(id=1)
         s = j.sets[0]
         s.remaining = 0
+        s.completed = 3
         j.remaining = 0
         s.save()
         j.save()
         q.resetJobs([j.id])
         # Replenishing the job replenishes all sets
         self.assertEqual(Set.get(id=s.id).remaining, 1)
+        self.assertEqual(Set.get(id=s.id).completed, 0)
         self.assertEqual(Job.get(id=j.id).remaining, 1)
 
     def testUpdateJobCount(self):
@@ -295,7 +297,7 @@ class TestMultiItemQueue(DBTest):
             )
 
     def testMoveJob(self):
-        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, -1), [2, 1])]:
+        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, None), [2, 1])]:
             with self.subTest(f"moveJob({moveArgs}) -> want {want}"):
                 q.moveJob(*moveArgs)
                 self.assertEqual([j.id for j in q.getJobsAndSets(DEFAULT_QUEUE)], want)

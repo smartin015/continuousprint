@@ -1,11 +1,16 @@
 import uuid
+from typing import Optional
 from bisect import bisect_left
 from peerprint.lan_queue import LANPrintQueue, ChangeType
 from ..storage.lan import LANJobView, LANSetView
-from ..storage.database import JobView
+from ..storage.database import JobView, SetView
 from pathlib import Path
 from .abstract import AbstractEditableQueue, QueueData, Strategy
 import dataclasses
+
+
+class ValidationError(Exception):
+    pass
 
 
 class LANQueue(AbstractEditableQueue):
@@ -27,6 +32,8 @@ class LANQueue(AbstractEditableQueue):
         self.ns = ns
         self.addr = addr
         self.lan = None
+        self.job_id = None
+        self.set_id = None
         self.update_cb = update_cb
         self._fileshare = fileshare
         self._path_on_disk = path_on_disk_fn
@@ -85,7 +92,7 @@ class LANQueue(AbstractEditableQueue):
         # Get fileshare address from the peer
         peerstate = self._get_peers().get(peer)
         if peerstate is None:
-            raise Exception(
+            raise ValidationError(
                 "Cannot resolve set {path} within job hash {hash_}; peer state is None"
             )
 
@@ -116,8 +123,8 @@ class LANQueue(AbstractEditableQueue):
 
     def _get_job(self, jid) -> dict:
         j = self.lan.q.getJob(jid)
-        joblocks = self.lan.q.getLocks()
         if j is not None:
+            joblocks = self.lan.q.getLocks()
             return self._annotate_job(j, joblocks.get(jid))
 
     def _get_peers(self) -> list:
@@ -129,6 +136,18 @@ class LANQueue(AbstractEditableQueue):
         return result
 
     # --------- begin AbstractQueue --------
+
+    def get_job(self) -> Optional[JobView]:
+        # Override to ensure the latest data is received
+        return self.get_job_view(self.job_id)
+
+    def get_set(self) -> Optional[SetView]:
+        if self.job_id is not None and self.set_id is not None:
+            # Linear search through sets isn't efficient, but it works.
+            j = self.get_job_view(self.job_id)
+            for s in j.sets:
+                if s.id == self.set_id:
+                    return s
 
     def _peek(self):
         if self.lan is None or self.lan.q is None:
@@ -150,8 +169,8 @@ class LANQueue(AbstractEditableQueue):
         if job is not None and s is not None:
             if self.lan.q.acquireJob(job.id):
                 self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
-                self.job = self.get_job_view(job.id)  # Re-fetch to get assigned state
-                self.set = s
+                self.job_id = job.id
+                self.set_id = s.id
                 self._logger.debug("acquire() success")
                 return True
             else:
@@ -161,22 +180,24 @@ class LANQueue(AbstractEditableQueue):
             return False
 
     def release(self) -> None:
-        if self.job is not None:
-            self.lan.q.releaseJob(self.job.id)
-            self.job = None
-            self.set = None
+        if self.job_id is not None:
+            self.lan.q.releaseJob(self.job_id)
+            self.job_id = None
+            self.set_id = None
 
     def decrement(self) -> None:
-        if self.job is not None:
-            next_set = self.set.decrement(self._profile)
+        if self.job_id is not None:
+            next_set = self.get_set().decrement(self._profile)
             if next_set:
                 self._logger.debug("Still has work, going for next set")
-                self.set = next_set
+                self.set_id = next_set.id
                 return True
             else:
                 self._logger.debug("No more work; releasing")
                 self.release()
                 return False
+        else:
+            raise Exception("Cannot decrement; no job acquired")
 
     def _active_set(self):
         assigned = self.get_set()
@@ -213,6 +234,7 @@ class LANQueue(AbstractEditableQueue):
             j["remaining"] = j["count"]
             for s in j.get("sets", []):
                 s["remaining"] = s["count"]
+                s["completed"] = 0
             self.lan.q.setJob(jid, j, addr=j["peer_"])
 
     def remove_jobs(self, job_ids) -> dict:
@@ -227,13 +249,14 @@ class LANQueue(AbstractEditableQueue):
     # --------- AbstractEditableQueue implementation ------
 
     def get_job_view(self, job_id):
-        return LANJobView(self._get_job(job_id), self)
+        j = self._get_job(job_id)
+        if j is not None:
+            return LANJobView(j, self)
 
     def import_job_from_view(self, j, jid=None):
         err = self._validate_job(j)
         if err is not None:
-            self._logger.warning(err)
-            return Exception(err)
+            raise ValidationError(err)
         filepaths = dict([(s.path, self._path_on_disk(s.path, s.sd)) for s in j.sets])
         manifest = j.as_dict()
         if manifest.get("created") is None:
@@ -274,10 +297,11 @@ class LANQueue(AbstractEditableQueue):
                 return f"validation for job {j.name} failed - file not found at {s.path} (is it stored on disk and not SD?)"
 
     def _gen_uuid(self) -> str:
-        while True:
+        for i in range(100):
             result = uuid.uuid4()
             if not self.lan.q.hasJob(result):
                 return str(result)
+        raise Exception("UUID generation failed - too many ID collisions")
 
     def edit_job(self, job_id, data) -> bool:
         # For lan queues, "editing" a job is basically resubmission of the whole thing.

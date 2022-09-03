@@ -68,7 +68,16 @@ function CPViewModel(parameters) {
 
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
-      self.defaultQueue.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
+      // We first look for any queues with draft jobs - add the file here if so
+      // Otherwise it goes into the default queue.
+      let fq = self.defaultQueue;
+      for (let q of self.queues()) {
+        if (q.hasDraftJobs()) {
+          fq = q;
+          break;
+        }
+      }
+      fq.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
     };
     // Also patch file deletion, to show a modal if the file is in the queue
     let oldRemove = self.files.removeFile;
@@ -221,7 +230,7 @@ function CPViewModel(parameters) {
       self.draggingJob(vm.constructor.name === "CPJob");
     };
 
-    self.sortEnd = function(evt, vm, src) {
+    self.sortEnd = function(evt, vm, src, dataFor=ko.dataFor) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       self.draggingSet(false);
@@ -231,7 +240,7 @@ function CPViewModel(parameters) {
       // infer the index of the job based on the rendered HTML given by evt.to
       if (vm.constructor.name === "CPJob") {
         let jobs = self.defaultQueue.jobs();
-        let destq = ko.dataFor(evt.to);
+        let destq = dataFor(evt.to);
         let dest_idx = destq.jobs().indexOf(vm);
 
         let ids = []
@@ -240,10 +249,14 @@ function CPViewModel(parameters) {
         }
         self.api.mv(self.api.JOB, {
             src_queue: src.name,
-            dest_queue: ko.dataFor(evt.to).name,
+            dest_queue: destq.name,
             id: vm.id(),
             after_id: (dest_idx > 0) ? destq.jobs()[dest_idx-1].id() : null
-        }, (result) => {});
+        }, (result) => {
+          if (result.error) {
+            self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
+          }
+        });
       }
     };
 

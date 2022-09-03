@@ -99,7 +99,7 @@
             <button class="btn" data-bind="visible: checkFraction() > 0, click: resetSelected" title="Reset selected progress">
               <i style="cursor: pointer" class="fas fa-redo"></i>
             </button>
-            <button class="btn" data-bind="visible: checkFraction() > 0, click: exportSelected" title="Save .gjob to files list">
+            <button class="btn" data-bind="visible: checkFraction() > 0 && name === 'local', click: exportSelected" title="Save .gjob to files list">
               <i style="cursor: pointer" class="far fa-save"></i>
             </button>
           </div>

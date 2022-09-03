@@ -1,4 +1,5 @@
 from .database import JobView, SetView
+from .queries import getint
 from requests.exceptions import HTTPError
 
 
@@ -8,19 +9,12 @@ class LANQueueView:
         self.name = lq.ns
 
 
-def _getint(d, k, default=0):
-    v = d.get(k, default)
-    if type(v) == str:
-        v = int(v)
-    return v
-
-
 class LANJobView(JobView):
     def __init__(self, manifest, lq):
         self.name = manifest.get("name", "")
-        self.created = _getint(manifest, "created")
-        self.count = _getint(manifest, "count")
-        self.remaining = _getint(manifest, "remaining", default=self.count)
+        self.created = getint(manifest, "created")
+        self.count = getint(manifest, "count")
+        self.remaining = getint(manifest, "remaining", default=self.count)
         self.queue = LANQueueView(lq)
         self.id = manifest["id"]
         self.peer = manifest["peer_"]
@@ -54,8 +48,8 @@ class LANSetView(SetView):
         self.id = f"{job.id}_{rank}"
         for attr in ("path", "count"):
             setattr(self, attr, data[attr])
-        self.remaining = _getint(data, "remaining", default=self.count)
-        self.completed = _getint(data, "completed")
+        self.remaining = getint(data, "remaining", default=self.count)
+        self.completed = getint(data, "completed")
         self.material_keys = ",".join(data.get("materials", []))
         self.profile_keys = ",".join(data.get("profiles", []))
         self._resolved = None

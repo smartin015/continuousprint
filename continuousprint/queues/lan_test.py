@@ -9,7 +9,7 @@ from .abstract_test import (
     EditableQueueTests,
     testJob as makeAbstractTestJob,
 )
-from .lan import LANQueue
+from .lan import LANQueue, ValidationError
 from ..storage.database import JobView, SetView
 from peerprint.lan_queue_test import LANQueueLocalTest as PeerPrintLANTest
 
@@ -60,11 +60,16 @@ class TestLANQueueNoConnection(LANQueueTest):
         self.q.update_peer_state("HI", {}, {}, {})  # No explosions? Good
 
 
+class DummyQueue:
+    name = "lantest"
+
+
 class TestLANQueueConnected(LANQueueTest):
     def setUp(self):
         super().setUp()
         self.q.lan = MagicMock()
         self.q.lan.q = MagicMock()
+        self.q.lan.q.hasJob.return_value = False  # For UUID generation
         self.q.lan.q.getPeers.return_value = {
             "a": dict(fs_addr="123", profile=dict(name="abc")),
         }
@@ -82,6 +87,7 @@ class TestLANQueueConnected(LANQueueTest):
         j = JobView()
         j.id = 1
         j.name = "j1"
+        j.queue = DummyQueue()
         s = SetView()
         s.path = path
         s.id = 2
@@ -100,57 +106,25 @@ class TestLANQueueConnected(LANQueueTest):
         j.acquired = False
         return j
 
-    def test_submit_job_file_missing(self):
+    def test_validation_file_missing(self):
         j = self._jbase()
         j.sets[0].profile_keys = "def,abc"
-        result = self.q.submit_job(j)
-        self.assertRegex(str(result), "file not found")
+        self.q._path_exists = lambda p: False  # Override path check for validation
+        with self.assertRaisesRegex(ValidationError, "file not found"):
+            self.q.import_job_from_view(j)
         self.fs.post.assert_not_called()
 
-    def test_submit_job_no_profile(self):
-        result = self.q.submit_job(self._jbase())
-        self.assertRegex(str(result), "no assigned profile")
+    def test_validation_no_profile(self):
+        with self.assertRaisesRegex(ValidationError, "no assigned profile"):
+            self.q.import_job_from_view(self._jbase())
         self.fs.post.assert_not_called()
 
-    def test_submit_job_no_match(self):
+    def test_validation_no_match(self):
         j = self._jbase()
         j.sets[0].profile_keys = "def"
-        result = self.q.submit_job(j)
-        self.assertRegex(str(result), "no match for set")
+        with self.assertRaisesRegex(ValidationError, "no match for set"):
+            self.q.import_job_from_view(j)
         self.fs.post.assert_not_called()
-
-    def test_submit_job(self):
-        with tempfile.NamedTemporaryFile(suffix=".gcode") as f:
-            self.fs.post.return_value = "hash"
-            j = self._jbase(f.name)
-            j.sets[0].profile_keys = "def,abc"
-            self.q.submit_job(j)
-            self.fs.post.assert_called()
-            self.q.lan.q.setJob.assert_called_with(
-                "hash",
-                {
-                    "name": "j1",
-                    "count": 1,
-                    "draft": False,
-                    "sets": [
-                        {
-                            "path": f.name,
-                            "count": 1,
-                            "materials": [],
-                            "profiles": ["def", "abc"],
-                            "id": 2,
-                            "rank": 1,
-                            "sd": False,
-                            "remaining": 1,
-                            "completed": 0,
-                        }
-                    ],
-                    "created": 100,
-                    "id": 1,
-                    "remaining": 1,
-                    "acquired": False,
-                },
-            )
 
 
 class TestLANQueueWithJob(LANQueueTest):

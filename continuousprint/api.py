@@ -2,6 +2,7 @@ import octoprint.plugin
 from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
+from .queues.lan import ValidationError
 import flask
 import json
 from .storage import queries
@@ -188,7 +189,12 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
 
         # Transfer into dest queue first
         if dq != sq:
-            new_id = dq.import_job_from_view(sq.get_job_view(src_id))
+            try:
+                new_id = dq.import_job_from_view(sq.get_job_view(src_id))
+            except ValidationError as e:
+                return json.dumps(dict(error=str(e)))
+
+            print("Imported job from view")
             sq.remove_jobs([src_id])
             src_id = new_id
 

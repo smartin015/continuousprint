@@ -69,12 +69,9 @@ class LocalQueue(AbstractFactoryQueue):
             return False
 
         has_work = self.set.decrement(self._profile) is not None
-        print(">>>>>>>>>>>>>> has_work", has_work)
         earliest_job = self.queries.getNextJobInQueue(
             self.ns, self._profile, self._set_path_exists
         )
-        print(">>>>>>>>>>>> earliest_job", earliest_job)
-        print("vs", self.job, "acquired", self.job.acquired)
         if has_work and earliest_job == self.job and self.job.acquired:
             self.set = self.job.next_set(self._profile, self._set_path_exists)
             return True
