@@ -159,12 +159,12 @@ test('sortEnd job to start', () => {
   expect(data.after_id).toEqual(-1);
 });
 
-test('sortEnd job to end', () => {
+test.only('sortEnd job to end', () => {
   let v = init(njobs=2);
   let ccont = {classList: {contains: () => true}};
   let evt = {from: ccont, to: ccont};
   let j = v.defaultQueue.jobs()[1];
-  v.sortEnd(evt, j, null);
+  v.sortEnd(evt, j, v.defaultQueue, dataFor=function(elem) {return v.defaultQueue});
   expect(v.files.onServerConnect).toHaveBeenCalled();
   expect(v.api.mv).toHaveBeenCalled();
   let data = v.api.mv.mock.calls[0][1];

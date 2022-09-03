@@ -11,6 +11,13 @@ from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 MAX_COUNT = 999999
 
 
+def getint(d, k, default=0):
+    v = d.get(k, default)
+    if type(v) == str:
+        v = int(v)
+    return v
+
+
 def clearOldState():
     # On init, scrub the local DB for any state that may have been left around
     # due to an improper shutdown
@@ -188,6 +195,7 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             if k in (
                 "id",
                 "sets",
+                "queue",
             ):  # ignored or handled separately
                 continue
 
@@ -234,18 +242,24 @@ def _rankEnd():
     return time.time()
 
 
-def _moveImpl(cls, src, dest_id: int, retried=False):
-    if dest_id == -1:
+def _moveImpl(src, dest_id, retried=False):
+    if dest_id is None:
         destRank = 0
     else:
-        destRank = cls.get(id=dest_id).rank
+        dest_id = int(dest_id)
+        destRank = Job.get(id=dest_id).rank
 
     # Get the next object having a rank beyond the destination rank,
     # so we can then split the difference
     # Note the unary '&' operator and the expressions wrapped in parens (a limitation of peewee)
     postRank = (
-        cls.select(cls.rank)
-        .where((cls.rank > destRank) & (cls.id != src.id))
+        Job.select(Job.rank)
+        .where(
+            (Job.rank > destRank)
+            & (Job.id != src.id)
+            & (Job.queue.name != ARCHIVE_QUEUE)
+        )
+        .order_by(Job.rank)
         .limit(1)
         .execute()
     )
@@ -255,13 +269,16 @@ def _moveImpl(cls, src, dest_id: int, retried=False):
         postRank = MAX_RANK
     # Pick the target value as the midpoint between the two ranks
     candidate = abs(postRank - destRank) / 2 + min(postRank, destRank)
+    # print(
+    #    f"_moveImpl abs({postRank} - {destRank})/2 + min({postRank}, {destRank}) = {candidate}"
+    # )
 
     # We may end up with an invalid candidate if we hit a singularity - in this case, rebalance all the
     # rows and try again
     if candidate <= destRank or candidate >= postRank:
         if not retried:
-            _rankBalance(cls)
-            _moveImpl(cls, src, dest_id, retried=True)
+            _rankBalance(Job)
+            _moveImpl(src, dest_id, retried=True)
         else:
             raise Exception("Could not rebalance job rank to move job")
     else:
@@ -271,18 +288,7 @@ def _moveImpl(cls, src, dest_id: int, retried=False):
 
 def moveJob(src_id: int, dest_id: int):
     j = Job.get(id=src_id)
-    return _moveImpl(Job, j, dest_id)
-
-
-def moveSet(src_id: int, dest_id: int, dest_job: int):
-    s = Set.get(id=src_id)
-    if dest_job == -1:
-        j = newEmptyJob(s.job.queue)
-    else:
-        j = Job.get(id=dest_job)
-    s.job = j
-    s.save()
-    _moveImpl(Set, s, dest_id)
+    return _moveImpl(j, dest_id)
 
 
 def newEmptyJob(q, name="", rank=_rankEnd):
@@ -315,7 +321,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
     if j.is_dirty():
         j.save()
 
-    count = int(data["count"])
+    count = getint(data, "count")
     sd = data.get("sd", "false")
     s = Set.create(
         path=data["path"],
@@ -324,7 +330,8 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
         material_keys=",".join(data.get("materials", "")),
         profile_keys=",".join(data.get("profiles", "")),
         count=count,
-        remaining=count,
+        remaining=getint(data, "remaining", count),
+        completed=getint(data, "completed"),
         job=j,
     )
 
@@ -364,7 +371,11 @@ def resetJobs(job_ids: list):
             updated += (
                 Job.update(remaining=Job.count).where(Job.id.in_(job_ids)).execute()
             )
-        updated += Set.update(remaining=Set.count).where(Set.job.in_(job_ids)).execute()
+        updated += (
+            Set.update(remaining=Set.count, completed=0)
+            .where(Set.job.in_(job_ids))
+            .execute()
+        )
         return dict(num_updated=updated)
 
 

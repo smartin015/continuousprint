@@ -68,7 +68,16 @@ function CPViewModel(parameters) {
 
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
-      self.defaultQueue.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
+      // We first look for any queues with draft jobs - add the file here if so
+      // Otherwise it goes into the default queue.
+      let fq = self.defaultQueue;
+      for (let q of self.queues()) {
+        if (q.hasDraftJobs()) {
+          fq = q;
+          break;
+        }
+      }
+      fq.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
     };
     // Also patch file deletion, to show a modal if the file is in the queue
     let oldRemove = self.files.removeFile;
@@ -221,42 +230,33 @@ function CPViewModel(parameters) {
       self.draggingJob(vm.constructor.name === "CPJob");
     };
 
-    self.sortEnd = function(evt, vm, src) {
+    self.sortEnd = function(evt, vm, src, dataFor=ko.dataFor) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       self.draggingSet(false);
       self.draggingJob(false);
 
-      // If we're dragging a job out of the local queue and into a network queue,
-      // we must warn the user about the irreversable action before making the change.
-      // This fully replaces the default sort action
-      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
-        let targetQueue = ko.dataFor(evt.to);
-        // Undo the move done by CPSortable and trigger updates
-        // This is inefficient (i.e. could instead prevent the transfer) but that
-        // would require substantial edits to the CPSortable library.
-        targetQueue.jobs.splice(evt.newIndex, 1);
-        src.jobs.splice(evt.oldIndex, 0, vm);
-        src.jobs.valueHasMutated();
-        targetQueue.jobs.valueHasMutated();
-
-        return self.showSubmitJobDialog(vm, targetQueue);
-      }
-
       // Sadly there's no "destination job" information, so we have to
       // infer the index of the job based on the rendered HTML given by evt.to
       if (vm.constructor.name === "CPJob") {
         let jobs = self.defaultQueue.jobs();
-        let dest_idx = jobs.indexOf(vm);
+        let destq = dataFor(evt.to);
+        let dest_idx = destq.jobs().indexOf(vm);
 
         let ids = []
         for (let j of jobs) {
           ids.push(j.id());
         }
         self.api.mv(self.api.JOB, {
+            src_queue: src.name,
+            dest_queue: destq.name,
             id: vm.id(),
-            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
-        }, (result) => {});
+            after_id: (dest_idx > 0) ? destq.jobs()[dest_idx-1].id() : null
+        }, (result) => {
+          if (result.error) {
+            self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
+          }
+        });
       }
     };
 
@@ -267,6 +267,10 @@ function CPViewModel(parameters) {
       }
       // Sets must only be dragged among draft jobs
       if (evt.from.id === "queue_sets" && !evt.to.classList.contains("draft")) {
+        return false;
+      }
+      // No dragging items in non-ready queues
+      if (evt.to.classList.contains("loading")) {
         return false;
       }
       return true;
@@ -342,35 +346,6 @@ function CPViewModel(parameters) {
     }, function(statusCode, errText) {
       self.hasSpoolManager(statusCode !== 404);
     });
-
-
-		self.dialog = $("#cpq_submitDialog");
-		self.jobSendDetails = ko.observable();
-    self.jobSendTitle = ko.computed(function() {
-      let details = self.jobSendDetails();
-      if (details === undefined) {
-        return "";
-      }
-      return `Send ${details[0]._name()} to ${details[1].name}?`;
-    });
-    self.submitJob = function() {
-      let details = self.jobSendDetails();
-      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, (result) => {
-        if (result.error) {
-          self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
-        } else {
-          self._setState(result);
-        }
-      });
-			self.dialog.modal('hide');
-    }
-		self.showSubmitJobDialog = function(job, queue) {
-      self.jobSendDetails([job, queue]);
-			self.dialog.modal({}).css({
-					width: 'auto',
-					'margin-left': function() { return -($(this).width() /2); }
-			});
-		}
 
     self.humanize = function(num) {
       // Humanizes numbers by condensing and adding units
