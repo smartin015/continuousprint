@@ -2,6 +2,7 @@ import octoprint.plugin
 from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
+from .queues.lan import ValidationError
 import flask
 import json
 from .storage import queries
@@ -175,49 +176,31 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         )
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/set/mv", methods=["POST"])
-    @restricted_access
-    @cpq_permission(Permission.EDITJOB)
-    def mv_set(self):
-        self._get_queue(DEFAULT_QUEUE).mv_set(
-            int(flask.request.form["id"]),
-            int(
-                flask.request.form["after_id"]
-            ),  # Move to after this set (-1 for beginning of job)
-            int(
-                flask.request.form["dest_job"]
-            ),  # Move to this job (null for new job at end)
-        )
-        return json.dumps("ok")
-
-    # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/mv", methods=["POST"])
     @restricted_access
     @cpq_permission(Permission.EDITJOB)
     def mv_job(self):
-        self._get_queue(DEFAULT_QUEUE).mv_job(
-            int(flask.request.form["id"]),
-            int(
-                flask.request.form["after_id"]
-            ),  # Move to after this job (-1 for beginning of queue)
-        )
-        return json.dumps("ok")
+        src_id = flask.request.form["id"]
+        after_id = flask.request.form["after_id"]
+        if after_id == "":  # Treat empty string as 'none' i.e. front of queue
+            after_id = None
+        sq = self._get_queue(flask.request.form["src_queue"])
+        dq = self._get_queue(flask.request.form.get("dest_queue"))
 
-    # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/job/submit", methods=["POST"])
-    @restricted_access
-    @cpq_permission(Permission.ADDJOB)
-    def submit_job(self):
-        j = queries.getJob(int(flask.request.form["id"]))
-        # Submit to the queue and remove from its origin
-        err = self._get_queue(flask.request.form["queue"]).submit_job(j)
-        if err is None:
-            self._logger.debug(
-                self._get_queue(DEFAULT_QUEUE).remove_jobs(job_ids=[j.id])
-            )
-            return self._state_json()
-        else:
-            return json.dumps(dict(error=str(err)))
+        # Transfer into dest queue first
+        if dq != sq:
+            try:
+                new_id = dq.import_job_from_view(sq.get_job_view(src_id))
+            except ValidationError as e:
+                return json.dumps(dict(error=str(e)))
+
+            print("Imported job from view")
+            sq.remove_jobs([src_id])
+            src_id = new_id
+
+        # Finally, move the job
+        dq.mv_job(src_id, after_id)
+        return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/edit", methods=["POST"])
@@ -225,7 +208,8 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITJOB)
     def edit_job(self):
         data = json.loads(flask.request.form.get("json"))
-        return json.dumps(self._get_queue(DEFAULT_QUEUE).edit_job(data["id"], data))
+        q = self._get_queue(data["queue"])
+        return json.dumps(q.edit_job(data["id"], data))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/import", methods=["POST"])
@@ -267,17 +251,6 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         return json.dumps(
             self._get_queue(flask.request.form["queue"]).remove_jobs(
                 flask.request.form.getlist("job_ids[]")
-            )
-        )
-
-    # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/set/rm", methods=["POST"])
-    @restricted_access
-    @cpq_permission(Permission.EDITJOB)
-    def rm_set(self):
-        return json.dumps(
-            self._get_queue(DEFAULT_QUEUE).rm_multi(
-                set_ids=flask.request.form.getlist("set_ids[]")
             )
         )
 

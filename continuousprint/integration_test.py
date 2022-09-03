@@ -15,6 +15,7 @@ from .queues.abstract import Strategy
 from peewee import SqliteDatabase
 from collections import defaultdict
 from peerprint.lan_queue import LANPrintQueueBase
+from peerprint.sync_objects_test import TestReplDict
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -183,11 +184,6 @@ class LocalLockManager:
         self.locks.pop(k, None)
 
 
-class LocalJobDict(dict):
-    def set(self, k, v, **kwargs):
-        self[k] = v
-
-
 class TestLANQueue(IntegrationTest):
     """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
 
@@ -214,13 +210,14 @@ class TestLANQueue(IntegrationTest):
             self.lq.ns, self.lq.addr, MagicMock(), logging.getLogger("lantestbase")
         )
         self.lq.lan.q.locks = LocalLockManager(dict(), "lq")
-        self.lq.lan.q.jobs = LocalJobDict()
+        self.lq.lan.q.jobs = TestReplDict(lambda a, b: None)
         self.lq.lan.q.peers = dict()
 
     def test_completes_job_in_order(self):
         self.lq.lan.q.setJob(
-            "bsdf",
+            "uuid1",
             dict(
+                id="uuid1",
                 name="j1",
                 created=0,
                 sets=[
@@ -238,8 +235,9 @@ class TestLANQueue(IntegrationTest):
     def test_multi_job(self):
         for name in ("j1", "j2"):
             self.lq.lan.q.setJob(
-                f"{name}_hash",
+                f"{name}_id",
                 dict(
+                    id=f"{name}_id",
                     name=name,
                     created=0,
                     sets=[dict(path=f"{name}.gcode", count=1, remaining=1)],
@@ -288,7 +286,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
                 lq.ns, lq.addr, MagicMock(), logging.getLogger("lantestbase")
             )
             lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
-            lq.lan.q.jobs = LocalJobDict()
+            lq.lan.q.jobs = TestReplDict(lambda a, b: None)
             lq.lan.q.peers = self.peers
             if i > 0:
                 lq.lan.q.peers = self.peers[0][2].lan.q.peers
@@ -304,6 +302,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             lq1.lan.q.setJob(
                 f"{name}_hash",
                 dict(
+                    id=f"{name}_hash",
                     name=name,
                     created=0,
                     sets=[

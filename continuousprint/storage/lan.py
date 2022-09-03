@@ -1,4 +1,5 @@
 from .database import JobView, SetView
+from .queries import getint
 from requests.exceptions import HTTPError
 
 
@@ -10,16 +11,21 @@ class LANQueueView:
 
 class LANJobView(JobView):
     def __init__(self, manifest, lq):
-        for attr in ("name", "count", "created"):
-            setattr(self, attr, manifest[attr])
-        self.remaining = manifest.get("remaining", self.count)
+        self.name = manifest.get("name", "")
+        self.created = getint(manifest, "created")
+        self.count = getint(manifest, "count")
+        self.remaining = getint(manifest, "remaining", default=self.count)
         self.queue = LANQueueView(lq)
         self.id = manifest["id"]
         self.peer = manifest["peer_"]
         self.sets = []
-        self.draft = False
-        self.acquired = None
-        self.sets = [LANSetView(s, self, i) for i, s in enumerate(manifest["sets"])]
+        self.draft = manifest.get("draft", False)
+        self.acquired = manifest.get("acquired", False)
+        self.updateSets(manifest["sets"])
+        self.hash = manifest.get("hash")
+
+    def updateSets(self, sets_list):
+        self.sets = [LANSetView(s, self, i) for i, s in enumerate(sets_list)]
 
     def save(self):
         self.queue.lq.set_job(self.id, self.as_dict())
@@ -38,12 +44,12 @@ class LANSetView(SetView):
     def __init__(self, data, job, rank):
         self.job = job
         self.sd = False
-        self.rank = rank
+        self.rank = int(rank)
         self.id = f"{job.id}_{rank}"
         for attr in ("path", "count"):
             setattr(self, attr, data[attr])
-        self.remaining = data.get("remaining", self.count)
-        self.completed = data.get("completed", 0)
+        self.remaining = getint(data, "remaining", default=self.count)
+        self.completed = getint(data, "completed")
         self.material_keys = ",".join(data.get("materials", []))
         self.profile_keys = ",".join(data.get("profiles", []))
         self._resolved = None
@@ -52,7 +58,7 @@ class LANSetView(SetView):
         if self._resolved is None:
             try:
                 self._resolved = self.job.queue.lq.resolve_set(
-                    self.job.peer, self.job.id, self.path
+                    self.job.peer, self.job.hash, self.path
                 )
             except HTTPError as e:
                 raise ResolveError(f"Failed to resolve {self.path}") from e

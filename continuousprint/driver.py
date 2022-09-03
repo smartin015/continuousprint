@@ -78,12 +78,19 @@ class Driver:
         # Given that some calls to action() come from a watchdog timer, we hold a mutex when performing the action
         # so the state is updated in a thread safe way.
         with self.mutex:
-            self._logger.debug(
-                f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}"
-            )
+            now = time.time()
+            if self.idle_start_ts is None or self.idle_start_ts + 15 > now:
+                extra = (
+                    f"(idle logs hidden after {self.idle_start_ts+15})"
+                    if self.idle_start_ts is not None
+                    else ""
+                )
+                self._logger.debug(
+                    f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp} {extra}"
+                )
 
             if p == Printer.IDLE and self.idle_start_ts is None:
-                self.idle_start_ts = time.time()
+                self.idle_start_ts = now
             elif p != Printer.IDLE and self.idle_start_ts is not None:
                 self.idle_start_ts = None
 

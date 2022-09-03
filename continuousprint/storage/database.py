@@ -113,6 +113,7 @@ class JobView:
         sets.sort(key=lambda s: s.rank)
         sets = [s.as_dict() for s in sets]
         d = dict(
+            queue=self.queue.name,
             name=self.name,
             count=self.count,
             draft=self.draft,
@@ -338,7 +339,6 @@ def init(db_path="queues.sqlite3", logger=None):
                         for f in Set._meta.sorted_field_names:
                             attrs[f] = getattr(s, f)
                         attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
-                        print(attrs)
                         TempSet.create(**attrs)
                         if logger is not None:
                             logger.warning(f"Migrating set {s.path} to schema v0.0.3")

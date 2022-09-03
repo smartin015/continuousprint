@@ -219,12 +219,14 @@ class TestSingleItemQueue(DBTest):
         j = Job.get(id=1)
         s = j.sets[0]
         s.remaining = 0
+        s.completed = 3
         j.remaining = 0
         s.save()
         j.save()
         q.resetJobs([j.id])
         # Replenishing the job replenishes all sets
         self.assertEqual(Set.get(id=s.id).remaining, 1)
+        self.assertEqual(Set.get(id=s.id).completed, 0)
         self.assertEqual(Job.get(id=j.id).remaining, 1)
 
     def testUpdateJobCount(self):
@@ -295,26 +297,10 @@ class TestMultiItemQueue(DBTest):
             )
 
     def testMoveJob(self):
-        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, -1), [2, 1])]:
+        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, None), [2, 1])]:
             with self.subTest(f"moveJob({moveArgs}) -> want {want}"):
                 q.moveJob(*moveArgs)
                 self.assertEqual([j.id for j in q.getJobsAndSets(DEFAULT_QUEUE)], want)
-
-    def testMoveSet(self):
-        for (desc, moveArgs, want) in [
-            ("FirstToLast", (1, 2, 1), [2, 1, 3, 4]),
-            ("LastToFirst", (2, -1, 1), [2, 1, 3, 4]),
-            ("DiffJob", (1, 3, 2), [2, 3, 1, 4]),
-            ("NewJob", (1, -1, -1), [2, 3, 4, 1]),
-        ]:
-            with self.subTest(f"{desc}: moveSet({moveArgs})"):
-                q.moveSet(*moveArgs)
-                set_order = [
-                    (s["id"], s["rank"])
-                    for j in q.getJobsAndSets(DEFAULT_QUEUE)
-                    for s in j.as_dict()["sets"]
-                ]
-                self.assertEqual(set_order, [(w, ANY) for w in want])
 
     def testGetNextJobAfterDecrement(self):
         j = q.getNextJobInQueue(DEFAULT_QUEUE, PROFILE)

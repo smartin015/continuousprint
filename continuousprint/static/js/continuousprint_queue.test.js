@@ -33,7 +33,9 @@ function items(njobs = 1, nsets = 2) {
 }
 
 function init(njobs = 1) {
-  return new VM({name:"test", jobs:items(njobs)}, mocks());
+  return new VM({name:"test", jobs:items(njobs), peers:[
+    {name: "localhost", profile: {name: "profile"}, status: "IDLE"}
+  ]}, mocks());
 }
 
 test('newEmptyJob', () => {
