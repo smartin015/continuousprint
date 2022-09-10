@@ -37,7 +37,7 @@ def timeAgo(elapsed):
 
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
-    PRINTING_IDLE_BREAKOUT_SEC = 10.0
+    PRINTING_IDLE_BREAKOUT_SEC = 15.0
 
     def __init__(
         self,
@@ -200,7 +200,13 @@ class Driver:
                     StatusType.NEEDS_ACTION,
                 )
                 return self._state_paused
-        elif a == Action.SUCCESS:
+        elif a == Action.SUCCESS or (
+            p == Printer.IDLE
+            and time.time() - self.idle_start_ts > self.PRINTING_IDLE_BREAKOUT_SEC
+        ):
+            # If idle state without event, assume we somehow missed the SUCCESS action.
+            # We wait for a period of idleness to prevent idle-before-success events
+            # from double-completing prints.
             item = self.q.get_set()
 
             # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
@@ -222,14 +228,6 @@ class Driver:
                 self._set_status("Waiting for printer to be ready")
         elif p == Printer.PAUSED:
             return self._state_paused
-        elif (
-            p == Printer.IDLE
-            and time.time() - self.idle_start_ts > self.PRINTING_IDLE_BREAKOUT_SEC
-        ):
-            # Idle state without event; assume we somehow missed the SUCCESS action
-            # We wait for a period of idleness to prevent idle-before-success events
-            # from double-completing prints.
-            return self._state_failure
 
     def _state_paused(self, a: Action, p: Printer):
         self._set_status("Paused", StatusType.NEEDS_ACTION)
