@@ -77,10 +77,10 @@ class TestFromInactive(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE)
         self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
 
-        # Continued idleness triggers failure (retry behavior validated in test_retry_after_failure)
+        # Continued idleness triggers bed clearing and such
         self.d.idle_start_ts = time.time() - (Driver.PRINTING_IDLE_BREAKOUT_SEC + 1)
         self.d.action(DA.TICK, DP.IDLE)
-        self.assertEqual(self.d.state.__name__, self.d._state_failure.__name__)
+        self.assertEqual(self.d.state.__name__, self.d._state_start_clearing.__name__)
 
     def test_retry_after_failure(self):
         self.d.state = self.d._state_failure
