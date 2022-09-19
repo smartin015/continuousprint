@@ -103,14 +103,6 @@
               <i style="cursor: pointer" class="far fa-save"></i>
             </button>
           </div>
-          <div class="dropdown" style="z-index:1;">
-            <a class="btn dropdown-toggle" data-toggle="dropdown">
-              <i style="cursor: pointer" class="fas fa-ellipsis-v"></i>
-            </a>
-            <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
-              <li><a tabindex="-1" data-bind="click: $root.showStats(!$root.showStats())">Toggle Stats</a></li>
-            </ul>
-          </div>
         </div>
         <div style="flex: 1; text-align: right">
           <span data-bind="visible: $root.queues().length > 1, text: name"></span>
@@ -124,8 +116,6 @@
       <div class="queue-header">
         <div style="flex: 1" class="has_title" title="Jobs are collections of Sets (print files) run one or more times">Job<sup>?</sup></div>
         <div style="flex: 1" class="has_title" title="The number of iterations/runs completed out of the total. For Sets (print files), this is progress on the current iteration of the Job.">Progress<sup>?</sup></div>
-        <div class="remaining has_title" data-bind="visible: $root.showStats()" title="Number of prints yet to be printed for the current job iteration">This Run<sup>?</sup></div>
-        <div class="total has_title" data-bind="visible: $root.showStats()" title="Total number of prints yet to be printed across all remaining iterations of the job">Pending<sup>?</sup></div>
       </div>
       <!-- `cpsortable` is renamed from `sortable` - see https://github.com/smartin015/continuousprint/issues/14 -->
       <div class="accordion queue-list">
@@ -165,8 +155,6 @@
                 <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                 <div data-bind="visible: queue.active_jobs().indexOf(id()) !== -1, style: { width: pct_active() }" class="bar active"></div>
               </div>
-              <div class="remaining" data-bind="visible: $root.showStats(), text: $root.humanize(totals().remaining)"></div>
-              <div class="total" data-bind="visible: $root.showStats(), text: $root.humanize(totals().total)"></div>
             </div>
           </div>
           <div class="accordion-body collapse in">
@@ -204,7 +192,6 @@
                           <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                           <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
                         </div>
-                        <div class="remaining" data-bind="text: $root.humanize(remaining()), visible: $root.showStats()"></div>
                         <!-- /ko -->
                         <!-- ko if: job.draft() && queue.active_sets().indexOf(id) === -1 -->
                           <div class="completed" data-bind="text: $root.humanize(completed())"></div>
@@ -213,7 +200,6 @@
                           <input class="count fa fa-text count-box" type="number" min="0" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: job.onEnter, focus: onCountFocus, blur: onCountBlur}"></input>
                           <input class="remaining fa fa-text count-box" type="number" min="0" data-bind="textInput: remaining, attr: {'_vkenabled': false}, event: {keypress: job.onEnter}"></input>
                         <!-- /ko -->
-                          <div class="total" data-bind="text: $root.humanize(length_remaining()), visible: job.draft() || $root.showStats()"></div>
                       </div>
                     </div>
                   <div class="accordion-body collapse" data-bind="css: {'in': set.expanded}">

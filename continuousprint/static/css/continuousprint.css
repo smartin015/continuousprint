@@ -227,6 +227,7 @@
   position: relative;
   flex: 1;
   display: flex; /* allow for stacking progresses in jobs */
+  margin-right: var(--cpq-pad2);
 }
 #tab_plugin_continuousprint .accordion-heading-button {
   padding: var(--cpq-pad) var(--cpq-pad);
@@ -265,6 +266,7 @@
   font-weight: bold;
   opacity: 0.5;
   margin-left: 55px;
+  margin-right: var(--cpq-pad2);
   align-items: flex-end;
 }
 #tab_plugin_continuousprint .queue-header > div, #settings_continuousprint_queues .queue-header > div {
