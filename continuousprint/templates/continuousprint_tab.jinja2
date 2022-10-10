@@ -150,7 +150,7 @@
               <!-- ko if: !draft() -->
               <div class="job-name" data-bind="text: _name"></div>
               <!-- /ko -->
-              <div class="progress" title="The number of iterations/runs completed out of the total for the job" data-bind="css: { 'progress-striped active': queue.active_jobs().indexOf(id()) !== -1}">
+              <div class="progress" title="The number of iterations/runs completed out of the total for the job" data-bind="css: { 'active': $root.status() === 'Printing', 'progress-striped': queue.active_jobs().indexOf(id()) !== -1}">
                 <div class="progresstext" data-bind="text: $root.humanize(completed()) + '/' + $root.humanize(count())"></div>
                 <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                 <div data-bind="visible: queue.active_jobs().indexOf(id()) !== -1, style: { width: pct_active() }" class="bar active"></div>
@@ -187,7 +187,7 @@
                           <i class="fas fa-exclamation-triangle" style="color: #aa0000"></i>
                         </div>
                         <!-- ko if: !job.draft() || queue.active_sets().indexOf(id) !== -1 -->
-                        <div class="progress" title="The number of iterations out of the total for this iteration/run of the job" data-bind="hidden: !profile_matches() || missing_file(), css: { 'progress-striped active': queue.active_sets().indexOf(id) !== -1 }">
+                        <div class="progress" title="The number of iterations out of the total for this iteration/run of the job" data-bind="hidden: !profile_matches() || missing_file(), css: { 'active': $root.status() === 'Printing',  'progress-striped': queue.active_sets().indexOf(id) !== -1 }">
                           <div class="progresstext" data-bind="text: progress_text"></div>
                           <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
                           <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
@@ -199,6 +199,7 @@
 
                           <input class="count fa fa-text count-box" type="number" min="0" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: job.onEnter, focus: onCountFocus, blur: onCountBlur}"></input>
                           <input class="remaining fa fa-text count-box" type="number" min="0" data-bind="textInput: remaining, attr: {'_vkenabled': false}, event: {keypress: job.onEnter}"></input>
+                          <div class="total" data-bind="text: $root.humanize(length_remaining())"></div>
                         <!-- /ko -->
                       </div>
                     </div>

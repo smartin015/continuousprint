@@ -152,7 +152,7 @@ class Job(Model, JobView):
         return j
 
     def refresh_sets(self):
-        Set.update(remaining=Set.count).where(Set.job == self).execute()
+        Set.update(remaining=Set.count, completed=0).where(Set.job == self).execute()
 
 
 class SetView:

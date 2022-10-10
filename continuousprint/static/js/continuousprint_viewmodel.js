@@ -242,7 +242,7 @@ function CPViewModel(parameters) {
       return null;
     };
 
-    self.sortEnd = function(evt, vm, src) {
+    self.sortEnd = function(evt, vm, src, idx=null) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       self.draggingSet(false);
