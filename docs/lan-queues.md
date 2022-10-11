@@ -12,7 +12,7 @@ In addition to providing a local queue by default, Continuous Print also configu
 
 !!! Info
 
-    **If you upgraded from v2.0.0 or earlier**, the default LAN queue will not be added (a compatibility measure). If you don't see the default LAn queue, please read and follow [Additional LAN Queues](#additional-lan-queues) for instructions on how to set up your own.
+    **If you upgraded from v2.0.0 or earlier**, the default LAN queue will not be added (a compatibility measure). If you don't see the default LAN queue, please read and follow [Additional LAN Queues](#additional-lan-queues) for instructions on how to set up your own.
 
 ## Setup
 
