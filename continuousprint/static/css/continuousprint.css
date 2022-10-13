@@ -216,6 +216,7 @@
 #tab_plugin_continuousprint .set_warning {
   flex: 1;
   text-align: center;
+  margin-right: 17px;
 }
 #tab_plugin_continuousprint .draft .set_warning {
   flex: 0;
@@ -227,6 +228,7 @@
   position: relative;
   flex: 1;
   display: flex; /* allow for stacking progresses in jobs */
+  margin-right: var(--cpq-pad2);
 }
 #tab_plugin_continuousprint .accordion-heading-button {
   padding: var(--cpq-pad) var(--cpq-pad);
@@ -265,6 +267,7 @@
   font-weight: bold;
   opacity: 0.5;
   margin-left: 55px;
+  margin-right: var(--cpq-pad2);
   align-items: flex-end;
 }
 #tab_plugin_continuousprint .queue-header > div, #settings_continuousprint_queues .queue-header > div {
@@ -422,3 +425,42 @@
 
 #tab_plugin_continuousprint .header > *, #tab_plugin_continuousprint .entries > .entry > * {
   flex: 1;
+  text-align: center;
+}
+
+#tab_plugin_continuousprint .timelapse_thumbnail {
+	position: relative;
+	display: inline-block;
+}
+
+#tab_plugin_continuousprint .timelapse_thumbnail > img {
+	display: none;
+	cursor: pointer;
+	position: absolute;
+	z-index: 1000;
+	top: 0;
+	max-width: 100px;
+	left: 18px;
+	border: 1px black solid;
+	padding: 5px;
+	background-color: white;
+}
+#tab_plugin_continuousprint .timelapse_thumbnail > i {
+	padding: 2px; /* So hover is maintained when mousing over to image */
+}
+#tab_plugin_continuousprint .timelapse_thumbnail:hover > img {
+  display: block;
+}
+
+#tab_plugin_continuousprint .separator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#tab_plugin_continuousprint .separator .line {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #000;
+  margin-left: 5px;
+  margin-right: 5px;
+}

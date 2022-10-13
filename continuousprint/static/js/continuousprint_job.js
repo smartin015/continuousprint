@@ -27,15 +27,15 @@ function CPJob(obj, peers, api, profile) {
   self.id = ko.observable(obj.id);
   self._name = ko.observable(obj.name || "");
 
-  if (obj.acquired) {
-    self.acquiredBy = ko.observable('local');
-  } else if (obj.acquired_by_) {
+  if (obj.acquired_by_) {
     let peer = peers[obj.acquired_by_];
     if (peer !== undefined) {
-      self.acquiredBy = ko.observable(peer.name);
+      self.acquiredBy = ko.observable(`${peer.name} (${peer.profile.name})`);
     } else {
       self.acquiredBy = ko.observable(obj.acquired_by_)
     }
+  } else if (obj.acquired) {
+    self.acquiredBy = ko.observable('local');
   } else {
     self.acquiredBy = ko.observable();
   }

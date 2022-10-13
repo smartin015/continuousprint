@@ -43,7 +43,6 @@ function CPViewModel(parameters) {
     self.defaultQueue = null;
     self.expanded = ko.observable(null);
     self.profile = ko.observable('');
-    self.showStats = ko.observable(false);
 
     self.api = parameters[5] || new CPAPI();
 
@@ -177,11 +176,11 @@ function CPViewModel(parameters) {
         }
         let cpq = new CPQueue(q, self.api, self.files, self.profile);
 
-        // Replace draft entries
+        // Replace draft entries that are still in draft
         let cpqj = cpq.jobs();
         for (let i = 0; i < q.jobs.length; i++) {
           let draft = drafts[cpqj[i].id()];
-          if (draft !== undefined) {
+          if (draft !== undefined && cpqj[i].draft()) {
             cpq.jobs.splice(i, 1, draft);
           }
         }
@@ -230,7 +229,20 @@ function CPViewModel(parameters) {
       self.draggingJob(vm.constructor.name === "CPJob");
     };
 
-    self.sortEnd = function(evt, vm, src, dataFor=ko.dataFor) {
+    self._getElemIdx = function(elem, pcls) {
+      while (!elem.classList.contains(pcls)) {
+        elem = elem.parentElement;
+      }
+      let siblings = elem.parentElement.children;
+      for (let i=0; i < siblings.length; i++) {
+        if (siblings[i] === elem) {
+          return i;
+        }
+      }
+      return null;
+    };
+
+    self.sortEnd = function(evt, vm, src, idx=null) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       self.draggingSet(false);
@@ -239,14 +251,8 @@ function CPViewModel(parameters) {
       // Sadly there's no "destination job" information, so we have to
       // infer the index of the job based on the rendered HTML given by evt.to
       if (vm.constructor.name === "CPJob") {
-        let jobs = self.defaultQueue.jobs();
-        let destq = dataFor(evt.to);
-        let dest_idx = destq.jobs().indexOf(vm);
-
-        let ids = []
-        for (let j of jobs) {
-          ids.push(j.id());
-        }
+        let destq = self.queues()[self._getElemIdx(evt.to, "cp-queue")];
+        let dest_idx = evt.newIndex;
         self.api.mv(self.api.JOB, {
             src_queue: src.name,
             dest_queue: destq.name,
@@ -256,6 +262,9 @@ function CPViewModel(parameters) {
           if (result.error) {
             self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
           }
+          // Refresh in case of error or if the move modified job internals (e.g. on job submission)
+          // Do this as a timeout to allow for UI rendering / RPC calls to complete
+          setTimeout(self._loadState, 0);
         });
       }
     };

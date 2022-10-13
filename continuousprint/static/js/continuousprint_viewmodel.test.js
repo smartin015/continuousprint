@@ -148,8 +148,9 @@ describe('sortMove', () => {
 
 test('sortEnd job to start', () => {
   let v = init();
+  v._getElemIdx = () => 0; // To get queue
   let ccont = {classList: {contains: () => true}};
-  let evt = {from: ccont, to: ccont};
+  let evt = {from: ccont, to: ccont, newIndex: 0};
   let j = v.defaultQueue.jobs()[0];
   v.sortEnd(evt, j, v.defaultQueue, dataFor=function(elem) {return v.defaultQueue});
   expect(v.files.onServerConnect).toHaveBeenCalled();
@@ -159,10 +160,11 @@ test('sortEnd job to start', () => {
   expect(data.after_id).toEqual(null);
 });
 
-test.only('sortEnd job to end', () => {
+test('sortEnd job to end', () => {
   let v = init(njobs=2);
+  v._getElemIdx = () => 0; // To get queue
   let ccont = {classList: {contains: () => true}};
-  let evt = {from: ccont, to: ccont};
+  let evt = {from: ccont, to: ccont, newIndex: 1};
   let j = v.defaultQueue.jobs()[1];
   v.sortEnd(evt, j, v.defaultQueue, dataFor=function(elem) {return v.defaultQueue});
   expect(v.files.onServerConnect).toHaveBeenCalled();

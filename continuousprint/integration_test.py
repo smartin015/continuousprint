@@ -62,7 +62,7 @@ class IntegrationTest(DBTest):
                 self.d.action(DA.TICK, DP.IDLE)  # -> clearing
                 self.d._runner.clear_bed.assert_called()
                 self.d._runner.clear_bed.reset_mock()
-                self.d.action(DA.TICK, DP.IDLE)  # -> start_print
+                self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print
             else:  # Finishing
                 self.d.action(DA.TICK, DP.IDLE)  # -> start_finishing
                 self.assertEqual(
@@ -71,7 +71,7 @@ class IntegrationTest(DBTest):
                 self.d.action(DA.TICK, DP.IDLE)  # -> finishing
                 self.d._runner.run_finish_script.assert_called()
                 self.d._runner.run_finish_script.reset_mock()
-                self.d.action(DA.TICK, DP.IDLE)  # -> inactive
+                self.d.action(DA.SUCCESS, DP.IDLE)  # -> inactive
                 self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
         except AssertionError as e:
             raise AssertionError(
@@ -158,6 +158,7 @@ class TestLocalQueue(IntegrationTest):
         queries.updateJob(1, dict(draft=False))
 
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
+        self.assertEqual(self.d.state, self.d._state_printing)
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("b.gcode", finishing=True)
@@ -333,7 +334,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d1.action(DA.SUCCESS, DP.IDLE, path="j1.gcode")  # -> success
             d1.action(DA.TICK, DP.IDLE)  # -> start_clearing
             d1.action(DA.TICK, DP.IDLE)  # -> clearing
-            d1.action(DA.TICK, DP.IDLE)  # -> start_print
+            d1.action(DA.SUCCESS, DP.IDLE)  # -> start_print
             self.assertEqual(d1._runner.start_print.call_args[0][0].path, "j3.gcode")
             self.assertEqual(self.locks["j3_hash"], "peer0")
             d1._runner.start_print.reset_mock()
@@ -343,7 +344,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d2.action(DA.SUCCESS, DP.IDLE, path="j2.gcode")  # -> success
             d2.action(DA.TICK, DP.IDLE)  # -> start_finishing
             d2.action(DA.TICK, DP.IDLE)  # -> finishing
-            d2.action(DA.TICK, DP.IDLE)  # -> idle
+            d2.action(DA.SUCCESS, DP.IDLE)  # -> idle
             self.assertEqual(d2.state.__name__, d2._state_idle.__name__)
 
 

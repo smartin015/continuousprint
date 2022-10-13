@@ -182,10 +182,12 @@ class TestJobWithSet(DBTest):
 
     def testDecrementCompletedSet(self):
         self.s.remaining = 0
+        self.s.completed = 5
         self.s.save()
         self.j.decrement()
         self.assertEqual(self.j.remaining, 4)
         self.assertEqual(self.j.sets[0].remaining, 5)
+        self.assertEqual(self.j.sets[0].completed, 0)
 
     def testDecrementPartialSet(self):
         self.s.remaining = 3

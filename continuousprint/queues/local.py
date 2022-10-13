@@ -144,7 +144,8 @@ class LocalQueue(AbstractFactoryQueue):
         out_dir = str(Path(gjob_path).stem)
         self._mkdir(out_dir)
         manifest, filepaths = unpack_job(
-            self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
+            self._path_on_disk(gjob_path, sd=False),
+            self._path_on_disk(out_dir, sd=False),
         )
         return self.queries.importJob(self.ns, manifest, out_dir, draft)
 

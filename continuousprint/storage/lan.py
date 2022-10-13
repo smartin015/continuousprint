@@ -11,28 +11,35 @@ class LANQueueView:
 
 class LANJobView(JobView):
     def __init__(self, manifest, lq):
+        # === Fields present in JobView ===
         self.name = manifest.get("name", "")
         self.created = getint(manifest, "created")
         self.count = getint(manifest, "count")
         self.remaining = getint(manifest, "remaining", default=self.count)
         self.queue = LANQueueView(lq)
         self.id = manifest["id"]
-        self.peer = manifest["peer_"]
-        self.sets = []
+        self.updateSets(manifest["sets"])
         self.draft = manifest.get("draft", False)
         self.acquired = manifest.get("acquired", False)
-        self.updateSets(manifest["sets"])
+
+        # === LANJobView specific fields ===
+        self.peer = manifest["peer_"]
         self.hash = manifest.get("hash")
 
     def updateSets(self, sets_list):
         self.sets = [LANSetView(s, self, i) for i, s in enumerate(sets_list)]
 
     def save(self):
-        self.queue.lq.set_job(self.id, self.as_dict())
+        # as_dict implemented in JobView doesn't handle LANJobView specific fields, so we must inject them here.
+        d = self.as_dict()
+        d["peer_"] = self.peer
+        d["hash"] = self.hash
+        self.queue.lq.set_job(self.id, d)
 
     def refresh_sets(self):
         for s in self.sets:
             s.remaining = s.count
+            s.completed = 0
         self.save()
 
 
