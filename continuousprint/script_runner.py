@@ -80,7 +80,7 @@ class ScriptRunner:
                 path = item.resolve()
             except ResolveError as e:
                 self._logger.error(e)
-                self._msg(f"Could not resolve LAN print path {path}", type="error")
+                self._msg(f"Could not resolve LAN print path for {path}", type="error")
                 return False
             self._logger.info(f"Resolved LAN print path to {path}")
 

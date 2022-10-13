@@ -135,6 +135,7 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
 
 
 # TODO test mv_job
+# TODO test import_job
 
 # TODO test SD card behavior on importing/exporting and printing
 # class TestSD(unittest.TestCase):

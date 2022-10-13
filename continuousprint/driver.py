@@ -160,6 +160,10 @@ class Driver:
         nxt = self._state_start_print(a, p)
         return nxt if nxt is not None else self._state_start_print
 
+    def _fmt_material_key(self, mk):
+        s = mk.split("_")
+        return f"{s[0]} ({s[1]})"
+
     def _state_start_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -177,7 +181,7 @@ class Driver:
             cur = self._cur_materials[i] if i < len(self._cur_materials) else None
             if im != cur:
                 self._set_status(
-                    f"Waiting for spool {im} in tool {i} (currently: {cur})",
+                    f"Need {self._fmt_material_key(im)} in tool {i}, but {self._fmt_material_key(cur)} is loaded",
                     StatusType.NEEDS_ACTION,
                 )
                 return

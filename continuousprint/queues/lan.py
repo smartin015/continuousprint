@@ -85,8 +85,9 @@ class LANQueue(AbstractEditableQueue):
                 )
             )
 
-    def set_job(self, hash_: str, manifest: dict):
-        return self.lan.q.setJob(hash_, manifest)
+    def set_job(self, jid: str, manifest: dict):
+        # Preserve peer address of job if present in the manifest
+        return self.lan.q.setJob(jid, manifest, addr=manifest.get("peer_", None))
 
     def resolve_set(self, peer, hash_, path) -> str:
         # Get fileshare address from the peer
@@ -264,7 +265,10 @@ class LANQueue(AbstractEditableQueue):
         # Note: post mutates manifest by stripping fields
         manifest["hash"] = self._fileshare.post(manifest, filepaths)
         manifest["id"] = jid if jid is not None else self._gen_uuid()
-        self.lan.q.setJob(manifest["id"], manifest)
+
+        # Propagate peer if importing from a LANJobView
+        # But don't fail with AttributeError if it's just a JobView
+        self.lan.q.setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
         return manifest["id"]
 
     def mv_job(self, job_id, after_id):

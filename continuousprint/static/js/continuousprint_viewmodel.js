@@ -176,11 +176,11 @@ function CPViewModel(parameters) {
         }
         let cpq = new CPQueue(q, self.api, self.files, self.profile);
 
-        // Replace draft entries
+        // Replace draft entries that are still in draft
         let cpqj = cpq.jobs();
         for (let i = 0; i < q.jobs.length; i++) {
           let draft = drafts[cpqj[i].id()];
-          if (draft !== undefined) {
+          if (draft !== undefined && cpqj[i].draft()) {
             cpq.jobs.splice(i, 1, draft);
           }
         }
@@ -262,6 +262,9 @@ function CPViewModel(parameters) {
           if (result.error) {
             self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
           }
+          // Refresh in case of error or if the move modified job internals (e.g. on job submission)
+          // Do this as a timeout to allow for UI rendering / RPC calls to complete
+          setTimeout(self._loadState, 0);
         });
       }
     };

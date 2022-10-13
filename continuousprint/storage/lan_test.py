@@ -32,8 +32,10 @@ class LANViewTest(unittest.TestCase):
 
     def test_decrement_refreshes_sets_and_saves(self):
         self.s.remaining = 0
+        self.s.completed = 5
         self.j.decrement()
         self.lq.set_job.assert_called()
         self.assertEqual(
             self.lq.set_job.call_args[0][1]["sets"][0]["remaining"], self.s.count
         )
+        self.assertEqual(self.lq.set_job.call_args[0][1]["sets"][0]["completed"], 0)
