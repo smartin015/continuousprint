@@ -161,8 +161,13 @@ class Driver:
         return nxt if nxt is not None else self._state_start_print
 
     def _fmt_material_key(self, mk):
-        s = mk.split("_")
-        return f"{s[0]} ({s[1]})"
+        try:
+            s = mk.split("_")
+            return f"{s[0]} ({s[1]})"
+        except IndexError:
+            return mk
+        except AttributeError:
+            return mk
 
     def _state_start_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:

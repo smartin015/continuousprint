@@ -73,6 +73,9 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
         self.q.queries.getNextJobInQueue.return_value = None
         self.assertEqual(self.q.acquire(), False)
 
+    def test_import_job(self):
+        pass  # TODO
+
 
 class TestLocalQueueInOrderInitial(unittest.TestCase):
     def setUp(self):
@@ -94,6 +97,9 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
     def test_init_already_acquired(self):
         self.assertEqual(self.q.get_job(), self.j)
         self.assertEqual(self.q.get_set(), self.s)
+
+    def test_mv(self):
+        pass  # TODO
 
     def test_acquire_2x(self):
         # Second acquire should do nothing, return True
@@ -133,9 +139,6 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
             ),
         )
 
-
-# TODO test mv_job
-# TODO test import_job
 
 # TODO test SD card behavior on importing/exporting and printing
 # class TestSD(unittest.TestCase):
