@@ -1,4 +1,5 @@
 from .database import JobView, SetView
+from pathlib import Path
 from .queries import getint
 from requests.exceptions import HTTPError
 
@@ -25,6 +26,9 @@ class LANJobView(JobView):
         # === LANJobView specific fields ===
         self.peer = manifest["peer_"]
         self.hash = manifest.get("hash")
+
+    def get_base_dir(self):
+        return self.queue.lq.get_gjob_dirpath(self.peer, self.hash)
 
     def updateSets(self, sets_list):
         self.sets = [LANSetView(s, self, i) for i, s in enumerate(sets_list)]
@@ -64,9 +68,7 @@ class LANSetView(SetView):
     def resolve(self) -> str:
         if self._resolved is None:
             try:
-                self._resolved = self.job.queue.lq.resolve_set(
-                    self.job.peer, self.job.hash, self.path
-                )
+                self._resolved = str(Path(self.job.get_base_dir()) / self.path)
             except HTTPError as e:
                 raise ResolveError(f"Failed to resolve {self.path}") from e
         return self._resolved
