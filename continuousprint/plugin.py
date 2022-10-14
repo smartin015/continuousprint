@@ -4,6 +4,7 @@ import os
 import socket
 import json
 import time
+import shutil
 import traceback
 import random
 from pathlib import Path
@@ -241,10 +242,13 @@ class CPQPlugin(ContinuousPrintAPI):
         )
 
     def _init_fileshare(self, fs_cls=Fileshare):
-        fileshare_dir = self._path_on_disk(f"{PRINT_FILE_DIR}/fileshare/", sd=False)
+        # Note: fileshare_dir referenced when cleaning up old files
+        self.fileshare_dir = self._path_on_disk(
+            f"{PRINT_FILE_DIR}/fileshare/", sd=False
+        )
         fileshare_addr = f"{self.get_local_ip()}:0"
         self._logger.info(f"Starting fileshare with address {fileshare_addr}")
-        self._fileshare = fs_cls(fileshare_addr, fileshare_dir, self._logger)
+        self._fileshare = fs_cls(fileshare_addr, self.fileshare_dir, self._logger)
         self._fileshare.connect()
 
     def _init_db(self):
@@ -428,6 +432,36 @@ class CPQPlugin(ContinuousPrintAPI):
         )
         self.on_event(self.CPQ_ANALYSIS_FINISHED, dict(path=entry.path, result=result))
 
+    def _cleanup_fileshare(self):
+        # This cleans up all non-useful fileshare files across all network queues, so they aren't just taking up space.
+        # First we collect all non-local queue items hosted by us - these are excluded from cleanup as someone may need to fetch them.
+        keep_hashes = set()
+        for name, q in self.q.queues.items():
+            if name == ARCHIVE_QUEUE or name == DEFAULT_QUEUE:
+                continue
+            for j in q.as_dict()["jobs"]:
+                if j["peer_"] == q.addr or j["acquired_by_"] == q.addr:
+                    keep_hashes.add(j["hash"])
+
+        # Loop through all .gjob and .gcode files in base directory and delete them if they aren't referenced or acquired by us
+        n = 0
+        for d in os.listdir(self.fileshare_dir):
+            name, suffix = os.path.splitext(d)
+            if suffix not in ("", ".gjob", ".gcode", ".gco"):
+                self._logger.debug(
+                    f"Fileshare cleanup ignoring non-printable file: {os.path.join(self.fileshare_dir, name)}"
+                )
+                continue
+            if name not in keep_hashes:
+                p = Path(self.fileshare_dir) / d
+                if p.is_dir():
+                    # Have to use shutil instead of p.rmdir() as the directory will likely not be empty
+                    shutil.rmtree(p, ignore_errors=True)
+                else:
+                    p.unlink()
+                n += 1
+        return n
+
     def tick(self):
         # Catch/pass all exceptions to prevent errors from stopping the repeated timer.
         try:
@@ -531,6 +565,9 @@ class CPQPlugin(ContinuousPrintAPI):
 
         elif event == Events.PRINT_DONE:
             self._update(DA.SUCCESS)
+            n = self._cleanup_fileshare()
+            if n > 0:
+                self._logger.info(f"Deleted {n} unreferenced fileshare files/dirs")
         elif event == Events.PRINT_FAILED:
             # Note that cancelled events are already handled directly with Events.PRINT_CANCELLED
             self._update(DA.FAILURE)
@@ -617,7 +654,7 @@ class CPQPlugin(ContinuousPrintAPI):
         qs = [
             dict(q.as_dict(), rank=db_qs[name])
             for name, q in self.q.queues.items()
-            if name != "archive"
+            if name != ARCHIVE_QUEUE
         ]
         qs.sort(key=lambda q: q["rank"])
 
