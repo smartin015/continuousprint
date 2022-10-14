@@ -89,7 +89,7 @@ class LANQueue(AbstractEditableQueue):
         # Preserve peer address of job if present in the manifest
         return self.lan.q.setJob(jid, manifest, addr=manifest.get("peer_", None))
 
-    def resolve_set(self, peer, hash_, path) -> str:
+    def get_gjob_dirpath(self, peer, hash_):
         # Get fileshare address from the peer
         peerstate = self._get_peers().get(peer)
         if peerstate is None:
@@ -98,8 +98,7 @@ class LANQueue(AbstractEditableQueue):
             )
 
         # fetch unpacked job from fileshare (may be cached) and return the real path
-        gjob_dirpath = self._fileshare.fetch(peerstate["fs_addr"], hash_, unpack=True)
-        return str(Path(gjob_dirpath) / path)
+        return self._fileshare.fetch(peerstate["fs_addr"], hash_, unpack=True)
 
     # -------- Wrappers around LANQueue to add/remove metadata ------
 

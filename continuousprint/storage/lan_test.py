@@ -22,11 +22,11 @@ class LANViewTest(unittest.TestCase):
         self.s = self.j.sets[0]
 
     def test_resolve_file(self):
-        self.lq.resolve_set.return_value = "/path/to/set.gcode"
-        self.assertEqual(self.s.resolve(), "/path/to/set.gcode")
+        self.lq.get_gjob_dirpath.return_value = "/path/to/"
+        self.assertEqual(self.s.resolve(), "/path/to/a.gcode")
 
     def test_resolve_http_error(self):
-        self.lq.resolve_set.side_effect = HTTPError
+        self.lq.get_gjob_dirpath.side_effect = HTTPError
         with self.assertRaises(ResolveError):
             self.s.resolve()
 

@@ -74,13 +74,13 @@ class TestLANQueueConnected(LANQueueTest):
             "a": dict(fs_addr="123", profile=dict(name="abc")),
         }
 
-    def test_resolve_set_failed_bad_peer(self):
+    def test_get_gjob_dirpath_failed_bad_peer(self):
         with self.assertRaises(Exception):
-            self.q.resolve_set("b", "hash", "path")
+            self.q.get_gjob_dirpath("b", "hash")
 
-    def test_resolve_set(self):
+    def test_get_gjob_dirpath(self):
         self.fs.fetch.return_value = "/dir/"
-        self.assertEqual(self.q.resolve_set("a", "hash", "path"), "/dir/path")
+        self.assertEqual(self.q.get_gjob_dirpath("a", "hash"), "/dir/")
         self.fs.fetch.assert_called_with("123", "hash", unpack=True)
 
     def _jbase(self, path="a.gcode"):

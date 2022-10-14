@@ -1,5 +1,6 @@
 from .abstract import Strategy, QueueData, AbstractFactoryQueue
 import tempfile
+import shutil
 import os
 from ..storage.database import JobView, SetView
 from peerprint.filesharing import pack_job, unpack_job, packed_name
@@ -110,8 +111,17 @@ class LocalQueue(AbstractFactoryQueue):
     def get_job_view(self, job_id):
         return self.queries.getJob(job_id)
 
-    def import_job_from_view(self, v):
+    def import_job_from_view(self, v, copy_fn=shutil.copytree):
         manifest = v.as_dict()
+
+        # If importing from a non-local queue, we must also fetch/import the files so they're available locally.
+        if hasattr(v, "get_base_dir"):
+            dest_dir = f'ContinuousPrint/imports/{manifest["name"]}_{manifest["id"]}'
+            gjob_dir = v.get_base_dir()
+            copy_fn(gjob_dir, self._path_on_disk(dest_dir, False))
+            for s in manifest["sets"]:
+                s["path"] = os.path.join(dest_dir, s["path"])
+
         # TODO make transaction, move to storage/queries.py
         j = self.add_job()
         for (k, v) in manifest.items():
