@@ -248,6 +248,7 @@ class TestEventHandling(unittest.TestCase):
         self.p._queries.annotateLastRun.assert_called_with("a.gcode", "a.mp4", ANY)
 
     def testPrintDone(self):
+        self.p._cleanup_fileshare = lambda: 0
         self.p.on_event(Events.PRINT_DONE, dict())
         self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY, ANY)
 
