@@ -4,6 +4,7 @@ from io import BytesIO
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.printer import InvalidFileLocation, InvalidFileType
+from octoprint.server import current_user
 from .storage.lan import ResolveError
 from .data import Keys, TEMP_FILES, CustomEvents
 
@@ -27,6 +28,9 @@ class ScriptRunner:
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
 
+    def _get_user(self):
+        return current_user.get_name()
+
     def _wrap_stream(self, name, gcode):
         return StreamWrapper(name, BytesIO(gcode.encode("utf-8")))
 
@@ -41,7 +45,9 @@ class ScriptRunner:
             allow_overwrite=True,
         )
         self._logger.info(f"Wrote file {path}")
-        self._printer.select_file(path, sd=False, printAfterSelect=True)
+        self._printer.select_file(
+            path, sd=False, printAfterSelect=True, user=self._get_user()
+        )
         return added_file
 
     def run_finish_script(self):
@@ -52,7 +58,7 @@ class ScriptRunner:
 
     def cancel_print(self):
         self._msg("Print cancelled", type="error")
-        self._printer.cancel_print()
+        self._printer.cancel_print(user=self._get_user())
         self._fire_event(CustomEvents.CANCEL)
 
     def start_cooldown(self):
@@ -86,7 +92,9 @@ class ScriptRunner:
 
         try:
             self._logger.info(f"Attempting to print {path} (sd={item.sd})")
-            self._printer.select_file(path, sd=item.sd, printAfterSelect=True)
+            self._printer.select_file(
+                path, sd=item.sd, printAfterSelect=True, user=self._get_user()
+            )
             self._fire_event(CustomEvents.START_PRINT)
         except InvalidFileLocation as e:
             self._logger.error(e)
