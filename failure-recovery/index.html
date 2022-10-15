@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="../style.css">
+    
     <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -80,8 +82,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +189,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -512,7 +512,7 @@
 <p>Follow the steps in this guide to help Continuous Print recover from unexpected printing behavior.</p>
 <h2 id="spaghetti-detection-and-recovery">Spaghetti Detection and Recovery</h2>
 <p>By default, the print queue doesn't know whether your print is proceeding fine or spraying filament everywhere ("spaghettification").</p>
-<p>Follow <a href="https://www.thespaghettidetective.com/docs/octoprint-plugin-setup/">The Spaghetti Detective installation instructions</a> on your octoprint installation, then restart OctoPrint. Continuous Print will automatically detect that TSD is installed and will enable queue recovery when spaghetti is detected (TSD plugin must be <code>v1.8.11</code> or higher).</p>
+<p>Follow <a href="https://www.thespaghettidetective.com/docs/octoprint-plugin-setup/">The Obico installation instructions</a> on your octoprint installation, then restart OctoPrint. Continuous Print will automatically detect that TSD is installed and will enable queue recovery when spaghetti is detected (TSD plugin must be <code>v1.8.11</code> or higher).</p>
 <p>When TSD thinks the print is failing:</p>
 <ol>
 <li>Continuous Print checks how long the current print has been running. If the failure was detected late into the print, the queue will pause and wait for user input.</li>

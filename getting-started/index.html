@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="../style.css">
+    
     <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -80,8 +82,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +189,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -594,12 +594,12 @@
 </div>
 <h2 id="configure-the-plugin">Configure the plugin</h2>
 <p>Go to <code>Settings</code> -&gt; <code>Continuous Print</code> and ensure the bed cleaning and queue finished scripts are correct for your 3D printer.</p>
-<p><strong>If you select your printer's make and model from the settings drop down, default scripts will be automatically configured.</strong> If you don't see your printer in the listand want to add it, see the <a href="/gcode-scripting#contributing">GCODE Scripting contributing section</a></p>
+<p><strong>If you select your printer's make and model from the settings drop down, default scripts will be automatically configured.</strong> If you want to add a missing printer to the list or improve on the default script, see the <a href="/gcode-scripting#contributing">GCODE Scripting contributing section</a></p>
 <h2 id="add-prints-to-the-queue">Add prints to the queue</h2>
 <ol>
 <li>Navigate to the file you wish to add in the Files dialog on the left of the page.</li>
 <li>Add it to the print queue by clicking the <code>+</code> button to the right of the file name.</li>
-<li>If you want to print more than one, you can click multiple times to add more copies, or set a specific count in the <code>Continuous Print</code> tab.</li>
+<li>If you want to print more than one copy, you can click the plus button multiple times or set a specific count in the <code>Continuous Print</code> tab.</li>
 <li>Push "Save" to save your print job and make it available for printing.</li>
 </ol>
 <div class="admonition tip">
@@ -607,25 +607,26 @@
 <p>See <a href="/advanced-queuing">Queueing Basics</a> to learn more about how to group your prints into sets and jobs.</p>
 </div>
 <h2 id="start-the-queue">Start the queue</h2>
-<p>The print queue won't start your prints just yet. To run the queue:</p>
+<p>The print queue is initially inactive when Octoprint is started. To run the queue:</p>
 <ol>
 <li>Click the 'Continuous Print` tab (it may be hidden in the extra tabs fold-out on the right)</li>
 <li>Double check the order and count of your prints - set the count and order using the buttons and number box to the right of the queued print, and delete with the red <code>X</code>.</li>
 <li>Click <code>Start Managing</code>.</li>
 </ol>
 <p>The plugin will wait until your printer is ready to start a print, then it'll begin with the top of the queue and proceed until the bottom.</p>
-<p>Note that the default behavior is to pause after every print to wait for you to remove the printed part - to keep printing, just press the "Resume" button on the OctoPrint UI. You can learn more about how to configure the gcode scripts <a href="/gcode-scripting">here</a> if you want to further automate your printing.</p>
+<p>Note that the default scripts for most printers will pause after every print to wait for you to remove the printed part - to keep printing, just press the "Resume" button on the OctoPrint UI. You can learn more about how to configure the gcode scripts <a href="/gcode-scripting">here</a> if you want to further automate your printing.</p>
 <h2 id="inspect-finished-prints">Inspect finished prints</h2>
-<p>As the print queue is managed and prints complete, you can see the status of individual prints by clicking on the "History" tab in the plugin tab window. The progress bar on particular prints and jobs will also fill in as prints complete.</p>
+<p>As the print queue is managed and prints complete, you can see the status of individual prints by clicking on the "History" tab in the plugin tab window. If timelapses are configured for your printer, completed prints will be tagged with an icon you can hover / click to view the timelapse for that print run.</p>
+<p>The progress bar on particular prints and jobs will also fill in as prints complete in the "Queues" tab.</p>
 <h2 id="stop-the-queue">Stop the queue</h2>
-<p>When all prints are finished, the plugin stops managing the queue and waits for you to start it again.</p>
-<p>If you need to stop early, click <code>Stop Managing</code>.</p>
+<p>When all prints are finished, the plugin goes idle and waits for additional work.</p>
+<p>If you need to stop the queue early, click <code>Stop Managing</code>.</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <p>The queue may not be managed any more, but <strong>any currently running print will continue printing</strong>  unless you cancel it with the <code>Cancel</code> button.</p>
 </div>
 <h2 id="clean-up-the-queue">Clean up the queue</h2>
-<p>You can delete completed print jobs by selecting them (using the check box on the left) and pressing the trash can icon.</p>
+<p>You can delete completed print jobs by selecting them (using the check box on the left) and pressing the trash can icon. This will remove the entry from the queue, but your <code>.gcode</code> files that are referenced in the job will remain unchanged.</p>
 <h2 id="troubleshooting">Troubleshooting</h2>
 <p>If at any point you're stuck or see unexpected behavior or bugs, please file a <a href="https://github.com/smartin015/continuousprint/issues/new?assignees=&amp;labels=bug&amp;template=bug_report.md&amp;title=">bug report</a>.</p>
 <p><strong>Be sure to include system info and browser logs</strong> so the problem can be quickly diagnosed and fixed.</p>

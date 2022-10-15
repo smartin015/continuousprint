@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="style.css">
+    
     <script>__md_scope=new URL(".",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -63,11 +65,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#continuous-print-queue-plugin" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -80,8 +77,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +184,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -210,8 +205,6 @@
       
       <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
       
-      
-        
       
       
       <a href="." class="md-nav__link md-nav__link--active">
@@ -419,8 +412,6 @@
   
   
   
-    
-  
   
 </nav>
                   </div>
@@ -434,14 +425,51 @@
                 
 
 
-<h1 id="continuous-print-queue-plugin">Continuous Print Queue Plugin</h1>
-<p><img alt="build status" src="https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic" />
-<img alt="code coverage" src="https://img.shields.io/codecov/c/github/smartin015/continuousprint/master" /></p>
-<p>Thanks for your interest in the OctoPrint Continuous Print plugin!</p>
-<p><a href="https://www.youtube.com/watch?v=zBh6Esd-XXQ"><img alt="v2.0.0 release" src="https://img.youtube.com/vi/zBh6Esd-XXQ/0.jpg" /></a></p>
-<p>For an overview, check out the <a href="https://plugins.octoprint.org/plugins/continuousprint/">plugin repository page</a>.</p>
-<p>If you're looking for source code, head over to the <a href="github.com/smartin015/continuousprint">github repository</a>.</p>
-<p>Use the nav section on the left to learn more.</p>
+  <h1>Home</h1>
+
+<style>
+.md-typeset h1,
+.md-content__button {
+  display: none;
+}
+.md-typeset h2 {
+  font-size: 3em;
+  margin-top: 0px;
+}
+.cpq_titlecard {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Cabin Regular";
+}
+.cpq_titlecard > div {
+  padding-bottom: 20px;
+}
+
+.cpq_titlecard img {
+  max-width: 240px;
+}
+</style>
+
+<div class="cpq_titlecard">
+  <img title="Continuous Print Queue" src="CPQ.gif"></img>
+  <h2>Continuous Print Queue</h2>
+
+  <div>
+  <img title="build status" src="https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic"></img>
+  <img title="code coverage" src="https://img.shields.io/codecov/c/github/smartin015/continuousprint/master"></img>
+  </div>
+
+  <div>For an overview, check out the <a href="https://plugins.octoprint.org/plugins/continuousprint/">plugin repository page</a>.</div>
+  <div>If you're looking for source code, head over to the <a href="github.com/smartin015/continuousprint">github repository</a>.</div>
+  <div>Use the nav section on the left to learn more.</div>
+
+  <div><a href="https://www.youtube.com/watch?v=zBh6Esd-XXQ" target="blank">
+  <img title="v2.0.0 release demo video" src="https://img.youtube.com/vi/zBh6Esd-XXQ/0.jpg"></img>
+  </a></div>
+</div>
+
 <div class="admonition tip">
 <p class="admonition-title">Get new features faster and help support the plugin!</p>
 <p>CPQ is looking for early release testers!</p>

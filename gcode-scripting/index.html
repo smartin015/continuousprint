@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="../style.css">
+    
     <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -80,8 +82,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +189,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -269,11 +269,11 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bed-clearing-scripts" class="md-nav__link">
-    Bed clearing scripts
+  <a href="#bed-clearing-script" class="md-nav__link">
+    Bed clearing script
   </a>
   
-    <nav class="md-nav" aria-label="Bed clearing scripts">
+    <nav class="md-nav" aria-label="Bed clearing script">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -289,8 +289,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#queue-finished-scripts" class="md-nav__link">
-    Queue finished scripts
+  <a href="#queue-finished-script" class="md-nav__link">
+    Queue finished script
   </a>
   
 </li>
@@ -487,11 +487,11 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bed-clearing-scripts" class="md-nav__link">
-    Bed clearing scripts
+  <a href="#bed-clearing-script" class="md-nav__link">
+    Bed clearing script
   </a>
   
-    <nav class="md-nav" aria-label="Bed clearing scripts">
+    <nav class="md-nav" aria-label="Bed clearing script">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -507,8 +507,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#queue-finished-scripts" class="md-nav__link">
-    Queue finished scripts
+  <a href="#queue-finished-script" class="md-nav__link">
+    Queue finished script
   </a>
   
 </li>
@@ -536,13 +536,13 @@
 
 <h1 id="gcode-scripting">GCODE Scripting</h1>
 <p>GCODE scripts can be quite complex - if you want to learn the basics, try reading through <a href="https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/">this primer</a>.</p>
-<h2 id="bed-clearing-scripts">Bed clearing scripts</h2>
+<h2 id="bed-clearing-script">Bed clearing script</h2>
 <p>When Continuous Print is managing the queue, this script is run after every print completes - <strong>including prints started before queue managing begins</strong>.</p>
 <p>Your cleaning script should remove all 3D print material from the build area to make way for the next print.</p>
 <h3 id="optional-use-bedready-to-check-bed-state">Optional: Use BedReady to check bed state</h3>
 <p><a href="https://plugins.octoprint.org/plugins/bedready/">OctoPrint-BedReady</a> is a plugin that checks the webcam image of the bed against a refrence image where the bed is clear.</p>
 <p>If you install BedReady, you can add an automated check that the bed is clear for the next print by adding <code>@BEDREADY</code> onto the end of your bed clearing script.</p>
-<h2 id="queue-finished-scripts">Queue finished scripts</h2>
+<h2 id="queue-finished-script">Queue finished script</h2>
 <p>This script is run after all prints in the queue have been printed. Use this script to put the machine in a safe resting state. Note that the last print will have already been cleared by the bed cleaning script (above).</p>
 <h2 id="contributing">Contributing</h2>
 <p>When you come up with a useful script for e.g. clearing the print bed, consider contributing it back to the community!</p>
@@ -551,7 +551,7 @@
 <li>Go to <a href="https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/printer_profiles.yaml">printer_profiles.yaml</a> and check to see if your printer make and model are present. If they aren't, click the pencil icon on the top right of the file to begin editing.</li>
 <li>When you're done adding details, save it to a new branch of your fork.</li>
 <li>Now go to <a href="https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/gcode_scripts.yaml">gcode_scripts.yaml</a> and edit it in the same way, adding your gcode and any additional fields.</li>
-<li>Save this print to the same branch (or create a new one if a matching printer profile already exists).</li>
+<li>Save your changes - to a new branch if you didn't have to do anything on step 2, otherwise to the same branch you created earlier.</li>
 <li>Check one last time that the script names match those provided in your printer profiles <code>defaults</code> section, then submit a pull request. <strong>Make sure to do a PR against the <code>rc</code> branch, NOT the <code>master</code> branch.</strong></li>
 </ol>
 

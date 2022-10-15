@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="../style.css">
+    
     <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -80,8 +82,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +189,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -343,8 +343,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cancel-a-job" class="md-nav__link">
-    Cancel a job
+  <a href="#undo-job-submission" class="md-nav__link">
+    Undo job submission
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edit-a-lan-queue-job" class="md-nav__link">
+    Edit a LAN queue job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cancel-a-lan-queue-job" class="md-nav__link">
+    Cancel a LAN queue job
   </a>
   
 </li>
@@ -529,8 +543,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cancel-a-job" class="md-nav__link">
-    Cancel a job
+  <a href="#undo-job-submission" class="md-nav__link">
+    Undo job submission
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#edit-a-lan-queue-job" class="md-nav__link">
+    Edit a LAN queue job
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cancel-a-lan-queue-job" class="md-nav__link">
+    Cancel a LAN queue job
   </a>
   
 </li>
@@ -594,13 +622,13 @@
 <p><strong>A LAN queue is a local network queue that multiple 3D printers print from.</strong></p>
 <p>It's not unusual to have multiple 3D printers - in home workshops, in the prototyping industry, and even for 3D printing services (e.g. Shapeways) and manufacturers that manage hundreds/thousands of them.</p>
 <p>In addition to providing a local queue by default, Continuous Print also configures a default LAN queue that will automatically link any other printers on your local network. Printers can then coordinate together over the network to print jobs from the same queue.</p>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
 <p>LAN queues are intended for trusted, local (LAN) networks only - not for cross-network (WAN) use cases. Using LAN queues across networks is insecure and strongly discouraged.</p>
 </div>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p><strong>If you upgraded from v2.0.0 or earlier</strong>, the default LAN queue will not be added (a compatibility measure). If you don't see the default LAn queue, please read and follow <a href="#additional-lan-queues">Additional LAN Queues</a> for instructions on how to set up your own.</p>
+<p><strong>If you upgraded from v2.0.0 or earlier</strong>, the default LAN queue will not be added (a compatibility measure). If you don't see the default LAN queue, please read and follow <a href="#additional-lan-queues">Additional LAN Queues</a> for instructions on how to set up your own.</p>
 </div>
 <h2 id="setup">Setup</h2>
 <p>By default, Continuous Print creates a queue called "LAN" that printers on the network will automatically join.</p>
@@ -610,12 +638,15 @@
 <p>If printers are missing from this list, make sure they have OctoPrint and Continous Print installed and enabled, and that they are on the same local network. See <a href="#additional-lan-queues">Additional LAN Queues</a> below if you need more advanced LAN queue configuration.</p>
 <h2 id="submit-a-job">Submit a job</h2>
 <p>Submitting a job is as simple as dragging it from the "local" queue to your LAN queue. After confirming that you wish to submit your job, the job will be moved out of the local queue and into the LAN queue.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Currently, LAN queue submission is somewhat destructive - the job cannot be modified or reverted once it's submitted, only deleted.</p>
-<p>If you have a very complex job to submit, consider <a href="/gjob-files">saving it</a> before submission so you have a backup.</p>
+<h2 id="undo-job-submission">Undo job submission</h2>
+<p>Submission can be undone simply by dragging the job back to the "local" queue. This can be done by any printer in the LAN queue.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>The printer receiving the local job may not have the local <code>.gcode</code> files initially, so the files are fetched and copied to <code>ContinuousPrint/imports/&lt;job name&gt;/</code> and the Set paths are auto-updated accordingly.</p>
 </div>
-<h2 id="cancel-a-job">Cancel a job</h2>
+<h2 id="edit-a-lan-queue-job">Edit a LAN queue job</h2>
+<p>You can edit jobs in LAN queues just as in Local queues - see <a href="advanced-queueing.md">Queueing Basics</a> for more details.</p>
+<h2 id="cancel-a-lan-queue-job">Cancel a LAN queue job</h2>
 <ol>
 <li>Click the checkbox next to the job in your LAN queue.</li>
 <li>Click the trash can icon that appears.</li>

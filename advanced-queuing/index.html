@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="../style.css">
+    
     <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -80,8 +82,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +189,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -286,6 +286,13 @@
         <li class="md-nav__item">
   <a href="#sets-and-jobs" class="md-nav__link">
     Sets and Jobs
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-jobs" class="md-nav__link">
+    Editing Jobs
   </a>
   
 </li>
@@ -502,6 +509,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#editing-jobs" class="md-nav__link">
+    Editing Jobs
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#add-behavior" class="md-nav__link">
     "Add" behavior
   </a>
@@ -557,19 +571,33 @@
 <p>The queue is actually made up of two levels: sets and jobs.</p>
 <p><strong>Sets</strong> are a single print file, printed one or more times. You created a set by following the "Add prints to the queue" step in the <a href="/getting-started/">quickstart</a>.</p>
 <p><strong>Jobs</strong> are a collection of sets, printed one or more times. Jobs are always printed sequentially, from the top of the queue to the bottom.</p>
+<h2 id="editing-jobs">Editing Jobs</h2>
+<p>Bring your cursor over a job in the queue, and click the pencil-and-paper icon that appears to begin editing a job.</p>
+<p>You should see an interface like this:</p>
+<p><img alt="editable job" src="../editable_job.png" /></p>
+<p>Don't worry if it looks a bit daunting - we'll go over what each number means.</p>
+<p><strong>The <code>x 2</code> number at the top</strong> tells the queue to print this job two additional times. This is changed from earlier CPQ behavior, where it was a "total count". If your job completes and you want to print it one more time, just change this value from 0 to 1. Simple!</p>
+<p><strong>The <code>complete</code> column</strong> shows how many times the Set was printed for this run of the job. It resets to 0 when the job moves on to the next run.</p>
+<p><strong>The <code>Per Run</code> column</strong> is where you indicate the number of times each Set prints per run of the job.</p>
+<p><strong>The <code>This Run</code> column</strong> lets you add one-off prints of a Set without having to adjust the <code>Per Run</code> value. This can be handy when re-running some failed prints not caught by automation, for example. This number decrements down to 0 as prints complete, then "refills" back to the <code>Per Run</code> value when the job moves to the next run.</p>
+<p><strong>The <code>Pending</code> column</strong> computes the total number of expected future prints of a Set across all runs of the Job. Use this column to check that the other values are properly configured.</p>
+<p><strong>The <code>Total Items Printed</code> row at the bottom</strong> sums up all the values described above to give a total at the job level.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>When you start editing a job, CPQ stops considering it for printing. You can edit a job that's currently printing with no problems, but if the print completes while the job is still in "edit mode" then the queue will move on to the next printable job.</p>
+</div>
 <h2 id="add-behavior">"Add" behavior</h2>
-<p>By default, every print file you add (as a set) is appended to a default, unnamed job at the end of the queue.</p>
-<p>If you give this job a name (by clicking the title box, typing a name, then hitting enter or clicking away) it will stop collecting new prints and a new default job will be created when the next print is added.</p>
+<p>By default, every print file you add (as a Set) is appended to the earliest job being edited. If you want it to be part of a new Job, click the <code>+ New Job</code> button, then drag the set into the empty Job that appears.</p>
 <h2 id="example-1-batched-strategy">Example 1: Batched strategy</h2>
-<p>Let's consider an empty queue. If you add <code>A.gcode</code> with 5 copies and <code>B.gcode</code> with 5 copies, the print order will be:</p>
+<p>Let's consider an empty queue. If you create a job, then add <code>A.gcode</code> with <code>Per Run = 5</code> and <code>B.gcode</code> with <code>Per Run = 5</code>, the print order will be:</p>
 <p><code>AAAAA BBBBB</code></p>
 <p>This is great if you want all of your <code>A</code> files to print before all your <code>B</code> files, for instance when you're working on a project that uses <code>A</code> but plan use <code>B</code> for something later.</p>
 <h2 id="example-2-interleaved-strategy">Example 2: Interleaved strategy</h2>
-<p>Let's start again with an empty queue, but now suppose we add <code>A.gcode</code> with 1 copy, <code>B.gcode</code> with 1 copy, then set the job count to <code>5</code>. The print order will now be:</p>
+<p>Let's start again with an empty queue, but now suppose we add <code>A.gcode</code> with <code>Per Run = 1</code>, <code>B.gcode</code> with <code>Per Run = 1</code>, and then set the job count to <code>x 5</code>. The print order will now be:</p>
 <p><code>AB AB AB AB AB</code></p>
 <p>This is exactly the pattern you would want if you were, for example, printing a box with <code>A.gcode</code> as the base and <code>B.gcode</code> as the lid. Each box would be completed in order, so you can use the first box without waiting for all the bases to print, then for the first lid to print.</p>
 <h2 id="example-3-combined-strategy">Example 3: Combined strategy</h2>
-<p>From an empty queue, you could even add <code>A.gcode</code> with 1 copy and <code>B.gcode</code> with 4 copies, and set the job count to <code>3</code>. The outcome is then:</p>
+<p>From an empty queue, you could even add <code>A.gcode</code> with <code>Per Run = 1</code> and <code>B.gcode</code> with <code>Per Run = 4</code>, and set the job count to <code>x 3</code>. The outcome is then:</p>
 <p><code>ABBBB ABBBB ABBBB</code></p>
 <p>We're simply mixing examples 1 and 2 together, but this would be ideal for a base print with multiple smaller additions - a table with four legs, for instance.</p>
 <h2 id="drag-and-drop-reordering">Drag and drop reordering</h2>
@@ -580,7 +608,7 @@
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>You can also drag a set from one job to another! Note however that this may change the total number of that file printed if the destination job has a different count than the origin job.</p>
+<p>You can also drag a set from one job to another if they are both being edited! However, this can change the total number of that file printed if the destination job has a different count than the origin job.</p>
 </div>
 
               

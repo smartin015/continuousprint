@@ -36,6 +36,8 @@
       
     
     
+      <link rel="stylesheet" href="../style.css">
+    
     <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -80,8 +82,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Continuous Print" class="md-header__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -188,8 +189,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Continuous Print" class="md-nav__button md-logo" aria-label="Continuous Print" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+  <img src="../CPQ_white.svg" alt="logo">
 
     </a>
     Continuous Print
@@ -297,13 +297,6 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#why-create-a-new-file-type" class="md-nav__link">
-    Why create a new file type?
-  </a>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#creating-a-gjob-file" class="md-nav__link">
@@ -481,13 +474,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#why-create-a-new-file-type" class="md-nav__link">
-    Why create a new file type?
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#creating-a-gjob-file" class="md-nav__link">
     Creating a .gjob file
   </a>
@@ -524,11 +510,13 @@
 
 <h1 id="job-files">Job Files</h1>
 <p><strong><code>.gjob</code> files store everything that a printer needs to print a Continuous Print job</strong>.</p>
-<h2 id="why-create-a-new-file-type">Why create a new file type?</h2>
+<div class="admonition info">
+<p class="admonition-title">Why create a new file type?</p>
 <p>3D print slicers generate a <code>*.gcode</code> file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).</p>
 <p>Similarly, GCODE doesn't allow for quickly changing the number and type of objects which are printed - which is something Continuous Print does as a base feature.</p>
 <p>Other metadata (like <a href="/material-selection">material types</a> and <a href="/printer-profiles">printer profile</a> supported by the GCODE file) are also non-standard and stored in a slicer-specific way, if at all.</p>
 <p>For these reasons, it becomes useful to define the <code>.gjob</code> file type.</p>
+</div>
 <h2 id="creating-a-gjob-file">Creating a .gjob file</h2>
 <ol>
 <li>Click the check box next to one or more Jobs in the Queues tab to select them.</li>
