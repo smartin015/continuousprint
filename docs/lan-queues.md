@@ -40,7 +40,7 @@ Submission can be undone simply by dragging the job back to the "local" queue. T
 
 ## Edit a LAN queue job
 
-You can edit jobs in LAN queues just as in Local queues - see [Queueing Basics](advanced-queueing.md) for more details.
+You can edit jobs in LAN queues just as in Local queues - see [Queuing Basics](advanced-queuing.md) for more details.
 
 ## Cancel a LAN queue job
 
