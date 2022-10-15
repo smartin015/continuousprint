@@ -23,6 +23,7 @@ class TestScriptRunner(unittest.TestCase):
             refresh_ui_state=MagicMock(),
             fire_event=MagicMock(),
         )
+        self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
 
     def test_run_finish_script(self):
@@ -32,12 +33,13 @@ class TestScriptRunner(unittest.TestCase):
             "ContinuousPrint/cp_queue_finished_script.gcode",
             sd=False,
             printAfterSelect=True,
+            user="foo",
         )
         self.s._fire_event.assert_called_with(CustomEvents.FINISH)
 
     def test_cancel_print(self):
         self.s.cancel_print()
-        self.s._printer.cancel_print.assert_called()
+        self.s._printer.cancel_print.assert_called_with(user="foo")
         self.s._fire_event.assert_called_with(CustomEvents.CANCEL)
 
     def test_clear_bed(self):
@@ -46,20 +48,27 @@ class TestScriptRunner(unittest.TestCase):
             "ContinuousPrint/cp_bed_clearing_script.gcode",
             sd=False,
             printAfterSelect=True,
+            user="foo",
         )
         self.s._fire_event.assert_called_with(CustomEvents.CLEAR_BED)
 
     def test_start_print_local(self):
         self.assertEqual(self.s.start_print(LI(False, "a.gcode", LJ("job1"))), True)
         self.s._printer.select_file.assert_called_with(
-            "a.gcode", sd=False, printAfterSelect=True
+            "a.gcode",
+            sd=False,
+            printAfterSelect=True,
+            user="foo",
         )
         self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
 
     def test_start_print_sd(self):
         self.assertEqual(self.s.start_print(LI(True, "a.gcode", LJ("job1"))), True)
         self.s._printer.select_file.assert_called_with(
-            "a.gcode", sd=True, printAfterSelect=True
+            "a.gcode",
+            sd=True,
+            printAfterSelect=True,
+            user="foo",
         )
         self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
 
@@ -74,7 +83,10 @@ class TestScriptRunner(unittest.TestCase):
 
         self.assertEqual(self.s.start_print(NetItem()), True)
         self.s._printer.select_file.assert_called_with(
-            "net/a.gcode", sd=False, printAfterSelect=True
+            "net/a.gcode",
+            sd=False,
+            printAfterSelect=True,
+            user="foo",
         )
         self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
 
