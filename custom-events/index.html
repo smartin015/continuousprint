@@ -13,7 +13,7 @@
     
     
       
-        <title>Action Commands - Continuous Print</title>
+        <title>Custom Events - Continuous Print</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#action-commands" class="md-skip">
+        <a href="#custom-events" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Action Commands
+              Custom Events
             
           </span>
         </div>
@@ -353,21 +353,6 @@
 
   
   
-  
-    <li class="md-nav__item">
-      <a href="../custom-events/" class="md-nav__link">
-        Custom Events
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
     
   
   
@@ -380,12 +365,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Action Commands
+          Custom Events
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Action Commands
+        Custom Events
       </a>
       
         
@@ -404,22 +389,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#standard-action-commands" class="md-nav__link">
-    Standard Action Commands
+  <a href="#list-of-events" class="md-nav__link">
+    List of Events
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#custom-actions-for-continuous-print" class="md-nav__link">
-    Custom actions for Continuous Print
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#firmware-support-for-action-commands" class="md-nav__link">
-    Firmware support for Action Commands
+  <a href="#example-octoprint-ifttt" class="md-nav__link">
+    Example: OctoPrint-IFTTT
   </a>
   
 </li>
@@ -428,6 +406,21 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../action-commands/" class="md-nav__link">
+        Action Commands
+      </a>
     </li>
   
 
@@ -489,22 +482,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#standard-action-commands" class="md-nav__link">
-    Standard Action Commands
+  <a href="#list-of-events" class="md-nav__link">
+    List of Events
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#custom-actions-for-continuous-print" class="md-nav__link">
-    Custom actions for Continuous Print
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#firmware-support-for-action-commands" class="md-nav__link">
-    Firmware support for Action Commands
+  <a href="#example-octoprint-ifttt" class="md-nav__link">
+    Example: OctoPrint-IFTTT
   </a>
   
 </li>
@@ -523,22 +509,22 @@
                 
 
 
-<h1 id="action-commands">Action Commands</h1>
-<p>If you interact with your 3D printer using its display (touchscreen, LCD, or similar), you may be interested in action commands.</p>
-<p><strong>Action Commands are messages sent by the printer to OctoPrint when a user performs an action on the printer's display.</strong></p>
-<h2 id="standard-action-commands">Standard Action Commands</h2>
-<p>OctoPrint supports several actions out of the box - see <a href="https://docs.octoprint.org/en/master/features/action_commands.html">here</a> for more details.</p>
-<p>Proper handling of these commands by Continuous Print is <a href="https://github.com/smartin015/continuousprint/issues/95">still under development</a>.</p>
-<p><strong>Your printer firmware must also support action commands</strong> for this to work (see <a href="#firmware-support-for-action-commands">Firmware Support for Action Commands</a> below).</p>
-<h2 id="custom-actions-for-continuous-print">Custom actions for Continuous Print</h2>
-<p>Currently, the Continuous Print plugin supports a single custom action command:</p>
-<pre><code>// action:queuego
-</code></pre>
-<p>When received from the printer, this message instructs the Continuous Print plugin to start managing the queue - equivalent to clicking "Start Managing" on the UI.</p>
-<p><strong>This command is non-standard and requires additions to firmware</strong> - in particular, a custom menu entry must be added in <a href="https://github.com/MarlinFirmware/Marlin/blob/2.0.x/Marlin/Configuration_adv.h#L3900">CUSTOM_MENU_MAIN of Configuration_adv.h for Marlin firmware</a> which issues a <code>M118 //action:queuego</code> command.</p>
-<h2 id="firmware-support-for-action-commands">Firmware support for Action Commands</h2>
-<p>Not all printers support Action Commands - it depends on the firmware they're running. The easiest way to know if your printer supports action commands is to watch the Terminal tab in OctoPrint for occurrences of <code>// action:&lt;command&gt;</code>. If these appear e.g. when a print is cancelled from the printer's interface, then it's supported.</p>
-<p>Adding support for action commands for your printer involves updating the printer's firmware, which is a device-specific process. Check for user-contributed firmwares which include this support - for Marlin-based firmwares for instance, you want to ensure <code>HOST_ACTION_COMMANDS</code> is defined in the firmware (see <a href="https://github.com/MarlinFirmware/Marlin/blob/2.0.x/Marlin/Configuration_adv.h#L4004">here</a>).</p>
+<h1 id="custom-events">Custom Events</h1>
+<p><strong>Continuous Print exposes internal events that can be used by other OctoPrint plugins to trigger additional actions.</strong></p>
+<h2 id="list-of-events">List of Events</h2>
+<p>See <a href="https://github.com/smartin015/continuousprint/blob/rc/continuousprint/data/__init__.py#L15">continuousprint/data/__init__.py CustomEvents class</a> for the current list of events and their string identifiers.</p>
+<p><strong><code>continuousprint_start_print</code></strong></p>
+<p>This event fires whenever a new print is stated from a queue. This event does not fire for bed clearing, finishing, or other event-driven scripts.</p>
+<p><strong><code>continuousprint_cooldown</code></strong></p>
+<p>This event fires when the <a href="../managed-bed-cooldown/">Managed Bed Cooldown</a> setting is enabled and the cooldown state is entered. It is not fired if managed bed cooldown is not enabled.</p>
+<p><strong><code>continuousprint_clear_bed</code></strong></p>
+<p>This event fires when the bed clearing script is executed.</p>
+<p><strong><code>continuousprint_finish</code></strong></p>
+<p>This event fires when the finishing script is executed.</p>
+<p><strong><code>continuousprint_cancel</code></strong></p>
+<p>This event is fired when the current print is cancelled by Continuous Print, e.g. when spaghetti has been detected.</p>
+<h2 id="example-octoprint-ifttt">Example: OctoPrint-IFTTT</h2>
+<p><a href="https://plugins.octoprint.org/plugins/IFTTT/">OctoPrint-IFTTT</a> is an example of a plugin that performs actions based on events. Custom events (e.g. <code>continuousprint_clear_bed</code>) go in the <code>Event Name</code> column of the settings page.</p>
 
               
             </article>
@@ -554,7 +540,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../custom-events/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Custom Events" rel="prev">
+        <a href="../managed-bed-cooldown/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Managed Bed Cooldown" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -563,20 +549,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Custom Events
+              Managed Bed Cooldown
             </div>
           </div>
         </a>
       
       
         
-        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
+        <a href="../action-commands/" class="md-footer__link md-footer__link--next" aria-label="Next: Action Commands" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Contributing
+              Action Commands
             </div>
           </div>
           <div class="md-footer__button md-icon">
