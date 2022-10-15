@@ -10,7 +10,7 @@ Follow the steps in this guide to help Continuous Print recover from unexpected 
 
 By default, the print queue doesn't know whether your print is proceeding fine or spraying filament everywhere ("spaghettification").
 
-Follow [The Spaghetti Detective installation instructions](https://www.thespaghettidetective.com/docs/octoprint-plugin-setup/) on your octoprint installation, then restart OctoPrint. Continuous Print will automatically detect that TSD is installed and will enable queue recovery when spaghetti is detected (TSD plugin must be `v1.8.11` or higher).
+Follow [The Obico installation instructions](https://www.thespaghettidetective.com/docs/octoprint-plugin-setup/) on your octoprint installation, then restart OctoPrint. Continuous Print will automatically detect that TSD is installed and will enable queue recovery when spaghetti is detected (TSD plugin must be `v1.8.11` or higher).
 
 When TSD thinks the print is failing:
 
