@@ -330,11 +330,20 @@ def init(db_path="queues.sqlite3", logger=None):
 
                 if logger is not None:
                     logger.warning(
-                        f"Beginning migration to v0.0.3 - {Set.select().count()} sets to migrate"
+                        f"Beginning migration to v0.0.3 for decoupled completions - {Set.select().count()} sets to migrate"
                     )
                 with db.atomic():
                     TempSet.create_table(safe=True)
-                    for s in Set.select().execute():
+                    for s in Set.select(
+                        Set.path,
+                        Set.sd,
+                        Set.job,
+                        Set.rank,
+                        Set.count,
+                        Set.remaining,
+                        Set.material_keys,
+                        Set.profile_keys,
+                    ).execute():
                         attrs = {}
                         for f in Set._meta.sorted_field_names:
                             attrs[f] = getattr(s, f)
