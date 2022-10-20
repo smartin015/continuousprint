@@ -48,6 +48,7 @@ class Queue(Model):
     created = DateTimeField(default=datetime.datetime.now)
     rank = FloatField()
     addr = CharField(null=True)  # null == local queue
+    registry = CharField(null=True)  # Only present for WAN (peerprint) queues
     strategy = CharField()
 
     class Meta:
@@ -58,6 +59,7 @@ class Queue(Model):
             name=self.name,
             addr=self.addr,
             strategy=self.strategy,
+            registry=self.registry,
         )
         return q
 
@@ -289,7 +291,7 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 
 def populate():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.3")
+    StorageDetails.create(schemaVersion="0.0.4")
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
@@ -357,7 +359,16 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.schemaVersion = "0.0.3"
                 details.save()
 
-            if details.schemaVersion != "0.0.3":
+            if details.schemaVersion == "0.0.3":
+                if logger is not None:
+                    logger.warning(f"Updating schema from {details.schemaVersion}")
+                migrate(
+                    migrator.add_column("queue", "registry", Queue.registry),
+                )
+                details.schemaVersion = "0.0.4"
+                details.save()
+
+            if details.schemaVersion != "0.0.4":
                 raise Exception("Unknown DB schema version: " + details.schemaVersion)
 
             if logger is not None:

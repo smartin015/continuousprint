@@ -20,12 +20,14 @@ from .driver import Driver, Action as DA, Printer as DP
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
+from .queues.wan import WANQueue
 from .queues.abstract import Strategy
 from .storage.database import (
     migrateFromSettings,
     init as init_db,
     DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
+    Queue,
 )
 from .data import (
     PRINTER_PROFILES,
@@ -270,7 +272,56 @@ class CPQPlugin(ContinuousPrintAPI):
 
         self._queries.clearOldState()
 
-    def _init_queues(self, lancls=LANQueue, localcls=LocalQueue):
+    def _init_queue(self, q, lancls=LANQueue, localcls=LocalQueue, wancls=WANQueue):
+        print("_init_queue for ", q.name, q.registry)
+        if q.registry is not None:
+            wq = wancls(
+                q.name,
+                self._logger,
+                q.registry,
+                Strategy.IN_ORDER,
+                self._on_queue_update,
+                self._fileshare,
+                self._data_folder,
+                self._printer_profile,
+                self._path_on_disk,
+            )
+            wq.connect()
+            self.q.add(q.name, wq)
+        elif q.addr is not None:
+            try:
+                lq = lancls(
+                    q.name,
+                    q.addr
+                    if q.addr.lower() != "auto"
+                    else f"{self.get_local_ip()}:{self.get_open_port()}",
+                    self._logger,
+                    Strategy.IN_ORDER,
+                    self._on_queue_update,
+                    self._fileshare,
+                    self._printer_profile,
+                    self._path_on_disk,
+                )
+                lq.connect()
+                self.q.add(q.name, lq)
+            except ValueError:
+                self._logger.error(
+                    f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
+                )
+        elif q.name != ARCHIVE_QUEUE:
+            self.q.add(
+                q.name,
+                localcls(
+                    self._queries,
+                    q.name,
+                    Strategy.IN_ORDER,
+                    self._printer_profile,
+                    self._path_on_disk,
+                    self._add_folder,
+                ),
+            )
+
+    def _init_queues(self, lancls=LANQueue, localcls=LocalQueue, wancls=WANQueue):
         self._printer_profile = PRINTER_PROFILES.get(
             self._get_key(Keys.PRINTER_PROFILE)
         )
@@ -278,38 +329,7 @@ class CPQPlugin(ContinuousPrintAPI):
             self._queries, Strategy.IN_ORDER, self._sync_history
         )  # TODO set strategy for this and all other queue creations
         for q in self._queries.getQueues():
-            if q.addr is not None:
-                try:
-                    lq = lancls(
-                        q.name,
-                        q.addr
-                        if q.addr.lower() != "auto"
-                        else f"{self.get_local_ip()}:{self.get_open_port()}",
-                        self._logger,
-                        Strategy.IN_ORDER,
-                        self._on_queue_update,
-                        self._fileshare,
-                        self._printer_profile,
-                        self._path_on_disk,
-                    )
-                    lq.connect()
-                    self.q.add(q.name, lq)
-                except ValueError:
-                    self._logger.error(
-                        f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
-                    )
-            elif q.name != ARCHIVE_QUEUE:
-                self.q.add(
-                    q.name,
-                    localcls(
-                        self._queries,
-                        q.name,
-                        Strategy.IN_ORDER,
-                        self._printer_profile,
-                        self._path_on_disk,
-                        self._add_folder,
-                    ),
-                )
+            self._init_queue(q, lancls, localcls, wancls)
 
     def _init_driver(self, srcls=ScriptRunner, dcls=Driver):
         self._runner = srcls(
@@ -685,25 +705,13 @@ class CPQPlugin(ContinuousPrintAPI):
         for name in removed:
             self.q.remove(name)
         for a in added:
-            try:
-                lq = LANQueue(
-                    a["name"],
-                    a["addr"]
-                    if a["addr"].lower() != "auto"
-                    else f"{self.get_local_ip()}:{self.get_open_port()}",
-                    self._logger,
-                    Strategy.IN_ORDER,
-                    self._on_queue_update,
-                    self._fileshare,
-                    self._printer_profile,
-                    self._path_on_disk,
-                )  # TODO specify strategy
-                lq.connect()
-                self.q.add(a["name"], lq)
-            except ValueError:
-                self._logger.error(
-                    f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
-                )
+            q = Queue(
+                name=a["name"],
+                addr=a["addr"],
+                strategy=Strategy.IN_ORDER,
+                registry=a["registry"],
+            )
+            self._init_queue(q, lancls, localcls, wancls)
 
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)

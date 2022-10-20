@@ -91,7 +91,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
     };
 
     self.newBlankQueue = function() {
-      self.queues.push({name: "", addr: "", strategy: ""});
+      self.queues.push({name: "", addr: "", strategy: "", registry: ""});
     };
     self.rmQueue = function(q) {
       self.queues.remove(q);

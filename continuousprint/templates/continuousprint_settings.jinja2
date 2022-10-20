@@ -213,6 +213,7 @@
       <div class="queue-header">
         <div style="text-align: center; flex: 1">Name</div>
         <div style="text-align: center; width: 180px">Address:Port</div>
+        <div style="text-align: center; width: 180px">Registry</div>
         <div style="text-align: center; width: 180px">Strategy</div>
         <div style="width:30px"></div>
       </div>
@@ -224,6 +225,9 @@
             </div>
             <div style="width: 180px">
             <input type="text" style="width:90%" data-bind="value: addr, hidden: name === 'local', event: {change: $root.queueChanged}, attr: {placeholder: 'e.g. ' + $root.local_ip() + ':6789'}"></input>
+            </div>
+            <div style="width: 180px">
+            <input type="text" style="width:90%" data-bind="value: registry, hidden: name === 'local', event: {change: $root.queueChanged}"></input>
             </div>
             <div style="width: 180px">
               <select data-bind="value: strategy" style="width: 100%">

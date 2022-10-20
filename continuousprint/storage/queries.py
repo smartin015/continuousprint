@@ -111,12 +111,16 @@ def assignQueues(queues):
                 Queue.create(
                     name=qdata["name"],
                     strategy=qdata["strategy"],
+                    registry=qdata["registry"],
                     addr=qdata["addr"],
                     rank=rank,
                 )
             else:
                 Queue.update(
-                    strategy=qdata["strategy"], addr=qdata["addr"], rank=rank
+                    strategy=qdata["strategy"],
+                    addr=qdata["addr"],
+                    rank=rank,
+                    registry=qdata["registry"],
                 ).where(Queue.name == qdata["name"]).execute()
     return (absent_names, added)
 

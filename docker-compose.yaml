@@ -8,6 +8,7 @@ services:
     volumes:
       - ".:/home/oprint/continuousprint"
       - "./volume:/home/oprint/.octoprint"
+      - "/tmp:/tmp"
     environment:
       - "PYTHONUNBUFFERED=1"
   dev2:
@@ -18,5 +19,6 @@ services:
     volumes:
       - ".:/home/oprint/continuousprint"
       - "./volume2:/home/oprint/.octoprint"
+      - "/tmp:/tmp"
     environment:
       - "PYTHONUNBUFFERED=1"
