@@ -130,12 +130,8 @@ class CPQPlugin(ContinuousPrintAPI):
         return port
 
     def get_local_ip(self):
-        # https://stackoverflow.com/a/57355707
-        hostname = socket.gethostname()
-        try:
-            return socket.gethostbyname(f"{hostname}.local")
-        except socket.gaierror:
-            return socket.gethostbyname(hostname)
+        ip_address = [(s.connect((self._settings.global_get(["server","onlineCheck","host"]), self._settings.global_get(["server","onlineCheck","port"]))), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
+        return ip_address
 
     def _add_set(self, path, sd, draft=True, profiles=[]):
         # We may need to delay adding a file if it hasn't yet finished analysis
