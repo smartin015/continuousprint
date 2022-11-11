@@ -113,6 +113,7 @@ class JobView:
         sets.sort(key=lambda s: s.rank)
         sets = [s.as_dict() for s in sets]
         d = dict(
+            queue=self.queue.name,
             name=self.name,
             count=self.count,
             draft=self.draft,
@@ -151,7 +152,7 @@ class Job(Model, JobView):
         return j
 
     def refresh_sets(self):
-        Set.update(remaining=Set.count).where(Set.job == self).execute()
+        Set.update(remaining=Set.count, completed=0).where(Set.job == self).execute()
 
 
 class SetView:
@@ -176,6 +177,7 @@ class SetView:
 
     def decrement(self, profile):
         self.remaining = max(0, self.remaining - 1)
+        self.completed += 1
         self.save()  # Save must occur before job is observed
         return self.job.next_set(profile)
 
@@ -193,6 +195,7 @@ class SetView:
             rank=self.rank,
             sd=self.sd,
             remaining=self.remaining,
+            completed=self.completed,
         )
 
 
@@ -203,7 +206,17 @@ class Set(Model, SetView):
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count >= 0")])
     remaining = IntegerField(
-        default=1, constraints=[Check("remaining >= 0"), Check("remaining <= count")]
+        # Unlike Job, Sets can have remaining > count if the user wants to print
+        # additional sets as a one-off correction (e.g. a print fails)
+        default=1,
+        constraints=[Check("remaining >= 0")],
+    )
+    completed = IntegerField(
+        # Due to one-off corrections to "remaining", it's important to track
+        # completions separately as completed + remaining != count
+        # This is different from jobs, where this equation holds.
+        default=0,
+        constraints=[Check("completed >= 0")],
     )
 
     # This is a CSV of material key strings referencing SpoolManager entities
@@ -276,7 +289,7 @@ MODELS = [Queue, Job, Set, Run, StorageDetails]
 
 def populate():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.2")
+    StorageDetails.create(schemaVersion="0.0.3")
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
@@ -308,13 +321,51 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.schemaVersion = "0.0.2"
                 details.save()
 
-            if details.schemaVersion != "0.0.2":
+            if details.schemaVersion == "0.0.2":
+                # Constraint removal isn't allowed in sqlite, so we have
+                # to recreate the table and move the entries over.
+                # We also added a new `completed` field, so some calculation is needed.
+                class TempSet(Set):
+                    pass
+
+                if logger is not None:
+                    logger.warning(
+                        f"Beginning migration to v0.0.3 for decoupled completions - {Set.select().count()} sets to migrate"
+                    )
+                with db.atomic():
+                    TempSet.create_table(safe=True)
+                    for s in Set.select(
+                        Set.path,
+                        Set.sd,
+                        Set.job,
+                        Set.rank,
+                        Set.count,
+                        Set.remaining,
+                        Set.material_keys,
+                        Set.profile_keys,
+                    ).execute():
+                        attrs = {}
+                        for f in Set._meta.sorted_field_names:
+                            attrs[f] = getattr(s, f)
+                        attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
+                        TempSet.create(**attrs)
+                        if logger is not None:
+                            logger.warning(f"Migrating set {s.path} to schema v0.0.3")
+
+                Set.drop_table(safe=True)
+                db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
+                details.schemaVersion = "0.0.3"
+                details.save()
+
+            if details.schemaVersion != "0.0.3":
                 raise Exception("Unknown DB schema version: " + details.schemaVersion)
 
             if logger is not None:
                 logger.debug("Storage schema version: " + details.schemaVersion)
         except Exception:
             raise Exception("Failed to fetch storage schema details!")
+
+    return db
 
 
 def migrateFromSettings(data: list):
@@ -360,6 +411,7 @@ def migrateFromSettings(data: list):
                 rank=len(j.sets),
                 count=1,
                 remaining=0,
+                completed=0,
                 material_keys=mkeys,
             )
         else:

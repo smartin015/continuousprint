@@ -67,7 +67,16 @@ function CPViewModel(parameters) {
 
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
-      self.defaultQueue.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
+      // We first look for any queues with draft jobs - add the file here if so
+      // Otherwise it goes into the default queue.
+      let fq = self.defaultQueue;
+      for (let q of self.queues()) {
+        if (q.hasDraftJobs()) {
+          fq = q;
+          break;
+        }
+      }
+      fq.addFile(data, self.settings.settings.plugins.continuousprint.cp_infer_profile() || false);
     };
     // Also patch file deletion, to show a modal if the file is in the queue
     let oldRemove = self.files.removeFile;
@@ -167,11 +176,11 @@ function CPViewModel(parameters) {
         }
         let cpq = new CPQueue(q, self.api, self.files, self.profile);
 
-        // Replace draft entries
+        // Replace draft entries that are still in draft
         let cpqj = cpq.jobs();
         for (let i = 0; i < q.jobs.length; i++) {
           let draft = drafts[cpqj[i].id()];
-          if (draft !== undefined) {
+          if (draft !== undefined && cpqj[i].draft()) {
             cpq.jobs.splice(i, 1, draft);
           }
         }
@@ -220,42 +229,43 @@ function CPViewModel(parameters) {
       self.draggingJob(vm.constructor.name === "CPJob");
     };
 
-    self.sortEnd = function(evt, vm, src) {
+    self._getElemIdx = function(elem, pcls) {
+      while (!elem.classList.contains(pcls)) {
+        elem = elem.parentElement;
+      }
+      let siblings = elem.parentElement.children;
+      for (let i=0; i < siblings.length; i++) {
+        if (siblings[i] === elem) {
+          return i;
+        }
+      }
+      return null;
+    };
+
+    self.sortEnd = function(evt, vm, src, idx=null) {
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
       self.draggingSet(false);
       self.draggingJob(false);
 
-      // If we're dragging a job out of the local queue and into a network queue,
-      // we must warn the user about the irreversable action before making the change.
-      // This fully replaces the default sort action
-      if (evt.from.classList.contains("local") && !evt.to.classList.contains("local")) {
-        let targetQueue = ko.dataFor(evt.to);
-        // Undo the move done by CPSortable and trigger updates
-        // This is inefficient (i.e. could instead prevent the transfer) but that
-        // would require substantial edits to the CPSortable library.
-        targetQueue.jobs.splice(evt.newIndex, 1);
-        src.jobs.splice(evt.oldIndex, 0, vm);
-        src.jobs.valueHasMutated();
-        targetQueue.jobs.valueHasMutated();
-
-        return self.showSubmitJobDialog(vm, targetQueue);
-      }
-
       // Sadly there's no "destination job" information, so we have to
       // infer the index of the job based on the rendered HTML given by evt.to
       if (vm.constructor.name === "CPJob") {
-        let jobs = self.defaultQueue.jobs();
-        let dest_idx = jobs.indexOf(vm);
-
-        let ids = []
-        for (let j of jobs) {
-          ids.push(j.id());
-        }
+        let destq = self.queues()[self._getElemIdx(evt.to, "cp-queue")];
+        let dest_idx = evt.newIndex;
         self.api.mv(self.api.JOB, {
+            src_queue: src.name,
+            dest_queue: destq.name,
             id: vm.id(),
-            after_id: (dest_idx > 0) ? jobs[dest_idx-1].id() : -1
-        }, (result) => {});
+            after_id: (dest_idx > 0) ? destq.jobs()[dest_idx-1].id() : null
+        }, (result) => {
+          if (result.error) {
+            self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
+          }
+          // Refresh in case of error or if the move modified job internals (e.g. on job submission)
+          // Do this as a timeout to allow for UI rendering / RPC calls to complete
+          setTimeout(self._loadState, 0);
+        });
       }
     };
 
@@ -266,6 +276,10 @@ function CPViewModel(parameters) {
       }
       // Sets must only be dragged among draft jobs
       if (evt.from.id === "queue_sets" && !evt.to.classList.contains("draft")) {
+        return false;
+      }
+      // No dragging items in non-ready queues
+      if (evt.to.classList.contains("loading")) {
         return false;
       }
       return true;
@@ -342,35 +356,6 @@ function CPViewModel(parameters) {
       self.hasSpoolManager(statusCode !== 404);
     });
 
-
-		self.dialog = $("#cpq_submitDialog");
-		self.jobSendDetails = ko.observable();
-    self.jobSendTitle = ko.computed(function() {
-      let details = self.jobSendDetails();
-      if (details === undefined) {
-        return "";
-      }
-      return `Send ${details[0]._name()} to ${details[1].name}?`;
-    });
-    self.submitJob = function() {
-      let details = self.jobSendDetails();
-      self.api.submit(self.api.JOB, {id: details[0].id(), queue: details[1].name}, (result) => {
-        if (result.error) {
-          self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});
-        } else {
-          self._setState(result);
-        }
-      });
-			self.dialog.modal('hide');
-    }
-		self.showSubmitJobDialog = function(job, queue) {
-      self.jobSendDetails([job, queue]);
-			self.dialog.modal({}).css({
-					width: 'auto',
-					'margin-left': function() { return -($(this).width() /2); }
-			});
-		}
-
     self.humanize = function(num) {
       // Humanizes numbers by condensing and adding units
       if (num < 1000) {
@@ -383,6 +368,17 @@ function CPViewModel(parameters) {
         return ((m % 1 === 0) ? m : m.toFixed(1)) + 'm';
       }
     };
+
+    self.hasDraftJob = ko.computed(function() {
+      for (let q of self.queues()) {
+        for (let j of q.jobs()) {
+          if (j.draft()) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
 
     /* ===== History Tab ===== */
     self.history = ko.observableArray();

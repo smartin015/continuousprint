@@ -1,5 +1,6 @@
-from .abstract import Strategy, QueueData, AbstractEditableQueue
+from .abstract import Strategy, QueueData, AbstractFactoryQueue
 import tempfile
+import shutil
 import os
 from ..storage.database import JobView, SetView
 from peerprint.filesharing import pack_job, unpack_job, packed_name
@@ -7,7 +8,7 @@ from pathlib import Path
 import dataclasses
 
 
-class LocalQueue(AbstractEditableQueue):
+class LocalQueue(AbstractFactoryQueue):
     def __init__(
         self,
         queries,
@@ -52,7 +53,7 @@ class LocalQueue(AbstractEditableQueue):
             self.ns, self._profile, self._set_path_exists
         )
         if p is not None and self.queries.acquireJob(p):
-            self.job = p
+            self.job = self.queries.getJob(p.id)  # Refetch job to get acquired state
             self.set = p.next_set(self._profile, self._set_path_exists)
             return True
         return False
@@ -98,7 +99,7 @@ class LocalQueue(AbstractEditableQueue):
         )
 
     def remove_jobs(self, job_ids):
-        return self.rm_multi(job_ids=job_ids)
+        return self.queries.remove(job_ids=job_ids)
 
     def reset_jobs(self, job_ids):
         return self.queries.resetJobs(job_ids)
@@ -107,14 +108,31 @@ class LocalQueue(AbstractEditableQueue):
 
     # -------------- begin AbstractEditableQueue -----------
 
-    def add_job(self, name="") -> JobView:
-        return self.queries.newEmptyJob(self.ns, name)
+    def get_job_view(self, job_id):
+        return self.queries.getJob(job_id)
 
-    def add_set(self, job_id, data) -> SetView:
-        return self.queries.appendSet(self.ns, job_id, data)
+    def import_job_from_view(self, v, copy_fn=shutil.copytree):
+        manifest = v.as_dict()
 
-    def mv_set(self, set_id, after_id, dest_job):
-        return self.queries.moveSet(set_id, after_id, dest_job)
+        # If importing from a non-local queue, we must also fetch/import the files so they're available locally.
+        if hasattr(v, "get_base_dir"):
+            dest_dir = f'ContinuousPrint/imports/{manifest["name"]}_{manifest["id"]}'
+            gjob_dir = v.get_base_dir()
+            copy_fn(gjob_dir, self._path_on_disk(dest_dir, False))
+            for s in manifest["sets"]:
+                s["path"] = os.path.join(dest_dir, s["path"])
+
+        # TODO make transaction, move to storage/queries.py
+        j = self.add_job()
+        for (k, v) in manifest.items():
+            if k in ("peer_", "sets", "id", "acquired", "queue"):
+                continue
+            setattr(j, k, v)
+        j.save()
+        for s in manifest["sets"]:
+            del s["id"]
+            self.add_set(j.id, s)
+        return j.id
 
     def mv_job(self, job_id, after_id):
         return self.queries.moveJob(job_id, after_id)
@@ -122,14 +140,22 @@ class LocalQueue(AbstractEditableQueue):
     def edit_job(self, job_id, data):
         return self.queries.updateJob(job_id, data)
 
-    def rm_multi(self, job_ids=[], set_ids=[]) -> dict:
-        return self.queries.remove(job_ids=job_ids, set_ids=set_ids)
+    # ------------------- end AbstractEditableQueue ---------------
+
+    # ------------ begin AbstractFactoryQueue ------
+
+    def add_job(self, name="") -> JobView:
+        return self.queries.newEmptyJob(self.ns, name)
+
+    def add_set(self, job_id, data) -> SetView:
+        return self.queries.appendSet(self.ns, job_id, data)
 
     def import_job(self, gjob_path: str, draft=True) -> dict:
         out_dir = str(Path(gjob_path).stem)
         self._mkdir(out_dir)
         manifest, filepaths = unpack_job(
-            self._path_on_disk(gjob_path), self._path_on_disk(out_dir)
+            self._path_on_disk(gjob_path, sd=False),
+            self._path_on_disk(out_dir, sd=False),
         )
         return self.queries.importJob(self.ns, manifest, out_dir, draft)
 
@@ -150,4 +176,4 @@ class LocalQueue(AbstractEditableQueue):
             os.rename(tf.name, path)
             return path
 
-    # ------------------- end AbstractEditableQueue ---------------
+    # ------------------- end AbstractFactoryQueue ---------------

@@ -33,7 +33,9 @@ function items(njobs = 1, nsets = 2) {
 }
 
 function init(njobs = 1) {
-  return new VM({name:"test", jobs:items(njobs)}, mocks());
+  return new VM({name:"test", jobs:items(njobs), peers:[
+    {name: "localhost", profile: {name: "profile"}, status: "IDLE"}
+  ]}, mocks());
 }
 
 test('newEmptyJob', () => {
@@ -76,9 +78,13 @@ describe('batchSelect', () => {
   // job 2 is unstarted; no action needed
   v.jobs()[2].sets()[0].count(3); // Job 3 is incomplete, set 5 is incomplete
   v.jobs()[2].sets()[0].completed(1);
+  v.jobs()[2].sets()[0].remaining(2);
   v.jobs()[3].remaining(0); // job 4 is complete
+  v.jobs()[3].completed(1);
   v.jobs()[3].sets()[0].completed(1); // job 4 is complete
+  v.jobs()[3].sets()[0].remaining(0); // job 4 is complete
   v.jobs()[3].sets()[1].completed(1); // job 4 is complete
+  v.jobs()[3].sets()[1].remaining(0); // job 4 is complete
 
   let cases = [ // mode, jobids
     ['None', []],

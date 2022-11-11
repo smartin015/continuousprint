@@ -67,29 +67,8 @@ class AbstractQueue(ABC):
         pass
 
 
-class AbstractJobQueue(AbstractQueue):
-    """LAN queues (potentially others in the future) act on whole jobs and do not allow
-    edits to inner data"""
-
-    @abstractmethod
-    def submit_job(self, j: JobView) -> bool:
-        pass
-
-
 class AbstractEditableQueue(AbstractQueue):
-    """Some queues (e.g. local to a single printer) are directly editable."""
-
-    @abstractmethod
-    def add_job(self, name="") -> JobView:
-        pass
-
-    @abstractmethod
-    def add_set(self, job_id, data) -> SetView:
-        pass
-
-    @abstractmethod
-    def mv_set(self, set_id, after_id, dest_job) -> SetView:
-        pass
+    """Use for queues that are directly editable."""
 
     @abstractmethod
     def mv_job(self, job_id, after_id):
@@ -100,7 +79,24 @@ class AbstractEditableQueue(AbstractQueue):
         pass
 
     @abstractmethod
-    def rm_multi(self, job_ids, set_ids) -> dict:
+    def get_job_view(self, job_id):
+        pass
+
+    @abstractmethod
+    def import_job_from_view(self, job_view):
+        """Imports a JobView into storage. Returns ID of the imported job"""
+        pass
+
+
+class AbstractFactoryQueue(AbstractEditableQueue):
+    """Use for queues where you can construct new jobs/sets"""
+
+    @abstractmethod
+    def add_job(self, name="") -> JobView:
+        pass
+
+    @abstractmethod
+    def add_set(self, job_id, data) -> SetView:
         pass
 
     @abstractmethod

@@ -8,6 +8,7 @@ from .data import (
     PRINTER_PROFILES,
     GCODE_SCRIPTS,
     Keys,
+    CustomEvents,
     ASSETS,
     TEMPLATES,
     update_info,
@@ -58,6 +59,7 @@ class ContinuousprintPlugin(
                 self._logger,
                 self._identifier,
                 self._basefolder,
+                self._event_bus.fire,
             )
 
     def on_after_startup(self):
@@ -72,6 +74,9 @@ class ContinuousprintPlugin(
     # ------------------------ End StartupPlugin ---------------------------
 
     # ------------------------ Begin EventHandlerPlugin --------------------
+
+    def register_custom_events(*args, **kwargs):
+        return [CustomEvents.__members__.values()]
 
     def on_event(self, event, payload):
         if not hasattr(self, "_plugin"):

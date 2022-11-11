@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from collections import namedtuple
 from .analysis import CPQProfileAnalysisQueue
 from .storage.queries import getJobsAndSets
@@ -36,6 +37,7 @@ def mockplugin():
         settings=MockSettings(),
         file_manager=MagicMock(),
         plugin_manager=MagicMock(),
+        fire_event=MagicMock(),
         queries=MagicMock(),
         data_folder=None,
         logger=logging.getLogger(),
@@ -246,6 +248,7 @@ class TestEventHandling(unittest.TestCase):
         self.p._queries.annotateLastRun.assert_called_with("a.gcode", "a.mp4", ANY)
 
     def testPrintDone(self):
+        self.p._cleanup_fileshare = lambda: 0
         self.p.on_event(Events.PRINT_DONE, dict())
         self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY, ANY)
 
@@ -512,3 +515,39 @@ class TestAnalysis(unittest.TestCase):
         self.p._file_manager.set_additional_metadata.assert_called_with(
             ANY, "a.gcode", ANY, ANY, overwrite=True
         )
+
+
+class TestCleanupFileshare(unittest.TestCase):
+    def setUp(self):
+        self.td = tempfile.TemporaryDirectory()
+        q = MagicMock()
+        q.as_dict.return_value = dict(
+            jobs=[
+                {"hash": "a", "peer_": q.addr, "acquired_by_": None},
+                {"hash": "b", "peer_": "peer2", "acquired_by_": q.addr},
+                {"hash": "c", "peer_": "peer2", "acquired_by_": None},
+                {"hash": "d", "peer_": "peer2", "acquired_by_": None},
+            ]
+        )
+        self.p = mockplugin()
+        self.p.fileshare_dir = self.td.name
+        self.p.q = MagicMock()
+        self.p.q.queues.items.return_value = [("q", q)]
+
+    def tearDown(self):
+        self.td.cleanup()
+
+    def testCleanupNoFiles(self):
+        self.assertEqual(self.p._cleanup_fileshare(), 0)
+
+    def testCleanupWithFiles(self):
+        p = Path(self.p.fileshare_dir)
+        (p / "d").mkdir()
+        for n in ("a", "b", "c"):
+            (p / f"{n}.gcode").touch()
+        self.assertEqual(self.p._cleanup_fileshare(), 2)
+
+        for n in ("a", "b"):
+            self.assertTrue((p / f"{n}.gcode").exists())
+        self.assertFalse((p / "c.gcode").exists())
+        self.assertFalse((p / "d").exists())

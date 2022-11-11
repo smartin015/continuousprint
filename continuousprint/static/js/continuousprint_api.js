@@ -35,13 +35,13 @@ class CPAPI {
           }
         },
         error: (xhr,  textstatus, errThrown) => {
+          if (blocking) {
+            self.loading(false);
+          }
           if (err_cb) {
             err_cb(xhr.status, errThrown);
           } else {
             self.default_err_cb(xhr.status, errThrown);
-          }
-          if (blocking) {
-            self.loading(false);
           }
         }
     });

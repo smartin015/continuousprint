@@ -11,6 +11,13 @@ from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
 MAX_COUNT = 999999
 
 
+def getint(d, k, default=0):
+    v = d.get(k, default)
+    if type(v) == str:
+        v = int(v)
+    return v
+
+
 def clearOldState():
     # On init, scrub the local DB for any state that may have been left around
     # due to an improper shutdown
@@ -152,12 +159,18 @@ def _upsertSet(set_id, data, job):
     for k, v in data.items():
         if k in (
             "id",
-            "count",
-            "remaining",
             "materials",
             "profiles",
         ):  # ignored or handled below
             continue
+
+        # parse and limit integer values
+        if k in (
+            "count",
+            "remaining",
+        ):
+            v = min(int(v), MAX_COUNT)
+
         setattr(s, k, v)
     s.job = job
 
@@ -167,18 +180,6 @@ def _upsertSet(set_id, data, job):
     s.profile_keys = ",".join(
         ["" if p is None else p for p in data.get("profiles", [])]
     )
-
-    if data.get("count") is not None:
-        newCount = min(int(data["count"]), MAX_COUNT)
-        inc = newCount - s.count
-        s.count = newCount
-        s.remaining = min(newCount, s.remaining + max(inc, 0))
-        # Boost job remaining if we would cause it to be incomplete
-        job_remaining = s.job.remaining
-        if inc > 0 and job_remaining == 0:
-            job_remaining = 1
-            s.job.remaining = 1
-            s.job.save()
     s.save()
 
 
@@ -189,32 +190,19 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
         except Job.DoesNotExist:
             q = Queue.get(name=queue)
             j = newEmptyJob(q)
+
         for k, v in data.items():
             if k in (
                 "id",
-                "count",
-                "remaining",
                 "sets",
+                "queue",
             ):  # ignored or handled separately
                 continue
+
+            # Parse and bound integer values
+            if k in ("count", "remaining"):
+                v = min(int(v), MAX_COUNT)
             setattr(j, k, v)
-
-        clear_sets = False
-        if data.get("count") is not None:
-            newCount = min(int(data["count"]), MAX_COUNT)
-            inc = newCount - j.count
-            j.remaining = min(newCount, j.remaining + max(inc, 0))
-
-            # Edge case: clear sets if we are adding 1 to a completed job,
-            # as this is otherwise suppressed by job-end accounting.
-            clear_sets = newCount > j.count
-            if clear_sets:
-                for s in j.sets:
-                    if s.remaining != 0:
-                        clear_sets = False
-                        break
-            j.count = newCount
-        j.save()
 
         if data.get("sets") is not None:
             # Remove any missing sets
@@ -227,9 +215,7 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
                 s["rank"] = float(i)
                 _upsertSet(s["id"], s, j)
 
-        if clear_sets:
-            j.refresh_sets()
-
+        j.save()
         return Job.get(id=job_id).as_dict()
 
 
@@ -256,18 +242,24 @@ def _rankEnd():
     return time.time()
 
 
-def _moveImpl(cls, src, dest_id: int, retried=False):
-    if dest_id == -1:
+def _moveImpl(src, dest_id, retried=False):
+    if dest_id is None:
         destRank = 0
     else:
-        destRank = cls.get(id=dest_id).rank
+        dest_id = int(dest_id)
+        destRank = Job.get(id=dest_id).rank
 
     # Get the next object having a rank beyond the destination rank,
     # so we can then split the difference
     # Note the unary '&' operator and the expressions wrapped in parens (a limitation of peewee)
     postRank = (
-        cls.select(cls.rank)
-        .where((cls.rank > destRank) & (cls.id != src.id))
+        Job.select(Job.rank)
+        .where(
+            (Job.rank > destRank)
+            & (Job.id != src.id)
+            & (Job.queue.name != ARCHIVE_QUEUE)
+        )
+        .order_by(Job.rank)
         .limit(1)
         .execute()
     )
@@ -277,13 +269,16 @@ def _moveImpl(cls, src, dest_id: int, retried=False):
         postRank = MAX_RANK
     # Pick the target value as the midpoint between the two ranks
     candidate = abs(postRank - destRank) / 2 + min(postRank, destRank)
+    # print(
+    #    f"_moveImpl abs({postRank} - {destRank})/2 + min({postRank}, {destRank}) = {candidate}"
+    # )
 
     # We may end up with an invalid candidate if we hit a singularity - in this case, rebalance all the
     # rows and try again
     if candidate <= destRank or candidate >= postRank:
         if not retried:
-            _rankBalance(cls)
-            _moveImpl(cls, src, dest_id, retried=True)
+            _rankBalance(Job)
+            _moveImpl(src, dest_id, retried=True)
         else:
             raise Exception("Could not rebalance job rank to move job")
     else:
@@ -293,18 +288,7 @@ def _moveImpl(cls, src, dest_id: int, retried=False):
 
 def moveJob(src_id: int, dest_id: int):
     j = Job.get(id=src_id)
-    return _moveImpl(Job, j, dest_id)
-
-
-def moveSet(src_id: int, dest_id: int, dest_job: int):
-    s = Set.get(id=src_id)
-    if dest_job == -1:
-        j = newEmptyJob(s.job.queue)
-    else:
-        j = Job.get(id=dest_job)
-    s.job = j
-    s.save()
-    _moveImpl(Set, s, dest_id)
+    return _moveImpl(j, dest_id)
 
 
 def newEmptyJob(q, name="", rank=_rankEnd):
@@ -337,7 +321,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
     if j.is_dirty():
         j.save()
 
-    count = int(data["count"])
+    count = getint(data, "count")
     sd = data.get("sd", "false")
     s = Set.create(
         path=data["path"],
@@ -346,7 +330,8 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
         material_keys=",".join(data.get("materials", "")),
         profile_keys=",".join(data.get("profiles", "")),
         count=count,
-        remaining=count,
+        remaining=getint(data, "remaining", count),
+        completed=getint(data, "completed"),
         job=j,
     )
 
@@ -386,7 +371,11 @@ def resetJobs(job_ids: list):
             updated += (
                 Job.update(remaining=Job.count).where(Job.id.in_(job_ids)).execute()
             )
-        updated += Set.update(remaining=Set.count).where(Set.job.in_(job_ids)).execute()
+        updated += (
+            Set.update(remaining=Set.count, completed=0)
+            .where(Set.job.in_(job_ids))
+            .execute()
+        )
         return dict(num_updated=updated)
 
 

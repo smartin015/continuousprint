@@ -15,6 +15,7 @@ from .queues.abstract import Strategy
 from peewee import SqliteDatabase
 from collections import defaultdict
 from peerprint.lan_queue import LANPrintQueueBase
+from peerprint.sync_objects_test import TestReplDict
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -61,7 +62,7 @@ class IntegrationTest(DBTest):
                 self.d.action(DA.TICK, DP.IDLE)  # -> clearing
                 self.d._runner.clear_bed.assert_called()
                 self.d._runner.clear_bed.reset_mock()
-                self.d.action(DA.TICK, DP.IDLE)  # -> start_print
+                self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print
             else:  # Finishing
                 self.d.action(DA.TICK, DP.IDLE)  # -> start_finishing
                 self.assertEqual(
@@ -70,7 +71,7 @@ class IntegrationTest(DBTest):
                 self.d.action(DA.TICK, DP.IDLE)  # -> finishing
                 self.d._runner.run_finish_script.assert_called()
                 self.d._runner.run_finish_script.reset_mock()
-                self.d.action(DA.TICK, DP.IDLE)  # -> inactive
+                self.d.action(DA.SUCCESS, DP.IDLE)  # -> inactive
                 self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
         except AssertionError as e:
             raise AssertionError(
@@ -157,6 +158,7 @@ class TestLocalQueue(IntegrationTest):
         queries.updateJob(1, dict(draft=False))
 
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
+        self.assertEqual(self.d.state, self.d._state_printing)
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("b.gcode", finishing=True)
@@ -181,11 +183,6 @@ class LocalLockManager:
 
     def release(self, k):
         self.locks.pop(k, None)
-
-
-class LocalJobDict(dict):
-    def set(self, k, v, **kwargs):
-        self[k] = v
 
 
 class TestLANQueue(IntegrationTest):
@@ -214,13 +211,14 @@ class TestLANQueue(IntegrationTest):
             self.lq.ns, self.lq.addr, MagicMock(), logging.getLogger("lantestbase")
         )
         self.lq.lan.q.locks = LocalLockManager(dict(), "lq")
-        self.lq.lan.q.jobs = LocalJobDict()
+        self.lq.lan.q.jobs = TestReplDict(lambda a, b: None)
         self.lq.lan.q.peers = dict()
 
     def test_completes_job_in_order(self):
         self.lq.lan.q.setJob(
-            "bsdf",
+            "uuid1",
             dict(
+                id="uuid1",
                 name="j1",
                 created=0,
                 sets=[
@@ -238,8 +236,9 @@ class TestLANQueue(IntegrationTest):
     def test_multi_job(self):
         for name in ("j1", "j2"):
             self.lq.lan.q.setJob(
-                f"{name}_hash",
+                f"{name}_id",
                 dict(
+                    id=f"{name}_id",
                     name=name,
                     created=0,
                     sets=[dict(path=f"{name}.gcode", count=1, remaining=1)],
@@ -288,7 +287,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
                 lq.ns, lq.addr, MagicMock(), logging.getLogger("lantestbase")
             )
             lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
-            lq.lan.q.jobs = LocalJobDict()
+            lq.lan.q.jobs = TestReplDict(lambda a, b: None)
             lq.lan.q.peers = self.peers
             if i > 0:
                 lq.lan.q.peers = self.peers[0][2].lan.q.peers
@@ -304,6 +303,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             lq1.lan.q.setJob(
                 f"{name}_hash",
                 dict(
+                    id=f"{name}_hash",
                     name=name,
                     created=0,
                     sets=[
@@ -334,7 +334,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d1.action(DA.SUCCESS, DP.IDLE, path="j1.gcode")  # -> success
             d1.action(DA.TICK, DP.IDLE)  # -> start_clearing
             d1.action(DA.TICK, DP.IDLE)  # -> clearing
-            d1.action(DA.TICK, DP.IDLE)  # -> start_print
+            d1.action(DA.SUCCESS, DP.IDLE)  # -> start_print
             self.assertEqual(d1._runner.start_print.call_args[0][0].path, "j3.gcode")
             self.assertEqual(self.locks["j3_hash"], "peer0")
             d1._runner.start_print.reset_mock()
@@ -344,7 +344,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d2.action(DA.SUCCESS, DP.IDLE, path="j2.gcode")  # -> success
             d2.action(DA.TICK, DP.IDLE)  # -> start_finishing
             d2.action(DA.TICK, DP.IDLE)  # -> finishing
-            d2.action(DA.TICK, DP.IDLE)  # -> idle
+            d2.action(DA.SUCCESS, DP.IDLE)  # -> idle
             self.assertEqual(d2.state.__name__, d2._state_idle.__name__)
 
 

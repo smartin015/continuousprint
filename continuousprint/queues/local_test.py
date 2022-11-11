@@ -1,11 +1,94 @@
 import unittest
 import logging
+from ..storage.database_test import DBTest
+from ..storage import queries
+from ..storage.lan import LANJobView
+from ..storage.database import JobView
 from unittest.mock import MagicMock
 from .abstract import Strategy, QueueData
+from .abstract_test import (
+    AbstractQueueTests,
+    EditableQueueTests,
+    testJob as makeAbstractTestJob,
+)
 from .local import LocalQueue
 from dataclasses import dataclass, asdict
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
+
+
+class TestAbstractImpl(AbstractQueueTests, DBTest):
+    # See abstract_test.py for actual test cases
+    def setUp(self):
+        DBTest.setUp(self)
+        self.q = LocalQueue(
+            queries,
+            "local",
+            Strategy.IN_ORDER,
+            dict(name="profile"),
+            MagicMock(),
+            MagicMock(),
+        )
+        self.jid = self.q.import_job_from_view(makeAbstractTestJob(0))
+        self.q._set_path_exists = lambda p: True
+
+
+class TestEditableImpl(EditableQueueTests, DBTest):
+    # See abstract_test.py for actual test cases
+    def setUp(self):
+        DBTest.setUp(self)
+        self.q = LocalQueue(
+            queries,
+            "local",
+            Strategy.IN_ORDER,
+            dict(name="profile"),
+            MagicMock(),
+            MagicMock(),
+        )
+        self.jids = [
+            self.q.import_job_from_view(makeAbstractTestJob(i))
+            for i in range(EditableQueueTests.NUM_TEST_JOBS)
+        ]
+        self.q._set_path_exists = lambda p: True
+
+
+class TestLocalQueueImportFromLAN(unittest.TestCase):
+    def setUp(self):
+        queries = MagicMock()
+        queries.getAcquiredJob.return_value = None
+        self.q = LocalQueue(
+            queries,
+            "testQueue",
+            Strategy.IN_ORDER,
+            dict(name="profile"),
+            lambda p, sd: p,
+            MagicMock(),
+        )
+
+    def testImportJobFromLANView(self):
+        # Jobs imported from LAN into local queue must have their
+        # gcode files copied from the remote peer, in a way which
+        # doesn't get auto-cleaned (as in the fileshare/ directory)
+        lq = MagicMock()
+        j = JobView()
+        j.id = "567"
+        j.save = MagicMock()
+        self.q.queries.newEmptyJob.return_value = j
+        manifest = dict(
+            name="test_job",
+            id="123",
+            sets=[dict(path="a.gcode", count=1, remaining=1)],
+            hash="foo",
+            peer_="addr",
+        )
+        cp = MagicMock()
+        lq.get_gjob_dirpath.return_value = "gjob_dirpath"
+        self.q.import_job_from_view(LANJobView(manifest, lq), cp)
+
+        wantdir = "ContinuousPrint/imports/test_job_123"
+        cp.assert_called_with("gjob_dirpath", wantdir)
+        _, args, _ = self.q.queries.appendSet.mock_calls[-1]
+        self.assertEqual(args[2]["path"], wantdir + "/a.gcode")
 
 
 class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
@@ -21,16 +104,6 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
             MagicMock(),
         )
 
-    def test_acquire_success(self):
-        j = MagicMock()
-        s = MagicMock()
-        j.next_set.return_value = s
-        self.q.queries.getNextJobInQueue.return_value = j
-        self.q.queries.acquireJob.return_value = True
-        self.assertEqual(self.q.acquire(), True)
-        self.assertEqual(self.q.get_job(), j)
-        self.assertEqual(self.q.get_set(), s)
-
     def test_acquire_failed(self):
         self.q.queries.getNextJobInQueue.return_value = "doesntmatter"
         self.q.queries.acquireJob.return_value = False
@@ -41,18 +114,8 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
         self.q.queries.getNextJobInQueue.return_value = None
         self.assertEqual(self.q.acquire(), False)
 
-    def test_as_dict(self):
-        self.assertEqual(
-            self.q.as_dict(),
-            dict(
-                name="testQueue",
-                strategy="IN_ORDER",
-                jobs=[],
-                active_set=None,
-                addr=None,
-                peers=[],
-            ),
-        )
+    def test_import_job(self):
+        pass  # TODO
 
 
 class TestLocalQueueInOrderInitial(unittest.TestCase):
@@ -75,6 +138,9 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
     def test_init_already_acquired(self):
         self.assertEqual(self.q.get_job(), self.j)
         self.assertEqual(self.q.get_set(), self.s)
+
+    def test_mv(self):
+        pass  # TODO
 
     def test_acquire_2x(self):
         # Second acquire should do nothing, return True

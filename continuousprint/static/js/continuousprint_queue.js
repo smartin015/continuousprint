@@ -31,6 +31,7 @@ function CPQueue(data, api, files, profile) {
     self.shiftsel = ko.observable(-1);
     self.details = ko.observable("");
     self.fullDetails = ko.observable("");
+    self.ready = ko.observable(data.name === 'local' || Object.keys(data.peers).length > 0);
     if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);
       if (pkeys.length === 0) {
@@ -94,18 +95,18 @@ function CPQueue(data, api, files, profile) {
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.length_completed() === 0);
+            j.onChecked(j.sets().length !== 0 && j.totals().completed === 0);
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
-            let lc = j.length_completed();
-            j.onChecked(lc > 0 && lc < j.length());
+            let t = j.totals();
+            j.onChecked(t.remaining > 0 && t.remaining < t.count);
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.length_completed() >= j.length());
+            j.onChecked(j.sets().length !== 0 && j.totals().remaining == 0);
           }
           break;
         default:
@@ -252,6 +253,15 @@ function CPQueue(data, api, files, profile) {
       });
     }
 
+    self.hasDraftJobs = function() {
+      for (let j of self.jobs()) {
+        if (j.draft()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     self.addFile = function(data, infer_profile=false) {
         if (data.path.endsWith('.gjob')) {
           // .gjob import has a different API path
@@ -291,7 +301,7 @@ function CPQueue(data, api, files, profile) {
         set_data['job'] = null;
         // Invoking API causes a new job to be created
         self.api.add(self.api.SET, set_data, (response) => {
-          return self._pushJob({id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]});
+          return self._pushJob({queue: self.name, id: response.job_id, name: set_data['jobName'], draft: true, count: 1, sets: [response.set_]});
         });
     };
 
