@@ -1,15 +1,16 @@
-# Continuous Print Queue Plugin
+# Continuous Print Queue for Octoprint
 
 ![build status](https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic)
 ![code coverage](https://img.shields.io/codecov/c/github/smartin015/continuousprint/master)
 
-This plugin automates your printing!
+This plugin automates your 3D printing!
+
+[![v2.2.0 demo thumbnail](https://user-images.githubusercontent.com/607666/201386517-9bcda0fc-c705-4e8a-bfed-c36514e2b13b.png)](https://www.youtube.com/watch?v=KH4I8tr2iyQ&list=PLBLlNoYKuCw3dnUcdPQk6Tc_GmNsfYAr7)
 
 * **Add gcode files to the queue and set a number of times to print each.** The plugin will print them in sequence, running "bed clearing" script after each.
 * **Group multiple files together into "jobs" and run them multiple times.** Don't make 10 boxes by printing 10 bases, then 10 lids - just define a "box" job and print box/lid combos in sequence.
 * **Reduce manual intervention with failure automation.** This plugin optionally integrates with [The Spaghetti Detective](https://www.thespaghettidetective.com/) and can retry prints that fail to adhere to the bed, with configurable limits on how hard to try before giving up.
-
-WARNING: Your printer must have a method of clearing the bed automatically, with correct GCODE instructions set up in this plugin's settings page - damage to your printer may occur if this is not done correctly. If you want to manually remove prints, look in the plugin settings for details on how to use `@pause` so the queue is paused before another print starts.
+* **Print with multiple 3D printers over the local network**. LAN queues can parallelize your printing efforts, while still providing a single queue to print from.
 
 # Documentation
 
