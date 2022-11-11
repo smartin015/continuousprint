@@ -9,6 +9,7 @@ services:
       - ".:/home/oprint/continuousprint"
       - "./volume:/home/oprint/.octoprint"
       - "/tmp:/tmp"
+    network_mode: "host"
     environment:
       - "PYTHONUNBUFFERED=1"
   dev2:

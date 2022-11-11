@@ -273,9 +273,9 @@ class CPQPlugin(ContinuousPrintAPI):
         self._queries.clearOldState()
 
     def _init_queue(self, q, lancls=LANQueue, localcls=LocalQueue, wancls=WANQueue):
-        print("_init_queue for ", q.name, q.registry)
         if q.registry is not None:
             wq = wancls(
+                self._get_key(Keys.PEERPRINT_SERVER_PATH),
                 q.name,
                 self._logger,
                 q.registry,

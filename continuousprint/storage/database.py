@@ -369,7 +369,7 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.save()
 
             if details.schemaVersion != "0.0.4":
-                raise Exception("Unknown DB schema version: " + details.schemaVersion)
+                raise Exception(f'Unknown DB schema version: "{details.schemaVersion}"')
 
             if logger is not None:
                 logger.debug("Storage schema version: " + details.schemaVersion)

@@ -9,16 +9,30 @@ from .abstract_test import (
     EditableQueueTests,
     testJob as makeAbstractTestJob,
 )
-from .lan import WANQueue, ValidationError
+from .wan import PeerPrintQueue, ValidationError
 from ..storage.database import JobView, SetView
-from peerprint.lan_queue_test import WANQueueLocalTest as PeerPrintWANTest
 
 # logging.basicConfig(level=logging.DEBUG)
 
 
+class CodecTest(unittest.TestCase):
+    def test_json_encode_decode(self):
+        data = dict(a=5, b="foo", c=dict(d=True))
+
+        got, protocol = Codec.encode(data)
+        self.assertEqual(type(got), bytes)
+        self.assertEqual(protocol, Codec.PROTOCOL_JSON)
+
+        got = Codec.decode(got, protocol)
+        self.assertEqual(got, data)
+
+    def test_decode_unknown_protocol(self):
+        self.assertEqual(Codec.decode("", Codec.PROTOCOL_JSON), None)
+
+
 class WANQueueTest(unittest.TestCase):
     def setUp(self):
-
+        PeerPrintWANTest.setUp(self)  # Generate peerprint WANQueue as self.q
         self.q.q.syncPeer(
             dict(profile=dict(name="profile")), addr=self.q.q.addr
         )  # Helps pass validation
