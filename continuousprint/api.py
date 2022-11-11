@@ -143,9 +143,11 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.STARTSTOP)
     def set_active(self):
-        self._update(
-            DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
-        )
+        active = flask.request.form["active"]
+        if type(active) == str:
+            active = active.lower().strip() == "true"
+
+        self._update(DA.ACTIVATE if active else DA.DEACTIVATE)
         return self._state_json()
 
     # Public method - adds a new set to an existing job, or creates a new job and adds the set there.
