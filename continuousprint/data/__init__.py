@@ -21,19 +21,21 @@ class CustomEvents(Enum):
 
 
 class Keys(Enum):
+
+    BED_COOLDOWN_SCRIPT_DEPRECATED = (
+        "cp_bed_cooldown_script",
+        "; Put script to run before bed cools here\n",
+    )
+    FINISHED_SCRIPT_DEPRECATED = ("cp_queue_finished_script", "Generic Off")
+    CLEARING_SCRIPT_DEPRECATED = ("cp_bed_clearing_script", "Pause")
+    QUEUE_DEPRECATED = ("cp_queue", None)
+
     # TODO migrate old setting names to enum names
-    QUEUE = ("cp_queue", None)
     PRINTER_PROFILE = ("cp_printer_profile", "Generic")
-    CLEARING_SCRIPT = ("cp_bed_clearing_script", "Pause")
-    FINISHED_SCRIPT = ("cp_queue_finished_script", "Generic Off")
     RESTART_MAX_RETRIES = ("cp_restart_on_pause_max_restarts", 3)
     RESTART_ON_PAUSE = ("cp_restart_on_pause_enabled", False)
     RESTART_MAX_TIME = ("cp_restart_on_pause_max_seconds", 60 * 60)
     BED_COOLDOWN_ENABLED = ("bed_cooldown_enabled", False)
-    BED_COOLDOWN_SCRIPT = (
-        "cp_bed_cooldown_script",
-        "; Put script to run before bed cools here\n",
-    )
     BED_COOLDOWN_THRESHOLD = ("bed_cooldown_threshold", 30)
     BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
     MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
@@ -58,13 +60,7 @@ class Keys(Enum):
 
 
 PRINT_FILE_DIR = "ContinuousPrint"
-TEMP_FILES = dict(
-    [
-        (k.setting, f"{PRINT_FILE_DIR}/{k.setting}.gcode")
-        for k in [Keys.FINISHED_SCRIPT, Keys.CLEARING_SCRIPT, Keys.BED_COOLDOWN_SCRIPT]
-    ]
-)
-
+TEMP_FILE_DIR = PRINT_FILE_DIR + "/tmp"
 ASSETS = dict(
     js=[
         "js/cp_modified_sortable.js",

@@ -5,7 +5,17 @@ import time
 import base64
 
 from pathlib import Path
-from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
+from .database import (
+    Queue,
+    Job,
+    Set,
+    Run,
+    DB,
+    DEFAULT_QUEUE,
+    ARCHIVE_QUEUE,
+    Event,
+    Script,
+)
 
 
 MAX_COUNT = 999999
@@ -437,3 +447,35 @@ def getHistory():
 
 def resetHistory():
     Run.delete().execute()
+
+
+def setScript(name, body):
+    try:
+        s = Script.get(name=name)
+        s.body = body
+        s.save()
+    except Script.DoesNotExist:
+        Script.create(name=name, body=body)
+
+
+def rmScript(name):
+    Script.delete().where(Script.name == name).execute()
+
+
+def setEvent(name, script_names: list):
+    with DB.scripts.atomic():
+        Event.delete().where(Event.name == name).execute()
+        for i, s in enumerate(script_names):
+            Event.create(name=name, script=Script.get(name=s), rank=i)
+
+
+def genEventScript(name) -> str:
+    result = []
+    for e in (
+        Event.select()
+        .join(Script, JOIN.LEFT_OUTER)
+        .where(Event.name == name)
+        .order_by(Event.rank)
+    ):
+        result.append(e.script.body)
+    return "\n".join(result)

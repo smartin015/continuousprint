@@ -9,15 +9,7 @@ import time
 
 # logging.basicConfig(level=logging.DEBUG)
 
-from .database import (
-    Job,
-    Set,
-    Run,
-    Queue,
-    init as init_db,
-    DEFAULT_QUEUE,
-    ARCHIVE_QUEUE,
-)
+from .database import Job, Set, Run, Queue, DEFAULT_QUEUE, ARCHIVE_QUEUE, Event, Script
 from .database_test import DBTest
 from ..storage import queries as q
 
@@ -363,3 +355,32 @@ class TestMultiItemQueue(DBTest):
         r = Run.get(id=r.id)
         self.assertEqual(r.movie_path, "movie_path.mp4")
         self.assertEqual(r.thumb_path, "thumb_path.png")
+
+
+class TestScriptsAndEvents(DBTest):
+    def testSetGet(self):
+        q.setScript("foo", "bar")
+        q.setEvent("evt", ["foo"])
+        self.assertEqual(q.genEventScript("evt"), "bar")
+
+    def testMultiScriptEvent(self):
+        q.setScript("s1", "gcode1")
+        q.setScript("s2", "gcode2")
+        q.setEvent("evt", ["s1", "s2"])
+        self.assertEqual(q.genEventScript("evt"), "gcode1\ngcode2")
+
+        # Ordering of event matters
+        q.setEvent("evt", ["s2", "s1"])
+        self.assertEqual(q.genEventScript("evt"), "gcode2\ngcode1")
+
+    def testOverwriteScriptAfterEvent(self):
+        q.setScript("foo", "fail")
+        q.setEvent("evt", ["foo"])
+        q.setScript("foo", "pass")
+        self.assertEqual(q.genEventScript("evt"), "pass")
+
+    def testRemoveScript(self):
+        q.setScript("foo", "fail")
+        q.setScript("evt", ["foo"])
+        q.rmScript("foo")
+        self.assertEqual(q.genEventScript("evt"), "")

@@ -9,12 +9,14 @@ from peewee import (
     FloatField,
     DateField,
     TimeField,
+    TextField,
     CompositeKey,
     JOIN,
     Check,
 )
 from playhouse.migrate import SqliteMigrator, migrate
 
+from ..data import CustomEvents
 from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
@@ -29,11 +31,33 @@ import time
 class DB:
     # Adding foreign_keys pragma is necessary for ON DELETE behavior
     queues = SqliteDatabase(None, pragmas={"foreign_keys": 1})
+    scripts = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
 DEFAULT_QUEUE = "local"
 LAN_QUEUE = "LAN"
 ARCHIVE_QUEUE = "archive"
+BED_CLEARING_SCRIPT = "Bed Clearing"
+FINISHING_SCRIPT = "Finished"
+COOLDOWN_SCRIPT = "Managed Cooldown"
+
+
+class Script(Model):
+    name = CharField(unique=True)
+    created = DateTimeField(default=datetime.datetime.now)
+    body = TextField()
+
+    class Meta:
+        database = DB.scripts
+
+
+class Event(Model):
+    name = CharField()
+    script = ForeignKeyField(Script, backref="events", on_delete="CASCADE")
+    rank = FloatField()
+
+    class Meta:
+        database = DB.scripts
 
 
 class StorageDetails(Model):
@@ -285,9 +309,10 @@ def file_exists(path: str) -> bool:
 
 
 MODELS = [Queue, Job, Set, Run, StorageDetails]
+SCRIPTS = [Script, Event]
 
 
-def populate():
+def populate_queues():
     DB.queues.create_tables(MODELS)
     StorageDetails.create(schemaVersion="0.0.3")
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
@@ -295,7 +320,32 @@ def populate():
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
 
 
-def init(db_path="queues.sqlite3", logger=None):
+def populate_scripts():
+    DB.scripts.create_tables(SCRIPTS)
+    bc = Script.create(name=BED_CLEARING_SCRIPT, body="@pause")
+    fin = Script.create(name=FINISHING_SCRIPT, body="@pause")
+    Event.create(name=CustomEvents.CLEAR_BED, script=bc, rank=0)
+    Event.create(name=CustomEvents.FINISH, script=fin, rank=0)
+
+
+def init(scripts_db="scripts.sqlite3", queues_db="queues.sqlite3", logger=None):
+    init_scripts(scripts_db, logger)
+    init_queues(queues_db, logger)
+
+
+def init_scripts(db_path="scripts.sqlite3", logger=None):
+    db = DB.scripts
+    needs_init = not file_exists(db_path)
+    db.init(None)
+    db.init(db_path)
+    db.connect()
+    if needs_init:
+        if logger is not None:
+            logger.debug("Initializing scripts DB")
+        populate_scripts()
+
+
+def init_queues(db_path="queues.sqlite3", logger=None):
     db = DB.queues
     needs_init = not file_exists(db_path)
     db.init(None)
@@ -304,8 +354,8 @@ def init(db_path="queues.sqlite3", logger=None):
 
     if needs_init:
         if logger is not None:
-            logger.debug("DB needs init")
-        populate()
+            logger.debug("Initializing queues DB")
+        populate_queues()
     else:
         try:
             details = StorageDetails.select().limit(1).execute()[0]
@@ -366,6 +416,21 @@ def init(db_path="queues.sqlite3", logger=None):
             raise Exception("Failed to fetch storage schema details!")
 
     return db
+
+
+def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script):
+    # In v2.2.0 and earlier, a fixed list of scripts were stored in OctoPrint settings.
+    # This converts them to DB format for use in events.
+    with DB.scripts.atomic():
+        for (evt, name, body) in [
+            (CustomEvents.CLEAR_BED, BED_CLEARING_SCRIPT, clearing_script),
+            (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),
+            (CustomEvents.COOLDOWN, COOLDOWN_SCRIPT, cooldown_script),
+        ]:
+            Script.delete().where(Script.name == name).execute()
+            s = Script.create(name=name, body=body)
+            Event.delete().where(Event.name == evt).execute()
+            Event.create(name=evt, script=s, rank=0)
 
 
 def migrateFromSettings(data: list):

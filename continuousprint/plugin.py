@@ -23,6 +23,7 @@ from .queues.local import LocalQueue
 from .queues.abstract import Strategy
 from .storage.database import (
     migrateFromSettings,
+    migrateScriptsFromSettings,
     init as init_db,
     DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
@@ -31,8 +32,8 @@ from .data import (
     PRINTER_PROFILES,
     GCODE_SCRIPTS,
     Keys,
+    TEMP_FILE_DIR,
     PRINT_FILE_DIR,
-    TEMP_FILES,
 )
 from .api import ContinuousPrintAPI
 from .script_runner import ScriptRunner
@@ -130,7 +131,19 @@ class CPQPlugin(ContinuousPrintAPI):
         return port
 
     def get_local_ip(self):
-        ip_address = [(s.connect((self._settings.global_get(["server","onlineCheck","host"]), self._settings.global_get(["server","onlineCheck","port"]))), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
+        ip_address = [
+            (
+                s.connect(
+                    (
+                        self._settings.global_get(["server", "onlineCheck", "host"]),
+                        self._settings.global_get(["server", "onlineCheck", "port"]),
+                    )
+                ),
+                s.getsockname()[0],
+                s.close(),
+            )
+            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]
+        ][0][1]
         return ip_address
 
     def _add_set(self, path, sd, draft=True, profiles=[]):
@@ -249,19 +262,38 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _init_db(self):
         init_db(
-            db_path=Path(self._data_folder) / "queue.sqlite3",
+            queues_path=Path(self._data_folder) / "queue.sqlite3",
+            scripts_path=Path(self._data_folder) / "scripts.sqlite3",
             logger=self._logger,
         )
 
         # Migrate from old JSON state if needed
-        state_data = self._get_key(Keys.QUEUE)
+        state_data = self._get_key(Keys.QUEUE_DEPRECATED)
         try:
             if state_data is not None and state_data != "[]":
                 settings_state = json.loads(state_data)
                 migrateFromSettings(settings_state)
-                self._get_key(Keys.QUEUE)
+                self._set_key(Keys.QUEUE_DEPRECATED, None)
         except Exception:
             self._logger.error(f"Could not migrate old json state: {state_data}")
+            self._logger.error(traceback.format_exc())
+
+        # Migrate from settings scripts if needed
+        dep_scripts = [
+            Keys.CLEARING_SCRIPT_DEPRECATED,
+            Keys.FINISHED_SCRIPT_DEPRECATED,
+            Keys.BED_COOLDOWN_SCRIPT_DEPRECATED,
+        ]
+        script_data = [self._get_key(k) for k in dep_scripts]
+        try:
+            if not (None in script_data):
+                migrateScriptsFromSettings(*dep_scripts)
+                for k in dep_scripts:
+                    self._set_key(k, None)
+        except Exception:
+            self._logger.error(
+                f"Could not migrate from settings scripts: {script_data}"
+            )
             self._logger.error(traceback.format_exc())
 
         self._queries.clearOldState()
@@ -405,7 +437,7 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger.info(f"Enqueued {counter} files for CPQ analysis")
 
     def _enqueue(self, path, high_priority=False):
-        if path in TEMP_FILES.values():
+        if path.startswith(TEMP_FILE_DIR):
             return False  # Exclude temp files from analysis
         queue_entry = QueueEntry(
             name=path.split("/")[-1],
@@ -538,9 +570,8 @@ class CPQPlugin(ContinuousPrintAPI):
 
         if event == Events.MOVIE_DONE:
             # Optionally delete time-lapses created from bed clearing/finishing scripts
-            temp_files_base = [f.split("/")[-1] for f in TEMP_FILES.values()]
             if (
-                payload["gcode"] in temp_files_base
+                payload["gcode"].startswith(TEMP_FILE_DIR)
                 and self._get_key(Keys.AUTOMATION_TIMELAPSE_ACTION) == "auto_remove"
             ):
                 if self._delete_timelapse(payload["movie"]):
