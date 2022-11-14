@@ -35,8 +35,8 @@ class ScriptRunner:
         return StreamWrapper(name, BytesIO(gcode.encode("utf-8")))
 
     def _execute_gcode(self, evt, gcode):
-        file_wrapper = self._wrap_stream(evt, gcode)
-        path = str(Path(TEMP_FILE_DIR) / f"{evt}.gcode")
+        file_wrapper = self._wrap_stream(evt.value, gcode)
+        path = str(Path(TEMP_FILE_DIR) / f"{evt.value}.gcode")
         added_file = self._file_manager.add_file(
             FileDestinations.LOCAL,
             path,
@@ -54,9 +54,9 @@ class ScriptRunner:
             self._msg("Print Queue Complete", type="complete")
         elif evt == CustomEvents.CANCEL:
             self._msg("Print cancelled", type="error")
-        elif evt == CustomEvetns.BED_COOLDOWN:
+        elif evt == CustomEvents.COOLDOWN:
             self._msg("Running bed cooldown script")
-        elif evt == CustomEvents.CLEARING:
+        elif evt == CustomEvents.CLEAR_BED:
             self._msg("Clearing bed")
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
@@ -67,8 +67,7 @@ class ScriptRunner:
         if evt == CustomEvents.CANCEL:
             self._printer.cancel_print()
 
-        if gcode != "":
-            result = self._execute_gcode(evt, gcode)
+        result = self._execute_gcode(evt, gcode) if gcode != "" else None
 
         # Bed cooldown turn-off happens after custom scripts are run
         if evt == CustomEvents.COOLDOWN:

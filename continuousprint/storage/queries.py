@@ -16,6 +16,7 @@ from .database import (
     Event,
     Script,
 )
+from ..data import CustomEvents
 
 
 MAX_COUNT = 999999
@@ -449,32 +450,39 @@ def resetHistory():
     Run.delete().execute()
 
 
-def setScript(name, body):
-    try:
-        s = Script.get(name=name)
-        s.body = body
-        s.save()
-    except Script.DoesNotExist:
-        Script.create(name=name, body=body)
-
-
-def rmScript(name):
-    Script.delete().where(Script.name == name).execute()
-
-
-def setEvent(name, script_names: list):
+def assignScriptsAndEvents(scripts, events):
     with DB.scripts.atomic():
-        Event.delete().where(Event.name == name).execute()
-        for i, s in enumerate(script_names):
-            Event.create(name=name, script=Script.get(name=s), rank=i)
+        Event.delete().execute()
+        Script.delete().execute()
+        s = dict()
+        for k, v in scripts.items():
+            s[k] = Script.create(name=k, body=v)
+        for k, v in events.items():
+            for i, n in enumerate(v):
+                Event.create(name=k, script=s[n], rank=i)
 
 
-def genEventScript(name) -> str:
+def getScriptsAndEvents():
+    scripts = dict()
+    events = dict()
+    for s in Script.select():
+        scripts[s.name] = s.body
+    for e in Event.select():
+        if e.name not in events:
+            events[e.name] = []
+        events[e.name].append(e.script.name)
+
+    return dict(
+        scripts=scripts, events=events, allEvents=[e.value for e in CustomEvents]
+    )
+
+
+def genEventScript(evt) -> str:
     result = []
     for e in (
         Event.select()
         .join(Script, JOIN.LEFT_OUTER)
-        .where(Event.name == name)
+        .where(Event.name == evt.value)
         .order_by(Event.rank)
     ):
         result.append(e.script.body)

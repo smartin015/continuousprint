@@ -262,8 +262,8 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _init_db(self):
         init_db(
-            queues_path=Path(self._data_folder) / "queue.sqlite3",
-            scripts_path=Path(self._data_folder) / "scripts.sqlite3",
+            queues_db=Path(self._data_folder) / "queue.sqlite3",
+            scripts_db=Path(self._data_folder) / "scripts.sqlite3",
             logger=self._logger,
         )
 
@@ -342,7 +342,6 @@ class CPQPlugin(ContinuousPrintAPI):
     def _init_driver(self, srcls=ScriptRunner, dcls=Driver):
         self._runner = srcls(
             self.popup,
-            self._get_key,
             self._file_manager,
             self._logger,
             self._printer,

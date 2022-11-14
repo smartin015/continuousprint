@@ -39,10 +39,14 @@ class TestScriptRunner(DBTest):
         self.s._fire_event.assert_called_with(CustomEvents.FINISH)
 
     def test_run_script_for_event_cancel(self):
-        self.skipTest("TODO")
+        # Script run behavior is already tested in test_run_script_for_event
+        self.s.run_script_for_event(CustomEvents.CANCEL)
+        self.s._printer.cancel_print.assert_called()
 
     def test_run_script_for_event_cooldown(self):
-        self.skipTest("TODO")
+        # Script run behavior is already tested in test_run_script_for_event
+        self.s.run_script_for_event(CustomEvents.COOLDOWN)
+        self.s._printer.set_temperature.assert_called_with("bed", 0)
 
     def test_start_print_local(self):
         self.assertEqual(self.s.start_print(LI(False, "a.gcode", LJ("job1"))), True)

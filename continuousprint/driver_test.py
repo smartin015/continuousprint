@@ -3,6 +3,7 @@ import datetime
 import time
 from unittest.mock import MagicMock, ANY
 from .driver import Driver, Action as DA, Printer as DP
+from .data import CustomEvents
 import logging
 import traceback
 
@@ -115,6 +116,7 @@ class TestFromInactive(unittest.TestCase):
         self.d.state = self.d._state_start_clearing
         self.d.action(DA.TICK, DP.IDLE, bed_temp=21)
         self.assertEqual(self.d.state.__name__, self.d._state_cooldown.__name__)
+        self.d._runner.run_script_for_event.reset_mock()
         self.d.action(
             DA.TICK, DP.IDLE, bed_temp=21
         )  # -> stays in cooldown since bed temp too high
@@ -122,7 +124,7 @@ class TestFromInactive(unittest.TestCase):
         self.d._runner.run_script_for_event.assert_not_called()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=19)  # -> exits cooldown
         self.assertEqual(self.d.state.__name__, self.d._state_clearing.__name__)
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEARING)
+        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEAR_BED)
 
     def test_bed_clearing_cooldown_timeout(self):
         self.d.set_managed_cooldown(True, 20, 60)
@@ -131,13 +133,15 @@ class TestFromInactive(unittest.TestCase):
         self.assertEqual(self.d.state.__name__, self.d._state_cooldown.__name__)
         orig_start = self.d.cooldown_start
         self.d.cooldown_start = orig_start - 60 * 59  # Still within timeout range
+
+        self.d._runner.run_script_for_event.reset_mock()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=21)
         self.assertEqual(self.d.state.__name__, self.d._state_cooldown.__name__)
         self.d.cooldown_start = orig_start - 60 * 61
         self.d._runner.run_script_for_event.assert_not_called()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=21)  # exit due to timeout
         self.assertEqual(self.d.state.__name__, self.d._state_clearing.__name__)
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEARING)
+        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEAR_BED)
 
     def test_finishing_failure(self):
         self.d.state = self.d._state_finishing
@@ -191,7 +195,7 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.q.get_set.return_value = item2
 
         self.d.action(DA.TICK, DP.IDLE)  # -> clearing
-        self.d._runner.run_script_for_event.assert_called_once(CustomEvents.CLEARING)
+        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEAR_BED)
 
         self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print -> printing
         self.d._runner.start_print.assert_called_with(item2)

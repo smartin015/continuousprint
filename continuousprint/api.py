@@ -36,10 +36,24 @@ class Permission(Enum):
         "Allows for deleting all continuous print history data",
         True,
     )
-    GETQUEUES = ("Get queue", "Allows for fetching metadata on all print queues", False)
+    GETQUEUES = (
+        "Get queues",
+        "Allows for fetching metadata on all print queues",
+        False,
+    )
     EDITQUEUES = (
         "Edit queues",
         "Allows for adding/removing queues and rearranging them",
+        True,
+    )
+    GETSCRIPTS = (
+        "Get scripts",
+        "Allows for fetching metadata on all scripts and the events they're configured for",
+        False,
+    )
+    EDITSCRIPTS = (
+        "Edit scripts",
+        "Allows for adding/removing gcode scripts and registering them to execute when events happen",
         True,
     )
 
@@ -298,3 +312,19 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         (absent_names, added) = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)
         return json.dumps("OK")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/scripts/edit", methods=["POST"])
+    @restricted_access
+    @cpq_permission(Permission.EDITSCRIPTS)
+    def edit_scripts(self):
+        data = json.loads(flask.request.form.get("json"))
+        queries.assignScriptsAndEvents(data["scripts"], data["events"])
+        return json.dumps("OK")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/scripts/get", methods=["GET"])
+    @restricted_access
+    @cpq_permission(Permission.GETSCRIPTS)
+    def get_scripts(self):
+        return json.dumps(queries.getScriptsAndEvents())

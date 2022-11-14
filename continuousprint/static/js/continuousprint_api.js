@@ -7,6 +7,7 @@ class CPAPI {
   STATE = "state"
   QUEUES = "queues"
   HISTORY = "history"
+  SCRIPTS = "scripts"
 
   init(loading_vm, err_cb) {
     this.loading = loading_vm;
@@ -17,6 +18,7 @@ class CPAPI {
     let self = this;
     if (blocking) {
       if (self.loading()) {
+        console.log(`Skipping blocking call to ${url}; another call in progress`);
         return;
       }
       self.loading(true);
@@ -52,8 +54,8 @@ class CPAPI {
   }
 
   get(type, cb, err_cb=undefined) {
-    // History fetching doesn't mess with mutability
-    let blocking = (type !== this.HISTORY);
+    // History/scripts fetching doesn't mess with mutability
+    let blocking = (type !== this.HISTORY && type !== this.SCRIPTS);
     this._call(type, 'get', undefined, cb, err_cb, blocking);
   }
 

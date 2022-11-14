@@ -324,8 +324,8 @@ def populate_scripts():
     DB.scripts.create_tables(SCRIPTS)
     bc = Script.create(name=BED_CLEARING_SCRIPT, body="@pause")
     fin = Script.create(name=FINISHING_SCRIPT, body="@pause")
-    Event.create(name=CustomEvents.CLEAR_BED, script=bc, rank=0)
-    Event.create(name=CustomEvents.FINISH, script=fin, rank=0)
+    Event.create(name=CustomEvents.CLEAR_BED.value, script=bc, rank=0)
+    Event.create(name=CustomEvents.FINISH.value, script=fin, rank=0)
 
 
 def init(scripts_db="scripts.sqlite3", queues_db="queues.sqlite3", logger=None):
@@ -429,8 +429,8 @@ def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script
         ]:
             Script.delete().where(Script.name == name).execute()
             s = Script.create(name=name, body=body)
-            Event.delete().where(Event.name == evt).execute()
-            Event.create(name=evt, script=s, rank=0)
+            Event.delete().where(Event.name == evt.value).execute()
+            Event.create(name=evt.value, script=s, rank=0)
 
 
 def migrateFromSettings(data: list):

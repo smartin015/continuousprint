@@ -306,14 +306,14 @@ class Driver:
             return
 
         if self.managed_cooldown:
-            self._runner.run_script_for_event(CustomEvents.BED_COOLDOWN)
+            self._runner.run_script_for_event(CustomEvents.COOLDOWN)
             self.cooldown_start = time.time()
             self._logger.info(
                 f"Cooldown initiated (threshold={self.cooldown_threshold}, timeout={self.cooldown_timeout})"
             )
             return self._state_cooldown
         else:
-            self._runner.run_script_for_event(CustomEvents.BED_CLEARING)
+            self._runner.run_script_for_event(CustomEvents.CLEAR_BED)
             return self._state_clearing
 
     def _state_cooldown(self, a: Action, p: Printer):
@@ -330,7 +330,7 @@ class Driver:
             self._set_status("Cooling down")
 
         if clear:
-            self._runner.run_script_for_event(CustomEvents.BED_CLEARING)
+            self._runner.run_script_for_event(CustomEvents.CLEAR_BED)
             return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):

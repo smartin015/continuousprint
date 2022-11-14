@@ -125,5 +125,11 @@ class TestAPI(unittest.TestCase):
     def test_get_queues(self):
         self.skipTest("TODO")
 
-    def edit_queues(self):
+    def test_edit_queues(self):
+        self.skipTest("TODO")
+
+    def test_edit_scripts(self):
+        self.skipTest("TODO")
+
+    def test_get_scripts(self):
         self.skipTest("TODO")
