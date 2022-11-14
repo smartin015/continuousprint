@@ -366,6 +366,7 @@ class TestScriptsAndEvents(DBTest):
             dict(
                 scripts=dict(foo="bar"),
                 events=dict(evt=["foo"]),
+                allEvents=ANY,
             ),
         )
 

@@ -263,7 +263,7 @@ class CPQPlugin(ContinuousPrintAPI):
     def _init_db(self):
         init_db(
             queues_db=Path(self._data_folder) / "queue.sqlite3",
-            scripts_db=Path(self._data_folder) / "scripts.sqlite3",
+            automation_db=Path(self._data_folder) / "automation.sqlite3",
             logger=self._logger,
         )
 

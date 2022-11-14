@@ -31,7 +31,7 @@ class TestScriptRunner(DBTest):
         self.s.run_script_for_event(CustomEvents.FINISH)
         self.s._file_manager.add_file.assert_called()
         self.s._printer.select_file.assert_called_with(
-            "ContinuousPrint/tmp/CustomEvents.FINISH.gcode",
+            "ContinuousPrint/tmp/continuousprint_finish.gcode",
             sd=False,
             printAfterSelect=True,
             user="foo",

@@ -31,7 +31,7 @@ import time
 class DB:
     # Adding foreign_keys pragma is necessary for ON DELETE behavior
     queues = SqliteDatabase(None, pragmas={"foreign_keys": 1})
-    scripts = SqliteDatabase(None, pragmas={"foreign_keys": 1})
+    automation = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
 DEFAULT_QUEUE = "local"
@@ -48,7 +48,7 @@ class Script(Model):
     body = TextField()
 
     class Meta:
-        database = DB.scripts
+        database = DB.automation
 
 
 class Event(Model):
@@ -57,7 +57,7 @@ class Event(Model):
     rank = FloatField()
 
     class Meta:
-        database = DB.scripts
+        database = DB.automation
 
 
 class StorageDetails(Model):
@@ -309,7 +309,7 @@ def file_exists(path: str) -> bool:
 
 
 MODELS = [Queue, Job, Set, Run, StorageDetails]
-SCRIPTS = [Script, Event]
+AUTOMATION = [Script, Event]
 
 
 def populate_queues():
@@ -320,32 +320,32 @@ def populate_queues():
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
 
 
-def populate_scripts():
-    DB.scripts.create_tables(SCRIPTS)
+def populate_automation():
+    DB.automation.create_tables(AUTOMATION)
     bc = Script.create(name=BED_CLEARING_SCRIPT, body="@pause")
     fin = Script.create(name=FINISHING_SCRIPT, body="@pause")
     Event.create(name=CustomEvents.CLEAR_BED.value, script=bc, rank=0)
     Event.create(name=CustomEvents.FINISH.value, script=fin, rank=0)
 
 
-def init(scripts_db="scripts.sqlite3", queues_db="queues.sqlite3", logger=None):
-    init_scripts(scripts_db, logger)
+def init(automation_db, queues_db, logger=None):
+    init_automation(automation_db, logger)
     init_queues(queues_db, logger)
 
 
-def init_scripts(db_path="scripts.sqlite3", logger=None):
-    db = DB.scripts
+def init_automation(db_path, logger=None):
+    db = DB.automation
     needs_init = not file_exists(db_path)
     db.init(None)
     db.init(db_path)
     db.connect()
     if needs_init:
         if logger is not None:
-            logger.debug("Initializing scripts DB")
-        populate_scripts()
+            logger.debug("Initializing automation DB")
+        populate_automation()
 
 
-def init_queues(db_path="queues.sqlite3", logger=None):
+def init_queues(db_path, logger=None):
     db = DB.queues
     needs_init = not file_exists(db_path)
     db.init(None)
@@ -421,7 +421,7 @@ def init_queues(db_path="queues.sqlite3", logger=None):
 def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script):
     # In v2.2.0 and earlier, a fixed list of scripts were stored in OctoPrint settings.
     # This converts them to DB format for use in events.
-    with DB.scripts.atomic():
+    with DB.automation.atomic():
         for (evt, name, body) in [
             (CustomEvents.CLEAR_BED, BED_CLEARING_SCRIPT, clearing_script),
             (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),

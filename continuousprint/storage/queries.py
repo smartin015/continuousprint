@@ -451,7 +451,7 @@ def resetHistory():
 
 
 def assignScriptsAndEvents(scripts, events):
-    with DB.scripts.atomic():
+    with DB.automation.atomic():
         Event.delete().execute()
         Script.delete().execute()
         s = dict()

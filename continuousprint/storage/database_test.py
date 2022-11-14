@@ -25,7 +25,7 @@ class DBTest(unittest.TestCase):
         self.tmpQueues = tempfile.NamedTemporaryFile(delete=True)
         self.tmpScripts = tempfile.NamedTemporaryFile(delete=True)
         self.db = init_db(
-            scripts_db=self.tmpScripts.name,
+            automation_db=self.tmpScripts.name,
             queues_db=self.tmpQueues.name,
             logger=logging.getLogger(),
         )
@@ -40,13 +40,13 @@ class TestScriptMigration(DBTest):
     def testMigration(self):
         migrateScriptsFromSettings("test_clearing", "test_finished", "test_cooldown")
         self.assertEqual(
-            Event.get(name=CustomEvents.CLEAR_BED).script.body, "test_clearing"
+            Event.get(name=CustomEvents.CLEAR_BED.value).script.body, "test_clearing"
         )
         self.assertEqual(
-            Event.get(name=CustomEvents.FINISH).script.body, "test_finished"
+            Event.get(name=CustomEvents.FINISH.value).script.body, "test_finished"
         )
         self.assertEqual(
-            Event.get(name=CustomEvents.COOLDOWN).script.body, "test_cooldown"
+            Event.get(name=CustomEvents.COOLDOWN.value).script.body, "test_cooldown"
         )
 
 

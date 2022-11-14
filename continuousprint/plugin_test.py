@@ -11,7 +11,7 @@ from octoprint.events import Events
 import logging
 import tempfile
 import json
-from .data import Keys, TEMP_FILES
+from .data import Keys, TEMP_FILE_DIR
 from .plugin import CPQPlugin
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -87,7 +87,7 @@ class TestStartup(unittest.TestCase):
     def testDBWithLegacySettings(self):
         p = mockplugin()
         p._set_key(
-            Keys.QUEUE,
+            Keys.QUEUE_DEPRECATED,
             json.dumps(
                 [
                     {
@@ -238,7 +238,7 @@ class TestEventHandling(unittest.TestCase):
         self.p._delete_timelapse = MagicMock()
         self.p.on_event(
             Events.MOVIE_DONE,
-            dict(gcode=list(TEMP_FILES.values())[0].split("/")[-1], movie="test.mp4"),
+            dict(gcode=TEMP_FILE_DIR + "/test.gcode", movie="test.mp4"),
         )
         self.p._delete_timelapse.assert_called_with("test.mp4")
 

@@ -6,12 +6,13 @@ from .driver import Driver, Action as DA, Printer as DP
 import logging
 import traceback
 from .storage.database_test import DBTest
-from .storage.database import DEFAULT_QUEUE, MODELS, populate as populate_db
+from .storage.database import DEFAULT_QUEUE, MODELS, populate_queues
 from .storage import queries
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
 from .queues.lan import LANQueue
 from .queues.abstract import Strategy
+from .data import CustomEvents
 from peewee import SqliteDatabase
 from collections import defaultdict
 from peerprint.lan_queue import LANPrintQueueBase
@@ -60,8 +61,10 @@ class IntegrationTest(DBTest):
                     self.d.state.__name__, self.d._state_start_clearing.__name__
                 )
                 self.d.action(DA.TICK, DP.IDLE)  # -> clearing
-                self.d._runner.clear_bed.assert_called()
-                self.d._runner.clear_bed.reset_mock()
+                self.d._runner.run_script_for_event.assert_called_with(
+                    CustomEvents.CLEAR_BED
+                )
+                self.d._runner.run_script_for_event.reset_mock()
                 self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print
             else:  # Finishing
                 self.d.action(DA.TICK, DP.IDLE)  # -> start_finishing
@@ -69,8 +72,10 @@ class IntegrationTest(DBTest):
                     self.d.state.__name__, self.d._state_start_finishing.__name__
                 )
                 self.d.action(DA.TICK, DP.IDLE)  # -> finishing
-                self.d._runner.run_finish_script.assert_called()
-                self.d._runner.run_finish_script.reset_mock()
+                self.d._runner.run_script_for_event.assert_called_with(
+                    CustomEvents.FINISH
+                )
+                self.d._runner.run_script_for_event.reset_mock()
                 self.d.action(DA.SUCCESS, DP.IDLE)  # -> inactive
                 self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
         except AssertionError as e:
@@ -103,7 +108,7 @@ class TestLocalQueue(IntegrationTest):
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.d.action(DA.SPAGHETTI, DP.BUSY)  # -> spaghetti_recovery
         self.d.action(DA.TICK, DP.PAUSED)  # -> cancel + failure
-        self.d._runner.cancel_print.assert_called()
+        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CANCEL)
         self.assertEqual(self.d.state.__name__, self.d._state_failure.__name__)
 
     def test_multi_job(self):
@@ -263,7 +268,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
         self.peers = []
         for i, db in enumerate(self.dbs):
             with db.bind_ctx(MODELS):
-                populate_db()
+                populate_queues()
             lq = LANQueue(
                 "LAN",
                 f"peer{i}:{12345+i}",
