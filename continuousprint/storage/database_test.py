@@ -40,13 +40,14 @@ class TestScriptMigration(DBTest):
     def testMigration(self):
         migrateScriptsFromSettings("test_clearing", "test_finished", "test_cooldown")
         self.assertEqual(
-            Event.get(name=CustomEvents.CLEAR_BED.value).script.body, "test_clearing"
+            Event.get(name=CustomEvents.PRINT_SUCCESS.event).script.body,
+            "test_clearing",
         )
         self.assertEqual(
-            Event.get(name=CustomEvents.FINISH.value).script.body, "test_finished"
+            Event.get(name=CustomEvents.FINISH.event).script.body, "test_finished"
         )
         self.assertEqual(
-            Event.get(name=CustomEvents.COOLDOWN.value).script.body, "test_cooldown"
+            Event.get(name=CustomEvents.COOLDOWN.event).script.body, "test_cooldown"
         )
 
 

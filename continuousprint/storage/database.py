@@ -56,6 +56,10 @@ class Event(Model):
     script = ForeignKeyField(Script, backref="events", on_delete="CASCADE")
     rank = FloatField()
 
+    # Currently unused, this will provide https://newville.github.io/asteval/ based conditional
+    # running of the script tied to this event.
+    condition = CharField(null=True)
+
     class Meta:
         database = DB.automation
 
@@ -324,8 +328,8 @@ def populate_automation():
     DB.automation.create_tables(AUTOMATION)
     bc = Script.create(name=BED_CLEARING_SCRIPT, body="@pause")
     fin = Script.create(name=FINISHING_SCRIPT, body="@pause")
-    Event.create(name=CustomEvents.CLEAR_BED.value, script=bc, rank=0)
-    Event.create(name=CustomEvents.FINISH.value, script=fin, rank=0)
+    Event.create(name=CustomEvents.PRINT_SUCCESS.event, script=bc, rank=0)
+    Event.create(name=CustomEvents.FINISH.event, script=fin, rank=0)
 
 
 def init(automation_db, queues_db, logger=None):
@@ -423,14 +427,14 @@ def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script
     # This converts them to DB format for use in events.
     with DB.automation.atomic():
         for (evt, name, body) in [
-            (CustomEvents.CLEAR_BED, BED_CLEARING_SCRIPT, clearing_script),
+            (CustomEvents.PRINT_SUCCESS, BED_CLEARING_SCRIPT, clearing_script),
             (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),
             (CustomEvents.COOLDOWN, COOLDOWN_SCRIPT, cooldown_script),
         ]:
             Script.delete().where(Script.name == name).execute()
             s = Script.create(name=name, body=body)
-            Event.delete().where(Event.name == evt.value).execute()
-            Event.create(name=evt.value, script=s, rank=0)
+            Event.delete().where(Event.name == evt.event).execute()
+            Event.create(name=evt.event, script=s, rank=0)
 
 
 def migrateFromSettings(data: list):

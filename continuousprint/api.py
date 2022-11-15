@@ -46,13 +46,13 @@ class Permission(Enum):
         "Allows for adding/removing queues and rearranging them",
         True,
     )
-    GETSCRIPTS = (
-        "Get scripts",
+    GETAUTOMATION = (
+        "Get automation scripts and events",
         "Allows for fetching metadata on all scripts and the events they're configured for",
         False,
     )
-    EDITSCRIPTS = (
-        "Edit scripts",
+    EDITAUTOMATION = (
+        "Edit automation scripts and events",
         "Allows for adding/removing gcode scripts and registering them to execute when events happen",
         True,
     )
@@ -262,7 +262,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/rm", methods=["POST"])
     @restricted_access
-    @cpq_permission(Permission.EDITJOB)
+    @cpq_permission(Permission.RMJOB)
     def rm_job(self):
         return json.dumps(
             self._get_queue(flask.request.form["queue"]).remove_jobs(
@@ -314,17 +314,17 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/scripts/edit", methods=["POST"])
+    @octoprint.plugin.BlueprintPlugin.route("/automation/edit", methods=["POST"])
     @restricted_access
-    @cpq_permission(Permission.EDITSCRIPTS)
-    def edit_scripts(self):
+    @cpq_permission(Permission.EDITAUTOMATION)
+    def edit_automation(self):
         data = json.loads(flask.request.form.get("json"))
         queries.assignScriptsAndEvents(data["scripts"], data["events"])
         return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/scripts/get", methods=["GET"])
+    @octoprint.plugin.BlueprintPlugin.route("/automation/get", methods=["GET"])
     @restricted_access
-    @cpq_permission(Permission.GETSCRIPTS)
-    def get_scripts(self):
+    @cpq_permission(Permission.GETAUTOMATION)
+    def get_automation(self):
         return json.dumps(queries.getScriptsAndEvents())

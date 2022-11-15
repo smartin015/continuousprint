@@ -470,19 +470,17 @@ def getScriptsAndEvents():
     for e in Event.select():
         if e.name not in events:
             events[e.name] = []
-        events[e.name].append(e.script.name)
+        events[e.name].append(dict(script=e.script.name, condition=e.condition))
 
-    return dict(
-        scripts=scripts, events=events, allEvents=[e.value for e in CustomEvents]
-    )
+    return dict(scripts=scripts, events=events)
 
 
-def genEventScript(evt) -> str:
+def genEventScript(evt: CustomEvents) -> str:
     result = []
     for e in (
         Event.select()
         .join(Script, JOIN.LEFT_OUTER)
-        .where(Event.name == evt.value)
+        .where(Event.name == evt.event)
         .order_by(Event.rank)
     ):
         result.append(e.script.body)

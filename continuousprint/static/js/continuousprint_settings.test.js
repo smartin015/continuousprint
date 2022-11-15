@@ -53,6 +53,8 @@ function mocks() {
       onServerConnect: jest.fn(),
     },
     {
+      SCRIPTS: 'scripts',
+      QUEUES: 'queues',
       init: jest.fn(),
       get: jest.fn((_, cb) => cb([])),
       edit: jest.fn(),
@@ -108,25 +110,39 @@ test('invalid model change is ignored', () => {
   expect(v.settings.settings.plugins.continuousprint.cp_queue_finished_script).not.toHaveBeenCalled();
 });
 
-test('load queues', () => {
+test('load queues and scripts on settings view shown', () => {
   m = mocks();
-  m[2].get = (_, cb) => cb([
-    {name: "archive"},
-    {name: "local", addr: "", strategy:"IN_ORDER"},
-    {name: "LAN", addr: "a:1", strategy:"IN_ORDER"},
-  ]);
+  m[2].get = function (typ, cb) {
+    console.log(typ);
+    if (typ === m[2].QUEUES) {
+      cb([
+        {name: "archive"},
+        {name: "local", addr: "", strategy:"IN_ORDER"},
+        {name: "LAN", addr: "a:1", strategy:"IN_ORDER"},
+      ]);
+    } else if (typ === m[2].SCRIPTS) {
+      cb({
+        scripts: {a: 'g1', b: 'g2'},
+        events: {e1: ['a']},
+        allEvents: ['e1', 'e2'],
+      });
+    }
+  };
   let v = new VM.CPSettingsViewModel(m, PROFILES, SCRIPTS);
+  v.onSettingsShown();
   expect(v.queues().length).toBe(2); // Archive excluded
 });
-test('dirty exit commits queues', () => {
-  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
+test.only('dirty exit commits queues', () => {
+  let m = mocks();
+  let v = new VM.CPSettingsViewModel(m, PROFILES, SCRIPTS);
   v.queues.push({name: 'asdf', addr: ''});
   v.onSettingsBeforeSave();
-  expect(v.api.edit).toHaveBeenCalled();
+  expect(v.api.edit).toHaveBeenCalledWith(m[2].QUEUES, expect.any());
 });
 test('non-dirty exit does not call commitQueues', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS);
   v.onSettingsBeforeSave();
   expect(v.api.edit).not.toHaveBeenCalled();
-
 });
+test.todo('add script button');
+test.todo('add action handling');

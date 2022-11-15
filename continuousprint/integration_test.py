@@ -62,7 +62,7 @@ class IntegrationTest(DBTest):
                 )
                 self.d.action(DA.TICK, DP.IDLE)  # -> clearing
                 self.d._runner.run_script_for_event.assert_called_with(
-                    CustomEvents.CLEAR_BED
+                    CustomEvents.PRINT_SUCCESS
                 )
                 self.d._runner.run_script_for_event.reset_mock()
                 self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print
@@ -108,7 +108,9 @@ class TestLocalQueue(IntegrationTest):
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.d.action(DA.SPAGHETTI, DP.BUSY)  # -> spaghetti_recovery
         self.d.action(DA.TICK, DP.PAUSED)  # -> cancel + failure
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CANCEL)
+        self.d._runner.run_script_for_event.assert_called_with(
+            CustomEvents.PRINT_CANCEL
+        )
         self.assertEqual(self.d.state.__name__, self.d._state_failure.__name__)
 
     def test_multi_job(self):

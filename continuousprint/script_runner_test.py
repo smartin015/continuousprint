@@ -40,7 +40,7 @@ class TestScriptRunner(DBTest):
 
     def test_run_script_for_event_cancel(self):
         # Script run behavior is already tested in test_run_script_for_event
-        self.s.run_script_for_event(CustomEvents.CANCEL)
+        self.s.run_script_for_event(CustomEvents.PRINT_CANCEL)
         self.s._printer.cancel_print.assert_called()
 
     def test_run_script_for_event_cooldown(self):
@@ -56,7 +56,7 @@ class TestScriptRunner(DBTest):
             printAfterSelect=True,
             user="foo",
         )
-        self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_sd(self):
         self.assertEqual(self.s.start_print(LI(True, "a.gcode", LJ("job1"))), True)
@@ -66,7 +66,7 @@ class TestScriptRunner(DBTest):
             printAfterSelect=True,
             user="foo",
         )
-        self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_lan(self):
         class NetItem:
@@ -84,7 +84,7 @@ class TestScriptRunner(DBTest):
             printAfterSelect=True,
             user="foo",
         )
-        self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_invalid_location(self):
         self.s._printer.select_file.side_effect = InvalidFileLocation()

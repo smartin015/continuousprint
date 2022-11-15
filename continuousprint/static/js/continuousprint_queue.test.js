@@ -51,7 +51,7 @@ test('setCount allows only positive integers', () => {
   let v = init();
   v.setCount(vm, {target: {value: "-5"}});
   v.setCount(vm, {target: {value: "0"}});
-  v.setCount(vm, {target: {value: "apple"}});
+  v.setCount(vm, {target: {value: "orange"}});
   expect(vm.set_count).not.toHaveBeenCalled();
 
   v.setCount(vm, {target: {value: "5"}});

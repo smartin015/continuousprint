@@ -35,8 +35,8 @@ class ScriptRunner:
         return StreamWrapper(name, BytesIO(gcode.encode("utf-8")))
 
     def _execute_gcode(self, evt, gcode):
-        file_wrapper = self._wrap_stream(evt.value, gcode)
-        path = str(Path(TEMP_FILE_DIR) / f"{evt.value}.gcode")
+        file_wrapper = self._wrap_stream(evt.event, gcode)
+        path = str(Path(TEMP_FILE_DIR) / f"{evt.event}.gcode")
         added_file = self._file_manager.add_file(
             FileDestinations.LOCAL,
             path,
@@ -52,11 +52,11 @@ class ScriptRunner:
     def _do_msg(self, evt):
         if evt == CustomEvents.FINISH:
             self._msg("Print Queue Complete", type="complete")
-        elif evt == CustomEvents.CANCEL:
+        elif evt == CustomEvents.PRINT_CANCEL:
             self._msg("Print cancelled", type="error")
         elif evt == CustomEvents.COOLDOWN:
             self._msg("Running bed cooldown script")
-        elif evt == CustomEvents.CLEAR_BED:
+        elif evt == CustomEvents.PRINT_SUCCESS:
             self._msg("Clearing bed")
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
@@ -64,7 +64,7 @@ class ScriptRunner:
         gcode = genEventScript(evt)
 
         # Cancellation happens before custom scripts are run
-        if evt == CustomEvents.CANCEL:
+        if evt == CustomEvents.PRINT_CANCEL:
             self._printer.cancel_print()
 
         result = self._execute_gcode(evt, gcode) if gcode != "" else None
@@ -99,7 +99,7 @@ class ScriptRunner:
             self._printer.select_file(
                 path, sd=item.sd, printAfterSelect=True, user=self._get_user()
             )
-            self._fire_event(CustomEvents.START_PRINT)
+            self._fire_event(CustomEvents.PRINT_START)
         except InvalidFileLocation as e:
             self._logger.error(e)
             self._msg("File not found: " + path, type="error")

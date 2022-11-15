@@ -267,7 +267,7 @@ class Driver:
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
         self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
-            self._runner.run_script_for_event(CustomEvents.CANCEL)
+            self._runner.run_script_for_event(CustomEvents.PRINT_CANCEL)
             return self._state_failure
 
     def _state_failure(self, a: Action, p: Printer):
@@ -313,7 +313,7 @@ class Driver:
             )
             return self._state_cooldown
         else:
-            self._runner.run_script_for_event(CustomEvents.CLEAR_BED)
+            self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
     def _state_cooldown(self, a: Action, p: Printer):
@@ -330,7 +330,7 @@ class Driver:
             self._set_status("Cooling down")
 
         if clear:
-            self._runner.run_script_for_event(CustomEvents.CLEAR_BED)
+            self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):

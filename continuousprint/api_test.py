@@ -1,4 +1,5 @@
 import unittest
+import json
 from .driver import Action as DA
 from unittest.mock import patch, MagicMock
 import imp
@@ -65,6 +66,50 @@ class TestAPI(unittest.TestCase):
         self.client = self.app.test_client()
         self.api._state_json = lambda: "foo"
 
+    def test_role_access_denied(self):
+        testcases = [
+            ("STARTSTOP", "/set_active"),
+            ("ADDSET", "/set/add"),
+            ("ADDJOB", "/job/add"),
+            ("ADDJOB", "/job/import"),
+            ("EDITJOB", "/job/mv"),
+            ("EDITJOB", "/job/edit"),
+            ("EDITJOB", "/job/reset"),
+            ("EXPORTJOB", "/job/export"),
+            ("RMJOB", "/job/rm"),
+            ("GETHISTORY", "/history/get"),
+            ("CLEARHISTORY", "/history/reset"),
+            ("GETQUEUES", "/queues/get"),
+            ("EDITQUEUES", "/queues/edit"),
+            ("GETAUTOMATION", "/automation/get"),
+            ("EDITAUTOMATION", "/automation/edit"),
+        ]
+
+        num_handlers_tested = len(set([tc[1] for tc in testcases]))
+        num_handlers = len(
+            [
+                f
+                for f in dir(self.api)
+                if hasattr(getattr(self.api, f), "_blueprint_rules")
+            ]
+        )
+        self.assertEqual(
+            num_handlers_tested, num_handlers - 1
+        )  # /state/get is unrestricted
+
+        num_perms_tested = len(set([tc[0] for tc in testcases]))
+        num_perms = len([p for p in Permission])
+        self.assertEqual(num_perms_tested, num_perms)
+
+        for (role, endpoint) in testcases:
+            p = getattr(self.perm, f"PLUGIN_CONTINUOUSPRINT_{role}")
+            p.can.return_value = False
+            if role.startswith("GET"):
+                rep = self.client.get(endpoint)
+            else:
+                rep = self.client.post(endpoint)
+            self.assertEqual(rep.status_code, 403)
+
     def test_get_state(self):
         rep = self.client.get("/state/get")
         self.assertEqual(rep.status_code, 200)
@@ -93,10 +138,25 @@ class TestAPI(unittest.TestCase):
         self.api._update.assert_called_with(DA.DEACTIVATE)
 
     def test_add_set(self):
-        self.skipTest("TODO")
+        self.perm.PLUGIN_CONTINUOUSPRINT_ADDSET.can.return_value = True
+        data = dict(foo="bar", job="jid")
+        self.api._get_queue = MagicMock()
+        self.api._get_queue().add_set.return_value = "ret"
+        self.api._preprocess_set = lambda s: s
+        rep = self.client.post("/set/add", data=dict(json=json.dumps(data)))
+        self.assertEqual(rep.status_code, 200)
+        self.api._get_queue().add_set.assert_called_with("jid", data)
+        self.assertEqual(rep.get_data(as_text=True), '"ret"')
 
     def test_add_job(self):
-        self.skipTest("TODO")
+        self.perm.PLUGIN_CONTINUOUSPRINT_ADDJOB.can.return_value = True
+        data = dict(name="jobname")
+        self.api._get_queue = MagicMock()
+        self.api._get_queue().add_job().as_dict.return_value = "ret"
+        rep = self.client.post("/job/add", data=dict(json=json.dumps(data)))
+        self.assertEqual(rep.status_code, 200)
+        self.api._get_queue().add_job.assert_called_with("jobname")
+        self.assertEqual(rep.get_data(as_text=True), '"ret"')
 
     def test_mv_job(self):
         self.skipTest("TODO")

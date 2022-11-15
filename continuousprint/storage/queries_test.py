@@ -365,20 +365,19 @@ class TestScriptsAndEvents(DBTest):
             q.getScriptsAndEvents(),
             dict(
                 scripts=dict(foo="bar"),
-                events=dict(evt=["foo"]),
-                allEvents=ANY,
+                events=dict(evt=[dict(script="foo", condition=None)]),
             ),
         )
 
     def testMultiScriptEvent(self):
-        evt = CustomEvents.CLEAR_BED.value
+        evt = CustomEvents.PRINT_SUCCESS.event
         q.assignScriptsAndEvents(
             dict(s1="gcode1", s2="gcode2"), dict([(evt, ["s1", "s2"])])
         )
-        self.assertEqual(q.genEventScript(CustomEvents.CLEAR_BED), "gcode1\ngcode2")
+        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode1\ngcode2")
 
         # Ordering of event matters
         q.assignScriptsAndEvents(
             dict(s1="gcode1", s2="gcode2"), dict([(evt, ["s2", "s1"])])
         )
-        self.assertEqual(q.genEventScript(CustomEvents.CLEAR_BED), "gcode2\ngcode1")
+        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode2\ngcode1")

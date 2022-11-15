@@ -124,7 +124,9 @@ class TestFromInactive(unittest.TestCase):
         self.d._runner.run_script_for_event.assert_not_called()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=19)  # -> exits cooldown
         self.assertEqual(self.d.state.__name__, self.d._state_clearing.__name__)
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEAR_BED)
+        self.d._runner.run_script_for_event.assert_called_with(
+            CustomEvents.PRINT_SUCCESS
+        )
 
     def test_bed_clearing_cooldown_timeout(self):
         self.d.set_managed_cooldown(True, 20, 60)
@@ -141,7 +143,9 @@ class TestFromInactive(unittest.TestCase):
         self.d._runner.run_script_for_event.assert_not_called()
         self.d.action(DA.TICK, DP.IDLE, bed_temp=21)  # exit due to timeout
         self.assertEqual(self.d.state.__name__, self.d._state_clearing.__name__)
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEAR_BED)
+        self.d._runner.run_script_for_event.assert_called_with(
+            CustomEvents.PRINT_SUCCESS
+        )
 
     def test_finishing_failure(self):
         self.d.state = self.d._state_finishing
@@ -195,7 +199,9 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.q.get_set.return_value = item2
 
         self.d.action(DA.TICK, DP.IDLE)  # -> clearing
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CLEAR_BED)
+        self.d._runner.run_script_for_event.assert_called_with(
+            CustomEvents.PRINT_SUCCESS
+        )
 
         self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print -> printing
         self.d._runner.start_print.assert_called_with(item2)
@@ -206,7 +212,9 @@ class TestFromStartPrint(unittest.TestCase):
         )
         self.d.action(DA.SPAGHETTI, DP.BUSY)  # -> spaghetti_recovery
         self.d.action(DA.TICK, DP.PAUSED)  # -> cancel + failure
-        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.CANCEL)
+        self.d._runner.run_script_for_event.assert_called_with(
+            CustomEvents.PRINT_CANCEL
+        )
         self.assertEqual(self.d.state.__name__, self.d._state_failure.__name__)
 
     def test_paused_with_spaghetti_late_waits_for_user(self):

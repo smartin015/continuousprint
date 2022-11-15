@@ -6,11 +6,12 @@ if (typeof log === "undefined" || log === null) {
   };
   CP_PRINTER_PROFILES = [];
   CP_GCODE_SCRIPTS = [];
+  CP_CUSTOM_EVENTS = [];
   CP_LOCAL_IP = '';
   CPAPI = require('./continuousprint_api');
 }
 
-function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS) {
+function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
@@ -54,7 +55,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.queue_fingerprint = null;
     self.scripts = ko.observableArray([]);
     self.events = ko.observableArray([]);
-    self.allEvents = ko.observableArray([]);
     self.scripts_fingerprint = null;
 
     self.selected_make = ko.observable();
@@ -163,6 +163,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       // Queues and scripts are stored in the DB; we must fetch them whenever
       // the settings page is loaded
       self.api.get(self.api.QUEUES, (result) => {
+        console.log("got queues");
         let queues = []
         for (let r of result) {
           if (r.name === "archive") {
@@ -173,7 +174,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         self.queues(queues);
         self.queue_fingerprint = JSON.stringify(queues);
       });
-      self.api.get(self.api.SCRIPTS, (result) => {
+      self.api.get(self.api.AUTOMATION, (result) => {
         let scripts = []
         for (let k of Object.keys(result.scripts)) {
           scripts.push({
@@ -185,25 +186,24 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         self.scripts(scripts);
 
         let events = []
-        for (let k of result.allEvents) {
+        for (let k of custom_events) {
           let actions = [];
-          for (let a of result.events[k] || []) {
+          for (let a of result.events[k.event] || []) {
             for (let s of scripts) {
-              if (s.name() === a) {
-                actions.push(s);
+              if (s.name() === a.script) {
+                actions.push({...s, condition: a.condition});
                 break;
               }
             }
           }
           events.push({
-            name: k,
+            ...k,
             actions: ko.observableArray(actions),
           });
         }
-        events.sort((a, b) => a.name < b.name);
+        events.sort((a, b) => a.display < b.display);
+        console.log("Events", events);
         self.events(events);
-
-        self.allEvents(result.allEvents);
 
         self.scripts_fingerprint = JSON.stringify({
           events: result.events,
@@ -228,18 +228,19 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         scripts[s.name()] = s.body();
       }
       let events = {};
+      // TODO push conditions
       for (let e of self.events()) {
         let ks = [];
         for (let ea of e.actions()) {
           ks.push(ea.name());
         }
         if (ks.length !== 0) {
-          events[e.name] = ks;
+          events[e.event] = ks;
         }
       }
       let data = {scripts, events};
       if (JSON.stringify(data) !== self.scripts_fingerprint) {
-        self.api.edit(self.api.SCRIPTS, data, () => {});
+        self.api.edit(self.api.AUTOMATION, data, () => {});
       }
     }
 

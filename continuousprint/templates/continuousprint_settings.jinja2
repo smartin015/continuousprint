@@ -6,6 +6,7 @@
 <script type="text/javascript">
   const CP_PRINTER_PROFILES = {{plugin_continuousprint_printer_profiles|tojson|safe}};
   const CP_GCODE_SCRIPTS = {{plugin_continuousprint_gcode_scripts|tojson|safe}};
+  const CP_CUSTOM_EVENTS = {{plugin_continuousprint_custom_events|tojson|safe}};
   const CP_LOCAL_IP = {{plugin_continuousprint_local_ip|tojson|safe}};
 </script>
 
@@ -69,12 +70,14 @@
       </p>
 
       <div class="events" data-bind="foreach: events">
-        <h4 data-bind="text: name"></h4>
+        <h4 data-bind="text: display"></h4>
+        <p data-bind="text: desc"></p>
 
         <div data-bind="cpsortable: {foreach: actions, options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd}}">
           <div class="accordion-group header-row">
             <i class="fas fa-grip-vertical"></i>
             <div data-bind="text: name" style="flex:1"></div>
+            <!--<div data-bind="text: condition" style="flex:1"></div>-->
             <div style="width: 30px" data-bind="click: (v) => $root.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
           </div>
         </div> <!-- foreach actions -->

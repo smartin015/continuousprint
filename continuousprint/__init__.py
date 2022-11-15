@@ -99,6 +99,7 @@ class ContinuousprintPlugin(
         return dict(
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
+            custom_events=[e.as_dict() for e in CustomEvents],
             local_ip=self._plugin.get_local_ip(),
         )
 

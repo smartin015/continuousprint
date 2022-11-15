@@ -7,7 +7,7 @@ class CPAPI {
   STATE = "state"
   QUEUES = "queues"
   HISTORY = "history"
-  SCRIPTS = "scripts"
+  AUTOMATION = "automation"
 
   init(loading_vm, err_cb) {
     this.loading = loading_vm;
@@ -55,7 +55,7 @@ class CPAPI {
 
   get(type, cb, err_cb=undefined) {
     // History/scripts fetching doesn't mess with mutability
-    let blocking = (type !== this.HISTORY && type !== this.SCRIPTS);
+    let blocking = (type !== this.HISTORY && type !== this.AUTOMATION);
     this._call(type, 'get', undefined, cb, err_cb, blocking);
   }
 
