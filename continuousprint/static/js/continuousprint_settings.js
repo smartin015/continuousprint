@@ -207,7 +207,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           scripts: result.scripts,
           events: result.events,
         });
-        console.log("fingerprint", self.scripts_fingerprint);
       });
     };
 
@@ -217,7 +216,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       if (JSON.stringify(queues) !== self.queue_fingerprint) {
         // Sadly it appears flask doesn't have good parsing of nested POST structures,
         // So we pass it a JSON string instead.
-        console.log("SAVING QUEUES")
         self.api.edit(self.api.QUEUES, queues, () => {
           // Editing queues causes a UI refresh to the main viewmodel; no work is needed here
         });
@@ -239,7 +237,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         }
       }
       let data = {scripts, events};
-      console.log(JSON.stringify(data), "vs", self.scripts_fingerprint);
       if (JSON.stringify(data) !== self.scripts_fingerprint) {
         self.api.edit(self.api.AUTOMATION, data, () => {});
       }

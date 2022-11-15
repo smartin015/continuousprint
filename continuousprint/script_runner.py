@@ -29,7 +29,10 @@ class ScriptRunner:
         self._fire_event = fire_event
 
     def _get_user(self):
-        return current_user.get_name()
+        try:
+            return current_user.get_name()
+        except AttributeError:
+            return None
 
     def _wrap_stream(self, name, gcode):
         return StreamWrapper(name, BytesIO(gcode.encode("utf-8")))
@@ -57,7 +60,7 @@ class ScriptRunner:
         elif evt == CustomEvents.COOLDOWN:
             self._msg("Running bed cooldown script")
         elif evt == CustomEvents.PRINT_SUCCESS:
-            self._msg("Clearing bed")
+            self._msg("Running success script")
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
         self._do_msg(evt)
