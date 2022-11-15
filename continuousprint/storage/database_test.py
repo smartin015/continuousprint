@@ -3,14 +3,18 @@ from unittest.mock import ANY
 import logging
 from .database import (
     migrateFromSettings,
+    migrateScriptsFromSettings,
     init as init_db,
     Queue,
     Job,
     Set,
     Run,
+    Script,
+    Event,
     StorageDetails,
     DEFAULT_QUEUE,
 )
+from ..data import CustomEvents
 import tempfile
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -18,12 +22,33 @@ import tempfile
 
 class DBTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.NamedTemporaryFile(delete=True)
-        self.db = init_db(self.tmp.name, logger=logging.getLogger())
+        self.tmpQueues = tempfile.NamedTemporaryFile(delete=True)
+        self.tmpScripts = tempfile.NamedTemporaryFile(delete=True)
+        self.db = init_db(
+            automation_db=self.tmpScripts.name,
+            queues_db=self.tmpQueues.name,
+            logger=logging.getLogger(),
+        )
         self.q = Queue.get(name=DEFAULT_QUEUE)
 
     def tearDown(self):
-        self.tmp.close()
+        self.tmpQueues.close()
+        self.tmpScripts.close()
+
+
+class TestScriptMigration(DBTest):
+    def testMigration(self):
+        migrateScriptsFromSettings("test_clearing", "test_finished", "test_cooldown")
+        self.assertEqual(
+            Event.get(name=CustomEvents.PRINT_SUCCESS.event).script.body,
+            "test_clearing",
+        )
+        self.assertEqual(
+            Event.get(name=CustomEvents.FINISH.event).script.body, "test_finished"
+        )
+        self.assertEqual(
+            Event.get(name=CustomEvents.COOLDOWN.event).script.body, "test_cooldown"
+        )
 
 
 class TestMigration(DBTest):
@@ -109,7 +134,9 @@ class TestMigration(DBTest):
             rank=1,
         )
 
-        self.db = init_db(self.tmp.name, logger=logging.getLogger())
+        self.db = init_db(
+            self.tmpScripts.name, self.tmpQueues.name, logger=logging.getLogger()
+        )
 
         # Destination set both exists and has computed `completed` field.
         # We don't actually check whether the constraints were properly applied, just assume that
@@ -122,9 +149,6 @@ class TestEmptyJob(DBTest):
     def setUp(self):
         super().setUp()
         self.j = Job.create(queue=self.q, name="a", rank=0, count=5, remaining=5)
-
-    def tearDown(self):
-        self.tmp.close()
 
     def testNextSetNoSets(self):
         self.assertEqual(self.j.next_set(dict(name="foo")), None)
@@ -149,9 +173,6 @@ class TestJobWithSet(DBTest):
             remaining=5,
             profile_keys="foo,baz",
         )
-
-    def tearDown(self):
-        self.tmp.close()
 
     def testNextSetDraft(self):
         self.j.draft = True

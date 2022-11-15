@@ -6,11 +6,12 @@ if (typeof log === "undefined" || log === null) {
   };
   CP_PRINTER_PROFILES = [];
   CP_GCODE_SCRIPTS = [];
+  CP_CUSTOM_EVENTS = [];
   CP_LOCAL_IP = '';
   CPAPI = require('./continuousprint_api');
 }
 
-function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=CP_GCODE_SCRIPTS) {
+function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
@@ -38,9 +39,9 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
       }
       self.profiles[prof.make][prof.model] = prof;
     }
-    self.scripts = {};
-    for (let s of scripts) {
-      self.scripts[s.name] = s.gcode;
+    self.default_scripts = {};
+    for (let s of default_scripts) {
+      self.default_scripts[s.name] = s.gcode;
     }
 
     // Patch the settings viewmodel to allow for us to block saving when validation has failed.
@@ -50,20 +51,11 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
         return self.settings.exchanging_orig() || !self.allValidQueueNames() || !self.allValidQueueAddr();
     });
 
-    // Queues are stored in the DB; we must fetch them.
     self.queues = ko.observableArray();
     self.queue_fingerprint = null;
-    self.api.get(self.api.QUEUES, (result) => {
-      let queues = []
-      for (let r of result) {
-        if (r.name === "archive") {
-          continue; // Archive is hidden
-        }
-        queues.push(r);
-      }
-      self.queues(queues);
-      self.queue_fingerprint = JSON.stringify(queues);
-    });
+    self.scripts = ko.observableArray([]);
+    self.events = ko.observableArray([]);
+    self.scripts_fingerprint = null;
 
     self.selected_make = ko.observable();
     self.selected_model = ko.observable();
@@ -85,10 +77,45 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
         return;
       }
       let cpset = self.settings.settings.plugins.continuousprint;
-      cpset.cp_bed_clearing_script(self.scripts[profile.defaults.clearBed]);
-      cpset.cp_queue_finished_script(self.scripts[profile.defaults.finished]);
       cpset.cp_printer_profile(profile.name);
     };
+
+    self.loadScriptsFromProfile = function() {
+      let profile = (self.profiles[self.selected_make()] || {})[self.selected_model()];
+      if (profile === undefined) {
+        return;
+      }
+      self.scripts.push({
+        name: ko.observable(`Clear Bed (${profile.name})`),
+        body: ko.observable(self.default_scripts[profile.defaults.clearBed]),
+        expanded: ko.observable(true),
+      });
+      self.scripts.push({
+        name: ko.observable(`Finish (${profile.name})`),
+        body: ko.observable(self.default_scripts[profile.defaults.finished]),
+        expanded: ko.observable(true),
+      });
+    }
+
+    self.newScript = function() {
+      self.scripts.push({
+        name: ko.observable(""),
+        body: ko.observable(""),
+        expanded: ko.observable(true),
+      });
+    }
+    self.rmScript = function(s) {
+      for (let e of self.events()) {
+        e.actions.remove(s);
+      }
+      self.scripts.remove(s);
+    }
+    self.addAction = function(e, a) {
+      e.actions.push(a);
+    };
+    self.rmAction = function(e, a) {
+      e.actions.remove(a);
+    }
 
     self.newBlankQueue = function() {
       self.queues.push({name: "", addr: "", strategy: ""});
@@ -130,22 +157,89 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, scripts=C
         if (self.settings.settings.plugins.continuousprint.cp_printer_profile() === prof.name) {
           self.selected_make(prof.make);
           self.selected_model(prof.model);
-          return;
+          break;
         }
       }
+      // Queues and scripts are stored in the DB; we must fetch them whenever
+      // the settings page is loaded
+      self.api.get(self.api.QUEUES, (result) => {
+        let queues = []
+        for (let r of result) {
+          if (r.name === "archive") {
+            continue; // Archive is hidden
+          }
+          queues.push(r);
+        }
+        self.queues(queues);
+        self.queue_fingerprint = JSON.stringify(queues);
+      });
+      self.api.get(self.api.AUTOMATION, (result) => {
+        let scripts = []
+        for (let k of Object.keys(result.scripts)) {
+          scripts.push({
+            name: ko.observable(k),
+            body: ko.observable(result.scripts[k]),
+            expanded: ko.observable(true),
+          });
+        }
+        self.scripts(scripts);
+
+        let events = []
+        for (let k of custom_events) {
+          let actions = [];
+          for (let a of result.events[k.event] || []) {
+            for (let s of scripts) {
+              if (s.name() === a.script) {
+                actions.push({...s, condition: a.condition});
+                break;
+              }
+            }
+          }
+          events.push({
+            ...k,
+            actions: ko.observableArray(actions),
+          });
+        }
+        events.sort((a, b) => a.display < b.display);
+        self.events(events);
+
+        self.scripts_fingerprint = JSON.stringify({
+          scripts: result.scripts,
+          events: result.events,
+        });
+      });
     };
 
     // Called automatically by SettingsViewModel
     self.onSettingsBeforeSave = function() {
-      let queues = self.queues()
-      if (JSON.stringify(queues) === self.queue_fingerprint) {
-        return; // Don't call out to API if we haven't changed anything
+      let queues = self.queues();
+      if (JSON.stringify(queues) !== self.queue_fingerprint) {
+        // Sadly it appears flask doesn't have good parsing of nested POST structures,
+        // So we pass it a JSON string instead.
+        self.api.edit(self.api.QUEUES, queues, () => {
+          // Editing queues causes a UI refresh to the main viewmodel; no work is needed here
+        });
       }
-      // Sadly it appears flask doesn't have good parsing of nested POST structures,
-      // So we pass it a JSON string instead.
-      self.api.edit(self.api.QUEUES, queues, () => {
-        // Editing queues causes a UI refresh to the main viewmodel; no work is needed here
-      });
+
+      let scripts = {}
+      for (let s of self.scripts()) {
+        scripts[s.name()] = s.body();
+      }
+      let events = {};
+      // TODO push conditions
+      for (let e of self.events()) {
+        let ks = [];
+        for (let ea of e.actions()) {
+          ks.push(ea.name());
+        }
+        if (ks.length !== 0) {
+          events[e.event] = ks;
+        }
+      }
+      let data = {scripts, events};
+      if (JSON.stringify(data) !== self.scripts_fingerprint) {
+        self.api.edit(self.api.AUTOMATION, data, () => {});
+      }
     }
 
     self.sortStart = function() {

@@ -5,7 +5,18 @@ import time
 import base64
 
 from pathlib import Path
-from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
+from .database import (
+    Queue,
+    Job,
+    Set,
+    Run,
+    DB,
+    DEFAULT_QUEUE,
+    ARCHIVE_QUEUE,
+    Event,
+    Script,
+)
+from ..data import CustomEvents
 
 
 MAX_COUNT = 999999
@@ -437,3 +448,40 @@ def getHistory():
 
 def resetHistory():
     Run.delete().execute()
+
+
+def assignScriptsAndEvents(scripts, events):
+    with DB.automation.atomic():
+        Event.delete().execute()
+        Script.delete().execute()
+        s = dict()
+        for k, v in scripts.items():
+            s[k] = Script.create(name=k, body=v)
+        for k, v in events.items():
+            for i, n in enumerate(v):
+                Event.create(name=k, script=s[n], rank=i)
+
+
+def getScriptsAndEvents():
+    scripts = dict()
+    events = dict()
+    for s in Script.select():
+        scripts[s.name] = s.body
+    for e in Event.select():
+        if e.name not in events:
+            events[e.name] = []
+        events[e.name].append(dict(script=e.script.name, condition=e.condition))
+
+    return dict(scripts=scripts, events=events)
+
+
+def genEventScript(evt: CustomEvents) -> str:
+    result = []
+    for e in (
+        Event.select()
+        .join(Script, JOIN.LEFT_OUTER)
+        .where(Event.name == evt.event)
+        .order_by(Event.rank)
+    ):
+        result.append(e.script.body)
+    return "\n".join(result)

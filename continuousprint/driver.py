@@ -1,6 +1,7 @@
 import time
 from multiprocessing import Lock
 from enum import Enum, auto
+from .data import CustomEvents
 
 
 class Action(Enum):
@@ -266,7 +267,7 @@ class Driver:
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
         self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
-            self._runner.cancel_print()
+            self._runner.run_script_for_event(CustomEvents.PRINT_CANCEL)
             return self._state_failure
 
     def _state_failure(self, a: Action, p: Printer):
@@ -305,14 +306,14 @@ class Driver:
             return
 
         if self.managed_cooldown:
-            self._runner.start_cooldown()
+            self._runner.run_script_for_event(CustomEvents.COOLDOWN)
             self.cooldown_start = time.time()
             self._logger.info(
                 f"Cooldown initiated (threshold={self.cooldown_threshold}, timeout={self.cooldown_timeout})"
             )
             return self._state_cooldown
         else:
-            self._runner.clear_bed()
+            self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
     def _state_cooldown(self, a: Action, p: Printer):
@@ -329,7 +330,7 @@ class Driver:
             self._set_status("Cooling down")
 
         if clear:
-            self._runner.clear_bed()
+            self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
@@ -349,7 +350,7 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._runner.run_finish_script()
+        self._runner.run_script_for_event(CustomEvents.FINISH)
         return self._state_finishing
 
     def _state_finishing(self, a: Action, p: Printer):

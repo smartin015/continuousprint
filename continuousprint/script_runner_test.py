@@ -4,6 +4,7 @@ from collections import namedtuple
 from unittest.mock import MagicMock
 from .script_runner import ScriptRunner
 from .data import CustomEvents
+from .storage.database_test import DBTest
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -12,11 +13,11 @@ LI = namedtuple("LocalItem", ["sd", "path", "job"])
 LJ = namedtuple("Job", ["name"])
 
 
-class TestScriptRunner(unittest.TestCase):
+class TestScriptRunner(DBTest):
     def setUp(self):
+        super().setUp()
         self.s = ScriptRunner(
             msg=MagicMock(),
-            get_key=MagicMock(),
             file_manager=MagicMock(),
             logger=logging.getLogger(),
             printer=MagicMock(),
@@ -26,31 +27,26 @@ class TestScriptRunner(unittest.TestCase):
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
 
-    def test_run_finish_script(self):
-        self.s.run_finish_script()
+    def test_run_script_for_event(self):
+        self.s.run_script_for_event(CustomEvents.FINISH)
         self.s._file_manager.add_file.assert_called()
         self.s._printer.select_file.assert_called_with(
-            "ContinuousPrint/cp_queue_finished_script.gcode",
+            "ContinuousPrint/tmp/continuousprint_finish.gcode",
             sd=False,
             printAfterSelect=True,
             user="foo",
         )
         self.s._fire_event.assert_called_with(CustomEvents.FINISH)
 
-    def test_cancel_print(self):
-        self.s.cancel_print()
-        self.s._printer.cancel_print.assert_called_with(user="foo")
-        self.s._fire_event.assert_called_with(CustomEvents.CANCEL)
+    def test_run_script_for_event_cancel(self):
+        # Script run behavior is already tested in test_run_script_for_event
+        self.s.run_script_for_event(CustomEvents.PRINT_CANCEL)
+        self.s._printer.cancel_print.assert_called()
 
-    def test_clear_bed(self):
-        self.s.clear_bed()
-        self.s._printer.select_file.assert_called_with(
-            "ContinuousPrint/cp_bed_clearing_script.gcode",
-            sd=False,
-            printAfterSelect=True,
-            user="foo",
-        )
-        self.s._fire_event.assert_called_with(CustomEvents.CLEAR_BED)
+    def test_run_script_for_event_cooldown(self):
+        # Script run behavior is already tested in test_run_script_for_event
+        self.s.run_script_for_event(CustomEvents.COOLDOWN)
+        self.s._printer.set_temperature.assert_called_with("bed", 0)
 
     def test_start_print_local(self):
         self.assertEqual(self.s.start_print(LI(False, "a.gcode", LJ("job1"))), True)
@@ -60,7 +56,7 @@ class TestScriptRunner(unittest.TestCase):
             printAfterSelect=True,
             user="foo",
         )
-        self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_sd(self):
         self.assertEqual(self.s.start_print(LI(True, "a.gcode", LJ("job1"))), True)
@@ -70,7 +66,7 @@ class TestScriptRunner(unittest.TestCase):
             printAfterSelect=True,
             user="foo",
         )
-        self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_lan(self):
         class NetItem:
@@ -88,7 +84,7 @@ class TestScriptRunner(unittest.TestCase):
             printAfterSelect=True,
             user="foo",
         )
-        self.s._fire_event.assert_called_with(CustomEvents.START_PRINT)
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_invalid_location(self):
         self.s._printer.select_file.side_effect = InvalidFileLocation()

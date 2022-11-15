@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import ANY
 from pathlib import Path
+from ..data import CustomEvents
 import logging
 import datetime
 import tempfile
@@ -9,15 +10,7 @@ import time
 
 # logging.basicConfig(level=logging.DEBUG)
 
-from .database import (
-    Job,
-    Set,
-    Run,
-    Queue,
-    init as init_db,
-    DEFAULT_QUEUE,
-    ARCHIVE_QUEUE,
-)
+from .database import Job, Set, Run, Queue, DEFAULT_QUEUE, ARCHIVE_QUEUE, Event, Script
 from .database_test import DBTest
 from ..storage import queries as q
 
@@ -363,3 +356,28 @@ class TestMultiItemQueue(DBTest):
         r = Run.get(id=r.id)
         self.assertEqual(r.movie_path, "movie_path.mp4")
         self.assertEqual(r.thumb_path, "thumb_path.png")
+
+
+class TestScriptsAndEvents(DBTest):
+    def testAssignGet(self):
+        q.assignScriptsAndEvents(dict(foo="bar"), dict(evt=["foo"]))
+        self.assertEqual(
+            q.getScriptsAndEvents(),
+            dict(
+                scripts=dict(foo="bar"),
+                events=dict(evt=[dict(script="foo", condition=None)]),
+            ),
+        )
+
+    def testMultiScriptEvent(self):
+        evt = CustomEvents.PRINT_SUCCESS.event
+        q.assignScriptsAndEvents(
+            dict(s1="gcode1", s2="gcode2"), dict([(evt, ["s1", "s2"])])
+        )
+        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode1\ngcode2")
+
+        # Ordering of event matters
+        q.assignScriptsAndEvents(
+            dict(s1="gcode1", s2="gcode2"), dict([(evt, ["s2", "s1"])])
+        )
+        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode2\ngcode1")

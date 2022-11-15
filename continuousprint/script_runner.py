@@ -1,19 +1,20 @@
 import time
 from io import BytesIO
 
+from pathlib import Path
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.server import current_user
 from .storage.lan import ResolveError
-from .data import Keys, TEMP_FILES, CustomEvents
+from .data import TEMP_FILE_DIR, CustomEvents
+from .storage.queries import genEventScript
 
 
 class ScriptRunner:
     def __init__(
         self,
         msg,
-        get_key,
         file_manager,
         logger,
         printer,
@@ -21,7 +22,6 @@ class ScriptRunner:
         fire_event,
     ):
         self._msg = msg
-        self._get_key = get_key
         self._file_manager = file_manager
         self._logger = logger
         self._printer = printer
@@ -29,15 +29,17 @@ class ScriptRunner:
         self._fire_event = fire_event
 
     def _get_user(self):
-        return current_user.get_name()
+        try:
+            return current_user.get_name()
+        except AttributeError:
+            return None
 
     def _wrap_stream(self, name, gcode):
         return StreamWrapper(name, BytesIO(gcode.encode("utf-8")))
 
-    def _execute_gcode(self, key):
-        gcode = self._get_key(key)
-        file_wrapper = self._wrap_stream(key.setting, gcode)
-        path = TEMP_FILES[key.setting]
+    def _execute_gcode(self, evt, gcode):
+        file_wrapper = self._wrap_stream(evt.event, gcode)
+        path = str(Path(TEMP_FILE_DIR) / f"{evt.event}.gcode")
         added_file = self._file_manager.add_file(
             FileDestinations.LOCAL,
             path,
@@ -50,27 +52,32 @@ class ScriptRunner:
         )
         return added_file
 
-    def run_finish_script(self):
-        self._msg("Print Queue Complete", type="complete")
-        result = self._execute_gcode(Keys.FINISHED_SCRIPT)
-        self._fire_event(CustomEvents.FINISH)
+    def _do_msg(self, evt):
+        if evt == CustomEvents.FINISH:
+            self._msg("Print Queue Complete", type="complete")
+        elif evt == CustomEvents.PRINT_CANCEL:
+            self._msg("Print cancelled", type="error")
+        elif evt == CustomEvents.COOLDOWN:
+            self._msg("Running bed cooldown script")
+        elif evt == CustomEvents.PRINT_SUCCESS:
+            self._msg("Running success script")
+
+    def run_script_for_event(self, evt, msg=None, msgtype=None):
+        self._do_msg(evt)
+        gcode = genEventScript(evt)
+
+        # Cancellation happens before custom scripts are run
+        if evt == CustomEvents.PRINT_CANCEL:
+            self._printer.cancel_print()
+
+        result = self._execute_gcode(evt, gcode) if gcode != "" else None
+
+        # Bed cooldown turn-off happens after custom scripts are run
+        if evt == CustomEvents.COOLDOWN:
+            self._printer.set_temperature("bed", 0)  # turn bed off
+
+        self._fire_event(evt)
         return result
-
-    def cancel_print(self):
-        self._msg("Print cancelled", type="error")
-        self._printer.cancel_print(user=self._get_user())
-        self._fire_event(CustomEvents.CANCEL)
-
-    def start_cooldown(self):
-        self._msg("Running bed cooldown script")
-        self._execute_gcode(Keys.BED_COOLDOWN_SCRIPT)
-        self._printer.set_temperature("bed", 0)  # turn bed off
-        self._fire_event(CustomEvents.COOLDOWN)
-
-    def clear_bed(self):
-        self._msg("Clearing bed")
-        self._execute_gcode(Keys.CLEARING_SCRIPT)
-        self._fire_event(CustomEvents.CLEAR_BED)
 
     def start_print(self, item):
         self._msg(f"{item.job.name}: printing {item.path}")
@@ -95,7 +102,7 @@ class ScriptRunner:
             self._printer.select_file(
                 path, sd=item.sd, printAfterSelect=True, user=self._get_user()
             )
-            self._fire_event(CustomEvents.START_PRINT)
+            self._fire_event(CustomEvents.PRINT_START)
         except InvalidFileLocation as e:
             self._logger.error(e)
             self._msg("File not found: " + path, type="error")
