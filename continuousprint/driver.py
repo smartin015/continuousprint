@@ -107,7 +107,7 @@ class Driver:
             # Deactivation must be allowed on all states, so we hande it here for
             # completeness.
             if a == Action.DEACTIVATE and self.state != self._state_inactive:
-                nxt = self._state_inactive
+                nxt = self._enter_inactive()
             else:
                 nxt = self.state(a, p)
 
@@ -124,11 +124,17 @@ class Driver:
     def _state_unknown(self, a: Action, p: Printer):
         pass
 
+    def _enter_inactive(self):
+        self._runner.run_script_for_event(CustomEvents.DEACTIVATE)
+        return self._state_inactive
+
     def _state_inactive(self, a: Action, p: Printer):
         self.q.release()
         self.retries = 0
 
         if a == Action.ACTIVATE:
+            self._runner.run_script_for_event(CustomEvents.ACTIVATE)
+
             if p != Printer.IDLE:
                 return self._state_printing
             else:
@@ -170,6 +176,29 @@ class Driver:
         except AttributeError:
             return mk
 
+    def _materials_match(self, item):
+        for i, im in enumerate(item.materials()):
+            if im is None:  # No constraint
+                continue
+            cur = self._cur_materials[i] if i < len(self._cur_materials) else None
+            if im != cur:
+                return False
+        return True
+
+    def _state_awaiting_material(self, a: Action, p: Printer):
+        item = self.q.get_set_or_acquire()
+        if item is None:
+            self._set_status("No work to do; going idle")
+            return self._state_idle
+
+        if self._materials_match(item):
+            return self._enter_start_print(a, p)
+        else:
+            self._set_status(
+                f"Need {self._fmt_material_key(im)} in tool {i}, but {self._fmt_material_key(cur)} is loaded",
+                StatusType.NEEDS_ACTION,
+            )
+
     def _state_start_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -180,17 +209,9 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        # Block until we have the right materials loaded (if required)
-        for i, im in enumerate(item.materials()):
-            if im is None:  # No constraint
-                continue
-            cur = self._cur_materials[i] if i < len(self._cur_materials) else None
-            if im != cur:
-                self._set_status(
-                    f"Need {self._fmt_material_key(im)} in tool {i}, but {self._fmt_material_key(cur)} is loaded",
-                    StatusType.NEEDS_ACTION,
-                )
-                return
+        if not self._materials_match(item):
+            self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
+            return self._state_awaiting_material
 
         self.q.begin_run()
         if self._runner.start_print(item):
@@ -200,7 +221,7 @@ class Driver:
             self.start_failures += 1
             if self.start_failures >= self.max_startup_attempts:
                 self._set_status("Failed to start; too many attempts", StatusType.ERROR)
-                return self._state_inactive
+                return self._enter_inactive()
             else:
                 self._set_status(
                     f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
@@ -260,7 +281,7 @@ class Driver:
         if self._long_idle(p):
             # Here, IDLE implies the user cancelled the print.
             # Go inactive to prevent stomping on manual changes
-            return self._state_inactive
+            return self._enter_inactive()
         elif p == Printer.BUSY:
             return self._state_printing
 
@@ -280,7 +301,7 @@ class Driver:
         else:
             self.q.end_run("failure")
             self._set_status("Failure (max retries exceeded", StatusType.ERROR)
-            return self._state_inactive
+            return self._enter_inactive()
 
     def _state_success(self, a: Action, p: Printer):
         # Complete prior queue item if that's what we just finished.
@@ -338,7 +359,7 @@ class Driver:
             return self._enter_start_print(a, p)
         elif a == Action.FAILURE:
             self._set_status("Error when clearing bed - aborting", StatusType.ERROR)
-            return self._state_inactive  # Skip past failure state to inactive
+            return self._enter_inactive()  # Skip past failure state to inactive
 
         if self._long_idle(p):  # Idle state without event; assume success
             return self._enter_start_print(a, p)
@@ -355,7 +376,7 @@ class Driver:
 
     def _state_finishing(self, a: Action, p: Printer):
         if a == Action.FAILURE:
-            return self._state_inactive
+            return self._enter_inactive()
 
         # Idle state without event -> assume success and go idle
         if a == Action.SUCCESS or self._long_idle(p):

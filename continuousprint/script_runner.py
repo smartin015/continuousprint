@@ -52,19 +52,23 @@ class ScriptRunner:
         )
         return added_file
 
-    def _do_msg(self, evt):
+    def _do_msg(self, evt, running=False):
         if evt == CustomEvents.FINISH:
             self._msg("Print Queue Complete", type="complete")
         elif evt == CustomEvents.PRINT_CANCEL:
             self._msg("Print cancelled", type="error")
-        elif evt == CustomEvents.COOLDOWN:
-            self._msg("Running bed cooldown script")
-        elif evt == CustomEvents.PRINT_SUCCESS:
-            self._msg("Running success script")
+
+        if running:
+            if evt == CustomEvents.COOLDOWN:
+                self._msg("Running bed cooldown script")
+            elif evt == CustomEvents.PRINT_SUCCESS:
+                self._msg("Running success script")
+            elif evt == CustomEvents.AWAITING_MATERIAL:
+                self._msg("Running script while awaiting material")
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        self._do_msg(evt)
         gcode = genEventScript(evt)
+        self._do_msg(evt, running=gcode != "")
 
         # Cancellation happens before custom scripts are run
         if evt == CustomEvents.PRINT_CANCEL:

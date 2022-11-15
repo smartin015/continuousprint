@@ -13,10 +13,10 @@ with open(os.path.join(base, "gcode_scripts.yaml"), "r") as f:
 
 
 class CustomEvents(Enum):
-    ACTIVE = (
-        "continuousprint_active",
-        "Queue Active",
-        "TODO Fires when the queue is started, e.g. via the 'Start Managing' button.",
+    ACTIVATE = (
+        "continuousprint_activate",
+        "Queue Activated",
+        "Fires when the queue is started, e.g. via the 'Start Managing' button.",
     )
     PRINT_START = (
         "continuousprint_start_print",
@@ -46,12 +46,12 @@ class CustomEvents(Enum):
     AWAITING_MATERIAL = (
         "continuousprint_awaiting_material",
         "Awaiting Material",
-        "TODO Fires when the current job requires a different material than what is currently loaded.",
+        "Fires once when the current job requires a different material than what is currently loaded.",
     )
-    INACTIVE = (
-        "continuousprint_inactive",
-        "Queue Inactive",
-        "TODO Fires when the queue is no longer actively managed.",
+    DEACTIVATE = (
+        "continuousprint_deactivate",
+        "Queue Deactivated",
+        "Fires when the queue is no longer actively managed.",
     )
 
     def __init__(self, event, displayName, desc):
@@ -73,7 +73,6 @@ class Keys(Enum):
     CLEARING_SCRIPT_DEPRECATED = ("cp_bed_clearing_script", "Pause")
     QUEUE_DEPRECATED = ("cp_queue", None)
 
-    # TODO migrate old setting names to enum names
     PRINTER_PROFILE = ("cp_printer_profile", "Generic")
     RESTART_MAX_RETRIES = ("cp_restart_on_pause_max_restarts", 3)
     RESTART_ON_PAUSE = ("cp_restart_on_pause_enabled", False)

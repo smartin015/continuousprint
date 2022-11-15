@@ -19,6 +19,7 @@ class TestFromInactive(unittest.TestCase):
         )
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
+        self.d._runner.run_script_for_event.reset_mock()
         item = MagicMock(path="asdf")  # return same item by default every time
         self.d.q.get_set_or_acquire.return_value = item
         self.d.q.get_set.return_value = item
@@ -28,6 +29,7 @@ class TestFromInactive(unittest.TestCase):
         self.d.q.begin_run.assert_called()
         self.d._runner.start_print.assert_called_with(self.d.q.get_set.return_value)
         self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+        self.d._runner.run_script_for_event.assert_called_with(CustomEvents.ACTIVATE)
 
     def test_activate_already_printing(self):
         self.d.action(DA.ACTIVATE, DP.BUSY)
@@ -42,6 +44,7 @@ class TestFromInactive(unittest.TestCase):
 
         for p in [DP.IDLE, DP.BUSY, DP.PAUSED]:
             for a in [DA.SUCCESS, DA.FAILURE, DA.TICK, DA.DEACTIVATE, DA.SPAGHETTI]:
+                self.d._runner.run_script_for_event.reset_mock()
                 self.d.action(a, p)
                 assert_nocalls()
                 self.assertEqual(self.d.state.__name__, self.d._state_inactive.__name__)
@@ -183,6 +186,7 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.q.get_set.return_value = item
         self.d.action(DA.DEACTIVATE, DP.IDLE)
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
+        self.d._runner.run_script_for_event.reset_mock()
 
     def test_success(self):
         self.d._runner.start_print.reset_mock()
@@ -297,13 +301,17 @@ class TestMaterialConstraints(unittest.TestCase):
         self._setItemMaterials(["tool1mat"])
         self.d.action(DA.ACTIVATE, DP.IDLE)
         self.d._runner.start_print.assert_not_called()
-        self.assertEqual(self.d.state.__name__, self.d._state_start_print.__name__)
+        self.assertEqual(
+            self.d.state.__name__, self.d._state_awaiting_material.__name__
+        )
 
     def test_tool1mat_wrong(self):
         self._setItemMaterials(["tool1mat"])
         self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool0bad"])
         self.d._runner.start_print.assert_not_called()
-        self.assertEqual(self.d.state.__name__, self.d._state_start_print.__name__)
+        self.assertEqual(
+            self.d.state.__name__, self.d._state_awaiting_material.__name__
+        )
 
     def test_tool1mat_ok(self):
         self._setItemMaterials(["tool1mat"])
@@ -327,4 +335,13 @@ class TestMaterialConstraints(unittest.TestCase):
         self._setItemMaterials(["tool1mat", "tool2mat"])
         self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool2mat", "tool1mat"])
         self.d._runner.start_print.assert_not_called()
-        self.assertEqual(self.d.state.__name__, self.d._state_start_print.__name__)
+        self.assertEqual(
+            self.d.state.__name__, self.d._state_awaiting_material.__name__
+        )
+
+    def test_recovery(self):
+        self._setItemMaterials(["tool0mat"])
+        self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool0bad"])  # awaiting
+        self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool0mat"])
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
