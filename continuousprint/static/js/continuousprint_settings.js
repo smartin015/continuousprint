@@ -163,7 +163,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       // Queues and scripts are stored in the DB; we must fetch them whenever
       // the settings page is loaded
       self.api.get(self.api.QUEUES, (result) => {
-        console.log("got queues");
         let queues = []
         for (let r of result) {
           if (r.name === "archive") {
@@ -202,13 +201,13 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           });
         }
         events.sort((a, b) => a.display < b.display);
-        console.log("Events", events);
         self.events(events);
 
         self.scripts_fingerprint = JSON.stringify({
-          events: result.events,
           scripts: result.scripts,
+          events: result.events,
         });
+        console.log("fingerprint", self.scripts_fingerprint);
       });
     };
 
@@ -218,6 +217,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       if (JSON.stringify(queues) !== self.queue_fingerprint) {
         // Sadly it appears flask doesn't have good parsing of nested POST structures,
         // So we pass it a JSON string instead.
+        console.log("SAVING QUEUES")
         self.api.edit(self.api.QUEUES, queues, () => {
           // Editing queues causes a UI refresh to the main viewmodel; no work is needed here
         });
@@ -239,6 +239,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         }
       }
       let data = {scripts, events};
+      console.log(JSON.stringify(data), "vs", self.scripts_fingerprint);
       if (JSON.stringify(data) !== self.scripts_fingerprint) {
         self.api.edit(self.api.AUTOMATION, data, () => {});
       }
