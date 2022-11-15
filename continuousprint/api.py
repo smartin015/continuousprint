@@ -12,6 +12,11 @@ from abc import ABC, abstractmethod
 
 
 class Permission(Enum):
+    GETSTATE = (
+        "Get state",
+        "Allows for fetching queue and management state of Continuous Print",
+        False,
+    )
     STARTSTOP = (
         "Start and Stop Queue",
         "Allows for starting and stopping the queue",
@@ -31,8 +36,8 @@ class Permission(Enum):
         "Allows for fetching history of print runs by Continuous Print",
         False,
     )
-    CLEARHISTORY = (
-        "Clear history",
+    RESETHISTORY = (
+        "Reset history",
         "Allows for deleting all continuous print history data",
         True,
     )
@@ -147,6 +152,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # (e.g. 1.4.1 -> 2.0.0)
     @octoprint.plugin.BlueprintPlugin.route("/state/get", methods=["GET"])
     @restricted_access
+    @cpq_permission(Permission.GETSTATE)
     def get_state(self):
         return self._state_json()
 
@@ -291,7 +297,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/history/reset", methods=["POST"])
     @restricted_access
-    @cpq_permission(Permission.CLEARHISTORY)
+    @cpq_permission(Permission.RESETHISTORY)
     def reset_history(self):
         queries.resetHistory()
         return json.dumps("OK")
