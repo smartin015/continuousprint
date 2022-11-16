@@ -13,6 +13,7 @@ from .queues.local import LocalQueue
 from .queues.lan import LANQueue
 from .queues.abstract import Strategy
 from .data import CustomEvents
+from .script_runner import ScriptRunner
 from peewee import SqliteDatabase
 from collections import defaultdict
 from peerprint.lan_queue import LANPrintQueueBase
@@ -173,6 +174,68 @@ class TestLocalQueue(IntegrationTest):
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("a.gcode")
         self.assert_from_printing_state("b.gcode", finishing=True)
+
+
+class TestDriver(DBTest):
+    def setUp(self):
+        super().setUp()
+
+        def onupdate():
+            pass
+
+        self.fm = MagicMock()
+        self.s = ScriptRunner(
+            msg=MagicMock(),
+            file_manager=self.fm,
+            logger=logging.getLogger(),
+            printer=MagicMock(),
+            refresh_ui_state=MagicMock(),
+            fire_event=MagicMock(),
+        )
+        self.s._get_user = lambda: "foo"
+        self.s._wrap_stream = MagicMock(return_value=None)
+        self.mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
+        self.d = Driver(
+            queue=self.mq,
+            script_runner=self.s,
+            logger=logging.getLogger(),
+        )
+        self.d.set_retry_on_pause(True)
+        self.d.action(DA.DEACTIVATE, DP.IDLE)
+
+    def _setup_condition(self, cond, path=None):
+        self.d.state = self.d._state_inactive
+        queries.assignScriptsAndEvents(
+            dict(foo="G0 X20"),
+            {CustomEvents.ACTIVATE.event: [dict(script="foo", condition=cond)]},
+        )
+        self.d.action(DA.ACTIVATE, DP.IDLE, path=path)
+
+    def test_conditional_true(self):
+        self._setup_condition("2 + 2 == 4")
+        self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
+
+    def test_conditional_false(self):
+        self._setup_condition("2 + 2 == 5")
+        self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
+
+    def test_conditional_error(self):
+        self._setup_condition("1 / 0")
+        self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
+
+    def test_conditional_print_volume(self):
+        depthpath = "metadata['analysis']['dimensions']['depth']"
+        self.fm.file_exists.return_value = True
+        self.fm.has_analysis.return_value = True
+        self.fm.get_metadata.return_value = dict(
+            analysis=dict(dimensions=dict(depth=39))
+        )
+
+        self._setup_condition(f"{depthpath} < 40", path="foo.gcode")
+        self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
+
+        self._setup_condition(f"{depthpath} > 39", path="foo.gcode")
+        self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
 
 
 class LocalLockManager:

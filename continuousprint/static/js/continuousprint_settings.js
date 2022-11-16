@@ -101,17 +101,21 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       self.scripts.push({
         name: ko.observable(""),
         body: ko.observable(""),
-        expanded: ko.observable(true),
+        expanded: ko.observable(false),
       });
     }
     self.rmScript = function(s) {
       for (let e of self.events()) {
-        e.actions.remove(s);
+        for (let a of e.actions()) {
+          if (a.name() == s.name()) {
+            e.actions.remove(a);
+          }
+        }
       }
       self.scripts.remove(s);
     }
-    self.addAction = function(e, a) {
-      e.actions.push(a);
+    self.addAction = function(e, s) {
+      e.actions.push({...s, condition: ko.observable("")});
     };
     self.rmAction = function(e, a) {
       e.actions.remove(a);
@@ -190,7 +194,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           for (let a of result.events[k.event] || []) {
             for (let s of scripts) {
               if (s.name() === a.script) {
-                actions.push({...s, condition: a.condition});
+                actions.push({...s, condition: ko.observable(a.condition)});
                 break;
               }
             }
@@ -226,11 +230,10 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         scripts[s.name()] = s.body();
       }
       let events = {};
-      // TODO push conditions
       for (let e of self.events()) {
         let ks = [];
-        for (let ea of e.actions()) {
-          ks.push(ea.name());
+        for (let a of e.actions()) {
+          ks.push({script: a.name(), condition: a.condition()});
         }
         if (ks.length !== 0) {
           events[e.event] = ks;

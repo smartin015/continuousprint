@@ -77,7 +77,7 @@
           <div class="accordion-group header-row">
             <i class="fas fa-grip-vertical"></i>
             <div data-bind="text: name" style="flex:1"></div>
-            <!--<div data-bind="text: condition" style="flex:1"></div>-->
+            <textarea rows="4" class="input-block-level" data-bind="value: condition"></textarea>
             <div style="width: 30px" data-bind="click: (v) => $root.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
           </div>
         </div> <!-- foreach actions -->
@@ -174,7 +174,7 @@
 
 
       <button class="btn pull-right" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
-        <i style="cursor:pointer" class="far fa-file-import"></i>&nbsp;Load from Profile
+        <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Load from Profile
       </button>
 
       <button class="btn pull-right" data-bind="click: newScript" title="Create a new script">

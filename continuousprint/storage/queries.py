@@ -457,9 +457,12 @@ def assignScriptsAndEvents(scripts, events):
         s = dict()
         for k, v in scripts.items():
             s[k] = Script.create(name=k, body=v)
-        for k, v in events.items():
-            for i, n in enumerate(v):
-                Event.create(name=k, script=s[n], rank=i)
+        for k, e in events.items():
+            print(k, e)
+            for i, a in enumerate(e):
+                Event.create(
+                    name=k, script=s[a["script"]], condition=a["condition"], rank=i
+                )
 
 
 def getScriptsAndEvents():
@@ -475,7 +478,7 @@ def getScriptsAndEvents():
     return dict(scripts=scripts, events=events)
 
 
-def genEventScript(evt: CustomEvents) -> str:
+def genEventScript(evt: CustomEvents, interp=None, logger=None) -> str:
     result = []
     for e in (
         Event.select()
@@ -483,5 +486,15 @@ def genEventScript(evt: CustomEvents) -> str:
         .where(Event.name == evt.event)
         .order_by(Event.rank)
     ):
-        result.append(e.script.body)
+        should_run = True
+        if e.condition is not None and e.condition != "":
+            should_run = interp(e.condition)
+            if logger:
+                logger.info(
+                    f"Event condition for script {e.script.name}: {e.condition}\nSymbols: {interp.symtable}\nResult: {should_run}"
+                )
+        if should_run is True:
+            if logger:
+                logger.info(f"Appending script {e.script.name}")
+            result.append(e.script.body)
     return "\n".join(result)

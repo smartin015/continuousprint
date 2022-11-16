@@ -69,6 +69,7 @@ class Driver:
         self._update_ui = False
         self._cur_path = None
         self._cur_materials = []
+        self._bed_temp = 0
 
     def action(
         self,
@@ -103,6 +104,13 @@ class Driver:
                 self._cur_materials = materials
             if bed_temp is not None:
                 self._bed_temp = bed_temp
+            self._runner.update_interpreter_symbols(
+                dict(
+                    path=self._cur_path,
+                    materials=self._cur_materials,
+                    bed_temp=self._bed_temp,
+                )
+            )
 
             # Deactivation must be allowed on all states, so we hande it here for
             # completeness.
