@@ -1,12 +1,59 @@
-# GCODE Scripting
+# Events and Scripting
 
-GCODE scripts can be quite complex - if you want to learn the basics, try reading through [this primer](https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/).
+**Control what happens in between queued prints by using Events to run Scripts**.
 
-## Bed clearing script
+## Events
 
-When Continuous Print is managing the queue, this script is run after every print completes - **including prints started before queue managing begins**.
+Events fire at certain points when the queue is being run - when a print completes, for instance. You can see the full list of events by going to `Settings > Continuous Print > Events` or [looking here in the source code](https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/__init__.py).
 
-Your cleaning script should remove all 3D print material from the build area to make way for the next print.
+When an event fires, you can run one or more configured scripts conditionally (see [Conditions](#conditions) below). These events are visible to other OctoPrint plugins (e.g. [OctoPrint-IFTTT](https://plugins.octoprint.org/plugins/IFTTT/)) and can be used to perform actions in them.
+
+## Scripts
+
+Event scripts, just like 3D print files, are in GCODE. It's a series of commands that are sent to the printer that tell it to move, heat up, cool down, etc.
+
+GCODE scripts can be quite complex - if you want to learn the basics, try reading through [this primer](https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/). Example scripts are also provided below.
+
+## Load Defaults
+
+If your 3D printer is common, you should first check the user-contributed default scripts for your printer.
+
+To load default scripts:
+
+1. Navigate to `Settings > Continuous Print > Profile` and ensure the make and model of your 3D printer is correct.
+1. Click on the `Scripts` tab, then click `Load from Profile`. You should see two new scripts ("Bed Clearing" and "Finished") appear matching your printer make and model.
+1. Click on the `Events` tab and scroll down to `Print Success`.
+1. Replace the Bed Clearing script there with the new one.
+1. Scroll down to `Queue Finished` and replace its script with the new script.
+1. Click `Save`.
+
+If you want to contribute a change or a new default script, read the [Contributing](#contributing) section below.
+
+## Custom Scripts
+
+You can also set up your own custom scripts to run when events happen.
+
+To add a new custom script:
+
+1. Navigate to `Settings > Continuous Print > Scripts`, then click `New Script`. A new (unnamed) script will appear in the list.
+1. Put your GCODE script in the large text box - as an example, try typing in `@pause` to pause the print and wait for you to resume it.
+1. Give the script a name (e.g. "Example Script"), then click the Done button at the bottom of the edit area.
+
+Your script is now created, but it will not run until we assign it to one or more events.
+
+To register the script to an event:
+
+1. Click the `Events` tab and scroll to the desired event. For example, `Queue Deactivated` which runs when you click the `Stop Managing` button.
+1. Click the `Add Script` button, then the name of your script. You should now see it listed below the event name.
+1. Click `Save` to save your settings.
+
+Now try it out! Whenever your event fires, it should run this new script.
+
+!!! Tip
+
+    You can use the same script for multiple events, e.g. run bed clearing after each print *and* when the last print is finished.
+
+    You can also run multiple scripts in the same event - they are executed from top to bottom, and you can drag to reorder them.
 
 ### Optional: Use BedReady to check bed state
 
@@ -14,9 +61,91 @@ Your cleaning script should remove all 3D print material from the build area to 
 
 If you install BedReady, you can add an automated check that the bed is clear for the next print by adding `@BEDREADY` onto the end of your bed clearing script.
 
-## Queue finished script
+## Conditions
 
-This script is run after all prints in the queue have been printed. Use this script to put the machine in a safe resting state. Note that the last print will have already been cleared by the bed cleaning script (above).
+You may discover that you only want your event scripts to run sometimes - maybe your printer can only clear prints of a certain size, or you want to sweep prints off in a different direction depending on their material or file name.
+
+This can be done by adding a **Condition**, which are little bits of code that return either `True` or `False` to indicate whether or not to run your script.
+
+Conditions are configured per assigned script in the `Events` settings tab, and evaluate based on instantaneous state details as well as analysis metadata about the print.
+
+### Language
+
+Conditions are evaluated using [ASTEVAL](https://newville.github.io/asteval/) which is a [Python](https://www.python.org/)-like interpreter. Most simple Python scripts will run just fine.
+
+However, **every condition must have a boolean expression as its final line of code**. This final expression determines whether or not we should run the script.
+
+If you're new to writing Python code and the [examples below](#example-conditions) don't have the answers you need, check out [here](https://wiki.python.org/moin/BeginnersGuide) for language resources.
+
+### Available State
+
+When you write a Condition, you will reference external information in your expression in order to return a boolean result. This is done by accessing `State` variables (referred to in [ASTEVAL docs](https://newville.github.io/asteval/) as the "symbol table").
+
+Here's an example of what you can expect for state variables:
+
+```
+path: 'testprint.gcode',
+materials: ['PLA_red_#ff0000'],
+bed_temp: 23.59,
+metadata: {
+    'hash': '38eea2d4463053bd79af52c3fadc37deaa7bfff7',
+    'analysis': {
+        'printingArea': {'maxX': 5.3, 'maxY': 7.65, 'maxZ': 19.7, 'minX': -5.3, 'minY': -8.5608, 'minZ': 0.0},
+        'dimensions': {'depth': 16.2108, 'height': 19.7, 'width': 10.6},
+        'estimatedPrintTime': 713.6694555778557,
+        'filament': {'tool0': {'length': 311.02239999999875, 'volume': 0.0}}
+    },
+    'continuousprint': {
+        'profile': 'Monoprice Mini Delta V2'
+    },
+    'history': [
+        {
+          'timestamp': 1660053581.8503253,
+          'printTime': 109.47731690102955,
+          'success': True,
+          'printerProfile': '_default'
+        },
+    ],
+    'statistics': {
+        'averagePrintTime': {'_default': 113.51082421375965},
+        'lastPrintTime': {'_default': 306.7005050050211}
+    }
+}
+```
+
+Note that `path`, `materials`, and `bed_temp` are all instantaneous variables about the current state, while `metadata` comes from file metadata analysis and is absent if `path` is None or empty.
+
+See also `update_interpreter_symbols` in [driver.py](https://github.com/smartin015/continuousprint/blob/master/continuousprint/driver.py) for how state is constructed and sent to the interpreter.
+
+### Example Conditions
+
+Here's a few examples you can use as conditions for running your scripts. Just copy and paste into the text box next to your script in the `Events` settings tab, then click `Save` to apply them.
+
+Note that in all cases, the last line of the condition evalutes to a boolean value and is not assigned to a variable - this is what we use to determine whether to run or skip the event script.
+
+**Run script if the bed is hot**
+
+`bed_temp > 40`
+
+**Run script if this print's filename ends in "\_special.gcode"**
+
+`path.endswith("_special.gcode")`
+
+**Run script if this print will be at least 10mm high**
+
+`metadata["analysis"]["dimensions"]["height"] >= 10`
+
+**Run script if this print takes on average over an hour to complete**
+
+`metadata["statistics"]["averagePrintTime"]["_default"] > 60*60`
+
+**Run script if this print has failed more than 10% of the time**
+
+```
+# Div by 1 when history is empty to prevent divide by zero
+failure_ratio = len([h for h in metadata["history"] if not h['success']]) / max(1, len(metadata["history"]))
+False if len(metadata["history"]) == 0 else failure_ratio > 0.1
+```
 
 ## Contributing
 

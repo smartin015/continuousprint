@@ -101,7 +101,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       self.scripts.push({
         name: ko.observable(""),
         body: ko.observable(""),
-        expanded: ko.observable(true),
+        expanded: ko.observable(false),
       });
     }
     self.rmScript = function(s) {
