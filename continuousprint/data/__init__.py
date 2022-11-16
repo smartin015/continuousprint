@@ -36,7 +36,7 @@ class CustomEvents(Enum):
     COOLDOWN = (
         "continuousprint_cooldown",
         "Bed Cooldown",
-        "Fires when managed bed cooldown is starting.",
+        "Fires when bed cooldown is starting. Bed Cooldown is disabled by default - see the settings below.",
     )
     FINISH = (
         "continuousprint_finish",
@@ -51,7 +51,7 @@ class CustomEvents(Enum):
     DEACTIVATE = (
         "continuousprint_deactivate",
         "Queue Deactivated",
-        "Fires when the queue is no longer actively managed.",
+        "Fires when the queue is no longer actively managed. This script may be skipped if another print is underway when the queue goes inactive.",
     )
 
     def __init__(self, event, displayName, desc):

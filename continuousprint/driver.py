@@ -133,7 +133,8 @@ class Driver:
         self.retries = 0
 
         if a == Action.ACTIVATE:
-            self._runner.run_script_for_event(CustomEvents.ACTIVATE)
+            if self._runner.run_script_for_event(CustomEvents.ACTIVATE) is not None:
+                return self._state_activating
 
             if p != Printer.IDLE:
                 return self._state_printing
@@ -147,6 +148,11 @@ class Driver:
                 "Inactive (active print continues unmanaged)", StatusType.NEEDS_ACTION
             )
 
+    def _state_activating(self, a: Action, p: Printer):
+        self._set_status("Running startup script")
+        if a == Action.SUCCESS or self._long_idle(p):
+            return self._state_idle(a, p)
+
     def _state_idle(self, a: Action, p: Printer):
         self.q.release()
 
@@ -159,8 +165,17 @@ class Driver:
             else:
                 return self._enter_start_print(a, p)
 
-    def _enter_start_print(self, a: Action, p: Printer):
-        # TODO "clear bed on startup" setting
+    def _state_preprint(self, a: Action, p: Printer):
+        self._set_status("Running pre-print script")
+        if a == Action.SUCCESS or self._long_idle(p):
+            # Skip running the pre-print script this time
+            return self._enter_start_print(a, p, run_pre_script=False)
+
+    def _enter_start_print(self, a: Action, p: Printer, run_pre_script=True):
+        if run_pre_script and self._runner.run_script_for_event(
+            CustomEvents.PRINT_START
+        ):
+            return self._state_preprint
 
         # Pre-call start_print on entry to eliminate tick delay
         self.start_failures = 0
