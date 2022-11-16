@@ -360,7 +360,9 @@ class TestMultiItemQueue(DBTest):
 
 class TestScriptsAndEvents(DBTest):
     def testAssignGet(self):
-        q.assignScriptsAndEvents(dict(foo="bar"), dict(evt=[("foo", None)]))
+        q.assignScriptsAndEvents(
+            dict(foo="bar"), dict(evt=[dict(script="foo", condition=None)])
+        )
         self.assertEqual(
             q.getScriptsAndEvents(),
             dict(
@@ -372,19 +374,43 @@ class TestScriptsAndEvents(DBTest):
     def testMultiScriptEvent(self):
         evt = CustomEvents.PRINT_SUCCESS.event
         q.assignScriptsAndEvents(
-            dict(s1="gcode1", s2="gcode2"), dict([(evt, [("s1", None), ("s2", None)])])
+            dict(s1="gcode1", s2="gcode2"),
+            dict(
+                [
+                    (
+                        evt,
+                        [
+                            dict(script="s1", condition=None),
+                            dict(script="s2", condition=None),
+                        ],
+                    )
+                ]
+            ),
         )
         self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode1\ngcode2")
 
         # Ordering of event matters
         q.assignScriptsAndEvents(
-            dict(s1="gcode1", s2="gcode2"), dict([(evt, [("s2", None), ("s1", None)])])
+            dict(s1="gcode1", s2="gcode2"),
+            dict(
+                [
+                    (
+                        evt,
+                        [
+                            dict(script="s2", condition=None),
+                            dict(script="s1", condition=None),
+                        ],
+                    )
+                ]
+            ),
         )
         self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode2\ngcode1")
 
     def testConditionalEval(self):
         evt = CustomEvents.PRINT_SUCCESS.event
-        q.assignScriptsAndEvents(dict(s1="gcode1"), dict([(evt, [("s1", "cond")])]))
+        q.assignScriptsAndEvents(
+            dict(s1="gcode1"), dict([(evt, [dict(script="s1", condition="cond")])])
+        )
 
         self.assertEqual(
             q.genEventScript(CustomEvents.PRINT_SUCCESS, lambda cond: True), "gcode1"

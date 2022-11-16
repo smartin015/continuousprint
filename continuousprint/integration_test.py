@@ -183,9 +183,10 @@ class TestDriver(DBTest):
         def onupdate():
             pass
 
+        self.fm = MagicMock()
         self.s = ScriptRunner(
             msg=MagicMock(),
-            file_manager=MagicMock(),
+            file_manager=self.fm,
             logger=logging.getLogger(),
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),
@@ -202,11 +203,13 @@ class TestDriver(DBTest):
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
 
-    def _setup_condition(self, cond):
+    def _setup_condition(self, cond, path=None):
+        self.d.state = self.d._state_inactive
         queries.assignScriptsAndEvents(
-            dict(foo="G0 X20"), {CustomEvents.ACTIVATE.event: [("foo", cond)]}
+            dict(foo="G0 X20"),
+            {CustomEvents.ACTIVATE.event: [dict(script="foo", condition=cond)]},
         )
-        self.d.action(DA.ACTIVATE, DP.IDLE)
+        self.d.action(DA.ACTIVATE, DP.IDLE, path=path)
 
     def test_conditional_true(self):
         self._setup_condition("2 + 2 == 4")
@@ -221,10 +224,17 @@ class TestDriver(DBTest):
         self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
 
     def test_conditional_print_volume(self):
-        raise NotImplementedError
-        self._setup_condition("1 / 0")
-        # TODO pass printing file name to ScriptRunner and use its filemanager
-        # to get_additional_metadata when setting up the interpreter
+        depthpath = "metadata['analysis']['dimensions']['depth']"
+        self.fm.file_exists.return_value = True
+        self.fm.has_analysis.return_value = True
+        self.fm.get_metadata.return_value = dict(
+            analysis=dict(dimensions=dict(depth=39))
+        )
+
+        self._setup_condition(f"{depthpath} < 40", path="foo.gcode")
+        self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
+
+        self._setup_condition(f"{depthpath} > 39", path="foo.gcode")
         self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
 
 

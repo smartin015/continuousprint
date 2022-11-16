@@ -193,9 +193,9 @@ test('addScript, rmScript', () => {
 test('addAction, rmAction', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
   let e = {"actions": ko.observableArray([])};
-  let a = "foo";
+  let a = {script:"foo"};
   v.addAction(e, a);
-  expect(e.actions()[0]).toEqual(a);
-  v.rmAction(e, a);
+  expect(e.actions()[0].script).toEqual(a.script);
+  v.rmAction(e, e.actions()[0]);
   expect(e.actions().length).toEqual(0);
 });

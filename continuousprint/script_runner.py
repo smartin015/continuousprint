@@ -70,6 +70,17 @@ class ScriptRunner:
 
     def update_interpreter_symbols(self, symbols):
         self._symbols = symbols
+        path = self._symbols.get("path")
+        if (
+            path is not None
+            and self._file_manager.file_exists(FileDestinations.LOCAL, path)
+            and self._file_manager.has_analysis(FileDestinations.LOCAL, path)
+        ):
+            # See https://docs.octoprint.org/en/master/modules/filemanager.html#octoprint.filemanager.analysis.GcodeAnalysisQueue
+            # for analysis values - or `.metadata.json` within .octoprint/uploads
+            self._symbols["metadata"] = self._file_manager.get_metadata(
+                FileDestinations.LOCAL, path
+            )
 
     def _get_interpreter(self):
         interp = Interpreter()
@@ -77,7 +88,7 @@ class ScriptRunner:
         return interp
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        gcode = genEventScript(evt, self._get_interpreter())
+        gcode = genEventScript(evt, self._get_interpreter(), self._logger)
 
         self._do_msg(evt, running=gcode != "")
 
