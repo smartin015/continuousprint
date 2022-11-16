@@ -1,6 +1,7 @@
 import time
 from io import BytesIO
 
+from asteval import Interpreter
 from pathlib import Path
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
@@ -27,6 +28,7 @@ class ScriptRunner:
         self._printer = printer
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
+        self._symbols = dict()
 
     def _get_user(self):
         try:
@@ -66,8 +68,17 @@ class ScriptRunner:
             elif evt == CustomEvents.AWAITING_MATERIAL:
                 self._msg("Running script while awaiting material")
 
+    def update_interpreter_symbols(self, symbols):
+        self._symbols = symbols
+
+    def _get_interpreter(self):
+        interp = Interpreter()
+        interp.symtable = self._symbols.copy()
+        return interp
+
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        gcode = genEventScript(evt)
+        gcode = genEventScript(evt, self._get_interpreter())
+
         self._do_msg(evt, running=gcode != "")
 
         # Cancellation happens before custom scripts are run

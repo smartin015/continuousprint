@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 from .script_runner import ScriptRunner
 from .data import CustomEvents
 from .storage.database_test import DBTest
+from .storage.queries import assignScriptsAndEvents
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -26,8 +27,10 @@ class TestScriptRunner(DBTest):
         )
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
+        self.s._get_interpreter = lambda: None
 
     def test_run_script_for_event(self):
+        # Note: default scripts are populated on db_init for FINISH and PRINT_SUCCESS
         self.s.run_script_for_event(CustomEvents.FINISH)
         self.s._file_manager.add_file.assert_called()
         self.s._printer.select_file.assert_called_with(
