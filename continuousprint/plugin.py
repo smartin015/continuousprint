@@ -50,6 +50,7 @@ class CPQPlugin(ContinuousPrintAPI):
     )
     RECONNECT_WINDOW_SIZE = 5.0
     MAX_WINDOW_EXP = 6
+    GET_ADDR_TIMEOUT = 3
     CPQ_ANALYSIS_FINISHED = "CPQ_ANALYSIS_FINISHED"
 
     def __init__(
@@ -78,6 +79,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._reconnect_attempts = 0
         self._next_reconnect = 0
         self._fire_event = fire_event
+        self._exceptions = []
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -118,33 +120,61 @@ class CPQPlugin(ContinuousPrintAPI):
         self._update(DA.ACTIVATE)
         self._sync_state()
 
-    def get_open_port(self):
+    def _can_bind_addr(self, addr):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.bind(addr)
+        except OSError:
+            return False
+        finally:
+            s.close()
+        return True
+
+    def get_local_addr(self):
         # https://stackoverflow.com/a/2838309
         # Note that this is vulnerable to race conditions in that
         # the port is open when it's assigned, but could be reassigned
         # before the caller can use it.
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("", 0))
-        s.listen(1)
-        port = s.getsockname()[1]
-        s.close()
-        return port
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(CPQPlugin.GET_ADDR_TIMEOUT)
+        checkaddr = tuple(
+            [
+                self._settings.global_get(["server", "onlineCheck", v])
+                for v in ("host", "port")
+            ]
+        )
+        try:
+            s.connect(checkaddr)
+            result = s.getsockname()
+        finally:
+            # Note: close has no effect on already closed socket
+            s.close()
 
-    def get_local_ip(self):
-        ip_address = [
-            (
-                s.connect(
-                    (
-                        self._settings.global_get(["server", "onlineCheck", "host"]),
-                        self._settings.global_get(["server", "onlineCheck", "port"]),
-                    )
-                ),
-                s.getsockname()[0],
-                s.close(),
-            )
-            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]
-        ][0][1]
-        return ip_address
+        if self._can_bind_addr(result):
+            return f"{result[0]}:{result[1]}"
+
+        # For whatever reason, client-based local IP resolution can sometimes still fail to bind.
+        # In this case, fall back to MDNS based resolution
+        # https://stackoverflow.com/a/57355707
+        self._logger.warning(
+            "Online check based IP resolution failed to bind; attempting MDNS local IP resolution"
+        )
+        hostname = socket.gethostname()
+        try:
+            local_ip = socket.gethostbyname(f"{hostname}.local")
+        except socket.gaierror:
+            local_ip = socket.gethostbyname(hostname)
+
+        # Find open port: https://stackoverflow.com/a/2838309
+        # This will raise OSError if it cannot bind to that address either
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((local_ip, 0))
+            s.listen(1)
+            port = s.getsockname()[1]
+        finally:
+            s.close()
+        return f"{local_ip}:{port}"
 
     def _add_set(self, path, sd, draft=True, profiles=[]):
         # We may need to delay adding a file if it hasn't yet finished analysis
@@ -214,6 +244,15 @@ class CPQPlugin(ContinuousPrintAPI):
         # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
         self._plugin_manager.send_plugin_message(self._identifier, data)
 
+    def get_exceptions(self):
+        return self._exceptions
+
+    def _exception_msg(self, msg):
+        self._logger.error(msg)
+        self._exceptions.append(msg)
+        self._logger.error(traceback.format_exc())
+        self._msg(dict(msg=msg + "\n\nSee sysinfo logs for details", type="danger"))
+
     def _setup_thirdparty_plugin_integration(self):
         # Turn on "restart on pause" when Obico plugin is detected (must be version 1.8.11 or higher for custom event hook)
         if getattr(octoprint.events.Events, "PLUGIN_OBICO_COMMAND", None) is not None:
@@ -255,10 +294,26 @@ class CPQPlugin(ContinuousPrintAPI):
         self.fileshare_dir = self._path_on_disk(
             f"{PRINT_FILE_DIR}/fileshare/", sd=False
         )
-        fileshare_addr = f"{self.get_local_ip()}:0"
+        try:
+            fileshare_addr = self.get_local_addr()
+        except OSError:
+            self._exception_msg(
+                "Failed to find a local addr for LAN fileshare; LAN queues will be disabled."
+            )
+            self._fileshare = None
+            return
+
         self._logger.info(f"Starting fileshare with address {fileshare_addr}")
         self._fileshare = fs_cls(fileshare_addr, self.fileshare_dir, self._logger)
-        self._fileshare.connect()
+        try:
+            self._fileshare.connect()
+            self._logger.info(
+                f"Fileshare listening on {self._fileshare.host}:{self._fileshare.port}"
+            )
+        except OSError:
+            self._exception_msg(
+                "Failed to bind Fileshare HTTP server; hosting LAN jobs will fail, but fetching jobs may still work."
+            )
 
     def _init_db(self):
         init_db(
@@ -310,9 +365,7 @@ class CPQPlugin(ContinuousPrintAPI):
                 try:
                     lq = lancls(
                         q.name,
-                        q.addr
-                        if q.addr.lower() != "auto"
-                        else f"{self.get_local_ip()}:{self.get_open_port()}",
+                        q.addr if q.addr.lower() != "auto" else self.get_local_addr(),
                         self._logger,
                         Strategy.IN_ORDER,
                         self._on_queue_update,
@@ -322,10 +375,11 @@ class CPQPlugin(ContinuousPrintAPI):
                     )
                     lq.connect()
                     self.q.add(q.name, lq)
-                except ValueError:
-                    self._logger.error(
-                        f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
+                except Exception:
+                    self._exception_msg(
+                        f'Unable to join network queue "{q.name}" with address {q.addr}'
                     )
+
             elif q.name != ARCHIVE_QUEUE:
                 self.q.add(
                     q.name,
@@ -714,9 +768,7 @@ class CPQPlugin(ContinuousPrintAPI):
             try:
                 lq = LANQueue(
                     a["name"],
-                    a["addr"]
-                    if a["addr"].lower() != "auto"
-                    else f"{self.get_local_ip()}:{self.get_open_port()}",
+                    a["addr"] if a["addr"].lower() != "auto" else self.get_local_addr(),
                     self._logger,
                     Strategy.IN_ORDER,
                     self._on_queue_update,

@@ -64,7 +64,22 @@
       <!-- /ko -->
       </div>
   </div>
+
+  <div class="alert alert-error" data-bind="visible: CP_EXCEPTIONS.length > 0">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <p>
+      <i class="fas fa-exclamation-triangle"></i> Encountered the following exceptions:
+    </p>
+    <ul data-bind="foreach: CP_EXCEPTIONS">
+      <li data-bind="text: $data"></li>
+    </ul>
+    <p>
+      Please <a target="_blank" href="https://github.com/smartin015/continuousprint/issues/new/choose">file a bug report</a> - be sure to follow the template instructions to generate a sysinfo bundle.
+    </p>
+  </div>
+
   <div class="alert alert-warning" data-bind="visible: badMaterialCount">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
     <i class="fas fa-exclamation-triangle"></i> <span data-bind="text: badMaterialCount"></span> spool(s) configured without a material.
     <br/>These will be excluded from material selection until you configure them (in the Spools tab) and reload.
   </div>
@@ -74,6 +89,7 @@
   </div>
 
   <div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
+
     <div class="cp-queue" data-bind="css: {'loading': $root.loading() || !ready()}">
     <div class="cp-header action-bar">
         <div class="multiselect">

@@ -96,11 +96,17 @@ class ContinuousprintPlugin(
 
     # ---------------------- Begin TemplatePlugin -------------------
     def get_template_vars(self):
+        try:
+            local_ip = self._plugin.get_local_addr().split(":")[0]
+        except Exception:
+            # Local IP details are used for display only
+            local_ip = "<ip_address>"
         return dict(
+            exceptions=self._plugin.get_exceptions(),
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
             custom_events=[e.as_dict() for e in CustomEvents],
-            local_ip=self._plugin.get_local_ip(),
+            local_ip=local_ip,
         )
 
     def get_template_configs(self):
