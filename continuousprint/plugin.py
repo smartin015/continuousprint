@@ -79,6 +79,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._reconnect_attempts = 0
         self._next_reconnect = 0
         self._fire_event = fire_event
+        self._exceptions = []
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -243,8 +244,12 @@ class CPQPlugin(ContinuousPrintAPI):
         # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
         self._plugin_manager.send_plugin_message(self._identifier, data)
 
+    def get_exceptions(self):
+        return self._exceptions
+
     def _exception_msg(self, msg):
         self._logger.error(msg)
+        self._exceptions.append(msg)
         self._logger.error(traceback.format_exc())
         self._msg(dict(msg=msg + "\n\nSee sysinfo logs for details", type="danger"))
 

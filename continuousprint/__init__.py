@@ -102,6 +102,7 @@ class ContinuousprintPlugin(
             # Local IP details are used for display only
             local_ip = "<ip_address>"
         return dict(
+            exceptions=self._plugin.get_exceptions(),
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
             custom_events=[e.as_dict() for e in CustomEvents],
