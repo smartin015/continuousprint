@@ -329,6 +329,7 @@ class CPQPlugin(ContinuousPrintAPI):
                 settings_state = json.loads(state_data)
                 migrateFromSettings(settings_state)
                 self._set_key(Keys.QUEUE_DEPRECATED, None)
+                self._logger.info("Migrated queue data from settings to DB")
         except Exception:
             self._logger.error(f"Could not migrate old json state: {state_data}")
             self._logger.error(traceback.format_exc())
@@ -341,10 +342,11 @@ class CPQPlugin(ContinuousPrintAPI):
         ]
         script_data = [self._get_key(k) for k in dep_scripts]
         try:
-            if not (None in script_data):
-                migrateScriptsFromSettings(*dep_scripts)
+            if True in [s is not None for s in script_data]:
+                migrateScriptsFromSettings(*script_data)
                 for k in dep_scripts:
                     self._set_key(k, None)
+                self._logger.info("Migrated scripts from settings to DB")
         except Exception:
             self._logger.error(
                 f"Could not migrate from settings scripts: {script_data}"

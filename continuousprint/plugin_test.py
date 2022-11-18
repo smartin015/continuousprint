@@ -90,6 +90,18 @@ class TestStartup(unittest.TestCase):
             p._data_folder = td
             p._init_db()
 
+    @patch("continuousprint.plugin.migrateScriptsFromSettings")
+    def testDBMigrateScripts(self, msfs):
+        p = mockplugin()
+        p._set_key(Keys.CLEARING_SCRIPT_DEPRECATED, "s1")
+        p._set_key(Keys.FINISHED_SCRIPT_DEPRECATED, "s2")
+        p._set_key(Keys.BED_COOLDOWN_SCRIPT_DEPRECATED, "s3")
+        with tempfile.TemporaryDirectory() as td:
+            p._data_folder = td
+            p._init_db()
+            # Ensure we're calling with the script body, not just the event name
+            msfs.assert_called_with("s1", "s2", "s3")
+
     def testDBWithLegacySettings(self):
         p = mockplugin()
         p._set_key(

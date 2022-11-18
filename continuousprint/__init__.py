@@ -59,7 +59,8 @@ class ContinuousprintPlugin(
                 self._logger,
                 self._identifier,
                 self._basefolder,
-                self._event_bus.fire,
+                # Events are of type CustomEvents and need to be unpacked:w
+                lambda e: self._event_bus.fire(e.event),
             )
 
     def on_after_startup(self):
