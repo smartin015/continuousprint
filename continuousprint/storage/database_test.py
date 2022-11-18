@@ -50,6 +50,18 @@ class TestScriptMigration(DBTest):
             Event.get(name=CustomEvents.COOLDOWN.event).script.body, "test_cooldown"
         )
 
+    def testMigrationEmpty(self):
+        migrateScriptsFromSettings("test_clearing", "test_finished", "")
+        self.assertEqual(
+            Event.select().where(Event.name == CustomEvents.COOLDOWN.event).count(), 0
+        )
+
+    def testMigrationNone(self):
+        migrateScriptsFromSettings("test_clearing", "test_finished", None)
+        self.assertEqual(
+            Event.select().where(Event.name == CustomEvents.COOLDOWN.event).count(), 0
+        )
+
 
 class TestMigration(DBTest):
     def testMigrationEmptyDict(self):

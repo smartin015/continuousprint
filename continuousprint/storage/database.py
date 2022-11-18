@@ -431,6 +431,8 @@ def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script
             (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),
             (CustomEvents.COOLDOWN, COOLDOWN_SCRIPT, cooldown_script),
         ]:
+            if body is None or body.strip() == "":
+                continue  # Don't add empty scripts
             Script.delete().where(Script.name == name).execute()
             s = Script.create(name=name, body=body)
             Event.delete().where(Event.name == evt.event).execute()
