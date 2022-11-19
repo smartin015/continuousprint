@@ -28,7 +28,7 @@ class ScriptRunner:
         self._printer = printer
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
-        self._symbols = dict()
+        self._symbols = dict(current=dict(), external=dict(), metadata=dict())
 
     def _get_user(self):
         try:
@@ -68,11 +68,15 @@ class ScriptRunner:
             elif evt == CustomEvents.AWAITING_MATERIAL:
                 self._msg("Running script while awaiting material")
 
-    def update_interpreter_symbols(self, symbols):
-        self._symbols = symbols
-        path = self._symbols.get("path")
+    def set_current_symbols(self, symbols):
+        last_path = self._symbols["current"].get("path")
+        self._symbols["current"] = symbols.copy()
+
+        # Current state can change metadata
+        path = self._symbols["current"].get("path")
         if (
             path is not None
+            and path != last_path
             and self._file_manager.file_exists(FileDestinations.LOCAL, path)
             and self._file_manager.has_analysis(FileDestinations.LOCAL, path)
         ):
@@ -81,6 +85,10 @@ class ScriptRunner:
             self._symbols["metadata"] = self._file_manager.get_metadata(
                 FileDestinations.LOCAL, path
             )
+
+    def set_external_symbols(self, symbols):
+        assert type(symbols) is dict
+        self._symbols["external"] = symbols
 
     def _get_interpreter(self):
         interp = Interpreter()

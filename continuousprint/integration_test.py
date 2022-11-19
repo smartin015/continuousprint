@@ -237,6 +237,11 @@ class TestDriver(DBTest):
         self._setup_condition(f"{depthpath} > 39", path="foo.gcode")
         self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
 
+    def test_external_symbols(self):
+        self.s.set_external_symbols = dict(foo="bar")
+        self._setup_condition("external.foo == 'bar'", path="foo.gcode")
+        self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
+
 
 class LocalLockManager:
     def __init__(self, locks, ns):

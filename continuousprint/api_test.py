@@ -86,6 +86,7 @@ class TestAPI(unittest.TestCase):
             ("EDITQUEUES", "/queues/edit"),
             ("GETAUTOMATION", "/automation/get"),
             ("EDITAUTOMATION", "/automation/edit"),
+            ("EDITAUTOMATION", "/automation/external"),
         ]
         self.api._get_queue = None  # MagicMock interferes with checking
 
@@ -271,16 +272,32 @@ class TestAPI(unittest.TestCase):
         self.perm.PLUGIN_CONTINUOUSPRINT_EDITAUTOMATION.can.return_value = True
         rep = self.client.post(
             "/automation/edit",
-            data=dict(json=json.dumps(dict(scripts="scripts", events="events"))),
+            data=dict(
+                json=json.dumps(
+                    dict(
+                        scripts="scripts",
+                        events="events",
+                        preprocessors="preprocessors",
+                    )
+                )
+            ),
         )
         self.assertEqual(rep.status_code, 200)
         self.assertEqual(rep.data, b'"OK"')
-        q.assignScriptsAndEvents.assert_called_with("scripts", "events")
+        q.assignAutomation.assert_called_with("scripts", "preprocessors", "events")
 
     @patch("continuousprint.api.queries")
     def test_get_automation(self, q):
-        self.perm.PLUGIN_CONTINUOUSPRINT_GETHISTORY.can.return_value = True
-        q.getScriptsAndEvents.return_value = "foo"
+        self.perm.PLUGIN_CONTINUOUSPRINT_GETAUTOMATION.can.return_value = True
+        q.getAutomation.return_value = "foo"
         rep = self.client.get("/automation/get")
         self.assertEqual(rep.status_code, 200)
         self.assertEqual(rep.data, b'"foo"')
+
+    @patch("continuousprint.api.queries")
+    def test_automation_external(self, q):
+        self.perm.PLUGIN_CONTINUOUSPRINT_EDITAUTOMATION.can.return_value = True
+        self.api._set_external_symbols = MagicMock()
+        rep = self.client.post("/automation/external", json=dict(foo="bar"))
+        self.assertEqual(rep.status_code, 200)
+        self.api._set_external_symbols.assert_called_with(dict(foo="bar"))

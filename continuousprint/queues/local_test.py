@@ -1,6 +1,6 @@
 import unittest
 import logging
-from ..storage.database_test import DBTest
+from ..storage.database_test import QueuesDBTest
 from ..storage import queries
 from ..storage.lan import LANJobView
 from ..storage.database import JobView
@@ -14,13 +14,13 @@ from .abstract_test import (
 from .local import LocalQueue
 from dataclasses import dataclass, asdict
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
-class TestAbstractImpl(AbstractQueueTests, DBTest):
+class TestAbstractImpl(AbstractQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
-        DBTest.setUp(self)
+        super().setUp()
         self.q = LocalQueue(
             queries,
             "local",
@@ -33,10 +33,10 @@ class TestAbstractImpl(AbstractQueueTests, DBTest):
         self.q._set_path_exists = lambda p: True
 
 
-class TestEditableImpl(EditableQueueTests, DBTest):
+class TestEditableImpl(EditableQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
-        DBTest.setUp(self)
+        super().setUp()
         self.q = LocalQueue(
             queries,
             "local",

@@ -54,6 +54,33 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.queues = ko.observableArray();
     self.queue_fingerprint = null;
     self.scripts = ko.observableArray([]);
+    function mkScript(name, body, expanded) {
+      let b = ko.observable(body || "");
+      let n = ko.observable(name || "");
+      return {
+        name: n,
+        body: b,
+        expanded: ko.observable((expanded === undefined) ? true : expanded),
+        preview: ko.computed(function() {
+          let flat = b().replace('\n', ' ');
+          return (flat.length > 32) ? flat.slice(0, 29) + "..." : flat;
+        }),
+        registrations: ko.computed(function() {
+          let nn = n();
+          let result = [];
+          for (let e of self.events()) {
+            for (let a of e.actions()) {
+              if (a.script.name() == nn || a.preprocessor() == nn) {
+                result.push(e.display);
+              }
+            }
+          }
+          return result;
+        }),
+      };
+    }
+
+    self.preprocessors = ko.observableArray([]);
     self.events = ko.observableArray([]);
     self.scripts_fingerprint = null;
 
@@ -85,37 +112,106 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       if (profile === undefined) {
         return;
       }
-      self.scripts.push({
-        name: ko.observable(`Clear Bed (${profile.name})`),
-        body: ko.observable(self.default_scripts[profile.defaults.clearBed]),
-        expanded: ko.observable(true),
-      });
-      self.scripts.push({
-        name: ko.observable(`Finish (${profile.name})`),
-        body: ko.observable(self.default_scripts[profile.defaults.finished]),
-        expanded: ko.observable(true),
-      });
+      self.addScript(`Clear Bed (${profile.name}`,
+        self.default_scripts[profile.defaults.clearBed], true);
+      self.addScript(`Finish (${profile.name}`,
+        self.default_scripts[profile.defaults.finished], true);
     }
 
-    self.newScript = function() {
-      self.scripts.push({
-        name: ko.observable(""),
-        body: ko.observable(""),
-        expanded: ko.observable(false),
-      });
+    function loadFromFile(file, cb) {
+      // Inspired by https://stackoverflow.com/a/14155586
+      if(!window.FileReader) return;
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+          if(evt.target.readyState != 2) return;
+          if(evt.target.error) {
+              alert('Error while reading file');
+              return;
+          }
+          cb(file.name, evt.target.result, false);
+      };
+      reader.readAsText(file);
+    }
+    self.loadScriptFromFile = (f) => loadFromFile(f, self.addScript);
+    self.loadPreprocessorFromFile = (f) => loadFromFile(f, self.addPreprocessor);
+
+   function downloadFile(filename, body) {
+     // https://stackoverflow.com/a/45831357
+     var blob = new Blob([body], {type: 'text/plain'});
+     if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+       window.navigator.msSaveOrOpenBlob(blob, filename);
+     } else {
+       var e = document.createEvent('MouseEvents'),
+       a = document.createElement('a');
+       a.download = filename;
+       a.href = window.URL.createObjectURL(blob);
+       a.dataset.downloadurl = ['text/plain', a.download, a.href].join(':');
+       e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+       a.dispatchEvent(e);
+     }
+    }
+    self.downloadScript = function(s) {
+      let n = s.name()
+      if (!n.endsWith(".gcode")) {
+        n += ".gcode";
+      }
+      downloadFile(n, s.body());
+    }
+    self.downloadPreprocessor = function(p) {
+      let n = p.name()
+      if (!n.endsWith(".py")) {
+        n += ".py";
+      }
+      downloadFile(n, p.body());
+    }
+
+    self.addScript = function(name, body, expanded) {
+      let s = mkScript(name, body, expanded);
+      self.scripts.push(s);
+      return s;
+    }
+    self.addPreprocessor = function(name, body, expanded) {
+      let p = mkScript(name, body, expanded);
+      self.preprocessors.push(p);
+      return p;
     }
     self.rmScript = function(s) {
       for (let e of self.events()) {
         for (let a of e.actions()) {
-          if (a.name() == s.name()) {
+          if (a.script() == s.name()) {
             e.actions.remove(a);
           }
         }
       }
       self.scripts.remove(s);
     }
+    self.rmPreprocessor = function(p) {
+      for (let e of self.events()) {
+        for (let a of e.actions()) {
+          if (a.preprocessor() == p.name()) {
+            e.actions.remove(a);
+          }
+        }
+      }
+      self.preprocessors.remove(s);
+    }
+    self.gotoScript = function(s) {
+      s.expanded(true);
+      self.gotoTab("scripts");
+    }
+    self.gotoTab = function(suffix) {
+      $(`#settings_continuousprint_tabs a[href="#settings_continuousprint_${suffix}"]`).tab('show');
+    }
+
     self.addAction = function(e, s) {
-      e.actions.push({...s, condition: ko.observable("")});
+      if (s === null) {
+        s = self.addScript();
+        self.gotoScript(s);
+      }
+      e.actions.push({
+        script: s,
+        preprocessor: ko.observable(""),
+      });
     };
     self.rmAction = function(e, a) {
       e.actions.remove(a);
@@ -178,26 +274,26 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         self.queue_fingerprint = JSON.stringify(queues);
       });
       self.api.get(self.api.AUTOMATION, (result) => {
-        let scripts = []
+        let scripts = {};
         for (let k of Object.keys(result.scripts)) {
-          scripts.push({
-            name: ko.observable(k),
-            body: ko.observable(result.scripts[k]),
-            expanded: ko.observable(true),
-          });
+          scripts[k] = mkScript(k, result.scripts[k], false);
         }
-        self.scripts(scripts);
+        self.scripts(Object.values(scripts));
+
+        let preprocessors = {};
+        for (let k of Object.keys(result.preprocessors)) {
+          preprocessors[k] = mkScript(k, result.preprocessors[k], false);
+        }
+        self.preprocessors(Object.values(preprocessors));
 
         let events = []
         for (let k of custom_events) {
           let actions = [];
           for (let a of result.events[k.event] || []) {
-            for (let s of scripts) {
-              if (s.name() === a.script) {
-                actions.push({...s, condition: ko.observable(a.condition)});
-                break;
-              }
-            }
+            actions.push({
+              script: scripts[a.script],
+              preprocessor: ko.observable(preprocessors[a.preprocessor]),
+            });
           }
           events.push({
             ...k,
@@ -206,11 +302,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         }
         events.sort((a, b) => a.display < b.display);
         self.events(events);
-
-        self.scripts_fingerprint = JSON.stringify({
-          scripts: result.scripts,
-          events: result.events,
-        });
+        self.scripts_fingerprint = JSON.stringify(result);
       });
     };
 
@@ -229,17 +321,24 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       for (let s of self.scripts()) {
         scripts[s.name()] = s.body();
       }
+      let preprocessors = {}
+      for (let p of self.preprocessors()) {
+        preprocessors[p.name()] = p.body();
+      }
       let events = {};
       for (let e of self.events()) {
         let ks = [];
         for (let a of e.actions()) {
-          ks.push({script: a.name(), condition: a.condition()});
+          ks.push({
+            script: a.script.name(),
+            preprocessor: a.preprocessor(),
+          });
         }
         if (ks.length !== 0) {
           events[e.event] = ks;
         }
       }
-      let data = {scripts, events};
+      let data = {scripts, preprocessors, events};
       if (JSON.stringify(data) !== self.scripts_fingerprint) {
         self.api.edit(self.api.AUTOMATION, data, () => {});
       }

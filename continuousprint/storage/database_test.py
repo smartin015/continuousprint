@@ -4,13 +4,15 @@ import logging
 from .database import (
     migrateFromSettings,
     migrateScriptsFromSettings,
-    init as init_db,
+    init_db,
+    init_queues,
+    init_automation,
     Queue,
     Job,
     Set,
     Run,
     Script,
-    Event,
+    EventHook,
     StorageDetails,
     DEFAULT_QUEUE,
 )
@@ -20,50 +22,66 @@ import tempfile
 # logging.basicConfig(level=logging.DEBUG)
 
 
-class DBTest(unittest.TestCase):
+class QueuesDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpQueues = tempfile.NamedTemporaryFile(delete=True)
-        self.tmpScripts = tempfile.NamedTemporaryFile(delete=True)
-        self.db = init_db(
-            automation_db=self.tmpScripts.name,
-            queues_db=self.tmpQueues.name,
+        self.addCleanup(self.tmpQueues.close)
+        init_queues(
+            self.tmpQueues.name,
             logger=logging.getLogger(),
         )
         self.q = Queue.get(name=DEFAULT_QUEUE)
 
-    def tearDown(self):
-        self.tmpQueues.close()
-        self.tmpScripts.close()
+
+class AutomationDBTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpAutomation = tempfile.NamedTemporaryFile(delete=True)
+        self.addCleanup(self.tmpAutomation.close)
+        init_automation(
+            self.tmpAutomation.name,
+            logger=logging.getLogger(),
+        )
 
 
-class TestScriptMigration(DBTest):
+class DBTest(QueuesDBTest, AutomationDBTest):
+    def setUp(self):
+        super().setUp()
+
+
+class TestScriptMigration(AutomationDBTest):
     def testMigration(self):
         migrateScriptsFromSettings("test_clearing", "test_finished", "test_cooldown")
         self.assertEqual(
-            Event.get(name=CustomEvents.PRINT_SUCCESS.event).script.body,
+            EventHook.get(name=CustomEvents.PRINT_SUCCESS.event).script.body,
             "test_clearing",
         )
         self.assertEqual(
-            Event.get(name=CustomEvents.FINISH.event).script.body, "test_finished"
+            EventHook.get(name=CustomEvents.FINISH.event).script.body, "test_finished"
         )
         self.assertEqual(
-            Event.get(name=CustomEvents.COOLDOWN.event).script.body, "test_cooldown"
+            EventHook.get(name=CustomEvents.COOLDOWN.event).script.body, "test_cooldown"
         )
 
     def testMigrationEmpty(self):
         migrateScriptsFromSettings("test_clearing", "test_finished", "")
         self.assertEqual(
-            Event.select().where(Event.name == CustomEvents.COOLDOWN.event).count(), 0
+            EventHook.select()
+            .where(EventHook.name == CustomEvents.COOLDOWN.event)
+            .count(),
+            0,
         )
 
     def testMigrationNone(self):
         migrateScriptsFromSettings("test_clearing", "test_finished", None)
         self.assertEqual(
-            Event.select().where(Event.name == CustomEvents.COOLDOWN.event).count(), 0
+            EventHook.select()
+            .where(EventHook.name == CustomEvents.COOLDOWN.event)
+            .count(),
+            0,
         )
 
 
-class TestMigration(DBTest):
+class TestMigration(QueuesDBTest):
     def testMigrationEmptyDict(self):
         migrateFromSettings({})
         self.assertEqual(Job.select().count(), 0)
@@ -157,7 +175,7 @@ class TestMigration(DBTest):
         self.assertEqual(s2.completed, s.count - s.remaining)
 
 
-class TestEmptyJob(DBTest):
+class TestEmptyJob(QueuesDBTest):
     def setUp(self):
         super().setUp()
         self.j = Job.create(queue=self.q, name="a", rank=0, count=5, remaining=5)
@@ -170,7 +188,7 @@ class TestEmptyJob(DBTest):
         self.assertEqual(self.j.remaining, 4)
 
 
-class TestJobWithSet(DBTest):
+class TestJobWithSet(QueuesDBTest):
     def setUp(self):
         super().setUp()
         self.j = Job.create(
@@ -267,7 +285,7 @@ class TestJobWithSet(DBTest):
         self.assertEqual([s.path for s in j2.sets], [s.path for s in j.sets])
 
 
-class TestMultiSet(DBTest):
+class TestMultiSet(QueuesDBTest):
     def setUp(self):
         super().setUp()
         self.j = Job.create(
@@ -299,7 +317,7 @@ class TestMultiSet(DBTest):
         self.assertEqual(self.j.next_set(p), self.s[1])
 
 
-class TestSet(DBTest):
+class TestSet(QueuesDBTest):
     def setUp(self):
         super().setUp()
         self.j = Job.create(

@@ -24,7 +24,7 @@ from .queues.abstract import Strategy
 from .storage.database import (
     migrateFromSettings,
     migrateScriptsFromSettings,
-    init as init_db,
+    init_db,
     DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
 )
@@ -228,6 +228,9 @@ class CPQPlugin(ContinuousPrintAPI):
         if prof is not None and prof != "":
             data["profiles"] = [prof]
         return data
+
+    def _set_external_symbols(self, data):
+        self._runner.set_external_symbols(data)
 
     def _path_on_disk(self, path: str, sd: bool):
         try:

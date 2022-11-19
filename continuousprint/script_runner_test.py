@@ -4,17 +4,15 @@ from collections import namedtuple
 from unittest.mock import MagicMock
 from .script_runner import ScriptRunner
 from .data import CustomEvents
-from .storage.database_test import DBTest
-from .storage.queries import assignScriptsAndEvents
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 LI = namedtuple("LocalItem", ["sd", "path", "job"])
 LJ = namedtuple("Job", ["name"])
 
 
-class TestScriptRunner(DBTest):
+class TestScriptRunner(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.s = ScriptRunner(
