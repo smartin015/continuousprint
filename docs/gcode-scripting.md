@@ -73,18 +73,31 @@ Preprocessors are optionally added to assigned scripts in the `Events` settings 
 
 Preprocessors are evaluated using [ASTEVAL](https://newville.github.io/asteval/) which is a [Python](https://www.python.org/)-like interpreter. Most simple Python scripts will run just fine.
 
-
-If you're new to writing Python code and the [examples below](#example-conditions) don't have the answers you need, check out [here](https://wiki.python.org/moin/BeginnersGuide) for language resources.
+If you're new to writing Python code and the examples in `Settings > Continuous Print > Scripts` don't have the answers you need, check out [here](https://wiki.python.org/moin/BeginnersGuide) for language resources, or open a new [discussion on GitHub](https://github.com/smartin015/continuousprint/discussions).
 
 ### Return Value
 
-There is a restriction on the final line of code for a preprocessor, which is used to modify the behavior of the GCODE script.
+The final line of a preprocessor is used to modify the behavior of the GCODE script:
 
 * **If the last line evaluates to `True` or `False`**, then it either runs or supresses the script, respectively.
 * **If the last line evaluates to `None`**, then it suppresses the script.
-* **If the last line evalutes to a `dict` object**, then the dictionary's items are treated as keyword arguments in calling [the format() method](https://docs.python.org/3/tutorial/inputoutput.html#the-string-format-method) on the script.
+* **If the last line evalutes to a `dict` object**, then the items are injected into the GCODE script (they're treated as keyword arguments in a call to [format()](https://docs.python.org/3/tutorial/inputoutput.html#the-string-format-method))
 
-There are several default examples in `Settings > Continuous Print > Scripts & Preprocessors` within OctoPrint, which are loaded from [this YAML file](https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/preprocessors.yaml).
+To clarify that last option, if you have a GCODE script that looks like:
+
+```
+G0 X{move_dist}
+```
+
+And you have a preprocessor that looks like:
+
+```
+dict(move_dist = 10 if current['path'].endswith("_right.gcode") else -10)
+```
+
+Then the printer will receive `G0 X10` for files named e.g. `file_right.gcode` and `G0 X-10` for all other files.
+
+For more examples, see the default preprocessors and scripts in `Settings > Continuous Print > Scripts & Preprocessors` within OctoPrint. You can also browse [this YAML file](https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/preprocessors.yaml) which is the source of those entries.
 
 ### Available State
 
@@ -129,7 +142,11 @@ Note that `path`, `materials`, and `bed_temp` are all instantaneous variables ab
 
 See also `update_interpreter_symbols` in [driver.py](https://github.com/smartin015/continuousprint/blob/master/continuousprint/driver.py) for how state is constructed and sent to the interpreter.
 
-`external` is where you'll find any custom data you inject via `/automation/external` - see the [API docs](/api/#inject-custom-data-into-preprocessor-state) for details.
+### External State
+
+The `external` section of the state example above is where you'll find any custom data you inject via POST request to `/automation/external` - see the [API docs](/api/#inject-external-data-into-preprocessor-state) for details.
+
+External data can come from anywhere that can reach your OctoPrint instance on the network - microservices, CRON jobs, IOT and other embedded systems, etc. However, ASTEVAL disables many of the more complex features of Python for security reasons. For this reason, you may want to do heavy processing (e.g. image or video segmentation, object detection, point cloud processing) elsewhere and then push only the information needed to format the event script.
 
 ## Contributing
 

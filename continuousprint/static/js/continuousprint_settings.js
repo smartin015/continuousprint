@@ -156,29 +156,40 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         n += ".gcode";
       }
       downloadFile(n, s.body());
-    }
+    };
+
     self.downloadPreprocessor = function(p) {
       let n = p.name()
       if (!n.endsWith(".py")) {
         n += ".py";
       }
       downloadFile(n, p.body());
-    }
+    };
+
+    self.actionPreprocessorChanged = function(vm, e) {
+      if (e.target.value === "ADDNEW") {
+        p = self.addPreprocessor("", "", true);
+        vm.preprocessor(p);
+        self.gotoTab("scripts");
+      }
+    };
 
     self.addScript = function(name, body, expanded) {
       let s = mkScript(name, body, expanded);
       self.scripts.push(s);
       return s;
-    }
+    };
+
     self.addPreprocessor = function(name, body, expanded) {
       let p = mkScript(name, body, expanded);
       self.preprocessors.push(p);
       return p;
-    }
+    };
+
     self.rmScript = function(s) {
       for (let e of self.events()) {
         for (let a of e.actions()) {
-          if (a.script() == s.name()) {
+          if (a.script == s) {
             e.actions.remove(a);
           }
         }
@@ -188,12 +199,12 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.rmPreprocessor = function(p) {
       for (let e of self.events()) {
         for (let a of e.actions()) {
-          if (a.preprocessor() == p.name()) {
-            e.actions.remove(a);
+          if (a.preprocessor() == p) {
+            a.preprocessor(null);
           }
         }
       }
-      self.preprocessors.remove(s);
+      self.preprocessors.remove(p);
     }
     self.gotoScript = function(s) {
       s.expanded(true);
@@ -210,7 +221,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       }
       e.actions.push({
         script: s,
-        preprocessor: ko.observable(""),
+        preprocessor: ko.observable(null),
       });
     };
     self.rmAction = function(e, a) {
@@ -329,9 +340,13 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       for (let e of self.events()) {
         let ks = [];
         for (let a of e.actions()) {
+          let pp = a.preprocessor()
+          if (pp !== null) {
+            pp = pp.name();
+          }
           ks.push({
             script: a.script.name(),
-            preprocessor: a.preprocessor(),
+            preprocessor: pp,
           });
         }
         if (ks.length !== 0) {

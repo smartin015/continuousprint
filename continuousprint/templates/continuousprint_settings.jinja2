@@ -83,11 +83,12 @@
               </div>
               <div class="subheader" data-bind="text: script.preview"></div>
             </div>
-            <select style="flex: 1" data-bind="value: preprocessor">
-              <option value=""></option>
+            <select style="flex: 1" data-bind="value: preprocessor, event: {change: $root.actionPreprocessorChanged}">
+              <option data-bind="value: null"></option>
               <!-- ko foreach: $root.preprocessors -->
-                <option data-bind="value: name, text: name"></option>
+                <option data-bind="value: $data, text: name"></option>
               <!-- /ko -->
+              <option data-bind="value: "ADDNEW">Add New...</option>
             </select>
             <div style="width: 30px" data-bind="click: (v) => $root.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
           </div>
@@ -134,10 +135,10 @@
               </div>
             </div>
             <div style="width: 30px">
-              <div data-bind="click: $root.downloadScript"><i class="fa fa-download"></i></div>
+              <div data-bind="click: $root.downloadScript" title="Download"><i class="fa fa-download"></i></div>
             </div>
             <div style="width: 30px">
-              <div data-bind="click: $root.rmScript"><i class="far fa-trash-alt"></i></div>
+              <div data-bind="click: $root.rmScript" title="Delete"><i class="far fa-trash-alt"></i></div>
             </div>
           </div>
           <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
@@ -149,19 +150,20 @@
         </div>
       </div> <!-- foreach scripts -->
 
+      <div style="text-align: right">
+        <button class="btn" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
+          <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Load from Profile
+        </button>
 
-      <button class="btn pull-right" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
-        <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Load from Profile
-      </button>
+        <label class="btn">
+          <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadScriptFromFile($element.files[0]) }}"/>
+          <i class="fa fa-upload"></i>&nbsp;Upload File
+        </label>
 
-			<label class="btn pull-right">
-				<input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadScriptFromFile($element.files[0]) }}"/>
-        <i class="fa fa-upload"></i>&nbsp;Upload File
-			</label>
-
-      <button class="btn pull-right" data-bind="click: () => addScript()" title="Create a new script">
-        <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Script
-      </button>
+        <button class="btn" data-bind="click: () => addScript()" title="Create a new script">
+          <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Script
+        </button>
+      </div>
 
       <legend>Preprocessors</legend>
       <p>
@@ -185,10 +187,10 @@
               </div>
             </div>
             <div style="width: 30px">
-              <div data-bind="click: $root.downloadPreprocessor"><i class="fa fa-download"></i></div>
+              <div data-bind="click: $root.downloadPreprocessor" title="Download"><i class="fa fa-download"></i></div>
             </div>
             <div style="width: 30px">
-              <div data-bind="click: $root.rmPreprocessor"><i class="far fa-trash-alt"></i></div>
+              <div data-bind="click: $root.rmPreprocessor" title="Delete"><i class="far fa-trash-alt"></i></div>
             </div>
           </div>
           <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
@@ -200,14 +202,16 @@
         </div>
       </div> <!-- foreach preprocessors -->
 
-			<label class="btn pull-right">
-				<input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadPreprocessorFromFile($element.files[0]) }}"/>
-        <i class="fa fa-upload"></i>&nbsp;Upload File
-			</label>
+      <div style="text-align: right">
+        <label class="btn">
+          <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadPreprocessorFromFile($element.files[0]) }}"/>
+          <i class="fa fa-upload"></i>&nbsp;Upload File
+        </label>
 
-      <button class="btn pull-right" data-bind="click: addPreprocessor" title="Create a new Preprocessor">
-        <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Preprocessor
-      </button>
+        <button class="btn" data-bind="click: () => addPreprocessor()" title="Create a new Preprocessor">
+          <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Preprocessor
+        </button>
+      </div>
     </form>
   </div> <!-- /settings_continuousprint_scripts -->
 

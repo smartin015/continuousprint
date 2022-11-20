@@ -465,7 +465,9 @@ def assignAutomation(scripts, preprocessors, events):
             p[k] = Preprocessor.create(name=k, body=v)
         for k, e in events.items():
             for i, a in enumerate(e):
-                pre = None if a.get("preprocessor", "") == "" else p[a["preprocessor"]]
+                pre = None
+                if a.get("preprocessor") not in ("", None):
+                    pre = p[a["preprocessor"]]
                 EventHook.create(
                     name=k, script=s[a["script"]], preprocessor=pre, rank=i
                 )
@@ -474,7 +476,7 @@ def assignAutomation(scripts, preprocessors, events):
 def getAutomation():
     scripts = dict()
     preprocessors = dict()
-    events = dict()
+    events = dict([(e.displayName, []) for e in CustomEvents])
     for s in Script.select():
         scripts[s.name] = s.body
     for p in Preprocessor.select():
@@ -484,8 +486,6 @@ def getAutomation():
         .join_from(EventHook, Script, JOIN.LEFT_OUTER)
         .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
     ):
-        if e.name not in events:
-            events[e.name] = []
         events[e.name].append(
             dict(
                 script=e.script.name,

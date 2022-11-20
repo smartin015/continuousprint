@@ -91,14 +91,26 @@ class ScriptRunner:
         self._symbols["external"] = symbols
 
     def _get_interpreter(self):
-        interp = Interpreter()
+        out = StringIO()
+        interp = Interpreter(writer=out)
         interp.symtable = self._symbols.copy()
-        return interp
+        return interp, out
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        gcode = genEventScript(evt, self._get_interpreter(), self._logger)
-
-        self._do_msg(evt, running=gcode != "")
+        interp = self._get_interpreter()
+        gcode = genEventScript(evt, interp, self._logger)
+        if len(interp.error) > 0:
+            for err in interp.error:
+                self._logger.error(err.get_error())
+                self._msg(f"{evt.displayName}:\n{err.get_error()}", type="error")
+            gcode = "@pause"  # Exceptions mean we must wait for the user to act
+        else:
+            out.seek(0)
+            interp_output = out.read().strip()
+            if len(interp_output) > 0:
+                self._msg(f"{evt.displayName}:\n{interp_output}")
+            else:
+                self._do_msg(evt, running=(gcode != ""))
 
         # Cancellation happens before custom scripts are run
         if evt == CustomEvents.PRINT_CANCEL:

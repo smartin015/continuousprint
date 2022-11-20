@@ -96,3 +96,9 @@ class TestScriptRunner(unittest.TestCase):
         self.s._printer.select_file.side_effect = InvalidFileType()
         self.assertEqual(self.s.start_print(LI(True, "a.gcode", LJ("job1"))), False)
         self.s._fire_event.assert_not_called()
+
+    def test_run_script_for_event_has_errors(self):
+        self.skipTest("TODO ensure @pause is run and output is sent to _msg")
+
+    def test_run_script_for_event_has_output(self):
+        self.skipTest("TODO ensure output calls _msg, overrides default do_msg")

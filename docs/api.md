@@ -114,16 +114,16 @@ This starts and stops continuous print management of the printer.
 Same as `/state` above
 
 
-## Inject custom data into preprocessor state
+## Inject external data into preprocessor state
 
 **Request**
 
 **`HTTP POST http://printer:5000/plugin/continuousprint/automation/external`**
 
-Payload: any JSON dictionary object
+Payload: any [JSON](https://www.w3schools.com/js/js_json_intro.asp) dictionary object, e.g. `{"a": 1, "b": "hello"}`
 
-This makes custom data available to [Preprocessors](/gcode-scripting.md).
+This makes external data available to [Preprocessors](/gcode-scripting.md).
 
 **Response**
 
-`"ok"`
+`OK` if the data was successfully injected.
