@@ -118,7 +118,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         self.default_scripts[profile.defaults.finished], true);
     }
 
-    function loadFromFile(file, cb) {
+    self.loadFromFile = function(file, cb) {
       // Inspired by https://stackoverflow.com/a/14155586
       if(!window.FileReader) return;
       var reader = new FileReader();
@@ -131,11 +131,11 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           cb(file.name, evt.target.result, false);
       };
       reader.readAsText(file);
-    }
-    self.loadScriptFromFile = (f) => loadFromFile(f, self.addScript);
-    self.loadPreprocessorFromFile = (f) => loadFromFile(f, self.addPreprocessor);
+    };
+    self.loadScriptFromFile = (f) => self.loadFromFile(f, self.addScript);
+    self.loadPreprocessorFromFile = (f) => self.loadFromFile(f, self.addPreprocessor);
 
-   function downloadFile(filename, body) {
+   self.downloadFile = function(filename, body) {
      // https://stackoverflow.com/a/45831357
      var blob = new Blob([body], {type: 'text/plain'});
      if (window.navigator && window.navigator.msSaveOrOpenBlob) {
@@ -155,7 +155,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       if (!n.endsWith(".gcode")) {
         n += ".gcode";
       }
-      downloadFile(n, s.body());
+      self.downloadFile(n, s.body());
     };
 
     self.downloadPreprocessor = function(p) {
@@ -163,7 +163,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       if (!n.endsWith(".py")) {
         n += ".py";
       }
-      downloadFile(n, p.body());
+      self.downloadFile(n, p.body());
     };
 
     self.actionPreprocessorChanged = function(vm, e) {
