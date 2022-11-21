@@ -226,6 +226,13 @@ test('addAction, rmAction', () => {
   expect(e.actions().length).toEqual(0);
 });
 
+test('script or preprocessor naming collision blocks submit', () =>{
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  v.addScript();
+  v.addScript();
+  expect(v.settings.exchanging()).toEqual(true);
+});
+
 test('registrations of script / preprocessor are tracked', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
   let s = v.addScript();
@@ -272,12 +279,14 @@ test('add new preprocessor from Events tab', () =>{
     ])
   }]);
   let a = v.events()[0].actions()[0]
-  v.actionPreprocessorChanged(a, {target: {value: "a preprocessor"}});
+  a.preprocessor(null);
+  v.actionPreprocessorChanged(a);
   expect(v.preprocessors().length).toBe(0);
   expect(a.preprocessor()).toBe(null);
   expect(v.gotoTab).not.toHaveBeenCalled();
 
-  v.actionPreprocessorChanged(v.events()[0].actions()[0], {target: {value: "ADDNEW"}});
+  a.preprocessor('ADDNEW');
+  v.actionPreprocessorChanged(a);
   expect(v.preprocessors().length).toBe(1);
   expect(a.preprocessor()).not.toBe(null);
   expect(v.gotoTab).toHaveBeenCalled();

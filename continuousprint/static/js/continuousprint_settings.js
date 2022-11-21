@@ -48,38 +48,14 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     // As of 2022-05-31, 'exchanging()' is only used for display and not for logic.
     self.settings.exchanging_orig = self.settings.exchanging;
     self.settings.exchanging = ko.pureComputed(function () {
-        return self.settings.exchanging_orig() || !self.allValidQueueNames() || !self.allValidQueueAddr();
+        return self.settings.exchanging_orig() ||
+          !self.allValidQueueNames() || !self.allValidQueueAddr() ||
+          !self.allUniqueScriptNames() || !self.allUniquePreprocessorNames();
     });
 
     self.queues = ko.observableArray();
     self.queue_fingerprint = null;
     self.scripts = ko.observableArray([]);
-    function mkScript(name, body, expanded) {
-      let b = ko.observable(body || "");
-      let n = ko.observable(name || "");
-      return {
-        name: n,
-        body: b,
-        expanded: ko.observable((expanded === undefined) ? true : expanded),
-        preview: ko.computed(function() {
-          let flat = b().replace('\n', ' ');
-          return (flat.length > 32) ? flat.slice(0, 29) + "..." : flat;
-        }),
-        registrations: ko.computed(function() {
-          let nn = n();
-          let result = [];
-          for (let e of self.events()) {
-            for (let a of e.actions()) {
-              if (a.script.name() == nn || a.preprocessor() == nn) {
-                result.push(e.display);
-              }
-            }
-          }
-          return result;
-        }),
-      };
-    }
-
     self.preprocessors = ko.observableArray([]);
     self.events = ko.observableArray([]);
     self.scripts_fingerprint = null;
@@ -107,14 +83,48 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       cpset.cp_printer_profile(profile.name);
     };
 
+    self.preprocessorSelectOptions = ko.computed(function() {
+      let result = [{name: '', value: null}, {name: 'Add new...', value: 'ADDNEW'}];
+      for (let p of self.preprocessors()) {
+        result.push({name: p.name(), value: p});
+      }
+      return result;
+    });
+
+    function mkScript(name, body, expanded) {
+      let b = ko.observable(body || "");
+      let n = ko.observable(name || "");
+      return {
+        name: n,
+        body: b,
+        expanded: ko.observable((expanded === undefined) ? true : expanded),
+        preview: ko.computed(function() {
+          let flat = b().replace('\n', ' ');
+          return (flat.length > 32) ? flat.slice(0, 29) + "..." : flat;
+        }),
+        registrations: ko.computed(function() {
+          let nn = n();
+          let result = [];
+          for (let e of self.events()) {
+            for (let a of e.actions()) {
+              if (a.script.name() == nn || a.preprocessor() == nn) {
+                result.push(e.display);
+              }
+            }
+          }
+          return result;
+        }),
+      };
+    }
+
     self.loadScriptsFromProfile = function() {
       let profile = (self.profiles[self.selected_make()] || {})[self.selected_model()];
       if (profile === undefined) {
         return;
       }
-      self.addScript(`Clear Bed (${profile.name}`,
+      self.addScript(`Clear Bed (${profile.name})`,
         self.default_scripts[profile.defaults.clearBed], true);
-      self.addScript(`Finish (${profile.name}`,
+      self.addScript(`Finish (${profile.name})`,
         self.default_scripts[profile.defaults.finished], true);
     }
 
@@ -166,8 +176,8 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       self.downloadFile(n, p.body());
     };
 
-    self.actionPreprocessorChanged = function(vm, e) {
-      if (e.target.value === "ADDNEW") {
+    self.actionPreprocessorChanged = function(vm) {
+      if (vm.preprocessor() === "ADDNEW") {
         p = self.addPreprocessor("", "", true);
         vm.preprocessor(p);
         self.gotoTab("scripts");
@@ -227,6 +237,28 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.rmAction = function(e, a) {
       e.actions.remove(a);
     }
+    self.allUniqueScriptNames = ko.computed(function() {
+      let names = new Set();
+      for (let s of self.scripts()) {
+        let n = s.name();
+        if (names.has(n)) {
+          return false;
+        }
+        names.add(n);
+      }
+      return true;
+    });
+    self.allUniquePreprocessorNames = ko.computed(function() {
+      let names = new Set();
+      for (let p of self.preprocessors()) {
+        let n = p.name();
+        if (names.has(n)) {
+          return false;
+        }
+        names.add(n);
+      }
+      return true;
+    });
 
     self.newBlankQueue = function() {
       self.queues.push({name: "", addr: "", strategy: ""});
@@ -284,6 +316,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
         self.queues(queues);
         self.queue_fingerprint = JSON.stringify(queues);
       });
+
       self.api.get(self.api.AUTOMATION, (result) => {
         let scripts = {};
         for (let k of Object.keys(result.scripts)) {
@@ -299,6 +332,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
 
         let events = []
         for (let k of custom_events) {
+          console.log(k);
           let actions = [];
           for (let a of result.events[k.event] || []) {
             actions.push({
@@ -312,6 +346,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           });
         }
         events.sort((a, b) => a.display < b.display);
+        console.log("Events", events);
         self.events(events);
         self.scripts_fingerprint = JSON.stringify(result);
       });
