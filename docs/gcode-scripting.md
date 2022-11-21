@@ -14,7 +14,7 @@ Event scripts, just like 3D print files, are in GCODE. Each script is a series o
 
 GCODE scripts can be quite complex - it's recommended to load default scripts if you're just getting started, or as examples to modify. If you want to learn to make your own scripts, try reading through [this primer](https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/).
 
-## Load Defaults
+### Load Defaults
 
 If your 3D printer is common, you should first check the user-contributed default scripts for your printer.
 
@@ -29,7 +29,7 @@ To load default scripts:
 
 If you want to contribute a change or a new default script, read the [Contributing](#contributing) section below. You can browse through all the scripts [here](https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/gcode_scripts.yaml).
 
-## Custom Scripts
+### Custom Scripts
 
 You can also set up your own custom scripts to run when events happen.
 
@@ -97,6 +97,18 @@ dict(move_dist = 10 if current['path'].endswith("_right.gcode") else -10)
 
 Then the printer will receive `G0 X10` for files named e.g. `file_right.gcode` and `G0 X-10` for all other files.
 
+### Notifications
+
+If you want to display any output from running your script, use the `print()` function like so:
+
+```
+print("Hello there!")
+```
+
+This will cause a status message to pop up with your printed message displayed. Multiple calls to `print` will be concatenated and shown in a single message.
+
+### Examples
+
 For more examples, see the default preprocessors and scripts in `Settings > Continuous Print > Scripts & Preprocessors` within OctoPrint. You can also browse [this YAML file](https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/preprocessors.yaml) which is the source of those entries.
 
 ### Available State
@@ -142,6 +154,10 @@ Note that `path`, `materials`, and `bed_temp` are all instantaneous variables ab
 
 See also `update_interpreter_symbols` in [driver.py](https://github.com/smartin015/continuousprint/blob/master/continuousprint/driver.py) for how state is constructed and sent to the interpreter.
 
+### State Carryover
+
+Any variable that you set when running a Preprocessor will also be made available to preprocessors that run after on the same event.
+
 ### External State
 
 The `external` section of the state example above is where you'll find any custom data you inject via POST request to `/automation/external` - see the [API docs](/api/#inject-external-data-into-preprocessor-state) for details.
@@ -156,5 +172,6 @@ When you come up with a useful script for e.g. clearing the print bed, consider 
 2. Go to [printer_profiles.yaml](https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/printer_profiles.yaml) and check to see if your printer make and model are present. If they aren't, click the pencil icon on the top right of the file to begin editing.
 3. When you're done adding details, save it to a new branch of your fork.
 4. Now go to [gcode_scripts.yaml](https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/gcode_scripts.yaml) and edit it in the same way, adding your gcode and any additional fields.
+5. Do the same for any new preprocessors with [preprocessors.yaml](https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/preprocessors.yaml).
 5. Save your changes - to a new branch if you didn't have to do anything on step 2, otherwise to the same branch you created earlier.
 6. Check one last time that the script names match those provided in your printer profiles `defaults` section, then submit a pull request. **Make sure to do a PR against the `rc` branch, NOT the `master` branch.**

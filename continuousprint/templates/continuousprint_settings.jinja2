@@ -79,17 +79,21 @@
             <i class="fas fa-grip-vertical"></i>
             <div style="flex:1">
               <div>
+              Script:
               <a style="cursor: pointer" data-bind="text: script.name, click: () => $root.gotoScript(script)"></a>
               </div>
               <div class="subheader" data-bind="text: script.preview"></div>
             </div>
-            <select style="flex: 1" data-bind="value: preprocessor, event: {change: $root.actionPreprocessorChanged}">
-              <option data-bind="value: null"></option>
-              <!-- ko foreach: $root.preprocessors -->
-                <option data-bind="value: $data, text: name"></option>
-              <!-- /ko -->
-              <option data-bind="value: "ADDNEW">Add New...</option>
-            </select>
+            <label>
+              Preprocessor<sup><a href="http://localhost:8000/gcode-scripting/#preprocessors" target="_blank">?</a></sup>:
+              <select style="flex: 1" data-bind="value: preprocessor, event: {change: $root.actionPreprocessorChanged}">
+                <option data-bind="value: null"></option>
+                <!-- ko foreach: $root.preprocessors -->
+                  <option data-bind="value: $data, text: name"></option>
+                <!-- /ko -->
+                <option data-bind="value: "ADDNEW">Add New...</option>
+              </select>
+            </label>
             <div style="width: 30px" data-bind="click: (v) => $root.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
           </div>
         </div> <!-- foreach actions -->

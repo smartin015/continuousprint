@@ -201,13 +201,13 @@ class TestDriver(DBTest):
             logger=logging.getLogger(),
         )
         self.d.set_retry_on_pause(True)
-        self.d.action(DA.DEACTIVATE, DP.IDLE)
 
     def _setup_condition(self, cond, path=None):
         self.d.state = self.d._state_inactive
-        queries.assignScriptsAndEvents(
+        queries.assignAutomation(
             dict(foo="G0 X20"),
-            {CustomEvents.ACTIVATE.event: [dict(script="foo", condition=cond)]},
+            dict(bar=cond),
+            {CustomEvents.ACTIVATE.event: [dict(script="foo", preprocessor="bar")]},
         )
         self.d.action(DA.ACTIVATE, DP.IDLE, path=path)
 
@@ -221,7 +221,8 @@ class TestDriver(DBTest):
 
     def test_conditional_error(self):
         self._setup_condition("1 / 0")
-        self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
+        # Pauses via script run
+        self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
 
     def test_conditional_print_volume(self):
         depthpath = "metadata['analysis']['dimensions']['depth']"
@@ -238,8 +239,8 @@ class TestDriver(DBTest):
         self.assertEqual(self.d.state.__name__, self.d._state_idle.__name__)
 
     def test_external_symbols(self):
-        self.s.set_external_symbols = dict(foo="bar")
-        self._setup_condition("external.foo == 'bar'", path="foo.gcode")
+        self.s.set_external_symbols(dict(foo="bar"))
+        self._setup_condition("external['foo'] == 'bar'", path="foo.gcode")
         self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
 
 

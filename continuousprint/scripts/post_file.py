@@ -7,8 +7,6 @@ import shutil
 import threading
 from pathlib import Path
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 class Runner:
     def __init__(self, args):
@@ -67,6 +65,7 @@ class Runner:
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
     import argparse
 
     parser = argparse.ArgumentParser()

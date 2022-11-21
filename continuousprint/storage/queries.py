@@ -463,7 +463,11 @@ def assignAutomation(scripts, preprocessors, events):
         p = dict()
         for k, v in preprocessors.items():
             p[k] = Preprocessor.create(name=k, body=v)
+
+        validEvents = set([e.event for e in CustomEvents])
         for k, e in events.items():
+            if k not in validEvents:
+                raise KeyError(f"No such CPQ event {k}, options: {validEvents}")
             for i, a in enumerate(e):
                 pre = None
                 if a.get("preprocessor") not in ("", None):
@@ -476,7 +480,7 @@ def assignAutomation(scripts, preprocessors, events):
 def getAutomation():
     scripts = dict()
     preprocessors = dict()
-    events = dict([(e.displayName, []) for e in CustomEvents])
+    events = dict([(e.event, []) for e in CustomEvents])
     for s in Script.select():
         scripts[s.name] = s.body
     for p in Preprocessor.select():
@@ -509,7 +513,7 @@ def genEventScript(evt: CustomEvents, interp=None, logger=None) -> str:
     ):
         procval = True
         if e.preprocessor is not None and e.preprocessor.body.strip() != "":
-            procval = interp(e.preprocessor)
+            procval = interp(e.preprocessor.body)
             if logger:
                 logger.info(
                     f"EventHook preprocessor for script {e.script.name} ({e.preprocessor.name}): {e.preprocessor.body}\nSymbols: {interp.symtable}\nResult: {procval}"

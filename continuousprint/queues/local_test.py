@@ -20,7 +20,7 @@ from dataclasses import dataclass, asdict
 class TestAbstractImpl(AbstractQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
-        super().setUp()
+        QueuesDBTest.setUp(self)
         self.q = LocalQueue(
             queries,
             "local",
@@ -36,7 +36,7 @@ class TestAbstractImpl(AbstractQueueTests, QueuesDBTest):
 class TestEditableImpl(EditableQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
-        super().setUp()
+        QueuesDBTest.setUp(self)
         self.q = LocalQueue(
             queries,
             "local",
@@ -181,13 +181,12 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         )
 
 
-# TODO test SD card behavior on importing/exporting and printing
-# class TestSD(unittest.TestCase):
-#    def testSDExport(self):
-#        raise NotImplementedError
-#
-#    def testSDImport(self):
-#        raise NotImplementedError
-#
-#    def testSDPrintExists(self):
-#        raise NotImplementedError
+class TestSD(unittest.TestCase):
+    def testSDExport(self):
+        self.skipTest("TODO")
+
+    def testSDImport(self):
+        self.skipTest("TODO")
+
+    def testSDPrintExists(self):
+        self.skipTest("TODO")

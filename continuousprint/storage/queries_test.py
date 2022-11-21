@@ -370,17 +370,27 @@ class TestMultiItemQueue(QueuesDBTest):
 
 class TestAutomation(AutomationDBTest):
     def testAssignGet(self):
+        evt = CustomEvents.PRINT_SUCCESS.event
         q.assignAutomation(
-            dict(foo="bar"), dict(), dict(evt=[dict(script="foo", preprocessor=None)])
+            dict(foo="bar"), dict(), {evt: [dict(script="foo", preprocessor=None)]}
         )
-        self.assertEqual(
-            q.getAutomation(),
-            dict(
-                scripts=dict(foo="bar"),
-                preprocessors=dict(),
-                events=dict(evt=[dict(script="foo", preprocessor=None)]),
-            ),
-        )
+        got = q.getAutomation()
+        self.assertEqual(got["scripts"], dict(foo="bar"))
+        self.assertEqual(got["preprocessors"], dict())
+        self.assertEqual(got["events"][evt], [dict(script="foo", preprocessor=None)])
+
+    def testAssignBadEventKey(self):
+        with self.assertRaisesRegexp(KeyError, "No such CPQ event"):
+            q.assignAutomation(
+                dict(), dict(), dict(evt=[dict(script="foo", preprocessor=None)])
+            )
+
+    def testAssignMissingScript(self):
+        evt = CustomEvents.PRINT_SUCCESS.event
+        with self.assertRaises(KeyError):
+            q.assignAutomation(
+                dict(), dict(), {evt: [dict(script="foo", preprocessor=None)]}
+            )
 
     def testMultiScriptEvent(self):
         evt = CustomEvents.PRINT_SUCCESS.event

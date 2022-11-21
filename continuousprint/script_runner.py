@@ -1,5 +1,5 @@
 import time
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from asteval import Interpreter
 from pathlib import Path
@@ -92,12 +92,15 @@ class ScriptRunner:
 
     def _get_interpreter(self):
         out = StringIO()
-        interp = Interpreter(writer=out)
-        interp.symtable = self._symbols.copy()
-        return interp, out
+        err = StringIO()
+        interp = Interpreter(writer=out, err_writer=err)
+        # Merge in so default symbols (e.g. exceptions) are retained
+        for (k, v) in self._symbols.items():
+            interp.symtable[k] = v
+        return interp, out, err
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        interp = self._get_interpreter()
+        interp, out, err = self._get_interpreter()
         gcode = genEventScript(evt, interp, self._logger)
         if len(interp.error) > 0:
             for err in interp.error:
@@ -105,6 +108,10 @@ class ScriptRunner:
                 self._msg(f"{evt.displayName}:\n{err.get_error()}", type="error")
             gcode = "@pause"  # Exceptions mean we must wait for the user to act
         else:
+            err.seek(0)
+            err_output = err.read().strip()
+            if len(err_output) > 0:
+                self._logger.error(err_output)
             out.seek(0)
             interp_output = out.read().strip()
             if len(interp_output) > 0:

@@ -45,7 +45,8 @@ class AutomationDBTest(unittest.TestCase):
 
 class DBTest(QueuesDBTest, AutomationDBTest):
     def setUp(self):
-        super().setUp()
+        AutomationDBTest.setUp(self)
+        QueuesDBTest.setUp(self)
 
 
 class TestScriptMigration(AutomationDBTest):
@@ -164,9 +165,7 @@ class TestMigration(QueuesDBTest):
             rank=1,
         )
 
-        self.db = init_db(
-            self.tmpScripts.name, self.tmpQueues.name, logger=logging.getLogger()
-        )
+        self.db = init_queues(self.tmpQueues.name, logger=logging.getLogger())
 
         # Destination set both exists and has computed `completed` field.
         # We don't actually check whether the constraints were properly applied, just assume that
