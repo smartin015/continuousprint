@@ -16,7 +16,7 @@ from peewee import (
 )
 from playhouse.migrate import SqliteMigrator, migrate
 
-from ..data import CustomEvents
+from ..data import CustomEvents, PREPROCESSORS
 from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
@@ -51,14 +51,22 @@ class Script(Model):
         database = DB.automation
 
 
-class Event(Model):
+class Preprocessor(Model):
+    name = CharField(unique=True)
+    created = DateTimeField(default=datetime.datetime.now)
+    body = TextField()
+
+    class Meta:
+        database = DB.automation
+
+
+class EventHook(Model):
     name = CharField()
     script = ForeignKeyField(Script, backref="events", on_delete="CASCADE")
+    preprocessor = ForeignKeyField(
+        Preprocessor, null=True, backref="events", on_delete="CASCADE"
+    )
     rank = FloatField()
-
-    # Currently unused, this will provide https://newville.github.io/asteval/ based conditional
-    # running of the script tied to this event.
-    condition = CharField(null=True)
 
     class Meta:
         database = DB.automation
@@ -313,7 +321,7 @@ def file_exists(path: str) -> bool:
 
 
 MODELS = [Queue, Job, Set, Run, StorageDetails]
-AUTOMATION = [Script, Event]
+AUTOMATION = [Script, EventHook, Preprocessor]
 
 
 def populate_queues():
@@ -328,11 +336,13 @@ def populate_automation():
     DB.automation.create_tables(AUTOMATION)
     bc = Script.create(name=BED_CLEARING_SCRIPT, body="@pause")
     fin = Script.create(name=FINISHING_SCRIPT, body="@pause")
-    Event.create(name=CustomEvents.PRINT_SUCCESS.event, script=bc, rank=0)
-    Event.create(name=CustomEvents.FINISH.event, script=fin, rank=0)
+    EventHook.create(name=CustomEvents.PRINT_SUCCESS.event, script=bc, rank=0)
+    EventHook.create(name=CustomEvents.FINISH.event, script=fin, rank=0)
+    for pp in PREPROCESSORS.values():
+        Preprocessor.create(name=pp["name"], body=pp["body"])
 
 
-def init(automation_db, queues_db, logger=None):
+def init_db(automation_db, queues_db, logger=None):
     init_automation(automation_db, logger)
     init_queues(queues_db, logger)
 
@@ -435,8 +445,8 @@ def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script
                 continue  # Don't add empty scripts
             Script.delete().where(Script.name == name).execute()
             s = Script.create(name=name, body=body)
-            Event.delete().where(Event.name == evt.event).execute()
-            Event.create(name=evt.event, script=s, rank=0)
+            EventHook.delete().where(EventHook.name == evt.event).execute()
+            EventHook.create(name=evt.event, script=s, rank=0)
 
 
 def migrateFromSettings(data: list):

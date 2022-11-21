@@ -11,10 +11,10 @@
   const CP_EXCEPTIONS = {{plugin_continuousprint_exceptions|tojson|safe}};
 </script>
 
-<ul class="nav nav-pills">
+<ul id="settings_continuousprint_tabs" class="nav nav-pills">
   <li class="active"><a href="#settings_continuousprint_profile" data-toggle="tab">Profile</a></li>
   <li><a href="#settings_continuousprint_events" data-toggle="tab">Events</a></li>
-  <li><a href="#settings_continuousprint_scripts" data-toggle="tab">Scripts</a></li>
+  <li><a href="#settings_continuousprint_scripts" data-toggle="tab">Scripts & Preprocessors</a></li>
   <li><a href="#settings_continuousprint_integrations" data-toggle="tab">Integrations</a></li>
   <li><a href="#settings_continuousprint_queues" data-toggle="tab">Queues</a></li>
   <li><a href="#settings_continuousprint_behavior" data-toggle="tab">Behavior</a></li>
@@ -64,7 +64,7 @@
     <form class="form-horizontal">
       <legend>Events</legend>
       <p>
-        Register scripts to execute on queue events. See the Scripts pane for configuring/editing scripts.
+        Register <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('scripts')">Scripts &amp; Preprocessors</a> to execute on queue events.
       </p>
       <p>
         You can execute multiple scripts in sequence, and drag them to rearrange the execution order.
@@ -77,69 +77,42 @@
         <div data-bind="cpsortable: {foreach: actions, options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd}}">
           <div class="accordion-group header-row">
             <i class="fas fa-grip-vertical"></i>
-            <div data-bind="text: name" style="flex:1"></div>
-            <textarea rows="4" class="input-block-level" data-bind="value: condition"></textarea>
+            <div style="flex:1">
+              <div>
+              Script:
+              <a style="cursor: pointer" data-bind="text: script.name, click: () => $root.gotoScript(script)"></a>
+              </div>
+              <div class="subheader" data-bind="text: script.preview"></div>
+            </div>
+            <label>
+              Preprocessor<sup><a href="https://smartin015.github.io/continuousprint/gcode-scripting/#preprocessors" target="_blank">?</a></sup>:
+              <select style="flex: 1" data-bind="
+                  value: preprocessor,
+                  options: $root.preprocessorSelectOptions,
+                  optionsText: 'name',
+                  optionsValue: 'value',
+                  event: {change: $root.actionPreprocessorChanged}
+              ">
+              </select>
+            </label>
             <div style="width: 30px" data-bind="click: (v) => $root.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
           </div>
         </div> <!-- foreach actions -->
 
 
-        <div class="dropdown" style="width: 120px">
+        <div class="dropdown pull-right" style="width: 120px">
           <a class="btn dropdown-toggle" data-toggle="dropdown">
             Add script
             <i style="cursor: pointer" class="fa fa-caret-down"></i>
           </a>
-          <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu" data-bind="foreach: $root.scripts">
-            <li data-bind="visible: $parent.actions.indexOf(name()) === -1"><a tabindex="-1" data-bind="text: name, click: (v) => $root.addAction($parent, v)"></a></li>
+          <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+            <!-- ko foreach: $root.scripts -->
+              <li data-bind="visible: $parent.actions.indexOf(name()) === -1"><a tabindex="-1" data-bind="text: name, click: (v) => $root.addAction($parent, v)"></a></li>
+            <!-- /ko -->
+            <li><a data-bind="click: () => $root.addAction($data, null)">New Script...</a></li>
           </ul>
         </div>
       </div> <!-- foreach events -->
-
-      <legend>Bed Cooldown Settings</legend>
-        <p>
-          Some printers do not respect the <a target="_blank" href="https://marlinfw.org/docs/gcode/M190.html">M190</a> (Wait for Bed Temperature) command (see <a target="_blank" href="https://github.com/smartin015/continuousprint/issues/6">this bug</a>).
-        </p>
-        <p>Enable this if you use M190 commands in the <b>Clearing script</b> but your printer isn't properly waiting.</p>
-
-        <div class="control-group" title="This enables Bed Cooldown and exposes additional config options">
-            <label class="control-label">Enable Bed Cooldown</label>
-            <div class="controls">
-                    <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
-            </div>
-        </div>
-
-        <div id="cooldownSettings" data-bind="visible: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
-            <p>
-                When the print is finished, OctoPrint will fire the Bed Cooldown event (see above),
-                turn the heated bed off and monitor the bed temperature.
-            </p>
-            <p>
-                After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
-                met, the <b>Print Success</b> event will trigger.
-            </p>
-
-            <div class="control-group" title="Bed temperature target to reach before moving on">
-                <label class="control-label">Threshold</label>
-                <div class="controls">
-                    <div class="input-append">
-                    <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_threshold"></input>
-                    <span class="add-on">°C</span>
-                    </div>
-                </div>
-            </div>
-            <div class="control-group" title="Number of seconds to wait before moving on">
-                <label class="control-label">Timeout</label>
-                <div class="controls">
-                  <div class="input-append">
-                    <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_timeout"></input>
-                    <span class="add-on">min</span>
-                  </div>
-                </div>
-            </div>
-        </div>
-
-      </fieldset>
-
     </form>
   </div> <!-- settings_continuousprint_events -->
 
@@ -147,40 +120,121 @@
     <form class="form-horizontal">
       <legend>Scripts</legend>
       <p>
+        <strong>Scripts</strong> are made with GCODE and are attached to <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('events')">Events</a> to run whenever that event occurs.
+      </p>
+      <p>
       For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
       </p>
+
+      <div class="alert alert-error" data-bind="hidden: allUniqueScriptNames">
+        <p>
+        <i class="fas fa-exclamation-circle"></i> Two or more scripts have the same name.
+        </p>
+        <p>
+          All scripts must have a unique name for the configuration to be valid.
+        </p>
+      </div>
 
       <div class="scripts accordion" data-bind="foreach: scripts">
         <div class="accordion-group">
           <div class="accordion-heading header-row">
-            <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: expanded(true)"></i>
+            <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: () => expanded(true)"></i>
             <div style="flex: 1">
-              <div data-bind="text: name, hidden: expanded"></div>
+              <div data-bind="hidden: expanded">
+                <div data-bind="text: name"></div>
+                <div class="subheader" data-bind="visible: registrations().length > 0">Run on <span data-bind="text: registrations"></span></div>
+              </div>
               <div data-bind="visible: expanded">
-                <input type="text" data-bind="value: name"></input>
+                <input type="text" placeholder="Script Name" data-bind="value: name"></input>
               </div>
             </div>
             <div style="width: 30px">
-              <div data-bind="click: $root.rmScript"><i class="far fa-trash-alt"></i></div>
+              <div data-bind="click: $root.downloadScript" title="Download"><i class="fa fa-download"></i></div>
+            </div>
+            <div style="width: 30px">
+              <div data-bind="click: $root.rmScript" title="Delete"><i class="far fa-trash-alt"></i></div>
             </div>
           </div>
           <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
             <div class="accordion-inner">
-              <textarea rows="8" class="input-block-level" data-bind="value: body"></textarea>
-              <button class="btn btn-primary pull-right" data-bind="click: expanded(false)">Done</button>
+              <textarea placeholder="GCODE goes here" rows="8" class="input-block-level" data-bind="value: body"></textarea>
+              <button class="btn btn-primary pull-right" data-bind="click: () => expanded(false)">Done</button>
             </div>
           </div>
         </div>
       </div> <!-- foreach scripts -->
 
+      <div style="text-align: right">
+        <button class="btn" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
+          <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Load from Profile
+        </button>
 
-      <button class="btn pull-right" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
-        <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Load from Profile
-      </button>
+        <label class="btn">
+          <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadScriptFromFile($element.files[0]) }}"/>
+          <i class="fa fa-upload"></i>&nbsp;Upload File
+        </label>
 
-      <button class="btn pull-right" data-bind="click: newScript" title="Create a new script">
-        <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Script
-      </button>
+        <button class="btn" data-bind="click: () => addScript()" title="Create a new script">
+          <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Script
+        </button>
+      </div>
+
+      <legend>Preprocessors</legend>
+      <p>
+        <strong>Preprocessors</strong> are optional Python-like expressions that change the behavior of Scripts assigned in the <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('events')">Events</a> tab. Use these to add special running conditions or to inject dynamic values into your scripts.
+      </p>
+      <p>
+      For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">scripting guide</a>.
+      </p>
+
+      <div class="alert alert-error" data-bind="hidden: allUniquePreprocessorNames">
+        <p>
+        <i class="fas fa-exclamation-circle"></i> Two or more preprocessors have the same name.
+        </p>
+        <p>
+          All preprocessors must have a unique name for the configuration to be valid.
+        </p>
+      </div>
+
+      <div class="scripts accordion" data-bind="foreach: preprocessors">
+        <div class="accordion-group">
+          <div class="accordion-heading header-row">
+            <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: () => expanded(true)"></i>
+            <div style="flex: 1">
+              <div data-bind="hidden: expanded">
+                <div data-bind="text: name"></div>
+                <div class="subheader" data-bind="visible: registrations().length > 0">Run on <span data-bind="text: registrations"></span></div>
+              </div>
+              <div data-bind="visible: expanded">
+                <input placeholder="Preprocessor name" type="text" data-bind="value: name"></input>
+              </div>
+            </div>
+            <div style="width: 30px">
+              <div data-bind="click: $root.downloadPreprocessor" title="Download"><i class="fa fa-download"></i></div>
+            </div>
+            <div style="width: 30px">
+              <div data-bind="click: $root.rmPreprocessor" title="Delete"><i class="far fa-trash-alt"></i></div>
+            </div>
+          </div>
+          <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
+            <div class="accordion-inner">
+              <textarea placeholder="Pythonic code goes here" rows="8" class="input-block-level" data-bind="value: body"></textarea>
+              <button class="btn btn-primary pull-right" data-bind="click: () => expanded(false)">Done</button>
+            </div>
+          </div>
+        </div>
+      </div> <!-- foreach preprocessors -->
+
+      <div style="text-align: right">
+        <label class="btn">
+          <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadPreprocessorFromFile($element.files[0]) }}"/>
+          <i class="fa fa-upload"></i>&nbsp;Upload File
+        </label>
+
+        <button class="btn" data-bind="click: () => addPreprocessor()" title="Create a new Preprocessor">
+          <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Preprocessor
+        </button>
+      </div>
     </form>
   </div> <!-- /settings_continuousprint_scripts -->
 
@@ -330,6 +384,49 @@
           </div>
         </div>
       </fieldset>
+
+      <legend>Bed Cooldown Settings</legend>
+        <p>
+          Some printers do not respect the <a target="_blank" href="https://marlinfw.org/docs/gcode/M190.html">M190</a> (Wait for Bed Temperature) command (see <a target="_blank" href="https://github.com/smartin015/continuousprint/issues/6">this bug</a>).
+        </p>
+        <p>Enable this if you use M190 commands in the <b>Clearing script</b> but your printer isn't properly waiting.</p>
+
+        <div class="control-group" title="This enables Bed Cooldown and exposes additional config options">
+            <label class="control-label">Enable Bed Cooldown</label>
+            <div class="controls">
+                    <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
+            </div>
+        </div>
+
+        <div id="cooldownSettings" data-bind="visible: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
+            <p>
+                When the print is finished, OctoPrint will fire the Bed Cooldown event (see above),
+                turn the heated bed off and monitor the bed temperature.
+            </p>
+            <p>
+                After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
+                met, the <b>Print Success</b> event will trigger.
+            </p>
+
+            <div class="control-group" title="Bed temperature target to reach before moving on">
+                <label class="control-label">Threshold</label>
+                <div class="controls">
+                    <div class="input-append">
+                    <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_threshold"></input>
+                    <span class="add-on">°C</span>
+                    </div>
+                </div>
+            </div>
+            <div class="control-group" title="Number of seconds to wait before moving on">
+                <label class="control-label">Timeout</label>
+                <div class="controls">
+                  <div class="input-append">
+                    <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_timeout"></input>
+                    <span class="add-on">min</span>
+                  </div>
+                </div>
+            </div>
+        </div>
     </form>
   </div> <!-- settings_continuousprint_lan -->
 

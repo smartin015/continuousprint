@@ -1,6 +1,7 @@
 from peewee import IntegrityError, JOIN, fn
 from typing import Optional
 from datetime import datetime
+import re
 import time
 import base64
 
@@ -13,7 +14,8 @@ from .database import (
     DB,
     DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
-    Event,
+    EventHook,
+    Preprocessor,
     Script,
 )
 from ..data import CustomEvents
@@ -450,51 +452,97 @@ def resetHistory():
     Run.delete().execute()
 
 
-def assignScriptsAndEvents(scripts, events):
+def assignAutomation(scripts, preprocessors, events):
     with DB.automation.atomic():
-        Event.delete().execute()
+        EventHook.delete().execute()
+        Preprocessor.delete().execute()
         Script.delete().execute()
         s = dict()
         for k, v in scripts.items():
             s[k] = Script.create(name=k, body=v)
+        p = dict()
+        for k, v in preprocessors.items():
+            p[k] = Preprocessor.create(name=k, body=v)
+
+        validEvents = set([e.event for e in CustomEvents])
         for k, e in events.items():
-            print(k, e)
+            if k not in validEvents:
+                raise KeyError(f"No such CPQ event {k}, options: {validEvents}")
             for i, a in enumerate(e):
-                Event.create(
-                    name=k, script=s[a["script"]], condition=a["condition"], rank=i
+                pre = None
+                if a.get("preprocessor") not in ("", None):
+                    pre = p[a["preprocessor"]]
+                EventHook.create(
+                    name=k, script=s[a["script"]], preprocessor=pre, rank=i
                 )
 
 
-def getScriptsAndEvents():
+def getAutomation():
     scripts = dict()
-    events = dict()
+    preprocessors = dict()
+    events = dict([(e.event, []) for e in CustomEvents])
     for s in Script.select():
         scripts[s.name] = s.body
-    for e in Event.select():
-        if e.name not in events:
-            events[e.name] = []
-        events[e.name].append(dict(script=e.script.name, condition=e.condition))
+    for p in Preprocessor.select():
+        preprocessors[p.name] = p.body
+    for e in (
+        EventHook.select()
+        .join_from(EventHook, Script, JOIN.LEFT_OUTER)
+        .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
+    ):
+        events[e.name].append(
+            dict(
+                script=e.script.name,
+                preprocessor=e.preprocessor.name
+                if e.preprocessor is not None
+                else None,
+            )
+        )
 
-    return dict(scripts=scripts, events=events)
+    return dict(scripts=scripts, events=events, preprocessors=preprocessors)
 
 
 def genEventScript(evt: CustomEvents, interp=None, logger=None) -> str:
     result = []
     for e in (
-        Event.select()
-        .join(Script, JOIN.LEFT_OUTER)
-        .where(Event.name == evt.event)
-        .order_by(Event.rank)
+        EventHook.select()
+        .join_from(EventHook, Script, JOIN.LEFT_OUTER)
+        .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
+        .where(EventHook.name == evt.event)
+        .order_by(EventHook.rank)
     ):
-        should_run = True
-        if e.condition is not None and e.condition != "":
-            should_run = interp(e.condition)
+        procval = True
+        if e.preprocessor is not None and e.preprocessor.body.strip() != "":
+            procval = interp(e.preprocessor.body)
             if logger:
                 logger.info(
-                    f"Event condition for script {e.script.name}: {e.condition}\nSymbols: {interp.symtable}\nResult: {should_run}"
+                    f"EventHook preprocessor for script {e.script.name} ({e.preprocessor.name}): {e.preprocessor.body}\nSymbols: {interp.symtable}\nResult: {procval}"
                 )
-        if should_run is True:
+
+        if procval is None or procval is False:
+            continue
+        elif procval is True:
+            formatted = e.script.body
+        elif type(procval) is dict:
             if logger:
-                logger.info(f"Appending script {e.script.name}")
-            result.append(e.script.body)
+                logger.info(
+                    f"Appending script {e.script.name} using formatting data {procval}"
+                )
+            formatted = e.script.body.format(**procval)
+        else:
+            raise Exception(
+                f"Invalid return type {type(procval)} for peprocessor {e.preprocessor.name}"
+            )
+
+        leftovers = re.findall(r"\{.*?\}", formatted)
+        if len(leftovers) > 0:
+            ppname = (
+                f"f from preprocessor {e.preprocessor.name}"
+                if e.preprocessor is not None
+                else ""
+            )
+            raise Exception(
+                f"Unformatted placeholders in {e.script.name}{ppname}: {leftovers}"
+            )
+        result.append(formatted)
     return "\n".join(result)

@@ -1,5 +1,5 @@
 import time
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from asteval import Interpreter
 from pathlib import Path
@@ -28,7 +28,7 @@ class ScriptRunner:
         self._printer = printer
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
-        self._symbols = dict()
+        self._symbols = dict(current=dict(), external=dict(), metadata=dict())
 
     def _get_user(self):
         try:
@@ -68,11 +68,15 @@ class ScriptRunner:
             elif evt == CustomEvents.AWAITING_MATERIAL:
                 self._msg("Running script while awaiting material")
 
-    def update_interpreter_symbols(self, symbols):
-        self._symbols = symbols
-        path = self._symbols.get("path")
+    def set_current_symbols(self, symbols):
+        last_path = self._symbols["current"].get("path")
+        self._symbols["current"] = symbols.copy()
+
+        # Current state can change metadata
+        path = self._symbols["current"].get("path")
         if (
             path is not None
+            and path != last_path
             and self._file_manager.file_exists(FileDestinations.LOCAL, path)
             and self._file_manager.has_analysis(FileDestinations.LOCAL, path)
         ):
@@ -82,15 +86,38 @@ class ScriptRunner:
                 FileDestinations.LOCAL, path
             )
 
+    def set_external_symbols(self, symbols):
+        assert type(symbols) is dict
+        self._symbols["external"] = symbols
+
     def _get_interpreter(self):
-        interp = Interpreter()
-        interp.symtable = self._symbols.copy()
-        return interp
+        out = StringIO()
+        err = StringIO()
+        interp = Interpreter(writer=out, err_writer=err)
+        # Merge in so default symbols (e.g. exceptions) are retained
+        for (k, v) in self._symbols.items():
+            interp.symtable[k] = v
+        return interp, out, err
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        gcode = genEventScript(evt, self._get_interpreter(), self._logger)
-
-        self._do_msg(evt, running=gcode != "")
+        interp, out, err = self._get_interpreter()
+        gcode = genEventScript(evt, interp, self._logger)
+        if len(interp.error) > 0:
+            for err in interp.error:
+                self._logger.error(err.get_error())
+                self._msg(f"{evt.displayName}:\n{err.get_error()}", type="error")
+            gcode = "@pause"  # Exceptions mean we must wait for the user to act
+        else:
+            err.seek(0)
+            err_output = err.read().strip()
+            if len(err_output) > 0:
+                self._logger.error(err_output)
+            out.seek(0)
+            interp_output = out.read().strip()
+            if len(interp_output) > 0:
+                self._msg(f"{evt.displayName}:\n{interp_output}")
+            else:
+                self._do_msg(evt, running=(gcode != ""))
 
         # Cancellation happens before custom scripts are run
         if evt == CustomEvents.PRINT_CANCEL:

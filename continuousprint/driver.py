@@ -104,7 +104,7 @@ class Driver:
                 self._cur_materials = materials
             if bed_temp is not None:
                 self._bed_temp = bed_temp
-            self._runner.update_interpreter_symbols(
+            self._runner.set_current_symbols(
                 dict(
                     path=self._cur_path,
                     materials=self._cur_materials,

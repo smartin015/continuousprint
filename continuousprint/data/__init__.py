@@ -11,6 +11,11 @@ with open(os.path.join(base, "printer_profiles.yaml"), "r") as f:
 with open(os.path.join(base, "gcode_scripts.yaml"), "r") as f:
     GCODE_SCRIPTS = dict((d["name"], d) for d in yaml.safe_load(f.read())["GScript"])
 
+with open(os.path.join(base, "preprocessors.yaml"), "r") as f:
+    PREPROCESSORS = dict(
+        (d["name"], d) for d in yaml.safe_load(f.read())["Preprocessors"]
+    )
+
 
 class CustomEvents(Enum):
     ACTIVATE = (
@@ -46,7 +51,7 @@ class CustomEvents(Enum):
     AWAITING_MATERIAL = (
         "continuousprint_awaiting_material",
         "Awaiting Material",
-        "Fires once when the current job requires a different material than what is currently loaded.",
+        "Fires once when the current job requires a different material than what is currently loaded. This requires SpoolManager to be installed (see Integrations).",
     )
     DEACTIVATE = (
         "continuousprint_deactivate",

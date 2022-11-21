@@ -134,7 +134,8 @@ test('load queues and scripts on settings view shown', () => {
     } else if (typ === m[2].AUTOMATION) {
       cb({
         scripts: {a: 'g1', b: 'g2'},
-        events: {e1: ['a']},
+        preprocessors: {c: 'p1'},
+        events: {e1: [{script: 'a', preprocessor: 'c'}]},
       });
     }
   };
@@ -151,6 +152,7 @@ test('dirty exit commits queues', () => {
     } else if (typ === m[2].AUTOMATION) {
       cb({
         scripts: {},
+        preprocessors: {},
         events: {},
       });
     }
@@ -170,6 +172,7 @@ test('non-dirty exit does not call commitQueues', () => {
     } else if (typ === m[2].AUTOMATION) {
       cb({
         scripts: {},
+        preprocessors: {},
         events: {},
       });
     }
@@ -179,23 +182,113 @@ test('non-dirty exit does not call commitQueues', () => {
   v.onSettingsBeforeSave();
   expect(v.api.edit).not.toHaveBeenCalled();
 });
+
+test('addPreprocessor, rmPreprocessor', () => {
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  let p = v.addPreprocessor();
+  expect(v.preprocessors().length).toEqual(1);
+
+  // rmPreprocessor also removes from any events, without deleting the action
+  v.events([{
+    actions: ko.observableArray([
+      {script: {name: ko.observable('testscript')}, preprocessor: ko.observable(p)},
+    ])
+  }]);
+  v.rmPreprocessor(p);
+  expect(v.preprocessors().length).toEqual(0);
+  expect(v.events()[0].actions()[0].preprocessor()).toEqual(null);
+
+});
+
 test('addScript, rmScript', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
-  v.newScript();
+  v.addScript();
   expect(v.scripts().length).toEqual(1);
 
   // rmScript also removes the script from any events
-  v.events([{actions: ko.observableArray([v.scripts()[0]])}]);
+  v.events([{
+    actions: ko.observableArray([
+      {script: v.scripts()[0], preprocessor: ko.observable(null)},
+    ])
+  }]);
   v.rmScript(v.scripts()[0]);
   expect(v.scripts().length).toEqual(0);
   expect(v.events()[0].actions().length).toEqual(0);
 });
+
 test('addAction, rmAction', () => {
   let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
   let e = {"actions": ko.observableArray([])};
   let a = {script:"foo"};
   v.addAction(e, a);
-  expect(e.actions()[0].script).toEqual(a.script);
+  expect(e.actions()[0].script).toEqual(a);
   v.rmAction(e, e.actions()[0]);
   expect(e.actions().length).toEqual(0);
+});
+
+test('script or preprocessor naming collision blocks submit', () =>{
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  v.addScript();
+  v.addScript();
+  expect(v.settings.exchanging()).toEqual(true);
+});
+
+test('registrations of script / preprocessor are tracked', () => {
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  let s = v.addScript();
+  expect(s.registrations()).toEqual([]);
+  v.events([{
+    display: "testevent",
+    actions: ko.observableArray([
+      {script: s, preprocessor: ko.observable(null)},
+    ])
+  }]);
+  expect(s.registrations()).toEqual(["testevent"]);
+});
+test('loadScriptFromFile, loadPreprocessorFromFile', () => {
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  v.loadFromFile = (file, cb) => cb("name", "result", false);
+  // No file argument needed since using fake loadFromFile
+  v.loadScriptFromFile();
+  let s = v.scripts()[0];
+  expect(s.body()).toEqual("result");
+  expect(s.name()).toEqual("name");
+  v.loadPreprocessorFromFile();
+  let p = v.preprocessors()[0];
+  expect(p.body()).toEqual("result");
+  expect(p.name()).toEqual("name");
+});
+test('downloadScript, downloadPreprocessor', () => {
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  v.downloadFile = jest.fn()
+
+  v.downloadScript({name: ko.observable('foo'), body: ko.observable('bar')});
+  expect(v.downloadFile).toHaveBeenCalledWith("foo.gcode", "bar");
+
+  v.downloadPreprocessor({name: ko.observable('foo'), body: ko.observable('bar')});
+  expect(v.downloadFile).toHaveBeenCalledWith("foo.py", "bar");
+});
+test('add new preprocessor from Events tab', () =>{
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  v.gotoTab = jest.fn()
+  let s = v.addScript();
+  v.events([{
+    display: "testevent",
+    actions: ko.observableArray([
+      {script: s, preprocessor: ko.observable(null)},
+    ])
+  }]);
+  let a = v.events()[0].actions()[0]
+  a.preprocessor(null);
+  v.actionPreprocessorChanged(a);
+  expect(v.preprocessors().length).toBe(0);
+  expect(a.preprocessor()).toBe(null);
+  expect(v.gotoTab).not.toHaveBeenCalled();
+
+  a.preprocessor('ADDNEW');
+  v.actionPreprocessorChanged(a);
+  expect(v.preprocessors().length).toBe(1);
+  expect(a.preprocessor()).not.toBe(null);
+  expect(v.gotoTab).toHaveBeenCalled();
+
 });

@@ -131,6 +131,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def _preprocess_set(self, data):
         pass  # Used to auto-fill underspecified sets, e.g. add profile based on gcode analysis
 
+    @abstractmethod
+    def _set_external_symbols(self, data):
+        pass
+
     def popup(self, msg, type="popup"):
         return self._msg(dict(type=type, msg=msg))
 
@@ -325,7 +329,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITAUTOMATION)
     def edit_automation(self):
         data = json.loads(flask.request.form.get("json"))
-        queries.assignScriptsAndEvents(data["scripts"], data["events"])
+        queries.assignAutomation(data["scripts"], data["preprocessors"], data["events"])
         return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.
@@ -333,4 +337,12 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.GETAUTOMATION)
     def get_automation(self):
-        return json.dumps(queries.getScriptsAndEvents())
+        return json.dumps(queries.getAutomation())
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/automation/external", methods=["POST"])
+    @restricted_access
+    @cpq_permission(Permission.EDITAUTOMATION)
+    def set_automation_external_symbols(self):
+        self._set_external_symbols(flask.request.get_json())
+        return json.dumps("OK")
