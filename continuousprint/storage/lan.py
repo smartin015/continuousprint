@@ -61,6 +61,7 @@ class LANSetView(SetView):
             setattr(self, attr, data[attr])
         self.remaining = getint(data, "remaining", default=self.count)
         self.completed = getint(data, "completed")
+        self.estimatedPrintTime = data.get("estimatedPrintTime")
         self.material_keys = ",".join(data.get("materials", []))
         self.profile_keys = ",".join(data.get("profiles", []))
         self._resolved = None

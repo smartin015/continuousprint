@@ -183,7 +183,7 @@ def _upsertSet(set_id, data, job):
             "remaining",
         ):
             v = min(int(v), MAX_COUNT)
-
+        print("setattr", k, v)
         setattr(s, k, v)
     s.job = job
 
@@ -227,6 +227,8 @@ def updateJob(job_id, data, queue=DEFAULT_QUEUE):
             for i, s in enumerate(data["sets"]):
                 s["rank"] = float(i)
                 _upsertSet(s["id"], s, j)
+
+        print("updateJob() with ", data)
 
         j.save()
         return Job.get(id=job_id).as_dict()
@@ -343,6 +345,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
         material_keys=",".join(data.get("materials", "")),
         profile_keys=",".join(data.get("profiles", "")),
         count=count,
+        estimatedPrintTime=data.get("estimatedPrintTime", None),
         remaining=getint(data, "remaining", count),
         completed=getint(data, "completed"),
         job=j,

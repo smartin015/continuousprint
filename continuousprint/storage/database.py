@@ -225,6 +225,7 @@ class SetView:
         return dict(
             path=self.path,
             count=self.count,
+            estimatedPrintTime=self.estimatedPrintTime,
             materials=self.materials(),
             profiles=self.profiles(),
             id=self.id,
@@ -241,6 +242,11 @@ class Set(Model, SetView):
     job = ForeignKeyField(Job, backref="sets", on_delete="CASCADE")
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count >= 0")])
+
+    # Print time estimates are assigned on set creation - they are
+    # only as accurate as the provider's ability to estimate.
+    estimatedPrintTime = FloatField(null=True)
+
     remaining = IntegerField(
         # Unlike Job, Sets can have remaining > count if the user wants to print
         # additional sets as a one-off correction (e.g. a print fails)
@@ -421,8 +427,23 @@ def init_queues(db_path, logger=None):
                 details.schemaVersion = "0.0.3"
                 details.save()
 
-            if details.schemaVersion != "0.0.3":
-                raise Exception("Unknown DB schema version: " + details.schemaVersion)
+            if details.schemaVersion == "0.0.3":
+                if logger is not None:
+                    logger.warning(
+                        f"Updating schema from {details.schemaVersion} to 0.0.4"
+                    )
+                migrate(
+                    migrator.add_column(
+                        "set", "estimatedPrintTime", Set.estimatedPrintTime
+                    ),
+                )
+                details.schemaVersion = "0.0.4"
+                details.save()
+
+            if details.schemaVersion != "0.0.4":
+                raise Exception(
+                    "DB schema version is not current: " + details.schemaVersion
+                )
 
             if logger is not None:
                 logger.debug("Storage schema version: " + details.schemaVersion)

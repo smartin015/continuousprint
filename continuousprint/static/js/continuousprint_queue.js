@@ -262,6 +262,14 @@ function CPQueue(data, api, files, profile) {
       return false;
     }
 
+    self._estimatePrintTime = function(path) {
+      let f = self.files.elementByPath(path);
+      if (f !== null && f !== undefined) {
+        return (f.gcodeAnalysis || {}).estimatedPrintTime;
+      }
+      return null;
+    }
+
     self.addFile = function(data, infer_profile=false) {
         if (data.path.endsWith('.gjob')) {
           // .gjob import has a different API path
@@ -278,10 +286,15 @@ function CPQueue(data, api, files, profile) {
           }
         }
 
+        let ept = self._estimatePrintTime(data.path);
+        console.log("Adding file with print time estimate", ept);
+
+
         let set_data = {
             name: data.name,
             path: data.path,
             sd: (data.origin !== "local"),
+            estimatedPrintTime: ept,
             count: 1,
         };
 

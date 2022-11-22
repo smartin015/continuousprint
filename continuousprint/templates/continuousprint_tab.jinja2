@@ -279,6 +279,15 @@
                   <div class="remaining" data-bind="text: $root.humanize(totals().remaining)"></div>
                   <div class="total" data-bind="text: $root.humanize(totals().total)"></div>
                 </div>
+                <div class="job-stats" data-bind="hidden: !draft()">
+                  <div style="flex: 1;" title="Uses Octoprint's file analysis estimates; these may not be totally accurate">Total time<sup>?</sup></div>
+
+                  <div class="completed" data-bind="text: $root.humanTime(total_times().completed)"></div>
+                  <div class="count" data-bind="text: $root.humanTime(total_times().count)"></div>
+                  <div class="remaining" data-bind="text: $root.humanTime(total_times().remaining)"></div>
+                  <div class="total" data-bind="text: $root.humanTime(total_times().total)"></div>
+                  <div data-bind="visible: total_times().error > 0, text=`${total_times().error} sets missing time estimates"></div>
+                </div>
                 <div class="job-gutter">
                   <div class="btn" data-bind="visible: draft, click: editCancel">Cancel</div>
                   <div class="btn btn-primary cpq-leftpad" data-bind="visible: draft, click: editEnd">Save</div>
