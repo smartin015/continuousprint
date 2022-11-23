@@ -14,7 +14,7 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   };
 }
 
-function CPQueue(data, api, files, profile) {
+function CPQueue(data, api, files, profile, materials) {
     var self = this;
     self.api = api;
     self.files = files;
@@ -23,7 +23,7 @@ function CPQueue(data, api, files, profile) {
     self.addr = data.addr;
     self.jobs = ko.observableArray([]);
     self._pushJob = function(jdata) {
-      self.jobs.push(new CPJob(jdata, data.peers, self.api, profile));
+      self.jobs.push(new CPJob(jdata, data.peers, self.api, profile, materials));
     };
     for (let j of data.jobs) {
       self._pushJob(j);
@@ -262,12 +262,19 @@ function CPQueue(data, api, files, profile) {
       return false;
     }
 
-    self._estimatePrintTime = function(path) {
+    self._extractMetadata = function(path) {
+      let meta = {estimatedPrintTime: null, filamentLengths: []};
+
       let f = self.files.elementByPath(path);
       if (f !== null && f !== undefined) {
-        return (f.gcodeAnalysis || {}).estimatedPrintTime;
+        meta.estimatedPrintTime = (f.gcodeAnalysis || {}).estimatedPrintTime;
+
+        let fila = (f.gcodeAnalysis || {}).filament || {};
+        for (let tool of Object.values(fila)) {
+          meta.filamentLengths.push(tool.length);
+        }
       }
-      return null;
+      return JSON.stringify(meta);
     }
 
     self.addFile = function(data, infer_profile=false) {
@@ -286,15 +293,11 @@ function CPQueue(data, api, files, profile) {
           }
         }
 
-        let ept = self._estimatePrintTime(data.path);
-        console.log("Adding file with print time estimate", ept);
-
-
         let set_data = {
             name: data.name,
             path: data.path,
             sd: (data.origin !== "local"),
-            estimatedPrintTime: ept,
+            metadata: self._extractMetadata(data.path),
             count: 1,
         };
 

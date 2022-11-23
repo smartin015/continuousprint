@@ -225,7 +225,7 @@ class SetView:
         return dict(
             path=self.path,
             count=self.count,
-            estimatedPrintTime=self.estimatedPrintTime,
+            metadata=self.metadata,
             materials=self.materials(),
             profiles=self.profiles(),
             id=self.id,
@@ -243,9 +243,10 @@ class Set(Model, SetView):
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count >= 0")])
 
-    # Print time estimates are assigned on set creation - they are
-    # only as accurate as the provider's ability to estimate.
-    estimatedPrintTime = FloatField(null=True)
+    # Contains JSON of metadata such as print time estimates, filament length
+    # etc. These are assigned on creation and are
+    # only as accurate as the provider's ability to analyze the gcode.
+    metadata = TextField(null=True)
 
     remaining = IntegerField(
         # Unlike Job, Sets can have remaining > count if the user wants to print
@@ -438,9 +439,7 @@ def init_queues(db_path, logger=None):
                         f"Updating schema from {details.schemaVersion} to 0.0.4"
                     )
                 migrate(
-                    migrator.add_column(
-                        "set", "estimatedPrintTime", Set.estimatedPrintTime
-                    ),
+                    migrator.add_column("set", "metadata", Set.metadata),
                 )
                 details.schemaVersion = "0.0.4"
                 details.save()

@@ -196,11 +196,12 @@
   font-weight: bold;
   opacity: 0.5;
 }
+#tab_plugin_continuousprint .sets.draft {
+  border-bottom: 2px #ccc solid;
+}
 #tab_plugin_continuousprint .job-stats {
   display: flex;
   justify-content: space-between;
-  font-weight: bold;
-  border-top: 2px #ccc solid;
 }
 #tab_plugin_continuousprint .has_title {
   cursor: help;

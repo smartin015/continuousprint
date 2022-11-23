@@ -147,7 +147,7 @@ test('addFile (profile inference disabled)', () => {
      "name": "foo",
      "path": "foo.gcode",
      "sd": false,
-     "estimatedPrintTime": 123,
+     "metadata": "{\"estimatedPrintTime\": 123}",
   }, expect.any(Function));
 });
 
@@ -162,6 +162,6 @@ test('addFile (profile inference enabled)', () => {
      "path": "foo.gcode",
      "sd": false,
      "profiles": ["testprof"],
-     "estimatedPrintTime": null, // null print time is OK
+     "metadata": "{\"estimatedPrintTime\": null}", // null print time is OK
   }, expect.any(Function));
 });

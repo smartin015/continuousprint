@@ -272,21 +272,15 @@
                   </div>
                 </div>
                 </div>
-                <div class="job-stats" data-bind="hidden: !draft()">
-                  <div style="flex: 1;">Total items printed</div>
-                  <div class="completed" data-bind="text: $root.humanize(totals().completed)"></div>
-                  <div class="count" data-bind="text: $root.humanize(totals().count)"></div>
-                  <div class="remaining" data-bind="text: $root.humanize(totals().remaining)"></div>
-                  <div class="total" data-bind="text: $root.humanize(totals().total)"></div>
-                </div>
-                <div class="job-stats" data-bind="hidden: !draft()">
-                  <div style="flex: 1;" title="Uses Octoprint's file analysis estimates; these may not be totally accurate">Total time<sup>?</sup></div>
-
-                  <div class="completed" data-bind="text: $root.humanTime(total_times().completed)"></div>
-                  <div class="count" data-bind="text: $root.humanTime(total_times().count)"></div>
-                  <div class="remaining" data-bind="text: $root.humanTime(total_times().remaining)"></div>
-                  <div class="total" data-bind="text: $root.humanTime(total_times().total)"></div>
-                  <div data-bind="visible: total_times().error > 0, text=`${total_times().error} sets missing time estimates"></div>
+                <div data-bind="foreach: totals, visible: draft">
+                  <div class="job-stats">
+                    <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="display: title">?</sup></div>
+                    <div class="completed" data-bind="text: completed"></div>
+                    <div class="count" data-bind="text: count"></div>
+                    <div class="remaining" data-bind="text: remaining"></div>
+                    <div class="total" data-bind="text: total"></div>
+                    <div class="error" data-bind="visible: error, text=error"></div>
+                  </div>
                 </div>
                 <div class="job-gutter">
                   <div class="btn" data-bind="visible: draft, click: editCancel">Cancel</div>
