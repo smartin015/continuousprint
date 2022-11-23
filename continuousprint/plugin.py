@@ -519,6 +519,9 @@ class CPQPlugin(ContinuousPrintAPI):
         self.on_event(self.CPQ_ANALYSIS_FINISHED, dict(path=entry.path, result=result))
 
     def _cleanup_fileshare(self):
+        if not os.path.exists(self.fileshare_dir):
+            return n
+
         # This cleans up all non-useful fileshare files across all network queues, so they aren't just taking up space.
         # First we collect all non-local queue items hosted by us - these are excluded from cleanup as someone may need to fetch them.
         keep_hashes = set()
@@ -531,6 +534,7 @@ class CPQPlugin(ContinuousPrintAPI):
 
         # Loop through all .gjob and .gcode files in base directory and delete them if they aren't referenced or acquired by us
         n = 0
+
         for d in os.listdir(self.fileshare_dir):
             name, suffix = os.path.splitext(d)
             if suffix not in ("", ".gjob", ".gcode", ".gco"):

@@ -131,6 +131,25 @@ function CPJob(obj, peers, api, profile) {
     }
     return r;
   });
+  self.total_times = ko.computed(function() {
+    let r = {count: 0, completed: 0, remaining: 0, total: 0, error: 0};
+    for (let qs of self.sets()) {
+      let ept = qs.estimatedPrintTime();
+      if (ept === null || ept === undefined) {
+        r.error += 1;
+        continue;
+      }
+      if (!qs.profile_matches()) {
+        continue;
+      }
+
+      r.remaining += self._safeParse(qs.remaining()) * ept;
+      r.total += self._safeParse(qs.length_remaining()) * ept;
+      r.count += self._safeParse(qs.count()) * ept;
+      r.completed += self._safeParse(qs.completed()) * ept;
+    }
+    return r;
+  });
   self.checkFraction = ko.computed(function() {
     return (self.selected()) ? 1 : 0;
   });

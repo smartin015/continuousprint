@@ -65,6 +65,7 @@ function CPViewModel(parameters) {
         });
     };
 
+
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
       // We first look for any queues with draft jobs - add the file here if so
@@ -356,10 +357,25 @@ function CPViewModel(parameters) {
       self.hasSpoolManager(statusCode !== 404);
     });
 
+    self.humanTime = function(s) {
+      // Humanizes time values; parameter is seconds
+      if (s < 60) {
+        return Math.round(s) + 's';
+      } else if (s < 3600) {
+        return Math.round(s/60) + 'm';
+      } else if (s < 86400) {
+        let h = s/3600;
+        return ((h % 1 === 0) ? h : h.toFixed(1)) + 'h';
+      } else {
+        let d = s/86400;
+        return ((d % 1 === 0) ? d : d.toFixed(1)) + 'd';
+      }
+    };
+
     self.humanize = function(num) {
       // Humanizes numbers by condensing and adding units
       if (num < 1000) {
-        return num.toString()
+        return (num % 1 === 0) ? num : num.toFixed(1);
       } else if (num < 100000) {
         let k = (num/1000);
         return ((k % 1 === 0) ? k : k.toFixed(1)) + 'k';

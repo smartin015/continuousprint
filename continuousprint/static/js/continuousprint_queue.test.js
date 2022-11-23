@@ -1,12 +1,19 @@
 const VM = require('./continuousprint_queue');
 
-function mocks(filename="test.gcode") {
+function mockapi(filename="test.gcode") {
   return {
       add: jest.fn(),
       rm: jest.fn(),
       mv: jest.fn(),
       reset: jest.fn(),
     };
+}
+
+function mockfiles() {
+  return {
+    requestData: jest.fn(),
+    elementByPath: jest.fn(),
+  };
 }
 
 const DATA = {
@@ -35,7 +42,7 @@ function items(njobs = 1, nsets = 2) {
 function init(njobs = 1) {
   return new VM({name:"test", jobs:items(njobs), peers:[
     {name: "localhost", profile: {name: "profile"}, status: "IDLE"}
-  ]}, mocks());
+  ]}, mockapi(), mockfiles());
 }
 
 test('newEmptyJob', () => {
@@ -131,6 +138,7 @@ test('resetSelected', () => {
 
 test('addFile (profile inference disabled)', () => {
   let v = init(njobs=0);
+  v.files.elementByPath = (p) => { return {gcodeAnalysis: {estimatedPrintTime: 123}}};
   v.addFile({name: "foo", path: "foo.gcode", origin: "local", continuousprint: {profile: "testprof"}});
   expect(v.api.add).toHaveBeenCalledWith(v.api.SET, {
      "count": 1,
@@ -139,6 +147,7 @@ test('addFile (profile inference disabled)', () => {
      "name": "foo",
      "path": "foo.gcode",
      "sd": false,
+     "estimatedPrintTime": 123,
   }, expect.any(Function));
 });
 
@@ -153,5 +162,6 @@ test('addFile (profile inference enabled)', () => {
      "path": "foo.gcode",
      "sd": false,
      "profiles": ["testprof"],
+     "estimatedPrintTime": null, // null print time is OK
   }, expect.any(Function));
 });
