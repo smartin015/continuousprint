@@ -365,6 +365,44 @@ def init_automation(db_path, logger=None):
         populate_automation()
 
 
+def migrateQueuesV2ToV3(details, logger):
+    # Constraint removal isn't allowed in sqlite, so we have
+    # to recreate the table and move the entries over.
+    # We also added a new `completed` field, so some calculation is needed.
+    class TempSet(Set):
+        pass
+
+    if logger is not None:
+        logger.warning(
+            f"Beginning migration to v0.0.3 for decoupled completions - {Set.select().count()} sets to migrate"
+        )
+    db = DB.queues
+    with db.atomic():
+        TempSet.create_table(safe=True)
+        for s in Set.select(
+            Set.path,
+            Set.sd,
+            Set.job,
+            Set.rank,
+            Set.count,
+            Set.remaining,
+            Set.material_keys,
+            Set.profile_keys,
+        ).execute():
+            attrs = {}
+            for f in Set._meta.sorted_field_names:
+                attrs[f] = getattr(s, f)
+            attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
+            TempSet.create(**attrs)
+            if logger is not None:
+                logger.warning(f"Migrating set {s.path} to schema v0.0.3")
+
+    Set.drop_table(safe=True)
+    db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
+    details.schemaVersion = "0.0.3"
+    details.save()
+
+
 def init_queues(db_path, logger=None):
     db = DB.queues
     needs_init = not file_exists(db_path)
@@ -392,40 +430,7 @@ def init_queues(db_path, logger=None):
                 details.save()
 
             if details.schemaVersion == "0.0.2":
-                # Constraint removal isn't allowed in sqlite, so we have
-                # to recreate the table and move the entries over.
-                # We also added a new `completed` field, so some calculation is needed.
-                class TempSet(Set):
-                    pass
-
-                if logger is not None:
-                    logger.warning(
-                        f"Beginning migration to v0.0.3 for decoupled completions - {Set.select().count()} sets to migrate"
-                    )
-                with db.atomic():
-                    TempSet.create_table(safe=True)
-                    for s in Set.select(
-                        Set.path,
-                        Set.sd,
-                        Set.job,
-                        Set.rank,
-                        Set.count,
-                        Set.remaining,
-                        Set.material_keys,
-                        Set.profile_keys,
-                    ).execute():
-                        attrs = {}
-                        for f in Set._meta.sorted_field_names:
-                            attrs[f] = getattr(s, f)
-                        attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
-                        TempSet.create(**attrs)
-                        if logger is not None:
-                            logger.warning(f"Migrating set {s.path} to schema v0.0.3")
-
-                Set.drop_table(safe=True)
-                db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
-                details.schemaVersion = "0.0.3"
-                details.save()
+                migrateSchemaV2ToV3(details, logger)
 
             if details.schemaVersion == "0.0.3":
                 if logger is not None:

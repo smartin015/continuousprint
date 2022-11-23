@@ -14,6 +14,7 @@ def testJob(inst):
     s.rank = 0
     s.sd = False
     s.material_keys = ""
+    s.estimatedPrintTime = None
     s.profile_keys = "profile"
     s.completed = 0
     s.save = lambda: True

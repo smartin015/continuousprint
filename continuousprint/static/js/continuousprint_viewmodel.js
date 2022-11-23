@@ -65,7 +65,6 @@ function CPViewModel(parameters) {
         });
     };
 
-    console.log(self.files);
 
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {

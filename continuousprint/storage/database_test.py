@@ -8,6 +8,7 @@ from .database import (
     init_queues,
     init_automation,
     Queue,
+    migrateQueuesV2ToV3,
     Job,
     Set,
     Run,
@@ -165,7 +166,7 @@ class TestMigration(QueuesDBTest):
             rank=1,
         )
 
-        self.db = init_queues(self.tmpQueues.name, logger=logging.getLogger())
+        migrateQueuesV2ToV3(details, logger=logging.getLogger())
 
         # Destination set both exists and has computed `completed` field.
         # We don't actually check whether the constraints were properly applied, just assume that
