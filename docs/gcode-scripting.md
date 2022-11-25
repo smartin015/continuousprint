@@ -118,10 +118,16 @@ When you write a Preprocessor, you will reference external information in your e
 Here's an example of what you can expect for state variables:
 
 ```
+previous: {
+    'printer_state': 'BUSY',
+    'action': 'TICK",
+}
 current: {
     'path': 'testprint.gcode',
     'materials': ['PLA_red_#ff0000'],
     'bed_temp': 23.59,
+    'printer_state': 'IDLE',
+    'action': 'SUCCESS',
 }
 external: {<user provided>}
 metadata: {
@@ -150,7 +156,7 @@ metadata: {
 }
 ```
 
-Note that `path`, `materials`, and `bed_temp` are all instantaneous variables about the current state, while `metadata` comes from file metadata analysis and is absent if `path` is None or empty.
+Note that all variables in `current` (such as `path`, `materials`, and `bed_temp`) are all instantaneous variables about the current state, while `metadata` comes from file metadata analysis and is absent if `path` is None or empty. State in `previous` are copied from `current` after each event is processed.
 
 See also `update_interpreter_symbols` in [driver.py](https://github.com/smartin015/continuousprint/blob/master/continuousprint/driver.py) for how state is constructed and sent to the interpreter.
 

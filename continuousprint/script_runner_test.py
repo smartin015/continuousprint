@@ -164,3 +164,21 @@ class TestWithInterpreter(AutomationDBTest):
         self.s._execute_gcode.assert_called_with(ANY, "G0 X20")
         self.s._msg.assert_called_once()
         self.assertRegex(self.s._msg.call_args[0][0], "test message")
+
+    def test_prev_symbols(self):
+        queries.assignAutomation(
+            dict(foo="G0 X20"),
+            dict(bar="print(previous['printer_state'], previous['action'])\nTrue"),
+            {CustomEvents.ACTIVATE.event: [dict(script="foo", preprocessor="bar")]},
+        )
+        self.s.set_current_symbols(dict(printer_state="IDLE", action="TICK"))
+        self.s.run_script_for_event(CustomEvents.ACTIVATE)
+        self.assertRegex(self.s._msg.call_args[0][0], "None None")
+        self.s._msg.reset_mock()
+        self.s.set_current_symbols(dict(printer_state="BUSY", action="TOCK"))
+        self.s.run_script_for_event(CustomEvents.ACTIVATE)
+        self.assertRegex(self.s._msg.call_args[0][0], "IDLE TICK")
+        self.s._msg.reset_mock()
+        self.s.run_script_for_event(CustomEvents.ACTIVATE)
+        self.assertRegex(self.s._msg.call_args[0][0], "BUSY TOCK")
+        self.s._msg.reset_mock()

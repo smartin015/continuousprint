@@ -249,6 +249,27 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print -> printing
         self.d._runner.start_print.assert_called_with(item2)
 
+    def test_success_waits_for_timelapse(self):
+        self.d._runner.start_print.reset_mock()
+        now = time.time()
+        self.d.action(
+            DA.SUCCESS,
+            DP.IDLE,
+            path=self.d.q.get_set.return_value.path,
+            timelapse_start_ts=now,
+        )  # -> success, but wait for timelapse
+        self.d.action(DA.TICK, DP.IDLE, timelapse_start_ts=now)  # -> still success
+        self.assertEqual(self.d.state.__name__, self.d._state_success.__name__)
+
+        item2 = MagicMock(path="basdf")
+        self.d.q.get_set_or_acquire.return_value = (
+            item2  # manually move the supervisor forward in the queue
+        )
+        self.d.q.get_set.return_value = item2
+
+        self.d.action(DA.TICK, DP.IDLE)  # -> clearing
+        self.assertEqual(self.d.state.__name__, self.d._state_start_clearing.__name__)
+
     def test_paused_with_spaghetti_early_triggers_cancel(self):
         self.d.q.get_run.return_value = MagicMock(
             start=datetime.datetime.now() - datetime.timedelta(seconds=10)

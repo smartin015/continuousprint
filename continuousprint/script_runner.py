@@ -28,7 +28,12 @@ class ScriptRunner:
         self._printer = printer
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
-        self._symbols = dict(current=dict(), external=dict(), metadata=dict())
+        self._symbols = dict(
+            current=dict(),
+            previous=dict(printer_state=None, action=None),
+            external=dict(),
+            metadata=dict(),
+        )
 
     def _get_user(self):
         try:
@@ -118,6 +123,10 @@ class ScriptRunner:
                 self._msg(f"{evt.displayName}:\n{interp_output}")
             else:
                 self._do_msg(evt, running=(gcode != ""))
+
+        # Update prior state symbols
+        for k in ("printer_state", "action"):
+            self._symbols["previous"][k] = self._symbols["current"].get(k, None)
 
         # Cancellation happens before custom scripts are run
         if evt == CustomEvents.PRINT_CANCEL:

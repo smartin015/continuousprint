@@ -160,12 +160,24 @@ function CPJob(obj, peers, api, profile, materials) {
       );
     }
 
-    console.log(materials);
     // Values are in g/mm
     // TODO fetch from profiles and printer nozzle dia
     let g_per_mm3 = (1.25)/1000;
     let filament_mm2 = (1.75/2)*(1.75/2)*3.14159;
     return [g_per_mm3 *  filament_mm2];
+  });
+
+  self.raw_stats = ko.computed(function() {
+    let result = {completed: 0, remaining: 0, count: 0};
+    for (let qs of self.sets()) {
+      if (!qs.profile_matches()) {
+        continue;
+      }
+      result.remaining += self._safeParse(qs.remaining());
+      result.count += self._safeParse(qs.count());
+      result.completed += self._safeParse(qs.completed());
+    }
+    return result;
   });
 
   self.totals = ko.computed(function() {
@@ -185,7 +197,7 @@ function CPJob(obj, peers, api, profile, materials) {
     let linmasses = self.getMaterialLinearMasses();
 
     for (let qs of self.sets()) {
-      if (!qs.profile_matches) {
+      if (!qs.profile_matches()) {
         continue;
       }
 
