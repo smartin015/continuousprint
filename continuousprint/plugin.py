@@ -80,6 +80,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._next_reconnect = 0
         self._fire_event = fire_event
         self._exceptions = []
+        self._timelapse_start_ts = None
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -629,8 +630,8 @@ class CPQPlugin(ContinuousPrintAPI):
                     self._sync_state()
             else:
                 return
-
         if event == Events.MOVIE_DONE:
+            self._timelapse_start_ts = None
             # Optionally delete time-lapses created from bed clearing/finishing scripts
             if (
                 payload["gcode"].startswith(TEMP_FILE_DIR)
@@ -650,9 +651,17 @@ class CPQPlugin(ContinuousPrintAPI):
                     f"Annotated run of {payload['gcode']} with timelapse details"
                 )
                 self._sync_history()
+            self._update(DA.TICK)
             return
-
+        elif event == Events.MOVIE_FAILED:
+            self._timelapse_start_ts = None
+            return
         elif event == Events.PRINT_DONE:
+            # Timelapse TS is set here instead of on MOVIE_RENDERING, because we
+            # must know when we're rendering *before* calling _update(SUCCESS)
+            # so the driver can appropriately wait for the timelapse to finish.
+            self._timelapse_start_ts = time.time()
+
             self._update(DA.SUCCESS)
             n = self._cleanup_fileshare()
             if n > 0:
@@ -727,7 +736,14 @@ class CPQPlugin(ContinuousPrintAPI):
         if bed_temp is not None:
             bed_temp = bed_temp.get("actual", 0)
 
-        if self.d.action(a, p, path, materials, bed_temp):
+        timelapse_start_ts = None
+        timelapsesEnabled = (
+            self._settings.global_get(["webcam", "timelapse", "type"]) != "off"
+        )
+        if timelapsesEnabled:
+            timelapse_start_ts = self._timelapse_start_ts
+
+        if self.d.action(a, p, path, materials, bed_temp, timelapse_start_ts):
             self._sync_state()
 
         run = self.q.get_run()

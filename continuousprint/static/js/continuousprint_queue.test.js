@@ -16,6 +16,14 @@ function mockfiles() {
   };
 }
 
+function mockprofile() {
+  return [];
+}
+
+function mockmaterials() {
+  return ko.observable([]);
+}
+
 const DATA = {
   name: `item`,
   path: `item.gcode`,
@@ -42,7 +50,7 @@ function items(njobs = 1, nsets = 2) {
 function init(njobs = 1) {
   return new VM({name:"test", jobs:items(njobs), peers:[
     {name: "localhost", profile: {name: "profile"}, status: "IDLE"}
-  ]}, mockapi(), mockfiles());
+  ]}, mockapi(), mockfiles(), mockprofile(), mockmaterials());
 }
 
 test('newEmptyJob', () => {
@@ -138,7 +146,7 @@ test('resetSelected', () => {
 
 test('addFile (profile inference disabled)', () => {
   let v = init(njobs=0);
-  v.files.elementByPath = (p) => { return {gcodeAnalysis: {estimatedPrintTime: 123}}};
+  v.files.elementByPath = (p) => { return {gcodeAnalysis: {estimatedPrintTime: 123, filament: [{length: 456}]}}};
   v.addFile({name: "foo", path: "foo.gcode", origin: "local", continuousprint: {profile: "testprof"}});
   expect(v.api.add).toHaveBeenCalledWith(v.api.SET, {
      "count": 1,
@@ -147,7 +155,7 @@ test('addFile (profile inference disabled)', () => {
      "name": "foo",
      "path": "foo.gcode",
      "sd": false,
-     "estimatedPrintTime": 123,
+     "metadata": "{\"estimatedPrintTime\":123,\"filamentLengths\":[456]}",
   }, expect.any(Function));
 });
 
@@ -162,6 +170,6 @@ test('addFile (profile inference enabled)', () => {
      "path": "foo.gcode",
      "sd": false,
      "profiles": ["testprof"],
-     "estimatedPrintTime": null, // null print time is OK
+     "metadata": "{\"estimatedPrintTime\":null,\"filamentLengths\":[]}",
   }, expect.any(Function));
 });

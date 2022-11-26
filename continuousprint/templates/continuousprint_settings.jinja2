@@ -23,7 +23,6 @@
   <div id="settings_continuousprint_profile" class="tab-pane active">
     <form class="form-horizontal">
       <legend>Printer Profile</legend>
-      <p>Load <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">community-contributed</a> bed clearing scripts for your printer.</p>
       <p>If you tag queue items with <a href="https://smartin015.github.io/continuousprint/printer-profiles/">profiles</a>, they will be skipped unless they match this profile.</p>
       <fieldset>
         <div class="control-group" title="The manufacturer of the printer">
@@ -44,9 +43,11 @@
         </div>
       </fieldset>
 
+      After setting a profile, try loading community-contributed scripts on the <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('scripts')">Scripts &amp; Preprocessors</a> section.
+
       <legend>Network Identity</legend>
 
-      <p>Settings for identifying this printer to LAN queues and other networked printers.</p>
+      <p>These settings identify the printer to LAN queues and other networked printers.</p>
 
       <fieldset>
         <div class="control-group" title="Name of this printer when viewed from other OctoPrint instances">
@@ -67,7 +68,7 @@
         Register <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('scripts')">Scripts &amp; Preprocessors</a> to execute on queue events.
       </p>
       <p>
-        You can execute multiple scripts in sequence, and drag them to rearrange the execution order.
+        You can execute multiple scripts in sequence, dragging to change the execution order.
       </p>
 
       <div class="events" data-bind="foreach: events">
@@ -142,7 +143,7 @@
             <div style="flex: 1">
               <div data-bind="hidden: expanded">
                 <div data-bind="text: name"></div>
-                <div class="subheader" data-bind="visible: registrations().length > 0">Run on <span data-bind="text: registrations"></span></div>
+                <div class="subheader" data-bind="visible: registrations().length > 0">Runs on <span data-bind="text: registrations"></span></div>
               </div>
               <div data-bind="visible: expanded">
                 <input type="text" placeholder="Script Name" data-bind="value: name"></input>
@@ -166,7 +167,7 @@
 
       <div style="text-align: right">
         <button class="btn" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
-          <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Load from Profile
+          <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Import Defaults from Current Profile
         </button>
 
         <label class="btn">
@@ -203,7 +204,7 @@
             <div style="flex: 1">
               <div data-bind="hidden: expanded">
                 <div data-bind="text: name"></div>
-                <div class="subheader" data-bind="visible: registrations().length > 0">Run on <span data-bind="text: registrations"></span></div>
+                <div class="subheader" data-bind="visible: registrations().length > 0">Runs on <span data-bind="text: registrations"></span></div>
               </div>
               <div data-bind="visible: expanded">
                 <input placeholder="Preprocessor name" type="text" data-bind="value: name"></input>

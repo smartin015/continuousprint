@@ -26,3 +26,7 @@ Preprocessors:
       if current['bed_temp'] > 60:
         raise Exception("Bed temp " + str(current['bed_temp']) + "C) is too hot for this operation")
       True
+  - name: "If starting from idle (first run, or ran finished script)"
+    body: |
+      # Both current and previous printer state are checked here to ensure printer is properly idle
+      current["state"] in ("_state_inactive", "_state_idle")

@@ -34,6 +34,7 @@ class DB:
     automation = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
+CURRENT_SCHEMA_VERSION = "0.0.4"
 DEFAULT_QUEUE = "local"
 LAN_QUEUE = "LAN"
 ARCHIVE_QUEUE = "archive"
@@ -225,7 +226,7 @@ class SetView:
         return dict(
             path=self.path,
             count=self.count,
-            estimatedPrintTime=self.estimatedPrintTime,
+            metadata=self.metadata,
             materials=self.materials(),
             profiles=self.profiles(),
             id=self.id,
@@ -243,9 +244,10 @@ class Set(Model, SetView):
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count >= 0")])
 
-    # Print time estimates are assigned on set creation - they are
-    # only as accurate as the provider's ability to estimate.
-    estimatedPrintTime = FloatField(null=True)
+    # Contains JSON of metadata such as print time estimates, filament length
+    # etc. These are assigned on creation and are
+    # only as accurate as the provider's ability to analyze the gcode.
+    metadata = TextField(null=True)
 
     remaining = IntegerField(
         # Unlike Job, Sets can have remaining > count if the user wants to print
@@ -332,7 +334,7 @@ AUTOMATION = [Script, EventHook, Preprocessor]
 
 def populate_queues():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.3")
+    StorageDetails.create(schemaVersion=CURRENT_SCHEMA_VERSION)
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
@@ -438,14 +440,12 @@ def init_queues(db_path, logger=None):
                         f"Updating schema from {details.schemaVersion} to 0.0.4"
                     )
                 migrate(
-                    migrator.add_column(
-                        "set", "estimatedPrintTime", Set.estimatedPrintTime
-                    ),
+                    migrator.add_column("set", "metadata", Set.metadata),
                 )
                 details.schemaVersion = "0.0.4"
                 details.save()
 
-            if details.schemaVersion != "0.0.4":
+            if details.schemaVersion != CURRENT_SCHEMA_VERSION:
                 raise Exception(
                     "DB schema version is not current: " + details.schemaVersion
                 )

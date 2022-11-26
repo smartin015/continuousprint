@@ -175,7 +175,7 @@ function CPViewModel(parameters) {
             s.expanded = expansions[s.id.toString()];
           }
         }
-        let cpq = new CPQueue(q, self.api, self.files, self.profile);
+        let cpq = new CPQueue(q, self.api, self.files, self.profile, self.materials);
 
         // Replace draft entries that are still in draft
         let cpqj = cpq.jobs();
@@ -348,7 +348,7 @@ function CPViewModel(parameters) {
           continue;
         }
         let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
-        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
+        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`, density: spool.density || 1.24, diameter: spool.diameter || 1.75};
       }
       self.materials(Object.values(result));
       self.badMaterialCount(nbad);
@@ -356,21 +356,6 @@ function CPViewModel(parameters) {
     }, function(statusCode, errText) {
       self.hasSpoolManager(statusCode !== 404);
     });
-
-    self.humanTime = function(s) {
-      // Humanizes time values; parameter is seconds
-      if (s < 60) {
-        return Math.round(s) + 's';
-      } else if (s < 3600) {
-        return Math.round(s/60) + 'm';
-      } else if (s < 86400) {
-        let h = s/3600;
-        return ((h % 1 === 0) ? h : h.toFixed(1)) + 'h';
-      } else {
-        let d = s/86400;
-        return ((d % 1 === 0) ? d : d.toFixed(1)) + 'd';
-      }
-    };
 
     self.humanize = function(num) {
       // Humanizes numbers by condensing and adding units

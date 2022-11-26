@@ -27,7 +27,7 @@ function CPSet(data, job, api, profile) {
   self.expanded = ko.observable(data.expanded);
   self.mats = ko.observable(data.materials || []);
   self.profiles = ko.observableArray(data.profiles || []);
-  self.estimatedPrintTime = ko.observable(data.estimatedPrintTime || null);
+  self.metadata = (data.metadata) ? JSON.parse(data.metadata) : null;
   self.profile_matches = ko.computed(function() {
     let profs = self.profiles();
     if (profs.length === 0) {
@@ -56,7 +56,7 @@ function CPSet(data, job, api, profile) {
       remaining: self.remaining(),
       materials: self.mats(),
       profiles: self.profiles(),
-      estimatedPrintTime: self.estimatedPrintTime(),
+      metadata: data.metadata,
     };
   }
   self.length_remaining = ko.computed(function() {
