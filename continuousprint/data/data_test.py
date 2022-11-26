@@ -141,3 +141,30 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(pp(dict(current=dict(bed_temp=1)))[0], True)
         with self.assertRaisesRegex(Exception, "600C"):
             pp(dict(current=dict(bed_temp=600)))
+
+    @test_preprocessor("If starting from idle (first run, or ran finished script)")
+    def test_from_idle(self, pp):
+        self.assertEqual(
+            pp(
+                dict(
+                    current=dict(state="_state_clearing"),
+                )
+            )[0],
+            False,
+        )
+        self.assertEqual(
+            pp(
+                dict(
+                    current=dict(state="_state_inactive"),
+                )
+            )[0],
+            True,
+        )
+        self.assertEqual(
+            pp(
+                dict(
+                    current=dict(state="_state_idle"),
+                )
+            )[0],
+            True,
+        )

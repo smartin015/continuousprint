@@ -39,6 +39,7 @@ def timeAgo(elapsed):
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
     PRINTING_IDLE_BREAKOUT_SEC = 15.0
+    TIMELAPSE_WAIT_SEC = 30
 
     def __init__(
         self,
@@ -70,6 +71,7 @@ class Driver:
         self._cur_path = None
         self._cur_materials = []
         self._bed_temp = 0
+        self._timelapse_start_ts = None
 
     def action(
         self,
@@ -78,6 +80,7 @@ class Driver:
         path: str = None,
         materials: list = [],
         bed_temp=None,
+        timelapse_start_ts=None,
     ):
         # Given that some calls to action() come from a watchdog timer, we hold a mutex when performing the action
         # so the state is updated in a thread safe way.
@@ -85,7 +88,7 @@ class Driver:
             now = time.time()
             if self.printer_state_ts + 15 > now or a != Action.TICK:
                 self._logger.debug(
-                    f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}"
+                    f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}, timelapse_ts={timelapse_start_ts}"
                 )
             elif a == Action.TICK and not self.printer_state_logs_suppressed:
                 self.printer_state_logs_suppressed = True
@@ -104,11 +107,13 @@ class Driver:
                 self._cur_materials = materials
             if bed_temp is not None:
                 self._bed_temp = bed_temp
+            self._timelapse_start_ts = timelapse_start_ts
             self._runner.set_current_symbols(
                 dict(
                     path=self._cur_path,
                     materials=self._cur_materials,
                     bed_temp=self._bed_temp,
+                    state=self.state.__name__,
                 )
             )
 
@@ -327,13 +332,23 @@ class Driver:
             return self._enter_inactive()
 
     def _state_success(self, a: Action, p: Printer):
+        # Wait for timelapse to complete; allows associating the timelapse
+        # in the history and prevents performance issues due to render cpu
+        now = time.time()
+        if (
+            self._timelapse_start_ts is not None
+            and now < self._timelapse_start_ts + self.TIMELAPSE_WAIT_SEC
+        ):
+            self._set_status("Waiting for timelapse to render", StatusType.NORMAL)
+            return
+
         # Complete prior queue item if that's what we just finished.
         # Note that end_run fails silently if there's no active run
         # (e.g. if we start managing mid-print)
         self.q.end_run("success")
         self.retries = 0
 
-        # Clear bed if we have a next queue item, otherwise run finishing script
+        # Clear bed if we have a next item, otherwise run finishing script
         item = self.q.get_set_or_acquire()
         if item is not None:
             self._logger.debug(

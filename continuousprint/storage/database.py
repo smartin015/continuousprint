@@ -34,6 +34,7 @@ class DB:
     automation = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
+CURRENT_SCHEMA_VERSION = "0.0.4"
 DEFAULT_QUEUE = "local"
 LAN_QUEUE = "LAN"
 ARCHIVE_QUEUE = "archive"
@@ -333,7 +334,7 @@ AUTOMATION = [Script, EventHook, Preprocessor]
 
 def populate_queues():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.3")
+    StorageDetails.create(schemaVersion=CURRENT_SCHEMA_VERSION)
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
@@ -444,7 +445,7 @@ def init_queues(db_path, logger=None):
                 details.schemaVersion = "0.0.4"
                 details.save()
 
-            if details.schemaVersion != "0.0.4":
+            if details.schemaVersion != CURRENT_SCHEMA_VERSION:
                 raise Exception(
                     "DB schema version is not current: " + details.schemaVersion
                 )

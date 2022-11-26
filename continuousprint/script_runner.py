@@ -28,7 +28,11 @@ class ScriptRunner:
         self._printer = printer
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
-        self._symbols = dict(current=dict(), external=dict(), metadata=dict())
+        self._symbols = dict(
+            current=dict(),
+            external=dict(),
+            metadata=dict(),
+        )
 
     def _get_user(self):
         try:
@@ -105,7 +109,10 @@ class ScriptRunner:
         if len(interp.error) > 0:
             for err in interp.error:
                 self._logger.error(err.get_error())
-                self._msg(f"{evt.displayName}:\n{err.get_error()}", type="error")
+                self._msg(
+                    f"CPQ {evt.displayName} Preprocessor:\n{err.get_error()}",
+                    type="error",
+                )
             gcode = "@pause"  # Exceptions mean we must wait for the user to act
         else:
             err.seek(0)
@@ -115,7 +122,7 @@ class ScriptRunner:
             out.seek(0)
             interp_output = out.read().strip()
             if len(interp_output) > 0:
-                self._msg(f"{evt.displayName}:\n{interp_output}")
+                self._msg(f"CPQ {evt.displayName} Preprocessor:\n{interp_output}")
             else:
                 self._do_msg(evt, running=(gcode != ""))
 

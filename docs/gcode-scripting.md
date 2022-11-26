@@ -122,6 +122,8 @@ current: {
     'path': 'testprint.gcode',
     'materials': ['PLA_red_#ff0000'],
     'bed_temp': 23.59,
+    'state': '_state_printing',
+    'action': 'SUCCESS',
 }
 external: {<user provided>}
 metadata: {
@@ -150,7 +152,7 @@ metadata: {
 }
 ```
 
-Note that `path`, `materials`, and `bed_temp` are all instantaneous variables about the current state, while `metadata` comes from file metadata analysis and is absent if `path` is None or empty.
+Note that all variables in `current` (such as `path`, `materials`, and `bed_temp`) are all instantaneous variables about the current state, while `metadata` comes from file metadata analysis and is absent if `path` is None or empty.
 
 See also `update_interpreter_symbols` in [driver.py](https://github.com/smartin015/continuousprint/blob/master/continuousprint/driver.py) for how state is constructed and sent to the interpreter.
 
