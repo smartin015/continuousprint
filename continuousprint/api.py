@@ -219,8 +219,6 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
                 new_id = dq.import_job_from_view(sq.get_job_view(src_id))
             except ValidationError as e:
                 return json.dumps(dict(error=str(e)))
-
-            print("Imported job from view")
             sq.remove_jobs([src_id])
             src_id = new_id
 

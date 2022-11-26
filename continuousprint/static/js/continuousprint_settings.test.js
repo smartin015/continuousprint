@@ -124,7 +124,6 @@ test('invalid model change is ignored', () => {
 test('load queues and scripts on settings view shown', () => {
   m = mocks();
   m[2].get = function (typ, cb) {
-    console.log(typ);
     if (typ === m[2].QUEUES) {
       cb([
         {name: "archive"},
@@ -146,7 +145,6 @@ test('load queues and scripts on settings view shown', () => {
 test('dirty exit commits queues', () => {
   let m = mocks();
   m[2].get = function (typ, cb) {
-    console.log(typ);
     if (typ === m[2].QUEUES) {
       cb([]);
     } else if (typ === m[2].AUTOMATION) {
@@ -166,7 +164,6 @@ test('dirty exit commits queues', () => {
 test('non-dirty exit does not call commitQueues', () => {
   let m = mocks();
   m[2].get = function (typ, cb) {
-    console.log(typ);
     if (typ === m[2].QUEUES) {
       cb([]);
     } else if (typ === m[2].AUTOMATION) {

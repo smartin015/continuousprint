@@ -315,11 +315,9 @@ function CPViewModel(parameters) {
                 break;
             case "setstate":
                 data = JSON.parse(data["state"]);
-                console.log("got setstate", data);
                 return self._setState(data);
             case "sethistory":
                 data = JSON.parse(data["history"]);
-                console.log("got sethistory", data);
                 return self._setHistory(data);
             default:
                 theme = "info";

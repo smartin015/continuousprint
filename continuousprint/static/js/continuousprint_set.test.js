@@ -15,7 +15,6 @@ function data(count=3) {
 function api() {
   return {
     update: (_, data, cb) => {
-      console.log(data.material);
       cb({...data, id: 1, remaining: (data.count || 1), job_remaining: 2, materials: ((data.materials) ? data.materials.split(',') : [])})
     },
   };

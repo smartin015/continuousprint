@@ -228,6 +228,7 @@ function CPJob(obj, peers, api, profile, materials) {
         for (let i = 0; i < len.length; i++) {
           mass += linmasses[i] * len[i];
         }
+
         if (!isNaN(mass)) {
           r[2].remaining += rem * mass;
           r[2].total += tot * mass;
