@@ -30,7 +30,6 @@ class ScriptRunner:
         self._fire_event = fire_event
         self._symbols = dict(
             current=dict(),
-            previous=dict(printer_state=None, action=None),
             external=dict(),
             metadata=dict(),
         )
@@ -110,7 +109,10 @@ class ScriptRunner:
         if len(interp.error) > 0:
             for err in interp.error:
                 self._logger.error(err.get_error())
-                self._msg(f"{evt.displayName}:\n{err.get_error()}", type="error")
+                self._msg(
+                    f"CPQ {evt.displayName} Preprocessor:\n{err.get_error()}",
+                    type="error",
+                )
             gcode = "@pause"  # Exceptions mean we must wait for the user to act
         else:
             err.seek(0)
@@ -120,13 +122,9 @@ class ScriptRunner:
             out.seek(0)
             interp_output = out.read().strip()
             if len(interp_output) > 0:
-                self._msg(f"{evt.displayName}:\n{interp_output}")
+                self._msg(f"CPQ {evt.displayName} Preprocessor:\n{interp_output}")
             else:
                 self._do_msg(evt, running=(gcode != ""))
-
-        # Update prior state symbols
-        for k in ("printer_state", "action"):
-            self._symbols["previous"][k] = self._symbols["current"].get(k, None)
 
         # Cancellation happens before custom scripts are run
         if evt == CustomEvents.PRINT_CANCEL:

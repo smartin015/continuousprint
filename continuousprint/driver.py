@@ -113,8 +113,7 @@ class Driver:
                     path=self._cur_path,
                     materials=self._cur_materials,
                     bed_temp=self._bed_temp,
-                    printer_state=p.name,
-                    action=a.name,
+                    state=self.state.__name__,
                 )
             )
 
@@ -333,21 +332,21 @@ class Driver:
             return self._enter_inactive()
 
     def _state_success(self, a: Action, p: Printer):
-        # Complete prior queue item if that's what we just finished.
-        # Note that end_run fails silently if there's no active run
-        # (e.g. if we start managing mid-print)
-        self.q.end_run("success")
-        self.retries = 0
-
         # Wait for timelapse to complete; allows associating the timelapse
         # in the history and prevents performance issues due to render cpu
         now = time.time()
         if (
             self._timelapse_start_ts is not None
-            and self._timelapse_start_ts < now + self.TIMELAPSE_WAIT_SEC
+            and now < self._timelapse_start_ts + self.TIMELAPSE_WAIT_SEC
         ):
             self._set_status("Waiting for timelapse to render", StatusType.NORMAL)
             return
+
+        # Complete prior queue item if that's what we just finished.
+        # Note that end_run fails silently if there's no active run
+        # (e.g. if we start managing mid-print)
+        self.q.end_run("success")
+        self.retries = 0
 
         # Clear bed if we have a next item, otherwise run finishing script
         item = self.q.get_set_or_acquire()

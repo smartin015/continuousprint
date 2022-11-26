@@ -115,7 +115,7 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
         self.assertEqual(self.q.acquire(), False)
 
     def test_import_job(self):
-        pass  # TODO
+        self.skipTest("TODO")
 
 
 class TestLocalQueueInOrderInitial(unittest.TestCase):
@@ -140,7 +140,7 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         self.assertEqual(self.q.get_set(), self.s)
 
     def test_mv(self):
-        pass  # TODO
+        self.skipTest("TODO")
 
     def test_acquire_2x(self):
         # Second acquire should do nothing, return True

@@ -147,8 +147,7 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             pp(
                 dict(
-                    current=dict(printer_state="IDLE"),
-                    previous=dict(printer_state="BUSY"),
+                    current=dict(state="_state_clearing"),
                 )
             )[0],
             False,
@@ -156,8 +155,15 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             pp(
                 dict(
-                    current=dict(printer_state="IDLE"),
-                    previous=dict(printer_state="IDLE"),
+                    current=dict(state="_state_inactive"),
+                )
+            )[0],
+            True,
+        )
+        self.assertEqual(
+            pp(
+                dict(
+                    current=dict(state="_state_idle"),
                 )
             )[0],
             True,

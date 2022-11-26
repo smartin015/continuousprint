@@ -76,7 +76,16 @@ test('totals', () => {
     title: expect.anything(),
   });
 
-  // TODO test filament lengths
+  // Values are as above, but factored by filamentLength, density, and filament diameter
+  expect(t[2]).toStrictEqual({
+    completed: "0.2g",
+    count: "0.4g",
+    remaining: "0.2g",
+    total: "0.2g",
+    error: "",
+    legend: "Total mass",
+    title: expect.anything(),
+  });
 });
 
 test('checkFraction', () => {

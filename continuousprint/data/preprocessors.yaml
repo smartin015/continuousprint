@@ -29,4 +29,4 @@ Preprocessors:
   - name: "If starting from idle (first run, or ran finished script)"
     body: |
       # Both current and previous printer state are checked here to ensure printer is properly idle
-      current['printer_state'] == 'IDLE' and previous['printer_state'] == 'IDLE'
+      current["state"] in ("_state_inactive", "_state_idle")

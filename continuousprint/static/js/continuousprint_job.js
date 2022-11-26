@@ -159,12 +159,7 @@ function CPJob(obj, peers, api, profile, materials) {
         ((m.diameter / 2)*(m.diameter / 2)*Math.PI)
       );
     }
-
-    // Values are in g/mm
-    // TODO fetch from profiles and printer nozzle dia
-    let g_per_mm3 = (1.25)/1000;
-    let filament_mm2 = (1.75/2)*(1.75/2)*3.14159;
-    return [g_per_mm3 *  filament_mm2];
+    return result;
   });
 
   self.raw_stats = ko.computed(function() {
@@ -186,6 +181,9 @@ function CPJob(obj, peers, api, profile, materials) {
       {legend: 'Total time', title: "Uses Octoprint's file analysis estimate; may be inaccurate"},
       {legend: 'Total mass', title: "Mass is calculated using active spool(s) in SpoolManager"},
     ];
+
+    let linmasses = self.getMaterialLinearMasses();
+
     for (let t of r) {
       t.count = 0;
       t.completed = 0;
@@ -193,8 +191,6 @@ function CPJob(obj, peers, api, profile, materials) {
       t.total = 0;
       t.error = 0;
     }
-
-    let linmasses = self.getMaterialLinearMasses();
 
     for (let qs of self.sets()) {
       if (!qs.profile_matches()) {
@@ -232,8 +228,6 @@ function CPJob(obj, peers, api, profile, materials) {
         for (let i = 0; i < len.length; i++) {
           mass += linmasses[i] * len[i];
         }
-        console.log(`Mass ${mass} from linmasses ${linmasses} and lengths ${len}`);
-
         if (!isNaN(mass)) {
           r[2].remaining += rem * mass;
           r[2].total += tot * mass;
@@ -254,6 +248,11 @@ function CPJob(obj, peers, api, profile, materials) {
       r[0][k] = self.humanize(r[0][k]);
       r[1][k] = self.humanTime(r[1][k]);
       r[2][k] = self.humanize(r[2][k], 'g');
+    }
+
+    // Hide mass details if linmasses is empty (implies SpoolManager not set up)
+    if (linmasses.length === 0) {
+      r.splice(2,1);
     }
 
     return r;
