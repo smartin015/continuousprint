@@ -332,7 +332,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
 
         let events = []
         for (let k of custom_events) {
-          console.log(k);
           let actions = [];
           for (let a of result.events[k.event] || []) {
             actions.push({
@@ -346,7 +345,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           });
         }
         events.sort((a, b) => a.display < b.display);
-        console.log("Events", events);
         self.events(events);
         self.scripts_fingerprint = JSON.stringify(result);
       });

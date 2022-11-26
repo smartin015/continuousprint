@@ -160,7 +160,6 @@ function CPJob(obj, peers, api, profile, materials) {
       );
     }
 
-    console.log(materials);
     // Values are in g/mm
     // TODO fetch from profiles and printer nozzle dia
     let g_per_mm3 = (1.25)/1000;
@@ -220,7 +219,6 @@ function CPJob(obj, peers, api, profile, materials) {
         for (let i = 0; i < len.length; i++) {
           mass += linmasses[i] * len[i];
         }
-        console.log(`Mass ${mass} from linmasses ${linmasses} and lengths ${len}`);
 
         if (!isNaN(mass)) {
           r[2].remaining += rem * mass;
