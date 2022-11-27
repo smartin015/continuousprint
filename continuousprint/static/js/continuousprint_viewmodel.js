@@ -109,6 +109,11 @@ function CPViewModel(parameters) {
       self._loadState(); // Refresh to get new "file missing" states
       self.hideRemoveConfirmModal();
     };
+    self.showSettingsHelp = function() {
+      console.log(self.settings);
+      self.settings.show('settings_plugin_continuousprint');
+      $(`#settings_plugin_continuousprint a[href="#settings_continuousprint_help"]`).tab('show');
+    };
 
     // Patch the files panel to prevent selecting/printing .gjob files
     let oldEnableSelect = self.files.enableSelect;
