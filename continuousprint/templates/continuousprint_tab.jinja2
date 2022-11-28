@@ -21,6 +21,9 @@
   <a href="https://smartin015.github.io/continuousprint/" target="blank"><img src="plugin/continuousprint/static/img/CPQ.svg" alt="Continuous Print" class="cpq_logo"></a>
   <li class="active"><a href="#continuousprint_tab_queues" data-toggle="tab">Queues</a></li>
   <li><a href="#continuousprint_tab_history" data-toggle="tab">History</a></li>
+  <button class="btn btn-secondary pull-right cpq-leftpad" data-bind="click: showSettingsHelp" title="Show help">
+    <i class="fas fa-question-circle"></i>
+  </button>
 
   <button class="btn btn-secondary pull-right cpq-leftpad" data-bind="visible: active(), click: function() {setActive(false);}" title="Stop the print queue">
     <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
