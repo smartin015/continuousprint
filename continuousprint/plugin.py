@@ -114,7 +114,7 @@ class CPQPlugin(ContinuousPrintAPI):
         return v if v is not None else default
 
     def _octoprint_version_exceeds(major: int, minor: int):
-        cur_major, cur_minor, _ = [int(c) for c in octoprint_version.split(".")[:2]]
+        cur_major, cur_minor = [int(c) for c in octoprint_version.split(".")[:2]]
         return cur_major > major or (cur_major == major and cur_minor > minor)
 
     def _add_folder(self, path):
