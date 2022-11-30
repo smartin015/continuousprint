@@ -7,7 +7,8 @@ from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.server import current_user
-from .storage.lan import ResolveError
+from .storage.lan import LANResolveError
+from .storage.database import STLResolveError
 from .data import TEMP_FILE_DIR, CustomEvents
 from .storage.queries import genEventScript
 
@@ -139,24 +140,78 @@ class ScriptRunner:
         self._fire_event(evt)
         return result
 
-    def start_print(self, item):
-        self._msg(f"{item.job.name}: printing {item.path}")
+    def _output_gcode_path(self, item):
+        return item.path.rsplit(".", 1)[0] + ".gcode"
+
+    def _cancel_any_slicing(self, item):
+        if (
+            item.sd
+            or not self._file_manager.slicing_enabled()
+            or self._file_manager.default_slicer() is None
+        ):
+            return False
+
+        self._file_manager.cancel_slicing(
+            self._file_manager.default_slicer(),
+            item.path,
+            self._output_gcode_path(item),
+        )
+
+    def _start_slicing(self, item, cb):
+        # Cannot slice SD files, as they cannot be read (only written)
+        # Similarly we can't slice if slicing is disabled or there is no
+        # default slicer.
+        slice_enabled = self._file_manager.slicing_enabled()
+        default_slicer = self._file_manager.default_slicer()
+        if item.sd or not slice_enabled or default_slicer is None:
+            self._logger.error(
+                f"Cannot slice item {item.path} (sd={item.sd}, slicing_enabled={slice_enabled}, default_slicer={default_slicer})"
+            )
+            return False
+
+        gcode_path = self._output_gcode_path(item)
+        self._msg(
+            f"Slicing {item.path} using slicer {default_slicer}; output to {gcode_path}"
+        )
+
+        def slicer_cb(*args, **kwargs):
+            if kwargs.get("_error") is not None:
+                cb(success=False, error=kwargs["_error"])
+            elif kwargs.get("_cancelled"):
+                cb(success=False, error=Exception("Slicing cancelled"))
+            else:
+                print("Calling resolve with", gcode_path)
+                item.resolve(gcode_path)  # override the resolve value
+                result = self.start_print(item, cb)  # reattempt the print
+                cb(success=result, error=None)
+
+        # File paths *must* be LOCAL, as you cannot read from a printer's SD card interface.
+        self._file_manager.slice(
+            default_slicer,
+            FileDestinations.LOCAL,
+            item.path,
+            FileDestinations.LOCAL,
+            gcode_path,
+            callback=slicer_cb,
+        )
+        return None  # "none" indicates upstream to wait for cb()
+
+    def start_print(self, item, cb):
 
         path = item.path
-        # LAN set objects may not link directly to the path of the print file.
-        # In this case, we have to resolve the path by syncing files / extracting
-        # gcode files from .gjob. This works without any extra FileManager changes
-        # only becaue self._fileshare was configured with a basedir in the OctoPrint
-        # file structure
-        if hasattr(item, "resolve"):
-            try:
-                path = item.resolve()
-            except ResolveError as e:
-                self._logger.error(e)
-                self._msg(f"Could not resolve LAN print path for {path}", type="error")
-                return False
-            self._logger.info(f"Resolved LAN print path to {path}")
+        # Sets may not link directly to the path of the print file, instead to .gjob, .stl
+        # or other format where unpacking or transformation is needed to get to .gcode.
+        try:
+            path = item.resolve()
+        except LANResolveError as e:
+            self._logger.error(e)
+            self._msg(f"Could not resolve LAN print path for {path}", type="error")
+            return False
+        except STLResolveError as e:
+            self._logger.error(e)
+            return self._start_slicing(item, cb)
 
+        self._msg(f"{item.job.name}: printing {item.path}")
         try:
             self._logger.info(f"Attempting to print {path} (sd={item.sd})")
             self._printer.select_file(

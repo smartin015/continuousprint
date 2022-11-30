@@ -8,6 +8,7 @@ import shutil
 import traceback
 import random
 from pathlib import Path
+from octoprint import __version__ as octoprint_version
 from octoprint.events import Events
 from octoprint.filemanager import NoSuchStorage
 from octoprint.filemanager.analysis import AnalysisQueue, QueueEntry
@@ -111,6 +112,10 @@ class CPQPlugin(ContinuousPrintAPI):
     def _get_key(self, k, default=None):
         v = self._settings.get([k.setting])
         return v if v is not None else default
+
+    def _octoprint_version_exceeds(major: int, minor: int):
+        cur_major, cur_minor, _ = [int(c) for c in octoprint_version.split(".")[:2]]
+        return cur_major > major or (cur_major == major and cur_minor > minor)
 
     def _add_folder(self, path):
         return self._file_manager.add_folder(
@@ -590,8 +595,10 @@ class CPQPlugin(ContinuousPrintAPI):
             # it's placed in a pending queue (see self._add_set). Now that
             # the processing is done, we actually add the set.
             path = payload["path"]
-            self._logger.debug(f"Handling completed analysis for {path}")
             pend = self._set_add_awaiting_metadata.get(path)
+            self._logger.debug(
+                f"Handling completed analysis for {path} - pending: {pend}"
+            )
             if pend is not None:
                 (path, sd, draft, profiles) = pend
                 prof = payload["result"][CPQProfileAnalysisQueue.PROFILE_KEY]
@@ -603,33 +610,48 @@ class CPQPlugin(ContinuousPrintAPI):
                 self._add_set(path, sd, draft, profiles)
                 del self._set_add_awaiting_metadata[path]
             return
-        if (
-            event == Events.FILE_ADDED
-            and self._profile_from_path(payload["path"]) is None
-        ):
-            # Added files should be checked for metadata and enqueued into CPQ custom analysis
-            if self._enqueue(payload["path"]):
-                self._logger.debug(f"Enqueued newly added file {payload['path']}")
-            return
 
-        if (
-            event == Events.UPLOAD
-        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
+        if event == Events.FILE_ADDED:
+            if self._profile_from_path(payload["path"]) is None:
+                # Added files should be checked for metadata and enqueued into CPQ custom analysis
+                if self._enqueue(payload["path"]):
+                    self._logger.debug(f"Enqueued newly added file {payload['path']}")
+
+        # Events.UPLOAD only applies to REST file upload calls.
+        # This ignores other file addition events from plugins
+        # and the file watcher.
+        # https://github.com/OctoPrint/OctoPrint/pull/4687 adds the
+        # `operation`attribute to Events.FILE_ADDED and eliminates the
+        # need for Events.UPLOAD to discriminate adding/copying/moving files.
+        file_uploaded = False
+        version_after_1_8 = self._octoprint_version_exceeds("1.8.6")
+        if not version_after_1_8 and event == Events.UPLOAD:
+            file_uploaded = True
+        elif (
+            version_after_1_8
+            and event == Events.FILE_ADDED
+            and payload["operation"] == "add"
+        ):
+            file_uploaded = True
+
+        if file_uploaded:
             upload_action = self._get_key(Keys.UPLOAD_ACTION, "do_nothing")
             if upload_action != "do_nothing":
-                if payload["path"].endswith(".gcode"):
+                path = payload["path"]
+                # TODO get object list from octoprint
+                if path.endswith(".gcode") or path.endswith(".stl"):
                     self._add_set(
-                        path=payload["path"],
-                        sd=payload["target"] != "local",
+                        path=path,
+                        # Events.UPLOAD uses "target", EVents.FILE_ADDED uses "storage"
+                        sd=payload.get("storage", payload.get("target")) != "local",
                         draft=(upload_action != "add_printable"),
                     )
-                elif payload["path"].endswith(".gjob"):
+                elif path.endswith(".gjob"):
                     self._get_queue(DEFAULT_QUEUE).import_job(
-                        payload["path"], draft=(upload_action != "add_printable")
+                        path, draft=(upload_action != "add_printable")
                     )
                     self._sync_state()
-            else:
-                return
+            return
         if event == Events.MOVIE_DONE:
             self._timelapse_start_ts = None
             # Optionally delete time-lapses created from bed clearing/finishing scripts

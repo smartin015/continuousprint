@@ -7,6 +7,8 @@ from .data import CustomEvents
 class Action(Enum):
     ACTIVATE = auto()
     DEACTIVATE = auto()
+    RESOLVED = auto()
+    RESOLVE_FAILURE = auto()
     SUCCESS = auto()
     FAILURE = auto()
     SPAGHETTI = auto()
@@ -190,10 +192,10 @@ class Driver:
         ):
             return self._state_preprint
 
-        # Pre-call start_print on entry to eliminate tick delay
+        # Pre-call resolve_print on entry to eliminate tick delay
         self.start_failures = 0
-        nxt = self._state_start_print(a, p)
-        return nxt if nxt is not None else self._state_start_print
+        nxt = self._state_resolve_print(a, p)
+        return nxt if nxt is not None else self._state_resolve_print
 
     def _fmt_material_key(self, mk):
         try:
@@ -227,7 +229,26 @@ class Driver:
                 StatusType.NEEDS_ACTION,
             )
 
-    def _state_start_print(self, a: Action, p: Printer):
+    def _state_awaiting_slicer(self, a: Action, p: Printer):
+        now = time.time()
+        if (
+            self._timelapse_start_ts is not None
+            and now < self._timelapse_start_ts + self.TIMELAPSE_WAIT_SEC
+        ):
+            self._set_status("Waiting for timelapse to render", StatusType.NORMAL)
+            return
+
+        if a == Action.SLICER_SUCCESS:
+            return self._enter_start_print(a, p)
+        elif a == Action.SLICER_FAILURE:
+            raise Exception("TODO")
+        else:
+            self._set_status(
+                "Waiting for slicer to complete",
+                StatusType.NEEDS_ACTION,
+            )
+
+    def _state_resolve_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
@@ -242,19 +263,38 @@ class Driver:
             return self._state_awaiting_material
 
         self.q.begin_run()
-        if self._runner.start_print(item):
+        result = self._runner.start_print(item, self._start_print_callback)
+        if result is False:
+            return self._fail_start()
+        elif result is True:
             return self._state_printing
+        elif result is None:
+            return self._state_start_print
         else:
-            # TODO bail out of the job and mark it as bad rather than dropping into inactive state
-            self.start_failures += 1
-            if self.start_failures >= self.max_startup_attempts:
-                self._set_status("Failed to start; too many attempts", StatusType.ERROR)
-                return self._enter_inactive()
-            else:
-                self._set_status(
-                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
-                    StatusType.ERROR,
-                )
+            raise Exception(f"Unexpected return value for start_print: {result}")
+
+    def _state_start_print(self, a: Action, p: Printer):
+        if a == Action.RESOLVED:
+            return self._state_printing
+        elif a == Action.RESOLVE_FAILURE:
+            return self._fail_start()
+
+    def _start_print_callback(self, success: bool, error):
+        # Forward action
+        self.action(Action.RESOLVED if success else Action.RESOLVE_FAILURE)
+
+    def _fail_start(self):
+        # TODO bail out of the job and mark it as bad rather than dropping into inactive state
+        self.start_failures += 1
+        if self.start_failures >= self.max_startup_attempts:
+            self._set_status("Failed to start; too many attempts", StatusType.ERROR)
+            return self._enter_inactive()
+        else:
+            self._set_status(
+                f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
+                StatusType.ERROR,
+            )
+            return self._state_resolve_print
 
     def _long_idle(self, p):
         # We wait until we're in idle state for a long-ish period before acting, as

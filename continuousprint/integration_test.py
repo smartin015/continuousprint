@@ -44,6 +44,9 @@ class IntegrationTest(DBTest):
         # Bypass running of scripts on activate, start print, deactivate etc.
         self.d._runner.run_script_for_event.return_value = None
 
+        # Default to succeeding when starting print
+        self.d._runner.start_print.return_value = True
+
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
 
@@ -362,6 +365,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
                 logger=logging.getLogger(f"peer{i}:Driver"),
             )
             d._runner.run_script_for_event.return_value = None
+            d._runner.start_print.return_value = True
             d.set_retry_on_pause(True)
             d.action(DA.DEACTIVATE, DP.IDLE)
             lq.lan.q = LANPrintQueueBase(

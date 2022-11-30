@@ -47,7 +47,7 @@ class LANJobView(JobView):
         self.save()
 
 
-class ResolveError(Exception):
+class LANResolveError(Exception):
     pass
 
 
@@ -66,13 +66,13 @@ class LANSetView(SetView):
         self.profile_keys = ",".join(data.get("profiles", []))
         self._resolved = None
 
-    def resolve(self) -> str:
+    def resolve(self, override=None) -> str:
         if self._resolved is None:
             try:
                 self._resolved = str(Path(self.job.get_base_dir()) / self.path)
             except HTTPError as e:
-                raise ResolveError(f"Failed to resolve {self.path}") from e
-        return self._resolved
+                raise LANResolveError(f"Failed to resolve {self.path}") from e
+        return super().resolve(override)
 
     def save(self):
         self.job.save()

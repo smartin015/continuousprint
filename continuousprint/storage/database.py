@@ -27,6 +27,10 @@ import yaml
 import time
 
 
+class STLResolveError(Exception):
+    pass
+
+
 # Defer initialization
 class DB:
     # Adding foreign_keys pragma is necessary for ON DELETE behavior
@@ -218,6 +222,20 @@ class SetView:
         self.save()  # Save must occur before job is observed
         return self.job.next_set(profile)
 
+    def resolve(self, override=None):
+        if override is not None:
+            self._resolved = override
+
+        # TODO use registered slicer object types per octoprint hook
+        if not hasattr(self, "_resolved") or self._resolved is None:
+            raise NotImplementedError(
+                "Implementer of SetView must implement .resolve()"
+            )
+        elif self._resolved.endswith(".stl"):
+            raise STLResolveError(f"Set path {self._resolved} requires slicing")
+        else:
+            return self._resolved
+
     @classmethod
     def from_dict(self, s):
         raise NotImplementedError
@@ -284,6 +302,11 @@ class Set(Model, SetView):
                 s[csvform] = ",".join(s[listform])
                 del s[listform]
         return Set(**s)
+
+    def resolve(self, override=None):
+        if getattr(self, "_resolved", None) is None:
+            self._resolved = self.path
+        return super().resolve(override)
 
 
 class Run(Model):

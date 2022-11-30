@@ -185,6 +185,7 @@ class TestEventHandling(unittest.TestCase):
         self.p.q = MagicMock()
         self.p._sync_state = MagicMock()
         self.p._setup_thirdparty_plugin_integration()
+        self.p._octoprint_version_exceeds = lambda v: False
 
     def testTick(self):
         self.p.tick()
@@ -243,7 +244,7 @@ class TestEventHandling(unittest.TestCase):
         )
 
     def testUploadNoAction(self):
-        self.p.on_event(Events.UPLOAD, dict())
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.gcode"))
         self.p.d.action.assert_not_called()
 
     def testUploadAddPrintableInvalidFile(self):
@@ -265,6 +266,22 @@ class TestEventHandling(unittest.TestCase):
         self.p._get_queue(DEFAULT_QUEUE).import_job.assert_called_with(
             "testpath.gjob", draft=False
         )
+
+    def testUploadAddSTL(self):
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.stl", target="local"))
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.stl")
+
+    def testFileAddedWithOperationPrintable(self):
+        self.p._octoprint_version_exceeds = lambda v: True
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(
+            Events.FILE_ADDED,
+            dict(path="testpath.gcode", storage="local", operation="add"),
+        )
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.gcode")
 
     def testTempFileMovieDone(self):
         self.p._set_key(Keys.AUTOMATION_TIMELAPSE_ACTION, "auto_remove")

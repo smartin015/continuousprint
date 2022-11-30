@@ -11,11 +11,13 @@ from .database import (
     migrateQueuesV2ToV3,
     Job,
     Set,
+    SetView,
     Run,
     Script,
     EventHook,
     StorageDetails,
     DEFAULT_QUEUE,
+    STLResolveError,
 )
 from ..data import CustomEvents
 import tempfile
@@ -359,6 +361,23 @@ class TestSet(QueuesDBTest):
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.j.remaining, 0)
         self.assertEqual(self.s.remaining, 0)
+
+    def testResolveUnimplemented(self):
+        sv = SetView()
+        with self.assertRaises(NotImplementedError):
+            sv.resolve()
+
+    def testResolveGcode(self):
+        self.assertEqual(self.s.resolve(), self.s.path)
+
+    def testResolveSTL(self):
+        self.s.path = "testpath.stl"
+        with self.assertRaises(STLResolveError):
+            self.s.resolve()
+
+    def testResolveAlreadySet(self):
+        self.s._resolved = "testval"
+        self.assertEqual(self.s.resolve(), "testval")
 
     def testFromDict(self):
         d = self.s.as_dict()

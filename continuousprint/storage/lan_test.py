@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
-from .lan import LANJobView, LANSetView, ResolveError
+from .database import STLResolveError
+from .lan import LANJobView, LANSetView, LANResolveError
 from requests.exceptions import HTTPError
 
 
@@ -25,9 +26,16 @@ class LANViewTest(unittest.TestCase):
         self.lq.get_gjob_dirpath.return_value = "/path/to/"
         self.assertEqual(self.s.resolve(), "/path/to/a.gcode")
 
+    def test_resolve_stl(self):
+        # Ensure STL checking from the parent class is still triggered
+        self.j.sets[0].path = "a.stl"
+        self.lq.get_gjob_dirpath.return_value = "/path/to/"
+        with self.assertRaises(STLResolveError):
+            self.s.resolve()
+
     def test_resolve_http_error(self):
         self.lq.get_gjob_dirpath.side_effect = HTTPError
-        with self.assertRaises(ResolveError):
+        with self.assertRaises(LANResolveError):
             self.s.resolve()
 
     def test_decrement_refreshes_sets_and_saves(self):
