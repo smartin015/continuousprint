@@ -7,9 +7,10 @@ from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.server import current_user
+from octoprint.slicing.exceptions import SlicingException
 from .storage.lan import LANResolveError
 from .storage.database import STLResolveError
-from .data import TEMP_FILE_DIR, CustomEvents
+from .data import TEMP_FILE_DIR, CustomEvents, Keys
 from .storage.queries import genEventScript
 
 
@@ -18,6 +19,8 @@ class ScriptRunner:
         self,
         msg,
         file_manager,
+        get_key,
+        slicing_manager,
         logger,
         printer,
         refresh_ui_state,
@@ -25,8 +28,10 @@ class ScriptRunner:
     ):
         self._msg = msg
         self._file_manager = file_manager
+        self._slicing_manager = slicing_manager
         self._logger = logger
         self._printer = printer
+        self._get_key = get_key
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
         self._symbols = dict(
@@ -141,18 +146,18 @@ class ScriptRunner:
         return result
 
     def _output_gcode_path(self, item):
-        return item.path.rsplit(".", 1)[0] + ".gcode"
+        # Avoid splitting suffixes so that we can more easily
+        # match against the item when checking if the print is finished
+        return str(Path(TEMP_FILE_DIR) / f"{item.path}.gcode")
 
     def _cancel_any_slicing(self, item):
-        if (
-            item.sd
-            or not self._file_manager.slicing_enabled()
-            or self._file_manager.default_slicer() is None
-        ):
+        slicer = self._get_key(Keys.SLICER)
+        profile = self._get_key(Keys.SLICER_PROFILE)
+        if item.sd or slicer == "" or profile == "":
             return False
 
-        self._file_manager.cancel_slicing(
-            self._file_manager.default_slicer(),
+        self._slicing_manager.cancel_slicing(
+            slicer,
             item.path,
             self._output_gcode_path(item),
         )
@@ -161,18 +166,21 @@ class ScriptRunner:
         # Cannot slice SD files, as they cannot be read (only written)
         # Similarly we can't slice if slicing is disabled or there is no
         # default slicer.
-        slice_enabled = self._file_manager.slicing_enabled()
-        default_slicer = self._file_manager.default_slicer()
-        if item.sd or not slice_enabled or default_slicer is None:
-            self._logger.error(
-                f"Cannot slice item {item.path} (sd={item.sd}, slicing_enabled={slice_enabled}, default_slicer={default_slicer})"
-            )
+        self._logger.info("begin _start_slicing")
+        slicer = self._get_key(Keys.SLICER)
+        profile = self._get_key(Keys.SLICER_PROFILE)
+        if item.sd or slicer == "" or profile == "":
+            msg = f"Cannot slice item {item.path} (sd={item.sd}, slicer={slicer}, profile={profile})"
+            self._logger.error(msg)
+            self._msg(msg, type="error")
             return False
 
-        gcode_path = self._output_gcode_path(item)
-        self._msg(
-            f"Slicing {item.path} using slicer {default_slicer}; output to {gcode_path}"
+        gcode_path = self._file_manager.path_on_disk(
+            FileDestinations.LOCAL, self._output_gcode_path(item)
         )
+        msg = f"Slicing {item.path} using slicer {slicer} and profile {profile}; output to {gcode_path}"
+        self._logger.info(msg)
+        self._msg(msg)
 
         def slicer_cb(*args, **kwargs):
             if kwargs.get("_error") is not None:
@@ -185,15 +193,22 @@ class ScriptRunner:
                 result = self.start_print(item, cb)  # reattempt the print
                 cb(success=result, error=None)
 
-        # File paths *must* be LOCAL, as you cannot read from a printer's SD card interface.
-        self._file_manager.slice(
-            default_slicer,
-            FileDestinations.LOCAL,
-            item.path,
-            FileDestinations.LOCAL,
-            gcode_path,
-            callback=slicer_cb,
-        )
+        # We use _slicing_manager here instead of _file_manager to prevent FileAdded events
+        # from causing additional queue activity.
+        # Also fully resolve source and dest path as required by slicing manager
+        try:
+            self._slicing_manager.slice(
+                slicer,
+                self._file_manager.path_on_disk(FileDestinations.LOCAL, item.path),
+                gcode_path,
+                profile,
+                callback=slicer_cb,
+            )
+        except SlicingException as e:
+            self._logger.error(e)
+            self._msg(self)
+            return False
+        print("Slicer kicked off, waiting now for callback")
         return None  # "none" indicates upstream to wait for cb()
 
     def start_print(self, item, cb):
@@ -208,7 +223,7 @@ class ScriptRunner:
             self._msg(f"Could not resolve LAN print path for {path}", type="error")
             return False
         except STLResolveError as e:
-            self._logger.error(e)
+            self._logger.warning(e)
             return self._start_slicing(item, cb)
 
         self._msg(f"{item.job.name}: printing {item.path}")

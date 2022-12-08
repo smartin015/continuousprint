@@ -280,8 +280,13 @@ class Driver:
             return self._fail_start()
 
     def _start_print_callback(self, success: bool, error):
-        # Forward action
-        self.action(Action.RESOLVED if success else Action.RESOLVE_FAILURE)
+        if error is not None:
+            return
+
+        # Forward action. We assume printer is idle here.
+        self.action(
+            Action.RESOLVED if success else Action.RESOLVE_FAILURE, Printer.IDLE
+        )
 
     def _fail_start(self):
         # TODO bail out of the job and mark it as bad rather than dropping into inactive state
@@ -327,11 +332,11 @@ class Driver:
             # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
             # the file name, not the full path to the file.
             # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterCallback.on_printer_send_current_data
-            if item.path.split("/")[-1] == self._cur_path:
+            if item.resolve().split("/")[-1] == self._cur_path:
                 return self._state_success
             else:
                 self._logger.info(
-                    f"Completed print {self._cur_path} not matching current queue item {item.path} - clearing it in prep to start queue item"
+                    f"Completed print {self._cur_path} not matching current queue item {item.resolve()} - clearing it in prep to start queue item"
                 )
                 return self._state_start_clearing
 

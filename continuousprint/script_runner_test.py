@@ -115,15 +115,16 @@ class TestScriptRunner(unittest.TestCase):
         self.s._fire_event.assert_not_called()
 
     def test_start_print_stl_slicing_disabled(self):
-        self.s._file_manager.slicing_enabled.return_value = False
+        self.s._file_manager = MagicMock(slicing_enabled=False)
         self.assertEqual(
             self.s.start_print(LI(True, "a.stl", LJ("job1")), MagicMock()), False
         )
         self.s._fire_event.assert_not_called()
 
     def test_start_print_stl_sd(self):
-        self.s._file_manager.slicing_enabled.return_value = False
-        self.s._file_manager.default_slicer.return_value = "DEFAULT_SLICER"
+        self.s._file_manager = MagicMock(
+            slicing_enabled=False, default_slicer="DEFAULT_SLICER"
+        )
         self.assertEqual(
             self.s.start_print(LI(True, "a.stl", LJ("job1")), MagicMock()), False
         )
@@ -131,8 +132,9 @@ class TestScriptRunner(unittest.TestCase):
 
     def test_start_print_stl(self):
         cb = MagicMock()
-        self.s._file_manager.slicing_enabled.return_value = True
-        self.s._file_manager.default_slicer.return_value = "DEFAULT_SLICER"
+        self.s._file_manager = MagicMock(
+            slicing_enabled=True, default_slicer="DEFAULT_SLICER"
+        )
 
         self.assertEqual(self.s.start_print(LI(False, "a.stl", LJ("job1")), cb), None)
         self.s._file_manager.slice.assert_called_with(

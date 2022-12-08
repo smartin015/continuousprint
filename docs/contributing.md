@@ -186,3 +186,4 @@ This is a collection of random tidbits intended to help you get your bearings.
     * Applied fix from https://github.com/SortableJS/knockout-sortablejs/pull/13
     * Applied fix from https://github.com/SortableJS/knockout-sortablejs/issues/14
     * Discussion at https://github.com/smartin015/continuousprint/issues/14 (conflict with a different `knockout-sortable` library)
+* Running PrePrintService for development purposes can be done through the usual installation steps, but using `http://pre-print-service:2304` as the host. CPQ's docker-compose.yaml file is already configured to join PrePrintService's docker network.

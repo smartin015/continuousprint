@@ -59,6 +59,7 @@ class CPQPlugin(ContinuousPrintAPI):
         printer,
         settings,
         file_manager,
+        slicing_manager,
         plugin_manager,
         queries,
         data_folder,
@@ -71,6 +72,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._printer = printer
         self._settings = settings
         self._file_manager = file_manager
+        self._slicing_manager = slicing_manager
         self._plugin_manager = plugin_manager
         self._queries = queries
         self._data_folder = data_folder
@@ -113,7 +115,7 @@ class CPQPlugin(ContinuousPrintAPI):
         v = self._settings.get([k.setting])
         return v if v is not None else default
 
-    def _octoprint_version_exceeds(major: int, minor: int):
+    def _octoprint_version_exceeds(self, major: int, minor: int):
         cur_major, cur_minor = [int(c) for c in octoprint_version.split(".")[:2]]
         return cur_major > major or (cur_major == major and cur_minor > minor)
 
@@ -408,6 +410,8 @@ class CPQPlugin(ContinuousPrintAPI):
         self._runner = srcls(
             self.popup,
             self._file_manager,
+            self._get_key,
+            self._slicing_manager,
             self._logger,
             self._printer,
             self._sync_state,
@@ -479,7 +483,9 @@ class CPQPlugin(ContinuousPrintAPI):
         for k, v in data.items():
             if v["type"] == "folder":
                 backlog += self._backlog_from_file_list(v["children"])
-            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None:
+            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None and v["path"].split(
+                "."
+            )[-1] in ("gcode", "g", "gco"):
                 self._logger.debug(f"File \"{v['path']}\" needs analysis")
                 backlog.append(v["path"])
             else:
@@ -624,7 +630,7 @@ class CPQPlugin(ContinuousPrintAPI):
         # `operation`attribute to Events.FILE_ADDED and eliminates the
         # need for Events.UPLOAD to discriminate adding/copying/moving files.
         file_uploaded = False
-        version_after_1_8 = self._octoprint_version_exceeds("1.8.6")
+        version_after_1_8 = self._octoprint_version_exceeds(1, 8)
         if not version_after_1_8 and event == Events.UPLOAD:
             file_uploaded = True
         elif (

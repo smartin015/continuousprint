@@ -16,7 +16,8 @@ $(function() {
         let titleregex = /<div class="title clickable"(.*)>([\s\S]*)<.div>/mi;
         let template = '<div class="btn btn-mini bold" data-bind="click: function() { if ($root.loginState.isUser()) { $root.add($data) } else { return; } }" title="Add To Continuous Print Queue" ><i class="fas fa-plus"></i></div>';
 
-        let mctmpl = $($.parseHTML('<div>' + $("#files_template_machinecode").text() + '</div>')[0]);
+        let mc = $("#files_template_machinecode");
+        let mctmpl = $($.parseHTML('<div>' + mc.text() + '</div>')[0]);
         let actions = mctmpl.find('.action-buttons');
         actions.attr('data-bind', "css: 'cpq-' + display.split('.')[1]");
         actions.append(template);
@@ -25,7 +26,16 @@ $(function() {
         title.append(`<i class="fas fa-archive cpq-gjob" data-bind="visible: display.endsWith('.gjob')"></i>`);
         title.append('<span data-bind="text: display"></span>');
 
-        $("#files_template_machinecode").text(mctmpl.html());
+        mc.text(mctmpl.html());
+
+        // Also inject the add-to-queue button for models, which can be auto-sliced
+        let mdl = $("#files_template_model");
+        let modeltmpl = $($.parseHTML('<div>' + mdl.text() + '</div>')[0]);
+        actions = modeltmpl.find('.action-buttons');
+        actions.attr('data-bind', "css: 'cpq-' + display.split('.')[1]");
+        actions.append(template);
+
+        mdl.text(modeltmpl.html());
 
         // This injects the status of the queue into PrinterStateViewModel (the "State" panel)
         $("#state .accordion-inner").prepend(`

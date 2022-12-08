@@ -53,6 +53,7 @@ class ContinuousprintPlugin(
                 self._printer,
                 self._settings,
                 self._file_manager,
+                self._slicing_manager,
                 self._plugin_manager,
                 queries,
                 self.get_plugin_data_folder(),
@@ -64,6 +65,11 @@ class ContinuousprintPlugin(
             )
 
     def on_after_startup(self):
+        self._logger.debug(
+            "Starting ContinuousPrint with settings: {}".format(
+                self._settings.get_all_data()
+            )
+        )
         self._plugin.start()
 
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
