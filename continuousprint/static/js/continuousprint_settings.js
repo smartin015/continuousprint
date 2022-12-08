@@ -9,6 +9,7 @@ if (typeof log === "undefined" || log === null) {
   CP_CUSTOM_EVENTS = [];
   CP_LOCAL_IP = '';
   CPAPI = require('./continuousprint_api');
+  OctoPrint = undefined;
 }
 
 function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS) {
@@ -37,29 +38,31 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.slicers = ko.observable({});
     self.slicer = ko.observable();
     self.slicer_profile = ko.observable();
-    OctoPrint.slicing.listAllSlicersAndProfiles().done(function (data) {
-      let result = {};
-      for (let d of Object.values(data)) {
-        let profiles = [];
-        let default_profile = null;
-        for (let p of Object.keys(d.profiles)) {
-          if (d.profiles[p].default) {
-            default_profile = p;
-            continue;
+    if (OctoPrint !== undefined) {
+      OctoPrint.slicing.listAllSlicersAndProfiles().done(function (data) {
+        let result = {};
+        for (let d of Object.values(data)) {
+          let profiles = [];
+          let default_profile = null;
+          for (let p of Object.keys(d.profiles)) {
+            if (d.profiles[p].default) {
+              default_profile = p;
+              continue;
+            }
+            profiles.push(p);
           }
-          profiles.push(p);
+          if (default_profile) {
+            profiles.unshift(default_profile);
+          }
+          result[d.key] = {
+            name: d.displayName,
+            key: d.key,
+            profiles,
+          };
         }
-        if (default_profile) {
-          profiles.unshift(default_profile);
-        }
-        result[d.key] = {
-          name: d.displayName,
-          key: d.key,
-          profiles,
-        };
-      }
-      self.slicers(result);
-    });
+        self.slicers(result);
+      });
+    }
     self.slicerProfiles = ko.computed(function() {
       console.log("slicerProfiles: ", self.slicers()[self.slicer()]);
       return (self.slicers()[self.slicer()] || {}).profiles;

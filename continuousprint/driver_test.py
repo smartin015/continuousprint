@@ -22,6 +22,7 @@ class TestFromInactive(unittest.TestCase):
         self.d._runner.run_script_for_event.reset_mock()
         self.d._runner.start_print.return_value = True
         item = MagicMock(path="asdf")  # return same item by default every time
+        item.resolve.return_value = "asdf"
         self.d.q.get_set_or_acquire.return_value = item
         self.d.q.get_set.return_value = item
 
@@ -251,6 +252,7 @@ class TestFromStartPrint(unittest.TestCase):
         )
         self.d.set_retry_on_pause(True)
         item = MagicMock(path="asdf")  # return same item by default every time
+        item.resolve.return_value = "asdf"
         self.d.q.get_set_or_acquire.return_value = item
         self.d.q.get_set.return_value = item
         self.d._runner.run_script_for_event.return_value = None
@@ -269,6 +271,7 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE)  # -> start_clearing
         self.d.q.end_run.assert_called_once()
         item2 = MagicMock(path="basdf")
+        item2.resolve.return_value = "basdf"
         self.d.q.get_set_or_acquire.return_value = (
             item2  # manually move the supervisor forward in the queue
         )

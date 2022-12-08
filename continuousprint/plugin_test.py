@@ -42,6 +42,7 @@ def mockplugin():
         printer=MagicMock(),
         settings=MockSettings(),
         file_manager=MagicMock(),
+        slicing_manager=MagicMock(),
         plugin_manager=MagicMock(),
         fire_event=MagicMock(),
         queries=MagicMock(),
@@ -185,7 +186,7 @@ class TestEventHandling(unittest.TestCase):
         self.p.q = MagicMock()
         self.p._sync_state = MagicMock()
         self.p._setup_thirdparty_plugin_integration()
-        self.p._octoprint_version_exceeds = lambda v: False
+        self.p._octoprint_version_exceeds = lambda a, b: False
 
     def testTick(self):
         self.p.tick()
@@ -274,7 +275,7 @@ class TestEventHandling(unittest.TestCase):
         self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.stl")
 
     def testFileAddedWithOperationPrintable(self):
-        self.p._octoprint_version_exceeds = lambda v: True
+        self.p._octoprint_version_exceeds = lambda a, b: True
         self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
         self.p._add_set = MagicMock()
         self.p.on_event(

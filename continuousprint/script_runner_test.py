@@ -36,6 +36,8 @@ class TestScriptRunner(unittest.TestCase):
         self.s = ScriptRunner(
             msg=MagicMock(),
             file_manager=MagicMock(),
+            get_key=MagicMock(),
+            slicing_manager=MagicMock(),
             logger=logging.getLogger(),
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),
@@ -132,27 +134,25 @@ class TestScriptRunner(unittest.TestCase):
 
     def test_start_print_stl(self):
         cb = MagicMock()
-        self.s._file_manager = MagicMock(
-            slicing_enabled=True, default_slicer="DEFAULT_SLICER"
-        )
+        self.s._file_manager.path_on_disk.side_effect = lambda d, p: p
+        self.s._get_key.side_effect = ("testslicer", "testprofile")
 
         self.assertEqual(self.s.start_print(LI(False, "a.stl", LJ("job1")), cb), None)
-        self.s._file_manager.slice.assert_called_with(
-            "DEFAULT_SLICER",
-            FileDestinations.LOCAL,
+        self.s._slicing_manager.slice.assert_called_with(
+            "testslicer",
             "a.stl",
-            FileDestinations.LOCAL,
-            "a.gcode",
+            "ContinuousPrint/tmp/a.stl.gcode",
+            "testprofile",
             callback=ANY,
         )
         self.s._printer.select_file.assert_not_called()
 
         # Test callbacks
-        slice_cb = self.s._file_manager.slice.call_args[1]["callback"]
+        slice_cb = self.s._slicing_manager.slice.call_args[1]["callback"]
         slice_cb(_analysis="foo")
         cb.assert_called_with(success=True, error=None)
         self.s._printer.select_file.assert_called_with(
-            "a.gcode",
+            "ContinuousPrint/tmp/a.stl.gcode",
             sd=False,
             printAfterSelect=True,
             user="foo",
@@ -177,6 +177,8 @@ class TestWithInterpreter(AutomationDBTest):
         self.s = ScriptRunner(
             msg=MagicMock(),
             file_manager=MagicMock(),
+            get_key=MagicMock(),
+            slicing_manager=MagicMock(),
             logger=logging.getLogger(),
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),

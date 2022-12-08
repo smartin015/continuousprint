@@ -46,6 +46,8 @@ function mocks() {
             cp_bed_clearing_script: jest.fn(),
             cp_queue_finished_script: jest.fn(),
             cp_printer_profile: jest.fn(),
+            cp_slicer: jest.fn(),
+            cp_slicer_profile: jest.fn(),
           },
         },
       },
