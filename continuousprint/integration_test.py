@@ -1,13 +1,16 @@
 import unittest
 import datetime
 import time
+import tempfile
 from unittest.mock import MagicMock, ANY
 from .driver import Driver, Action as DA, Printer as DP
+from pathlib import Path
 import logging
 import traceback
 from .storage.database_test import DBTest
 from .storage.database import DEFAULT_QUEUE, MODELS, populate_queues
 from .storage import queries
+from .storage.lan import LANJobView
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
 from .queues.lan import LANQueue
@@ -341,18 +344,22 @@ class TestMultiDriverLANQueue(unittest.TestCase):
 
         self.locks = {}
         self.peers = []
+        lqpeers = {}
+        lqjobs = TestReplDict(lambda a, b: None)
         for i, db in enumerate(self.dbs):
             with db.bind_ctx(MODELS):
                 populate_queues()
+            fsm = MagicMock(host="fsaddr", port=0)
+            profile = dict(name="profile")
             lq = LANQueue(
                 "LAN",
                 f"peer{i}:{12345+i}",
                 logging.getLogger(f"peer{i}:LAN"),
                 Strategy.IN_ORDER,
                 onupdate,
-                MagicMock(),
-                dict(name="profile"),
-                lambda path: path,
+                fsm,
+                profile,
+                lambda path, sd: path,
             )
             mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
             mq.add(lq.ns, lq)
@@ -368,11 +375,9 @@ class TestMultiDriverLANQueue(unittest.TestCase):
                 lq.ns, lq.addr, MagicMock(), logging.getLogger("lantestbase")
             )
             lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
-            lq.lan.q.jobs = TestReplDict(lambda a, b: None)
-            lq.lan.q.peers = self.peers
-            if i > 0:
-                lq.lan.q.peers = self.peers[0][2].lan.q.peers
-                lq.lan.q.jobs = self.peers[0][2].lan.q.jobs
+            lq.lan.q.jobs = lqjobs
+            lq.lan.q.peers = lqpeers
+            lq.update_peer_state(lq.addr, "status", "run", profile)
             self.peers.append((d, mq, lq, db))
 
     def test_ordered_acquisition(self):
@@ -427,6 +432,48 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d2.action(DA.TICK, DP.IDLE)  # -> finishing
             d2.action(DA.SUCCESS, DP.IDLE)  # -> idle
             self.assertEqual(d2.state.__name__, d2._state_idle.__name__)
+
+    def test_non_local_edit(self):
+        (d1, _, lq1, db1) = self.peers[0]
+        (d2, _, lq2, db2) = self.peers[1]
+        with tempfile.TemporaryDirectory() as tdir:
+            (Path(tdir) / "test.gcode").touch()
+            j = LANJobView(
+                dict(
+                    id="jobhash",
+                    name="job",
+                    created=0,
+                    sets=[
+                        dict(
+                            path="test.gcode",
+                            count=1,
+                            remaining=1,
+                            profiles=["profile"],
+                        ),
+                    ],
+                    count=1,
+                    remaining=1,
+                    peer_=None,
+                ),
+                lq1,
+            )
+            lq1._path_on_disk = lambda p, sd: str(Path(tdir) / p)
+            lq1.import_job_from_view(j, j.id)
+            lq2._fileshare.post.assert_not_called()
+
+            # LQ2 edits the job
+            lq2._fileshare.fetch.return_value = str(Path(tdir) / "unpack/")
+            (Path(tdir) / "unpack").mkdir()
+            lq2dest = Path(tdir) / "unpack/test.gcode"
+            lq2dest.touch()
+            lq2.edit_job("jobhash", dict(draft=True))
+
+            lq2._fileshare.post.assert_called_once()
+            # Job posts with lan 2 address, from pov of lq1
+            self.assertEqual(list(lq1.lan.q.jobs.values())[0][0], lq2.addr)
+            # Uses resolved file path
+            c = lq2._fileshare.post.call_args[0]
+            self.assertEqual(c[1], {str(lq2dest): str(lq2dest)})
 
 
 if __name__ == "__main__":
