@@ -20,12 +20,17 @@ class LANQueueTest(unittest.TestCase, PeerPrintLANTest):
     def setUp(self):
         PeerPrintLANTest.setUp(self)  # Generate peerprint LANQueue as self.q
         self.q.q.syncPeer(
-            dict(profile=dict(name="profile")), addr=self.q.q.addr
+            dict(
+                profile=dict(name="profile"),
+                fs_addr="mock_fs_addr",
+            ),
+            addr=self.q.q.addr,
         )  # Helps pass validation
         ppq = self.q  # Rename to make way for CPQ LANQueue
 
         self.ucb = MagicMock()
         self.fs = MagicMock()
+        self.fs.fetch.return_value = "asdf.gcode"
         self.q = LANQueue(
             "ns",
             "localhost:1234",
