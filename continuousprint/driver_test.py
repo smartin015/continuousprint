@@ -135,6 +135,20 @@ class TestFromInactive(unittest.TestCase):
         # Verify no end_run call anywhere in this process, since print was not in queue
         self.d.q.end_run.assert_not_called()
 
+    def test_completed_stl(self):
+        # In the case of STLs, the item path is not the print path
+        # But we should still complete the currently active print item
+        item = MagicMock(path="asdf.stl")
+        item.resolve.return_value = "asdf.stl.gcode"
+        self.d.q.get_set_or_acquire.return_value = item
+        self.d.q.get_set.return_value = item
+        self.d._runner.run_script_for_event.return_value = None
+        self.d.action(DA.ACTIVATE, DP.BUSY)  # -> start print -> printing
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+        self.d.action(DA.SUCCESS, DP.IDLE, "asdf.stl.gcode")  # -> success
+        self.d.action(DA.TICK, DP.IDLE)  # -> start_clearing, end_run() called
+        self.d.q.end_run.assert_called()
+
     def test_start_clearing_waits_for_idle(self):
         self.d.state = self.d._state_start_clearing
         self.d.action(DA.TICK, DP.BUSY)
