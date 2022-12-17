@@ -12,7 +12,7 @@ if (typeof log === "undefined" || log === null) {
   OctoPrint = undefined;
 }
 
-function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS) {
+function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS, octoprint=OctoPrint) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
@@ -38,8 +38,8 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.slicers = ko.observable({});
     self.slicer = ko.observable();
     self.slicer_profile = ko.observable();
-    if (OctoPrint !== undefined) {
-      OctoPrint.slicing.listAllSlicersAndProfiles().done(function (data) {
+    if (octoprint !== undefined) {
+      octoprint.slicing.listAllSlicersAndProfiles().done(function (data) {
         let result = {};
         for (let d of Object.values(data)) {
           let profiles = [];
@@ -64,7 +64,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       });
     }
     self.slicerProfiles = ko.computed(function() {
-      console.log("slicerProfiles: ", self.slicers()[self.slicer()]);
       return (self.slicers()[self.slicer()] || {}).profiles;
     });
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)

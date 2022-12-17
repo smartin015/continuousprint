@@ -37,6 +37,14 @@ const EVENTS = [
   {event: 'e1'},
 ];
 
+function mock_oprint() {
+  return {
+    slicing: {
+      listAllSlicersAndProfiles: jest.fn(),
+    },
+  };
+}
+
 function mocks() {
   return [
     {
@@ -290,4 +298,56 @@ test('add new preprocessor from Events tab', () =>{
   expect(a.preprocessor()).not.toBe(null);
   expect(v.gotoTab).toHaveBeenCalled();
 
+});
+
+test('Get slicers and profiles for dropdowns', () => {
+  let op = mock_oprint();
+  let cb = null;
+
+  op.slicing.listAllSlicersAndProfiles = () => {
+    return {
+      done: (c) => cb = c
+    };
+  };
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS, op);
+  cb({"preprintservice":{
+    "configured":false,
+    "default":false,
+    "displayName":"PrePrintService",
+    "extensions":{
+      "destination":["gco","gcode","g"],
+      "source":["stl"]
+    },
+    "key":"preprintservice",
+    "profiles":{
+      "profile_015mm_brim":{
+        "default":true,
+        "description":"Imported ...",
+        "displayName":"profile_015mm_brim\n",
+        "key":"profile_015mm_brim",
+        "resource":"http://localhost:5000/api/slicing/preprintservice/profiles/profile_015mm_brim"
+      }
+    },
+    "sameDevice":false
+  }});
+  expect(v.slicers()).toEqual({
+    "preprintservice": {
+      "key": "preprintservice",
+      "name": "PrePrintService",
+      "profiles": ["profile_015mm_brim"],
+    },
+  });
+});
+
+test('Set slicer & profile before save', () => {
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS);
+  v.slicers({slicername: {key: "slicername", name: "Slicer", profiles: ["profile1", "profile2"]}});
+
+  v.slicer("slicername");
+  expect(v.slicerProfiles()).toEqual(["profile1", "profile2"]);
+  v.slicer_profile("profile2");
+
+  v.onSettingsBeforeSave();
+  expect(v.settings.settings.plugins.continuousprint.cp_slicer).toHaveBeenCalledWith("slicername");
+  expect(v.settings.settings.plugins.continuousprint.cp_slicer_profile).toHaveBeenCalledWith("profile2");
 });

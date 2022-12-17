@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from io import StringIO
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.filemanager.destinations import FileDestinations
+from octoprint.slicing.exceptions import SlicingException
 from collections import namedtuple
 from unittest.mock import MagicMock, ANY, patch
 from .script_runner import ScriptRunner
@@ -169,6 +170,15 @@ class TestScriptRunner(unittest.TestCase):
         cb.assert_called_with(success=False, error=ANY)
         self.s._printer.select_file.assert_not_called()
         cb.reset_mock()
+
+    def test_start_print_stl_exception(self):
+        cb = MagicMock()
+        self.s._file_manager.path_on_disk.side_effect = lambda d, p: p
+        self.s._get_key.side_effect = ("testslicer", "testprofile")
+
+        self.s._slicing_manager.slice.side_effect = SlicingException("test")
+        self.assertEqual(self.s.start_print(LI(False, "a.stl", LJ("job1")), cb), False)
+        self.s._printer.select_file.assert_not_called()
 
 
 class TestWithInterpreter(AutomationDBTest):

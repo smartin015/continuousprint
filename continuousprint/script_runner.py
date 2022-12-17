@@ -188,7 +188,6 @@ class ScriptRunner:
             elif kwargs.get("_cancelled"):
                 cb(success=False, error=Exception("Slicing cancelled"))
             else:
-                print("Calling resolve with", gcode_path)
                 item.resolve(gcode_path)  # override the resolve value
                 result = self.start_print(item, cb)  # reattempt the print
                 cb(success=result, error=None)
@@ -208,7 +207,6 @@ class ScriptRunner:
             self._logger.error(e)
             self._msg(self)
             return False
-        print("Slicer kicked off, waiting now for callback")
         return None  # "none" indicates upstream to wait for cb()
 
     def start_print(self, item, cb):
