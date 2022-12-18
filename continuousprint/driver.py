@@ -113,7 +113,7 @@ class Driver:
                     path=self._cur_path,
                     materials=self._cur_materials,
                     bed_temp=self._bed_temp,
-                    state=self.state.__name__,
+                    state=self.state.__name__.strip("_state_"),
                 )
             )
 

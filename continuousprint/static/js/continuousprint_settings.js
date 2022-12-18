@@ -107,7 +107,11 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           let result = [];
           for (let e of self.events()) {
             for (let a of e.actions()) {
-              if (a.script.name() == nn || a.preprocessor() == nn) {
+              let ppname = a.preprocessor();
+              if (ppname !== null && ppname.name) {
+                ppname = ppname.name();
+              }
+              if (a.script.name() === nn || ppname === nn) {
                 result.push(e.display);
               }
             }

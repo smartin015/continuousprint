@@ -277,7 +277,7 @@
                 </div>
                 <div data-bind="foreach: totals, visible: draft">
                   <div class="job-stats">
-                    <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="display: title">?</sup></div>
+                    <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
                     <div class="completed" data-bind="text: completed"></div>
                     <div class="count" data-bind="text: count"></div>
                     <div class="remaining" data-bind="text: remaining"></div>
