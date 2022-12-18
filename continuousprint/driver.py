@@ -229,25 +229,6 @@ class Driver:
                 StatusType.NEEDS_ACTION,
             )
 
-    def _state_awaiting_slicer(self, a: Action, p: Printer):
-        now = time.time()
-        if (
-            self._timelapse_start_ts is not None
-            and now < self._timelapse_start_ts + self.TIMELAPSE_WAIT_SEC
-        ):
-            self._set_status("Waiting for timelapse to render", StatusType.NORMAL)
-            return
-
-        if a == Action.SLICER_SUCCESS:
-            return self._enter_start_print(a, p)
-        elif a == Action.SLICER_FAILURE:
-            raise Exception("TODO")
-        else:
-            self._set_status(
-                "Waiting for slicer to complete",
-                StatusType.NEEDS_ACTION,
-            )
-
     def _state_resolve_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -274,6 +255,7 @@ class Driver:
             raise Exception(f"Unexpected return value for start_print: {result}")
 
     def _state_start_print(self, a: Action, p: Printer):
+        self._set_status("Waiting for print file to be ready")
         if a == Action.RESOLVED:
             return self._state_printing
         elif a == Action.RESOLVE_FAILURE:

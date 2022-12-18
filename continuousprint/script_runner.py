@@ -148,7 +148,8 @@ class ScriptRunner:
     def _output_gcode_path(self, item):
         # Avoid splitting suffixes so that we can more easily
         # match against the item when checking if the print is finished
-        return str(Path(TEMP_FILE_DIR) / f"{item.path}.gcode")
+        name = str(Path(item.path).name) + ".gcode"
+        return str(Path(TEMP_FILE_DIR) / name)
 
     def _cancel_any_slicing(self, item):
         slicer = self._get_key(Keys.SLICER)
@@ -166,11 +167,16 @@ class ScriptRunner:
         # Cannot slice SD files, as they cannot be read (only written)
         # Similarly we can't slice if slicing is disabled or there is no
         # default slicer.
-        self._logger.info("begin _start_slicing")
         slicer = self._get_key(Keys.SLICER)
         profile = self._get_key(Keys.SLICER_PROFILE)
         if item.sd or slicer == "" or profile == "":
-            msg = f"Cannot slice item {item.path} (sd={item.sd}, slicer={slicer}, profile={profile})"
+            msg = f"Cannot slice item {item.path}, because:"
+            if item.sd:
+                msg += "\n* print file is on SD card"
+            if slicer == "":
+                msg += "\n* slicer not configured in CPQ settings"
+            if profile == "":
+                msg += "\n* slicer profile not configured in CPQ settings"
             self._logger.error(msg)
             self._msg(msg, type="error")
             return False
@@ -185,8 +191,12 @@ class ScriptRunner:
         def slicer_cb(*args, **kwargs):
             if kwargs.get("_error") is not None:
                 cb(success=False, error=kwargs["_error"])
+                self._msg(
+                    f"Slicing failed with error: {kwargs['_error']}", type="error"
+                )
             elif kwargs.get("_cancelled"):
                 cb(success=False, error=Exception("Slicing cancelled"))
+                self._msg("Slicing was cancelled")
             else:
                 item.resolve(gcode_path)  # override the resolve value
                 result = self.start_print(item, cb)  # reattempt the print
