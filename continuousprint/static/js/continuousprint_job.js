@@ -177,7 +177,7 @@ function CPJob(obj, peers, api, profile, materials) {
 
   self.totals = ko.computed(function() {
     let r = [
-      {legend: 'Total items printed', title: ""},
+      {legend: 'Total items', title: null},
       {legend: 'Total time', title: "Uses Octoprint's file analysis estimate; may be inaccurate"},
       {legend: 'Total mass', title: "Mass is calculated using active spool(s) in SpoolManager"},
     ];

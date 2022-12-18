@@ -29,4 +29,9 @@ Preprocessors:
   - name: "If starting from idle (first run, or ran finished script)"
     body: |
       # Both current and previous printer state are checked here to ensure printer is properly idle
-      current["state"] in ("_state_inactive", "_state_idle")
+      current["state"] in ("inactive", "idle")
+  - name: "If externally set variable is True"
+    body: |
+      # Set external values via web request, e.g.
+      # curl -X POST -d '{"testval": true}' http://printer:5000/plugin/continuousprint/automation/external
+      external["testval"] == True

@@ -144,7 +144,7 @@
             <div style="flex: 1">
               <div data-bind="hidden: expanded">
                 <div data-bind="text: name"></div>
-                <div class="subheader" data-bind="visible: registrations().length > 0">Runs on <span data-bind="text: registrations"></span></div>
+                <div class="subheader" data-bind="visible: registrations().length > 0">Fires on <span data-bind="text: registrations().join(', ')"></span></div>
               </div>
               <div data-bind="visible: expanded">
                 <input type="text" placeholder="Script Name" data-bind="value: name"></input>
@@ -205,7 +205,7 @@
             <div style="flex: 1">
               <div data-bind="hidden: expanded">
                 <div data-bind="text: name"></div>
-                <div class="subheader" data-bind="visible: registrations().length > 0">Runs on <span data-bind="text: registrations"></span></div>
+                <div class="subheader" data-bind="visible: registrations().length > 0">Fires on <span data-bind="text: registrations().join(', ')"></span></div>
               </div>
               <div data-bind="visible: expanded">
                 <input placeholder="Preprocessor name" type="text" data-bind="value: name"></input>

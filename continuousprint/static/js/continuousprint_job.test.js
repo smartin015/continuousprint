@@ -61,8 +61,8 @@ test('totals', () => {
     remaining: "2", // 2 left in this run, one from each set
     total: "2", // 2 pending
     error: "",
-    legend: "Total items printed",
-    title: expect.anything(),
+    legend: "Total items",
+    title: null,
   });
 
   // Values are as above, but x100 and converted to minutes
