@@ -2,15 +2,11 @@ import uuid
 from typing import Optional
 from bisect import bisect_left
 from peerprint.lan_queue import LANPrintQueue, ChangeType
-from ..storage.lan import LANJobView, LANSetView
+from ..storage.peer import PeerJobView
 from ..storage.database import JobView, SetView
 from pathlib import Path
-from .abstract import AbstractEditableQueue, QueueData, Strategy
+from .base import AbstractEditableQueue, QueueData, Strategy, ValidationError
 import dataclasses
-
-
-class ValidationError(Exception):
-    pass
 
 
 class LANQueue(AbstractEditableQueue):
@@ -94,7 +90,7 @@ class LANQueue(AbstractEditableQueue):
         peerstate = self._get_peers().get(peer)
         if peerstate is None:
             raise ValidationError(
-                "Cannot resolve set {path} within job hash {hash_}; peer state is None"
+                f"Cannot resolve set {path} within job hash {hash_}; peer state is None"
             )
 
         # fetch unpacked job from fileshare (may be cached) and return the real path
@@ -156,7 +152,7 @@ class LANQueue(AbstractEditableQueue):
             acq = data.get("acquired_by_")
             if acq is not None and acq != self.addr:
                 continue  # Acquired by somebody else, so don't consider for scheduling
-            job = LANJobView(data, self)
+            job = PeerJobView(data, self)
             s = job.next_set(self._profile)
             if s is not None:
                 return (job, s)
@@ -251,7 +247,7 @@ class LANQueue(AbstractEditableQueue):
     def get_job_view(self, job_id):
         j = self._get_job(job_id)
         if j is not None:
-            return LANJobView(j, self)
+            return PeerJobView(j, self)
 
     def import_job_from_view(self, j, jid=None):
         err = self._validate_job(j)
@@ -265,7 +261,7 @@ class LANQueue(AbstractEditableQueue):
         manifest["hash"] = self._fileshare.post(manifest, filepaths)
         manifest["id"] = jid if jid is not None else self._gen_uuid()
 
-        # Propagate peer if importing from a LANJobView
+        # Propagate peer if importing from a PeerJobView
         # But don't fail with AttributeError if it's just a JobView
         self.lan.q.setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
         return manifest["id"]
@@ -309,6 +305,7 @@ class LANQueue(AbstractEditableQueue):
     def edit_job(self, job_id, data) -> bool:
         # For lan queues, "editing" a job is basically resubmission of the whole thing.
         # This is because the backing .gjob format is a single file containing the full manifest.
+
         j = self.get_job_view(job_id)
         for (k, v) in data.items():
             if k in ("id", "peer_", "queue"):
@@ -319,6 +316,14 @@ class LANQueue(AbstractEditableQueue):
                 )  # Set data must be translated into views, done by updateSets()
             else:
                 setattr(j, k, v)
+
+        # We must resolve the set paths so we have them locally, as editing can
+        # also occur on servers other than the one that submitted the job.
+        for s in j.sets:
+            s.path = s.resolve()
+
+        # We are also now the source of this job
+        j.peer = self.addr
 
         # Exchange the old job for the new job (reuse job ID)
         jid = self.import_job_from_view(j, j.id)

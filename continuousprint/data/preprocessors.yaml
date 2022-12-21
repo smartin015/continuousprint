@@ -1,0 +1,37 @@
+# Remember to add tests in data_test.py (see TestPreprocessors class)
+Preprocessors:
+  - name: "If the bed temperature is >40C"
+    body: |
+      current['bed_temp'] > 40
+  - name: "If print filename ends in \"_special.gcode\""
+    body: |
+      current['path'].endswith("_special.gcode")
+  - name: "If print will be at least 10mm high"
+    body: |
+      metadata["analysis"]["dimensions"]["height"] >= 10
+  - name: "If print takes on average over an hour to complete"
+    body: |
+      metadata["statistics"]["averagePrintTime"]["_default"] > 60*60
+  - name: "If print has failed more than 10% of the time"
+    body: |
+      # Div by 1 when history is empty to prevent divide by zero
+      failure_ratio = len([h for h in metadata["history"] if not h['success']]) / max(1, len(metadata["history"]))
+      False if len(metadata["history"]) == 0 else failure_ratio > 0.1
+  - name: "Also notify of bed temperature"
+    body: |
+      print("Preprocessor says the bed temperature is", current['bed_temp'])
+      True
+  - name: "Error and pause if bed is >60C"
+    body: |
+      if current['bed_temp'] > 60:
+        raise Exception("Bed temp " + str(current['bed_temp']) + "C) is too hot for this operation")
+      True
+  - name: "If starting from idle (first run, or ran finished script)"
+    body: |
+      # Both current and previous printer state are checked here to ensure printer is properly idle
+      current["state"] in ("inactive", "idle")
+  - name: "If externally set variable is True"
+    body: |
+      # Set external values via web request, e.g.
+      # curl -X POST -d '{"testval": true}' http://printer:5000/plugin/continuousprint/automation/external
+      external["testval"] == True

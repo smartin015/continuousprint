@@ -2,15 +2,17 @@ import unittest
 import logging
 import tempfile
 from datetime import datetime
-from unittest.mock import MagicMock
-from .abstract import Strategy
-from .abstract_test import (
+from unittest.mock import MagicMock, patch
+from .base import Strategy, ValidationError
+from .base_test import (
     AbstractQueueTests,
     EditableQueueTests,
     testJob as makeAbstractTestJob,
 )
-from .wan import PeerPrintQueue, ValidationError
+from peerprint.wan.wan_queue_test import MockPPQ
 from ..storage.database import JobView, SetView
+from ..storage.peer import PeerJobView
+from .wan import WANQueue
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -23,55 +25,64 @@ class CodecTest(unittest.TestCase):
         self.assertEqual(type(got), bytes)
         self.assertEqual(protocol, Codec.PROTOCOL_JSON)
 
-        got = Codec.decode(got, protocol)
+        got = Codec.decode(got, protocol, logging.getLogger())
         self.assertEqual(got, data)
 
+    def test_decode_json_error(self):
+        Codec.decode("badval", "json", logging.getLogger())
+
+    def test_decode_bad_protocol(self):
+        Codec.decode("1", "badproto", logging.getLogger())
+
     def test_decode_unknown_protocol(self):
-        self.assertEqual(Codec.decode("", Codec.PROTOCOL_JSON), None)
+        self.assertEqual(
+            Codec.decode("", Codec.PROTOCOL_JSON, logging.getLogger()), None
+        )
 
 
 class WANQueueTest(unittest.TestCase):
+    @patch("continuousprint.queues.wan.PeerPrintQueue", MockPPQ)
     def setUp(self):
-        PeerPrintWANTest.setUp(self)  # Generate peerprint WANQueue as self.q
-        self.q.q.syncPeer(
-            dict(profile=dict(name="profile")), addr=self.q.q.addr
-        )  # Helps pass validation
-        ppq = self.q  # Rename to make way for CPQ WANQueue
-
         self.ucb = MagicMock()
         self.fs = MagicMock()
+        self.fs.post.return_value = "testhash"
         self.q = WANQueue(
-            "ns",
-            "localhost:1234",
+            "fakebinpath",
+            MagicMock(queue="ns"),
             logging.getLogger(),
             Strategy.IN_ORDER,
             self.ucb,
             self.fs,
+            "fakekeydir",
             dict(name="profile"),
             lambda path, sd: path,
         )
-        self.q.lan = ppq
+        # self.q.update_peer_state(
+        #    "IDLE", dict(name="profile")
+        # )  # Helps pass validation
         self.q._path_exists = lambda p: True  # Override path check for validation
 
 
 class TestAbstractImpl(AbstractQueueTests, WANQueueTest):
     def setUp(self):
         WANQueueTest.setUp(self)
-        self.jid = self.q.import_job_from_view(makeAbstractTestJob(0))
+        print(self.q._get_peers())
+        self.j = makeAbstractTestJob(0, PeerJobView)
+        self.jid = self.q.import_job_from_view(self.j)
 
 
 class TestEditableImpl(EditableQueueTests, WANQueueTest):
     def setUp(self):
         WANQueueTest.setUp(self)
         self.jids = [
-            self.q.import_job_from_view(makeAbstractTestJob(i))
+            self.q.import_job_from_view(makeAbstractTestJob(i, PeerJobView))
             for i in range(EditableQueueTests.NUM_TEST_JOBS)
         ]
 
 
 class TestWANQueueNoConnection(WANQueueTest):
     def test_update_peer_state(self):
-        self.q.update_peer_state("HI", {}, {}, {})  # No explosions? Good
+        self.q.update_peer_state("HI", {})  # No explosions? Good
 
 
 class DummyQueue:

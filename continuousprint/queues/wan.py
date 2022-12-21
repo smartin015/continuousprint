@@ -5,29 +5,24 @@ from typing import Optional
 from bisect import bisect_left
 from peerprint.wan.wan_queue import PeerPrintQueue, ChangeType
 from peerprint.wan.proc import ServerProcessOpts as PPOpts
-from ..storage.lan import LANJobView, LANSetView
-from ..storage.database import JobView, SetView
+from ..storage.peer import PeerJobView, PeerQueueView, PeerSetView
 from pathlib import Path
-from .abstract import AbstractEditableQueue, QueueData, Strategy
+from .base import AbstractEditableQueue, QueueData, Strategy, ValidationError
 import dataclasses
-
-
-class ValidationError(Exception):
-    pass
 
 
 class Codec:
     PROTOCOL_JSON = "json"
 
     @classmethod
-    def decode(self, data, protocol):
-        if protocol == "json":
+    def decode(self, data, protocol, logger):
+        if protocol == Codec.PROTOCOL_JSON:
             try:
                 return json.loads(data)
             except json.JSONDecodeError as e:
-                self._logger.error(f"JSON decode error: {str(e)}")
+                logger.error(f"JSON decode error: {str(e)}")
         else:
-            self._logger.error(f"No decoder for protocol '{protocol}'")
+            logger.error(f"No decoder for protocol '{protocol}'")
 
     @classmethod
     def encode(self, manifest):
@@ -38,34 +33,28 @@ class WANQueue(AbstractEditableQueue):
     def __init__(
         self,
         binary_path,
-        ns,
+        opts,
         logger,
-        registry,
         strategy: Strategy,
         update_cb,
         fileshare,
         keydir,
         profile,
         path_on_disk_fn,
-        qcls=PeerPrintQueue,  # For unit test mocking
     ):
         super().__init__()
         self._logger = logger
         self._profile = profile
         self.strategy = strategy
-        self.ns = ns
-        self.lan = None
+        self.ns = opts.queue
         self.job_id = None
         self.set_id = None
         self.update_cb = update_cb
         self._fileshare = fileshare
         self._path_on_disk = path_on_disk_fn
 
-        self.wq = qcls(
-            PPOpts(
-                queue=self.ns,
-                registry=registry,
-            ),
+        self.wq = PeerPrintQueue(
+            opts,
             Codec,
             binary_path,
             self._on_update,
@@ -73,7 +62,7 @@ class WANQueue(AbstractEditableQueue):
             keydir=keydir,
         )
 
-    # ---------- LAN queue methods ---------
+    # ---------- WAN queue methods ---------
 
     def is_ready(self) -> bool:
         return self.wq.is_ready()
@@ -88,33 +77,13 @@ class WANQueue(AbstractEditableQueue):
     def destroy(self):
         self.wq.destroy()
 
-    def update_peer_state(self, name, status, run, profile):
+    def update_peer_state(self, status, profile):
         if self.wq is not None:
-            self.wq.syncPeer(
-                dict(
-                    active_set=self._active_set(),
-                    name=name,
-                    status=status,
-                    run=run,
-                    profile=profile,
-                    fs_addr=f"{self._fileshare.host}:{self._fileshare.port}",
-                )
-            )
+            self.wq.syncPeer(status, profile)
 
     def set_job(self, jid: str, manifest: dict):
         # Preserve peer address of job if present in the manifest
         return self.wq.setJob(jid, manifest, addr=manifest.get("peer_", None))
-
-    def get_gjob_dirpath(self, peer, hash_):
-        # Get fileshare address from the peer
-        peerstate = self._get_peers().get(peer)
-        if peerstate is None:
-            raise ValidationError(
-                "Cannot resolve set {path} within job hash {hash_}; peer state is None"
-            )
-
-        # fetch unpacked job from fileshare (may be cached) and return the real path
-        return self._fileshare.fetch(peerstate["fs_addr"], hash_, unpack=True)
 
     # -------- Wrappers around PeerPrintQueue ------
 
@@ -125,15 +94,16 @@ class WANQueue(AbstractEditableQueue):
         return self.wq.getJobs().get(jid)
 
     def _get_peers(self) -> list:
-        return []  # TODO
+        return self.wq.getPeers().sample
 
     # --------- begin AbstractQueue --------
 
-    def get_job(self) -> Optional[JobView]:
+    def get_job(self) -> Optional[PeerJobView]:
         # Override to ensure the latest data is received
         return self.get_job_view(self.job_id)
 
-    def get_set(self) -> Optional[SetView]:
+    def get_set(self) -> Optional[PeerSetView]:
+        print("get_set with set_id", self.set_id)
         if self.job_id is not None and self.set_id is not None:
             # Linear search through sets isn't efficient, but it works.
             j = self.get_job_view(self.job_id)
@@ -141,29 +111,36 @@ class WANQueue(AbstractEditableQueue):
                 if s.id == self.set_id:
                     return s
 
+    def resolve(self, path, peer, hash_):
+        base_dir = self.q.get_gjob_dirpath(self.peer, self.hash)
+        return str(Path(base_dir) / self.path)
+
     def _peek(self):
-        if self.lan is None or self.wq is None:
+        if self.wq is None:
             return (None, None)
         for data in self._get_jobs():
             acq = data.get("acquired_by_")
             if acq is not None and acq != self.addr:
                 continue  # Acquired by somebody else, so don't consider for scheduling
-            job = LANJobView(data, self)
+            job = PeerJobView()
+            job.load_dict(data, PeerQueueView(self))
             s = job.next_set(self._profile)
             if s is not None:
                 return (job, s)
         return (None, None)
 
     def acquire(self) -> bool:
-        if self.lan is None or self.wq is None:
+        if self.wq is None:
             return False
         (job, s) = self._peek()
         if job is not None and s is not None:
+            self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
             if self.wq.acquireJob(job.id):
-                self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
                 self.job_id = job.id
                 self.set_id = s.id
-                self._logger.debug("acquire() success")
+                self._logger.debug(
+                    f"acquire() success for job id {job.id}, set id {s.id}"
+                )
                 return True
             else:
                 self._logger.debug("acquire() failed")
@@ -243,7 +220,10 @@ class WANQueue(AbstractEditableQueue):
     def get_job_view(self, job_id):
         j = self._get_job(job_id)
         if j is not None:
-            return LANJobView(j, self)
+            job = PeerJobView()
+            job.load_dict(j, PeerQueueView(self))
+            print("Loaded view:", job.as_dict())
+            return job
 
     def import_job_from_view(self, j, jid=None):
         err = self._validate_job(j)
@@ -257,7 +237,7 @@ class WANQueue(AbstractEditableQueue):
         manifest["hash"] = self._fileshare.post(manifest, filepaths)
         manifest["id"] = jid if jid is not None else self._gen_uuid()
 
-        # Propagate peer if importing from a LANJobView
+        # Propagate peer if importing from a PeerJobView
         # But don't fail with AttributeError if it's just a JobView
         self.wq.setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
         return manifest["id"]
@@ -268,13 +248,8 @@ class WANQueue(AbstractEditableQueue):
     def _path_exists(self, fullpath):
         return Path(fullpath).exists()
 
-    def _validate_job(self, j: JobView) -> str:
-        peer_profiles = set(
-            [
-                p.get("profile", dict()).get("name", "UNKNOWN")
-                for p in self._get_peers().values()
-            ]
-        )
+    def _validate_job(self, j: PeerJobView) -> str:
+        peer_profiles = set([p.profile or "UNKNOWN" for p in self._get_peers()])
 
         for s in j.sets:
             sprof = set(s.profiles())
@@ -294,7 +269,7 @@ class WANQueue(AbstractEditableQueue):
     def _gen_uuid(self) -> str:
         for i in range(100):
             result = uuid.uuid4()
-            if not self.wq.hasJob(result):
+            if self._get_job(result) is None:
                 return str(result)
         raise Exception("UUID generation failed - too many ID collisions")
 

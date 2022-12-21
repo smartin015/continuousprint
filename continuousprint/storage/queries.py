@@ -1,21 +1,28 @@
 from peewee import IntegrityError, JOIN, fn
 from typing import Optional
 from datetime import datetime
+import re
 import time
 import base64
 
 from pathlib import Path
-from .database import Queue, Job, Set, Run, DB, DEFAULT_QUEUE, ARCHIVE_QUEUE
+from .database import (
+    getint,
+    Queue,
+    Job,
+    Set,
+    Run,
+    DB,
+    DEFAULT_QUEUE,
+    ARCHIVE_QUEUE,
+    EventHook,
+    Preprocessor,
+    Script,
+)
+from ..data import CustomEvents
 
 
 MAX_COUNT = 999999
-
-
-def getint(d, k, default=0):
-    v = d.get(k, default)
-    if type(v) == str:
-        v = int(v)
-    return v
 
 
 def clearOldState():
@@ -174,7 +181,6 @@ def _upsertSet(set_id, data, job):
             "remaining",
         ):
             v = min(int(v), MAX_COUNT)
-
         setattr(s, k, v)
     s.job = job
 
@@ -273,9 +279,6 @@ def _moveImpl(src, dest_id, retried=False):
         postRank = MAX_RANK
     # Pick the target value as the midpoint between the two ranks
     candidate = abs(postRank - destRank) / 2 + min(postRank, destRank)
-    # print(
-    #    f"_moveImpl abs({postRank} - {destRank})/2 + min({postRank}, {destRank}) = {candidate}"
-    # )
 
     # We may end up with an invalid candidate if we hit a singularity - in this case, rebalance all the
     # rows and try again
@@ -334,6 +337,7 @@ def appendSet(queue: str, jid, data: dict, rank=_rankEnd):
         material_keys=",".join(data.get("materials", "")),
         profile_keys=",".join(data.get("profiles", "")),
         count=count,
+        metadata=data.get("metadata", None),
         remaining=getint(data, "remaining", count),
         completed=getint(data, "completed"),
         job=j,
@@ -441,3 +445,99 @@ def getHistory():
 
 def resetHistory():
     Run.delete().execute()
+
+
+def assignAutomation(scripts, preprocessors, events):
+    with DB.automation.atomic():
+        EventHook.delete().execute()
+        Preprocessor.delete().execute()
+        Script.delete().execute()
+        s = dict()
+        for k, v in scripts.items():
+            s[k] = Script.create(name=k, body=v)
+        p = dict()
+        for k, v in preprocessors.items():
+            p[k] = Preprocessor.create(name=k, body=v)
+
+        validEvents = set([e.event for e in CustomEvents])
+        for k, e in events.items():
+            if k not in validEvents:
+                raise KeyError(f"No such CPQ event {k}, options: {validEvents}")
+            for i, a in enumerate(e):
+                pre = None
+                if a.get("preprocessor") not in ("", None):
+                    pre = p[a["preprocessor"]]
+                EventHook.create(
+                    name=k, script=s[a["script"]], preprocessor=pre, rank=i
+                )
+
+
+def getAutomation():
+    scripts = dict()
+    preprocessors = dict()
+    events = dict([(e.event, []) for e in CustomEvents])
+    for s in Script.select():
+        scripts[s.name] = s.body
+    for p in Preprocessor.select():
+        preprocessors[p.name] = p.body
+    for e in (
+        EventHook.select()
+        .join_from(EventHook, Script, JOIN.LEFT_OUTER)
+        .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
+    ):
+        events[e.name].append(
+            dict(
+                script=e.script.name,
+                preprocessor=e.preprocessor.name
+                if e.preprocessor is not None
+                else None,
+            )
+        )
+
+    return dict(scripts=scripts, events=events, preprocessors=preprocessors)
+
+
+def genEventScript(evt: CustomEvents, interp=None, logger=None) -> str:
+    result = []
+    for e in (
+        EventHook.select()
+        .join_from(EventHook, Script, JOIN.LEFT_OUTER)
+        .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
+        .where(EventHook.name == evt.event)
+        .order_by(EventHook.rank)
+    ):
+        procval = True
+        if e.preprocessor is not None and e.preprocessor.body.strip() != "":
+            procval = interp(e.preprocessor.body)
+            if logger:
+                logger.info(
+                    f"EventHook preprocessor for script {e.script.name} ({e.preprocessor.name}): {e.preprocessor.body}\nSymbols: {interp.symtable}\nResult: {procval}"
+                )
+
+        if procval is None or procval is False:
+            continue
+        elif procval is True:
+            formatted = e.script.body
+        elif type(procval) is dict:
+            if logger:
+                logger.info(
+                    f"Appending script {e.script.name} using formatting data {procval}"
+                )
+            formatted = e.script.body.format(**procval)
+        else:
+            raise Exception(
+                f"Invalid return type {type(procval)} for peprocessor {e.preprocessor.name}"
+            )
+
+        leftovers = re.findall(r"\{.*?\}", formatted)
+        if len(leftovers) > 0:
+            ppname = (
+                f"f from preprocessor {e.preprocessor.name}"
+                if e.preprocessor is not None
+                else ""
+            )
+            raise Exception(
+                f"Unformatted placeholders in {e.script.name}{ppname}: {leftovers}"
+            )
+        result.append(formatted)
+    return "\n".join(result)

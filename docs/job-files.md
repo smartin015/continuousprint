@@ -2,15 +2,15 @@
 
 **`.gjob` files store everything that a printer needs to print a Continuous Print job**.
 
-## Why create a new file type?
+!!! info "Why create a new file type?"
 
-3D print slicers generate a `*.gcode` file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).
+    3D print slicers generate a `*.gcode` file for a particular make and model of 3D printer - running that file on a different printer than the one for which it was sliced would likely damage that printer (or maybe just fail to print properly).
 
-Similarly, GCODE doesn't allow for quickly changing the number and type of objects which are printed - which is something Continuous Print does as a base feature.
+    Similarly, GCODE doesn't allow for quickly changing the number and type of objects which are printed - which is something Continuous Print does as a base feature.
 
-Other metadata (like [material types](/material-selection) and [printer profile](/printer-profiles) supported by the GCODE file) are also non-standard and stored in a slicer-specific way, if at all.
+    Other metadata (like [material types](/material-selection) and [printer profile](/printer-profiles) supported by the GCODE file) are also non-standard and stored in a slicer-specific way, if at all.
 
-For these reasons, it becomes useful to define the `.gjob` file type.
+    For these reasons, it becomes useful to define the `.gjob` file type.
 
 
 ## Creating a .gjob file

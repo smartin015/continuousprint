@@ -6,7 +6,7 @@ It's not unusual to have multiple 3D printers - in home workshops, in the protot
 
 In addition to providing a local queue by default, Continuous Print also configures a default LAN queue that will automatically link any other printers on your local network. Printers can then coordinate together over the network to print jobs from the same queue.
 
-!!! Important
+!!! Warning
 
     LAN queues are intended for trusted, local (LAN) networks only - not for cross-network (WAN) use cases. Using LAN queues across networks is insecure and strongly discouraged.
 
@@ -30,13 +30,19 @@ If printers are missing from this list, make sure they have OctoPrint and Contin
 
 Submitting a job is as simple as dragging it from the "local" queue to your LAN queue. After confirming that you wish to submit your job, the job will be moved out of the local queue and into the LAN queue.
 
-!!! Warning
+## Undo job submission
 
-    Currently, LAN queue submission is somewhat destructive - the job cannot be modified or reverted once it's submitted, only deleted.
+Submission can be undone simply by dragging the job back to the "local" queue. This can be done by any printer in the LAN queue.
 
-    If you have a very complex job to submit, consider [saving it](/gjob-files) before submission so you have a backup.
+!!! Info
 
-## Cancel a job
+    The printer receiving the local job may not have the local `.gcode` files initially, so the files are fetched and copied to `ContinuousPrint/imports/<job name>/` and the Set paths are auto-updated accordingly.
+
+## Edit a LAN queue job
+
+You can edit jobs in LAN queues just as in Local queues - see [Queuing Basics](advanced-queuing.md) for more details.
+
+## Cancel a LAN queue job
 
 1. Click the checkbox next to the job in your LAN queue.
 1. Click the trash can icon that appears.

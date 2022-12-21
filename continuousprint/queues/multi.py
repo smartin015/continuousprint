@@ -1,6 +1,6 @@
 from typing import Optional
 from ..storage.database import Run, SetView
-from .abstract import AbstractQueue, Strategy
+from .base import AbstractQueue, Strategy
 import dataclasses
 
 

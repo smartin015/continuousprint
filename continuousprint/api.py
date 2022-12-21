@@ -2,7 +2,7 @@ import octoprint.plugin
 from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
-from .queues.lan import ValidationError
+from .queues.base import ValidationError
 import flask
 import json
 from .storage import queries
@@ -12,6 +12,11 @@ from abc import ABC, abstractmethod
 
 
 class Permission(Enum):
+    GETSTATE = (
+        "Get state",
+        "Allows for fetching queue and management state of Continuous Print",
+        False,
+    )
     STARTSTOP = (
         "Start and Stop Queue",
         "Allows for starting and stopping the queue",
@@ -31,15 +36,29 @@ class Permission(Enum):
         "Allows for fetching history of print runs by Continuous Print",
         False,
     )
-    CLEARHISTORY = (
-        "Clear history",
+    RESETHISTORY = (
+        "Reset history",
         "Allows for deleting all continuous print history data",
         True,
     )
-    GETQUEUES = ("Get queue", "Allows for fetching metadata on all print queues", False)
+    GETQUEUES = (
+        "Get queues",
+        "Allows for fetching metadata on all print queues",
+        False,
+    )
     EDITQUEUES = (
         "Edit queues",
         "Allows for adding/removing queues and rearranging them",
+        True,
+    )
+    GETAUTOMATION = (
+        "Get automation scripts and events",
+        "Allows for fetching metadata on all scripts and the events they're configured for",
+        False,
+    )
+    EDITAUTOMATION = (
+        "Edit automation scripts and events",
+        "Allows for adding/removing gcode scripts and registering them to execute when events happen",
         True,
     )
 
@@ -112,6 +131,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def _preprocess_set(self, data):
         pass  # Used to auto-fill underspecified sets, e.g. add profile based on gcode analysis
 
+    @abstractmethod
+    def _set_external_symbols(self, data):
+        pass
+
     def popup(self, msg, type="popup"):
         return self._msg(dict(type=type, msg=msg))
 
@@ -133,6 +156,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # (e.g. 1.4.1 -> 2.0.0)
     @octoprint.plugin.BlueprintPlugin.route("/state/get", methods=["GET"])
     @restricted_access
+    @cpq_permission(Permission.GETSTATE)
     def get_state(self):
         return self._state_json()
 
@@ -143,9 +167,11 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.STARTSTOP)
     def set_active(self):
-        self._update(
-            DA.ACTIVATE if flask.request.form["active"] == "true" else DA.DEACTIVATE
-        )
+        active = flask.request.form["active"]
+        if type(active) == str:
+            active = active.lower().strip() == "true"
+
+        self._update(DA.ACTIVATE if active else DA.DEACTIVATE)
         return self._state_json()
 
     # Public method - adds a new set to an existing job, or creates a new job and adds the set there.
@@ -193,8 +219,6 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
                 new_id = dq.import_job_from_view(sq.get_job_view(src_id))
             except ValidationError as e:
                 return json.dumps(dict(error=str(e)))
-
-            print("Imported job from view")
             sq.remove_jobs([src_id])
             src_id = new_id
 
@@ -246,7 +270,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/job/rm", methods=["POST"])
     @restricted_access
-    @cpq_permission(Permission.EDITJOB)
+    @cpq_permission(Permission.RMJOB)
     def rm_job(self):
         return json.dumps(
             self._get_queue(flask.request.form["queue"]).remove_jobs(
@@ -275,7 +299,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/history/reset", methods=["POST"])
     @restricted_access
-    @cpq_permission(Permission.CLEARHISTORY)
+    @cpq_permission(Permission.RESETHISTORY)
     def reset_history(self):
         queries.resetHistory()
         return json.dumps("OK")
@@ -295,4 +319,28 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         queues = json.loads(flask.request.form.get("json"))
         (absent_names, added) = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)
+        return json.dumps("OK")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/automation/edit", methods=["POST"])
+    @restricted_access
+    @cpq_permission(Permission.EDITAUTOMATION)
+    def edit_automation(self):
+        data = json.loads(flask.request.form.get("json"))
+        queries.assignAutomation(data["scripts"], data["preprocessors"], data["events"])
+        return json.dumps("OK")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/automation/get", methods=["GET"])
+    @restricted_access
+    @cpq_permission(Permission.GETAUTOMATION)
+    def get_automation(self):
+        return json.dumps(queries.getAutomation())
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/automation/external", methods=["POST"])
+    @restricted_access
+    @cpq_permission(Permission.EDITAUTOMATION)
+    def set_automation_external_symbols(self):
+        self._set_external_symbols(flask.request.get_json())
         return json.dumps("OK")

@@ -5,6 +5,10 @@ from ..storage.database import JobView, SetView
 from abc import ABC, abstractmethod
 
 
+class ValidationError(Exception):
+    pass
+
+
 class Strategy(Enum):
     IN_ORDER = auto()  # Jobs and sets printed in lexRank order
     LEAST_MANUAL = auto()  # Choose the job which produces the least manual changes
@@ -41,30 +45,34 @@ class AbstractQueue(ABC):
         return self.set
 
     @abstractmethod
+    def resolve(self, path, peer, hash_) -> Optional[str]:
+        raise NotImplementedError()
+
+    @abstractmethod
     def acquire(self) -> bool:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def release(self) -> None:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def decrement(
         self,
     ) -> bool:  # Returns true if the job has more work, false if job complete+released
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def as_dict(self) -> dict:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def remove_jobs(self, job_ids) -> dict:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def reset_jobs(self, job_ids) -> dict:
-        pass
+        raise NotImplementedError()
 
 
 class AbstractEditableQueue(AbstractQueue):
@@ -72,20 +80,20 @@ class AbstractEditableQueue(AbstractQueue):
 
     @abstractmethod
     def mv_job(self, job_id, after_id):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def edit_job(self, job_id, data):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def get_job_view(self, job_id):
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def import_job_from_view(self, job_view):
         """Imports a JobView into storage. Returns ID of the imported job"""
-        pass
+        raise NotImplementedError()
 
 
 class AbstractFactoryQueue(AbstractEditableQueue):
@@ -93,16 +101,16 @@ class AbstractFactoryQueue(AbstractEditableQueue):
 
     @abstractmethod
     def add_job(self, name="") -> JobView:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def add_set(self, job_id, data) -> SetView:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def import_job(self, gjob_path, out_dir) -> dict:
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def export_job(self, job_id):
-        pass
+        raise NotImplementedError()

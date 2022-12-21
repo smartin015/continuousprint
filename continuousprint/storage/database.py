@@ -9,12 +9,14 @@ from peewee import (
     FloatField,
     DateField,
     TimeField,
+    TextField,
     CompositeKey,
     JOIN,
     Check,
 )
 from playhouse.migrate import SqliteMigrator, migrate
 
+from ..data import CustomEvents, PREPROCESSORS
 from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
@@ -25,15 +27,57 @@ import yaml
 import time
 
 
+def getint(d, k, default=0):
+    v = d.get(k, default)
+    if type(v) == str:
+        v = int(v)
+    return v
+
+
 # Defer initialization
 class DB:
     # Adding foreign_keys pragma is necessary for ON DELETE behavior
     queues = SqliteDatabase(None, pragmas={"foreign_keys": 1})
+    automation = SqliteDatabase(None, pragmas={"foreign_keys": 1})
 
 
+CURRENT_SCHEMA_VERSION = "0.0.4"
 DEFAULT_QUEUE = "local"
 LAN_QUEUE = "LAN"
 ARCHIVE_QUEUE = "archive"
+BED_CLEARING_SCRIPT = "Bed Clearing"
+FINISHING_SCRIPT = "Finished"
+COOLDOWN_SCRIPT = "Managed Cooldown"
+
+
+class Script(Model):
+    name = CharField(unique=True)
+    created = DateTimeField(default=datetime.datetime.now)
+    body = TextField()
+
+    class Meta:
+        database = DB.automation
+
+
+class Preprocessor(Model):
+    name = CharField(unique=True)
+    created = DateTimeField(default=datetime.datetime.now)
+    body = TextField()
+
+    class Meta:
+        database = DB.automation
+
+
+class EventHook(Model):
+    name = CharField()
+    script = ForeignKeyField(Script, backref="events", on_delete="CASCADE")
+    preprocessor = ForeignKeyField(
+        Preprocessor, null=True, backref="events", on_delete="CASCADE"
+    )
+    rank = FloatField()
+
+    class Meta:
+        database = DB.automation
 
 
 class StorageDetails(Model):
@@ -72,6 +116,12 @@ class JobView:
     def refresh_sets(self):
         raise NotImplementedError()
 
+    def save(self):
+        raise NotImplementedError()
+
+    def _load_set(self, data, idx):
+        raise NotImplementedError()
+
     def decrement(self):
         self.remaining = max(self.remaining - 1, 0)
         self.save()
@@ -106,9 +156,16 @@ class JobView:
                 return (s, True)
         return (None, any_printable)
 
-    @classmethod
-    def from_dict(self, data: dict):
-        raise NotImplementedError
+    def load_dict(self, data: dict, queue):
+        self.queue = queue
+        self.name = data.get("name", "")
+        self.created = getint(data, "created")
+        self.count = getint(data, "count")
+        self.remaining = getint(data, "remaining", default=self.count)
+        self.id = data["id"]
+        self.draft = data.get("draft", False)
+        self.acquired = data.get("acquired", False)
+        self.sets = [self._load_set(s, i) for i, s in enumerate(data["sets"])]
 
     def as_dict(self):
         sets = list(self.sets)
@@ -147,11 +204,10 @@ class Job(Model, JobView):
     class Meta:
         database = DB.queues
 
-    @classmethod
-    def from_dict(self, data: dict):
-        j = Job(**data)
-        j.sets = [Set.from_dict(s) for s in data["sets"]]
-        return j
+    def _load_set(self, data, idx):
+        s = Set()
+        s.load_dict(data, self, idx)
+        return s
 
     def refresh_sets(self):
         Set.update(remaining=Set.count, completed=0).where(Set.job == self).execute()
@@ -159,6 +215,12 @@ class Job(Model, JobView):
 
 class SetView:
     """See JobView for rationale for this class."""
+
+    def save(self):
+        raise NotImplementedError()
+
+    def resolve(self):
+        raise NotImplementedError()
 
     def _csv2list(self, v):
         if v == "":
@@ -183,14 +245,38 @@ class SetView:
         self.save()  # Save must occur before job is observed
         return self.job.next_set(profile)
 
-    @classmethod
-    def from_dict(self, s):
-        raise NotImplementedError
+    def load_dict(self, data, job, rank=None):
+        self.job = job
+        for listform, csvform in [
+            ("materials", "material_keys"),
+            ("profiles", "profile_keys"),
+        ]:
+            if data.get(listform) is not None:
+                data[csvform] = ",".join(data[listform])
+                del data[listform]
+            else:
+                data[csvform] = data.get(csvform, "")
+
+        for numeric in ("count", "remaining", "completed"):
+            data[numeric] = getint(data, numeric, 0)
+
+        if rank is not None:
+            data["rank"] = rank
+        elif data.get("rank") is not None:
+            data["rank"] = float(data["rank"])
+
+        for filler in ("id", "sd"):
+            if filler not in data:
+                data[filler] = None
+
+        for (k, v) in data.items():
+            setattr(self, k, v)
 
     def as_dict(self):
         return dict(
             path=self.path,
             count=self.count,
+            metadata=self.metadata,
             materials=self.materials(),
             profiles=self.profiles(),
             id=self.id,
@@ -207,6 +293,12 @@ class Set(Model, SetView):
     job = ForeignKeyField(Job, backref="sets", on_delete="CASCADE")
     rank = FloatField()
     count = IntegerField(default=1, constraints=[Check("count >= 0")])
+
+    # Contains JSON of metadata such as print time estimates, filament length
+    # etc. These are assigned on creation and are
+    # only as accurate as the provider's ability to analyze the gcode.
+    metadata = TextField(null=True)
+
     remaining = IntegerField(
         # Unlike Job, Sets can have remaining > count if the user wants to print
         # additional sets as a one-off correction (e.g. a print fails)
@@ -231,17 +323,6 @@ class Set(Model, SetView):
 
     class Meta:
         database = DB.queues
-
-    @classmethod
-    def from_dict(self, s):
-        for listform, csvform in [
-            ("materials", "material_keys"),
-            ("profiles", "profile_keys"),
-        ]:
-            if s.get(listform) is not None:
-                s[csvform] = ",".join(s[listform])
-                del s[listform]
-        return Set(**s)
 
 
 class Run(Model):
@@ -287,17 +368,83 @@ def file_exists(path: str) -> bool:
 
 
 MODELS = [Queue, Job, Set, Run, StorageDetails]
+AUTOMATION = [Script, EventHook, Preprocessor]
 
 
-def populate():
+def populate_queues():
     DB.queues.create_tables(MODELS)
-    StorageDetails.create(schemaVersion="0.0.4")
+    StorageDetails.create(schemaVersion=CURRENT_SCHEMA_VERSION)
     Queue.create(name=LAN_QUEUE, addr="auto", strategy="LINEAR", rank=1)
     Queue.create(name=DEFAULT_QUEUE, strategy="LINEAR", rank=0)
     Queue.create(name=ARCHIVE_QUEUE, strategy="LINEAR", rank=-1)
 
 
-def init(db_path="queues.sqlite3", logger=None):
+def populate_automation():
+    DB.automation.create_tables(AUTOMATION)
+    bc = Script.create(name=BED_CLEARING_SCRIPT, body="@pause")
+    fin = Script.create(name=FINISHING_SCRIPT, body="@pause")
+    EventHook.create(name=CustomEvents.PRINT_SUCCESS.event, script=bc, rank=0)
+    EventHook.create(name=CustomEvents.FINISH.event, script=fin, rank=0)
+    for pp in PREPROCESSORS.values():
+        Preprocessor.create(name=pp["name"], body=pp["body"])
+
+
+def init_db(automation_db, queues_db, logger=None):
+    init_automation(automation_db, logger)
+    init_queues(queues_db, logger)
+
+
+def init_automation(db_path, logger=None):
+    db = DB.automation
+    needs_init = not file_exists(db_path)
+    db.init(None)
+    db.init(db_path)
+    db.connect()
+    if needs_init:
+        if logger is not None:
+            logger.debug("Initializing automation DB")
+        populate_automation()
+
+
+def migrateQueuesV2ToV3(details, logger):
+    # Constraint removal isn't allowed in sqlite, so we have
+    # to recreate the table and move the entries over.
+    # We also added a new `completed` field, so some calculation is needed.
+    class TempSet(Set):
+        pass
+
+    if logger is not None:
+        logger.warning(
+            f"Beginning migration to v0.0.3 for decoupled completions - {Set.select().count()} sets to migrate"
+        )
+    db = DB.queues
+    with db.atomic():
+        TempSet.create_table(safe=True)
+        for s in Set.select(
+            Set.path,
+            Set.sd,
+            Set.job,
+            Set.rank,
+            Set.count,
+            Set.remaining,
+            Set.material_keys,
+            Set.profile_keys,
+        ).execute():
+            attrs = {}
+            for f in Set._meta.sorted_field_names:
+                attrs[f] = getattr(s, f)
+            attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
+            TempSet.create(**attrs)
+            if logger is not None:
+                logger.warning(f"Migrating set {s.path} to schema v0.0.3")
+
+    Set.drop_table(safe=True)
+    db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
+    details.schemaVersion = "0.0.3"
+    details.save()
+
+
+def init_queues(db_path, logger=None):
     db = DB.queues
     needs_init = not file_exists(db_path)
     db.init(None)
@@ -306,8 +453,8 @@ def init(db_path="queues.sqlite3", logger=None):
 
     if needs_init:
         if logger is not None:
-            logger.debug("DB needs init")
-        populate()
+            logger.debug("Initializing queues DB")
+        populate_queues()
     else:
         try:
             details = StorageDetails.select().limit(1).execute()[0]
@@ -324,39 +471,17 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.save()
 
             if details.schemaVersion == "0.0.2":
-                # Constraint removal isn't allowed in sqlite, so we have
-                # to recreate the table and move the entries over.
-                # We also added a new `completed` field, so some calculation is needed.
-                class TempSet(Set):
-                    pass
+                migrateSchemaV2ToV3(details, logger)
 
+            if details.schemaVersion == "0.0.3":
                 if logger is not None:
                     logger.warning(
-                        f"Beginning migration to v0.0.3 for decoupled completions - {Set.select().count()} sets to migrate"
+                        f"Updating schema from {details.schemaVersion} to 0.0.4"
                     )
-                with db.atomic():
-                    TempSet.create_table(safe=True)
-                    for s in Set.select(
-                        Set.path,
-                        Set.sd,
-                        Set.job,
-                        Set.rank,
-                        Set.count,
-                        Set.remaining,
-                        Set.material_keys,
-                        Set.profile_keys,
-                    ).execute():
-                        attrs = {}
-                        for f in Set._meta.sorted_field_names:
-                            attrs[f] = getattr(s, f)
-                        attrs["completed"] = max(0, attrs["count"] - attrs["remaining"])
-                        TempSet.create(**attrs)
-                        if logger is not None:
-                            logger.warning(f"Migrating set {s.path} to schema v0.0.3")
-
-                Set.drop_table(safe=True)
-                db.execute_sql('ALTER TABLE "tempset" RENAME TO "set";')
-                details.schemaVersion = "0.0.3"
+                migrate(
+                    migrator.add_column("set", "metadata", Set.metadata),
+                )
+                details.schemaVersion = "0.0.4"
                 details.save()
 
             if details.schemaVersion == "0.0.3":
@@ -368,8 +493,10 @@ def init(db_path="queues.sqlite3", logger=None):
                 details.schemaVersion = "0.0.4"
                 details.save()
 
-            if details.schemaVersion != "0.0.4":
-                raise Exception(f'Unknown DB schema version: "{details.schemaVersion}"')
+            if details.schemaVersion != CURRENT_SCHEMA_VERSION:
+                raise Exception(
+                    "DB schema version is not current: " + details.schemaVersion
+                )
 
             if logger is not None:
                 logger.debug("Storage schema version: " + details.schemaVersion)
@@ -377,6 +504,23 @@ def init(db_path="queues.sqlite3", logger=None):
             raise Exception("Failed to fetch storage schema details!")
 
     return db
+
+
+def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script):
+    # In v2.2.0 and earlier, a fixed list of scripts were stored in OctoPrint settings.
+    # This converts them to DB format for use in events.
+    with DB.automation.atomic():
+        for (evt, name, body) in [
+            (CustomEvents.PRINT_SUCCESS, BED_CLEARING_SCRIPT, clearing_script),
+            (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),
+            (CustomEvents.COOLDOWN, COOLDOWN_SCRIPT, cooldown_script),
+        ]:
+            if body is None or body.strip() == "":
+                continue  # Don't add empty scripts
+            Script.delete().where(Script.name == name).execute()
+            s = Script.create(name=name, body=body)
+            EventHook.delete().where(EventHook.name == evt.event).execute()
+            EventHook.create(name=evt.event, script=s, rank=0)
 
 
 def migrateFromSettings(data: list):

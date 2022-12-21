@@ -1,4 +1,4 @@
-from .abstract import Strategy, QueueData, AbstractFactoryQueue
+from .base import Strategy, QueueData, AbstractFactoryQueue
 import tempfile
 import shutil
 import os

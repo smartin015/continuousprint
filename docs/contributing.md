@@ -181,7 +181,7 @@ This is a collection of random tidbits intended to help you get your bearings.
     * Sets of the same queue item are aggregated into a `CPQueueSet` (see continuousprint/static/js/continuousprint_queueset.js)
     * Multiple queuesets are grouped together and run one or more times as a `CPJob` (see continuousprint/static/js/continuousprint_job.js)
     * For simplicity, each level only understands the level below it - e.g. a Job doesn't care about QueueItems.
-* Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons.
+* Octoprint currently uses https://fontawesome.com/v5.15/icons/ for icons,and https://bootstrapdocs.com/v2.2.2/docs/ for CSS and JS components
 * Drag-and-drop functionality uses SortableJS wrapped with Knockout-SortableJS, both of which are heavily customized. For more details on changes see:
     * Applied fix from https://github.com/SortableJS/knockout-sortablejs/pull/13
     * Applied fix from https://github.com/SortableJS/knockout-sortablejs/issues/14
