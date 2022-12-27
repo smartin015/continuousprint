@@ -208,8 +208,11 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def mv_job(self):
         src_id = flask.request.form["id"]
         after_id = flask.request.form["after_id"]
+        before_id = flask.request.form["before_id"]
         if after_id == "":  # Treat empty string as 'none' i.e. front of queue
             after_id = None
+        if before_id == "":  # Treat empty as 'none' i.e. end of queue
+            before_id = None
         sq = self._get_queue(flask.request.form["src_queue"])
         dq = self._get_queue(flask.request.form.get("dest_queue"))
 
@@ -223,7 +226,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
             src_id = new_id
 
         # Finally, move the job
-        dq.mv_job(src_id, after_id)
+        dq.mv_job(src_id, after_id, before_id)
         return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.

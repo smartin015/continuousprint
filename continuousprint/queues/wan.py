@@ -6,6 +6,7 @@ from bisect import bisect_left
 from peerprint.wan.wan_queue import PeerPrintQueue, ChangeType
 from peerprint.wan.proc import ServerProcessOpts as PPOpts
 from ..storage.peer import PeerJobView, PeerQueueView, PeerSetView
+from ..storage.rank import Rational, rational_intermediate
 from pathlib import Path
 from .base import AbstractEditableQueue, QueueData, Strategy, ValidationError
 import dataclasses
@@ -242,8 +243,21 @@ class WANQueue(AbstractEditableQueue):
         self.wq.setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
         return manifest["id"]
 
-    def mv_job(self, job_id, after_id):
-        self.wq.jobs.mv(job_id, after_id)
+    def _get_rational(self, job_id, default):
+        if job_id is None:
+            return default
+        j = self._get_job(job_id)
+        if "rn" not in j or "rd" not in j:
+            return default
+        return Rational(j["rn"], j["rd"])
+
+    def mv_job(self, job_id, after_id, before_id):
+        rx = self._get_rational(after_id, Rational(0, 1))
+        ry = self._get_rational(before_id, Rational(1, 0))
+        dest = rational_intermediate(rx, ry)
+        j = self.get_job_view(job_id)
+        j.rank = dest
+        j.save()
 
     def _path_exists(self, fullpath):
         return Path(fullpath).exists()

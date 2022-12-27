@@ -134,7 +134,7 @@ class LocalQueue(AbstractFactoryQueue):
             self.add_set(j.id, s)
         return j.id
 
-    def mv_job(self, job_id, after_id):
+    def mv_job(self, job_id, after_id, before_id):
         return self.queries.moveJob(job_id, after_id)
 
     def edit_job(self, job_id, data):

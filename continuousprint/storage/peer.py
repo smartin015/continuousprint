@@ -20,11 +20,17 @@ class PeerJobView(JobView):
         super().load_dict(data, queue)
         self.peer = data["peer_"]
         self.hash = data.get("hash")
+        self.rn = data.get("rn")
+        self.rd = data.get("rd")
 
     def as_dict(self):
         d = super().as_dict()
         d["peer_"] = self.peer
         d["hash"] = self.hash
+        if self.rn is not None:
+            d["rn"] = self.rn
+            d["rd"] = self.rd
+            d["rank"] = self.rn / self.rd
         return d
 
     def save(self):

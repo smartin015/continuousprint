@@ -117,17 +117,17 @@ class EditableQueueTests(JobEqualityTests):
         )
 
     def test_mv_job_exchange(self):
-        self.q.mv_job(self.jids[1], self.jids[2])
+        self.q.mv_job(self.jids[1], self.jids[2], self.jids[3])
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (0, 2, 1, 3)])
 
     def test_mv_to_front(self):
-        self.q.mv_job(self.jids[2], None)
+        self.q.mv_job(self.jids[2], None, self.jids[1])
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (2, 0, 1, 3)])
 
     def test_mv_to_back(self):
-        self.q.mv_job(self.jids[2], self.jids[3])
+        self.q.mv_job(self.jids[2], self.jids[3], None)
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (0, 1, 3, 2)])
 

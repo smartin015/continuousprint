@@ -266,7 +266,7 @@ class LANQueue(AbstractEditableQueue):
         self.lan.q.setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
         return manifest["id"]
 
-    def mv_job(self, job_id, after_id):
+    def mv_job(self, job_id, after_id, before_id):
         self.lan.q.jobs.mv(job_id, after_id)
 
     def _path_exists(self, fullpath):
