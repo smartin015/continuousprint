@@ -815,9 +815,12 @@ class CPQPlugin(ContinuousPrintAPI):
     def patchComms(self):
         # Patch the comms interface to allow for suppressing GCODE script events when the
         # qeue is running script events
-        self._sendGcodeScriptOrig = self._printer._comm.sendGcodeScript
-        self._printer._comm.sendGcodeScript = self.gatedSendGcodeScript
-        self._logger.info("Patched sendGCodeScript")
+        try:
+            self._sendGcodeScriptOrig = self._printer._comm.sendGcodeScript
+            self._printer._comm.sendGcodeScript = self.gatedSendGcodeScript
+            self._logger.info("Patched sendGCodeScript")
+        except Exception:
+            self._logger.error(traceback.format_exc())
 
     def gatedSendGcodeScript(self, *args, **kwargs):
         # As this patches core OctoPrint functionality, we wrap *everything*
