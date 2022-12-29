@@ -97,6 +97,7 @@ class Keys(Enum):
     )  # One of "do_nothing", "add_draft", "add_printable"
     INFER_PROFILE = ("cp_infer_profile", True)
     AUTO_RECONNECT = ("cp_auto_reconnect", False)
+    SKIP_GCODE_COMMANDS = ("cp_skip_gcode_commands", "")
 
     def __init__(self, setting, default):
         self.setting = setting

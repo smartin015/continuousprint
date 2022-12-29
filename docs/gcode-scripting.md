@@ -55,6 +55,48 @@ Now try it out! Whenever your event fires, it should run this new script.
 
     You can also run multiple scripts in the same event - they are executed from top to bottom, and you can drag to reorder them.
 
+### Advanced: Skip certain commands in GCODE files
+
+In `Settings > Continuous Print > Behaviors` there's an `Ignore GCODE lines while printing` text box where you can specify parts of `.gcode` files to ignore.
+
+This is useful if your gcode slicer includes cleanup code to turn off hotends, heated beds, stepper motors etc. which may be important when printing without Continuous Print, but which aren't useful when printing multiple files in a row.
+
+Here's an example of the end of a .gcode file sliced with Kiri:Moto:
+
+```
+; --- shutdown ---
+G28 ;(Stick out the part)
+M190 S0 ;(Turn off heat bed, don't wait.)
+G92 E10 ;(Set extruder to 10)
+G1 E7 F200 ;(retract 3mm)
+M104 S0 ;(Turn off nozzle, don't wait)
+M107 ;(Turn off part fan)
+M84 ;(Turn off stepper motors.)
+M82 ; absolute extrusion mode
+M104 T0 S0
+```
+
+In this case, you may want to have the following configuration for `Ignore GCODE lines while printing`:
+
+```
+M190 S0
+M104 S0
+M104 T0 S0
+M107 ; may also occur at the start, bed adhesion may be affected
+M84
+```
+
+Be advised that:
+
+* This setting does not apply to Continuous Print event scripts, only to `.gcode` files being printed.
+* Comments are stripped away when comparing lines in the .gcode file to lines in the settings textbox
+	(e.g. `M84 ; this is a comment` will match `M84 ; a different comment`)
+* Commands are not case sensitive (e.g. `m84` will match `M84`)
+* Apart from the above behaviors, the commands must match exactly (e.g. `M190` in gcode will not match `M190 S0`)
+* Any removed cooling / stepper disabling commands should probably be added to a "Queue Finished" event script, so that the printer is put in a safe state
+when all jobs are completed.
+* Any changes to the list of ignored commands will take effect after a restart of OctoPrint.
+
 ### Optional: Use BedReady to check bed state
 
 [OctoPrint-BedReady](https://plugins.octoprint.org/plugins/bedready/) is a plugin that checks the webcam image of the bed against a refrence image where the bed is clear.
