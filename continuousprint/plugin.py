@@ -836,4 +836,4 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger.error(traceback.format_exc())
         finally:
             if shouldCall:
-                self._sendGcodeScriptOrig(*args, **kwargs)
+                return self._sendGcodeScriptOrig(*args, **kwargs)
