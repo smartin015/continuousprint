@@ -64,6 +64,7 @@ class ContinuousprintPlugin(
             )
 
     def on_after_startup(self):
+        self._plugin.patchComms()
         self._plugin.start()
 
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
