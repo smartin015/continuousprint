@@ -16,7 +16,7 @@ import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
 from .analysis import CPQProfileAnalysisQueue
-from .driver import Driver, Action as DA, Printer as DP
+from .driver import Driver, Action as DA, Printer as DP, shouldBlockCoreEvents
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
@@ -862,3 +862,29 @@ class CPQPlugin(ContinuousPrintAPI):
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)
         self._sync_state()
+
+    def patchComms(self):
+        # Patch the comms interface to allow for suppressing GCODE script events when the
+        # qeue is running script events
+        try:
+            self._sendGcodeScriptOrig = self._printer._comm.sendGcodeScript
+            self._printer._comm.sendGcodeScript = self.gatedSendGcodeScript
+            self._logger.info("Patched sendGCodeScript")
+        except Exception:
+            self._logger.error(traceback.format_exc())
+
+    def gatedSendGcodeScript(self, *args, **kwargs):
+        # As this patches core OctoPrint functionality, we wrap *everything*
+        # in try/catch to ensure it continues to execute if CPQ raises an exception.
+        shouldCall = True
+        try:
+            if shouldBlockCoreEvents(self.d.state):
+                shouldCall = False
+                self._logger.warning(
+                    f"Suppressing sendGcodeScript({args[0]}) as driver is in state {self.d.state}"
+                )
+        except Exception:
+            self._logger.error(traceback.format_exc())
+        finally:
+            if shouldCall:
+                return self._sendGcodeScriptOrig(*args, **kwargs)
