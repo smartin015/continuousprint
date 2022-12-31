@@ -293,6 +293,57 @@ class CPQPlugin(ContinuousPrintAPI):
             octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
         )
 
+    def patchCommJobReader(self):
+        # Patch the comms interface to allow for suppressing GCODE script events when the
+        # queue is running script events
+        try:
+            if self._get_key(Keys.SKIP_GCODE_COMMANDS).strip() == "":
+                self._logger.info(
+                    "Skipping patch of comm._get_next_from_job; no commands configured to skip"
+                )
+                return
+            self._ignore_cmd_list = set(
+                [
+                    c.split(";", 1)[0].strip().upper()
+                    for c in self._get_key(Keys.SKIP_GCODE_COMMANDS).split("\n")
+                ]
+            )
+
+            self._jobCommReaderOrig = self._printer._comm._get_next_from_job
+            self._printer._comm._get_next_from_job = self.gatedCommJobReader
+            self._logger.info(
+                f"Patched comm._get_next_from_job; will ignore commands: {self._ignore_cmd_list}"
+            )
+        except Exception:
+            self._logger.error(traceback.format_exc())
+
+    def gatedCommJobReader(self, *args, **kwargs):
+        # As this patches core OctoPrint functionality, we wrap *everything*
+        # in try/catch to ensure it continues to execute if CPQ raises an exception.
+        result = self._jobCommReaderOrig(*args, **kwargs)
+        try:
+            # Only mess with gcode commands of printed files, not events
+            if self.d.state != self.d._state_printing:
+                return result
+
+            while result[0] is not None:
+                if type(result[0]) != str:
+                    return result
+                line = result[0].strip()
+                if line == "":
+                    return result
+
+                # Normalize command, without uppercase
+                cmd = result[0].split(";", 1)[0].strip().upper()
+                if cmd not in self._ignore_cmd_list:
+                    break
+                self._logger.warning(f"Skip GCODE: {result}")
+                result = self._jobCommReaderOrig(*args, **kwargs)
+        except Exception:
+            self._logger.error(traceback.format_exc())
+        finally:
+            return result
+
     def _init_fileshare(self, fs_cls=Fileshare):
         # Note: fileshare_dir referenced when cleaning up old files
         self.fileshare_dir = self._path_on_disk(

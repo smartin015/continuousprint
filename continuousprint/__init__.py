@@ -64,6 +64,7 @@ class ContinuousprintPlugin(
             )
 
     def on_after_startup(self):
+        self._plugin.patchCommJobReader()
         self._plugin.patchComms()
         self._plugin.start()
 

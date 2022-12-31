@@ -84,6 +84,47 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._get_key(Keys.MATERIAL_SELECTION), True)  # Spoolmanager
         self.assertEqual(p._get_key(Keys.RESTART_ON_PAUSE), False)  # Obico
 
+    def testPatchCommJobReader(self):
+        p = setupPlugin()
+        gnfj = p._printer._comm._get_next_from_job
+        p.d = MagicMock(_state_printing="foo", state="foo")
+        p._set_key(Keys.SKIP_GCODE_COMMANDS, "FOO 1\nBAR ; Settings comment")
+        p.patchCommJobReader()
+
+        mm = MagicMock()
+        gnfj.side_effect = [
+            (line, None, None)
+            for line in (
+                "",
+                mm,
+                "foo 1",  # Case insensitive
+                "BAR ; I have a comment that should be ignored ;;;",
+                "G0 X0",
+                None,
+            )
+        ]
+
+        # Passes whitespace lines
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("", ANY, ANY))
+
+        # Passes foreign objects (e.g. for SendQueueMarker in OctoPrint)
+        self.assertEqual(p._printer._comm._get_next_from_job(), (mm, ANY, ANY))
+
+        # Skips cmds in skip-list
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("G0 X0", ANY, ANY))
+
+        # Stops on end of file
+        self.assertEqual(p._printer._comm._get_next_from_job(), (None, ANY, ANY))
+
+        # Test exception inside loop returns a decent result
+        gnfj.side_effect = [("foo 1", None, None), Exception("Testing exception")]
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
+
+        # Ignored when not printing
+        p.d = MagicMock(_state_printing="foo", state="bar")
+        gnfj.side_effect = [("foo 1", None, None)]
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
+        
     def testPatchComms(self):
         p = setupPlugin()
         sgs = p._printer._comm.sendGcodeScript
