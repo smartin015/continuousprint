@@ -65,6 +65,7 @@ function CPViewModel(parameters) {
         });
     };
 
+
     // Patch the files panel to allow for adding to queue
     self.files.add = function(data) {
       // We first look for any queues with draft jobs - add the file here if so
@@ -82,14 +83,16 @@ function CPViewModel(parameters) {
     let oldRemove = self.files.removeFile;
     let remove_cb = null;
     self.files.removeFile = function(data, evt) {
-      for (let j of self.defaultQueue.jobs()) {
-        for (let s of j.sets()) {
-          if (s.path() === data.path) {
-            remove_cb = () => oldRemove(data, evt);
-            return self.showRemoveConfirmModal()
+      try {
+        for (let j of self.defaultQueue.jobs()) {
+          for (let s of j.sets()) {
+            if (s.path() === data.path) {
+              remove_cb = () => oldRemove(data, evt);
+              return self.showRemoveConfirmModal()
+            }
           }
         }
-      }
+      } catch {} // Fail silently on error, and pass through
       return oldRemove(data, evt);
     };
 		self.rmDialog = $("#cpq_removeConfirmDialog");
@@ -107,6 +110,11 @@ function CPViewModel(parameters) {
       remove_cb = null;
       self._loadState(); // Refresh to get new "file missing" states
       self.hideRemoveConfirmModal();
+    };
+    self.showSettingsHelp = function() {
+      console.log(self.settings);
+      self.settings.show('settings_plugin_continuousprint');
+      $(`#settings_plugin_continuousprint a[href="#settings_continuousprint_help"]`).tab('show');
     };
 
     // Patch the files panel to prevent selecting/printing .gjob files
@@ -174,7 +182,7 @@ function CPViewModel(parameters) {
             s.expanded = expansions[s.id.toString()];
           }
         }
-        let cpq = new CPQueue(q, self.api, self.files, self.profile);
+        let cpq = new CPQueue(q, self.api, self.files, self.profile, self.materials);
 
         // Replace draft entries that are still in draft
         let cpqj = cpq.jobs();
@@ -314,11 +322,9 @@ function CPViewModel(parameters) {
                 break;
             case "setstate":
                 data = JSON.parse(data["state"]);
-                console.log("got setstate", data);
                 return self._setState(data);
             case "sethistory":
                 data = JSON.parse(data["history"]);
-                console.log("got sethistory", data);
                 return self._setHistory(data);
             default:
                 theme = "info";
@@ -347,7 +353,7 @@ function CPViewModel(parameters) {
           continue;
         }
         let k = `${spool.material}_${spool.colorName}_#${spool.color.substring(1)}`;
-        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`};
+        result[k] = {value: k, text: `${spool.material} (${spool.colorName})`, density: spool.density || 1.24, diameter: spool.diameter || 1.75};
       }
       self.materials(Object.values(result));
       self.badMaterialCount(nbad);
@@ -359,7 +365,7 @@ function CPViewModel(parameters) {
     self.humanize = function(num) {
       // Humanizes numbers by condensing and adding units
       if (num < 1000) {
-        return num.toString()
+        return (num % 1 === 0) ? num : num.toFixed(1);
       } else if (num < 100000) {
         let k = (num/1000);
         return ((k % 1 === 0) ? k : k.toFixed(1)) + 'k';

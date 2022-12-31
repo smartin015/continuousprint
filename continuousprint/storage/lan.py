@@ -30,6 +30,11 @@ class LANJobView(JobView):
     def get_base_dir(self):
         return self.queue.lq.get_gjob_dirpath(self.peer, self.hash)
 
+    def remap_set_paths(self):
+        # Replace all relative/local set paths with fully resolved paths
+        for s in self.sets:
+            s.path = s.resolve()
+
     def updateSets(self, sets_list):
         self.sets = [LANSetView(s, self, i) for i, s in enumerate(sets_list)]
 
@@ -61,6 +66,7 @@ class LANSetView(SetView):
             setattr(self, attr, data[attr])
         self.remaining = getint(data, "remaining", default=self.count)
         self.completed = getint(data, "completed")
+        self.metadata = data.get("metadata")
         self.material_keys = ",".join(data.get("materials", []))
         self.profile_keys = ",".join(data.get("profiles", []))
         self._resolved = None

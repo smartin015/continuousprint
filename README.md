@@ -1,7 +1,7 @@
 # Continuous Print Queue for Octoprint
 
 ![build status](https://img.shields.io/travis/smartin015/continuousprint/master?style=plastic)
-![code coverage](https://img.shields.io/codecov/c/github/smartin015/continuousprint/master)
+[![Coverage Status](https://coveralls.io/repos/github/smartin015/continuousprint/badge.svg?branch=master)](https://coveralls.io/github/smartin015/continuousprint?branch=master)
 
 This plugin automates your 3D printing!
 

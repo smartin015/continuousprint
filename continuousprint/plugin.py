@@ -23,7 +23,8 @@ from .queues.local import LocalQueue
 from .queues.abstract import Strategy
 from .storage.database import (
     migrateFromSettings,
-    init as init_db,
+    migrateScriptsFromSettings,
+    init_db,
     DEFAULT_QUEUE,
     ARCHIVE_QUEUE,
 )
@@ -31,8 +32,8 @@ from .data import (
     PRINTER_PROFILES,
     GCODE_SCRIPTS,
     Keys,
+    TEMP_FILE_DIR,
     PRINT_FILE_DIR,
-    TEMP_FILES,
 )
 from .api import ContinuousPrintAPI
 from .script_runner import ScriptRunner
@@ -49,6 +50,7 @@ class CPQPlugin(ContinuousPrintAPI):
     )
     RECONNECT_WINDOW_SIZE = 5.0
     MAX_WINDOW_EXP = 6
+    GET_ADDR_TIMEOUT = 3
     CPQ_ANALYSIS_FINISHED = "CPQ_ANALYSIS_FINISHED"
 
     def __init__(
@@ -77,6 +79,8 @@ class CPQPlugin(ContinuousPrintAPI):
         self._reconnect_attempts = 0
         self._next_reconnect = 0
         self._fire_event = fire_event
+        self._exceptions = []
+        self._timelapse_start_ts = None
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -117,25 +121,61 @@ class CPQPlugin(ContinuousPrintAPI):
         self._update(DA.ACTIVATE)
         self._sync_state()
 
-    def get_open_port(self):
+    def _can_bind_addr(self, addr):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.bind(addr)
+        except OSError:
+            return False
+        finally:
+            s.close()
+        return True
+
+    def get_local_addr(self):
         # https://stackoverflow.com/a/2838309
         # Note that this is vulnerable to race conditions in that
         # the port is open when it's assigned, but could be reassigned
         # before the caller can use it.
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("", 0))
-        s.listen(1)
-        port = s.getsockname()[1]
-        s.close()
-        return port
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(CPQPlugin.GET_ADDR_TIMEOUT)
+        checkaddr = tuple(
+            [
+                self._settings.global_get(["server", "onlineCheck", v])
+                for v in ("host", "port")
+            ]
+        )
+        try:
+            s.connect(checkaddr)
+            result = s.getsockname()
+        finally:
+            # Note: close has no effect on already closed socket
+            s.close()
 
-    def get_local_ip(self):
+        if self._can_bind_addr(result):
+            return f"{result[0]}:{result[1]}"
+
+        # For whatever reason, client-based local IP resolution can sometimes still fail to bind.
+        # In this case, fall back to MDNS based resolution
         # https://stackoverflow.com/a/57355707
+        self._logger.warning(
+            "Online check based IP resolution failed to bind; attempting MDNS local IP resolution"
+        )
         hostname = socket.gethostname()
         try:
-            return socket.gethostbyname(f"{hostname}.local")
+            local_ip = socket.gethostbyname(f"{hostname}.local")
         except socket.gaierror:
-            return socket.gethostbyname(hostname)
+            local_ip = socket.gethostbyname(hostname)
+
+        # Find open port: https://stackoverflow.com/a/2838309
+        # This will raise OSError if it cannot bind to that address either
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((local_ip, 0))
+            s.listen(1)
+            port = s.getsockname()[1]
+        finally:
+            s.close()
+        return f"{local_ip}:{port}"
 
     def _add_set(self, path, sd, draft=True, profiles=[]):
         # We may need to delay adding a file if it hasn't yet finished analysis
@@ -190,6 +230,9 @@ class CPQPlugin(ContinuousPrintAPI):
             data["profiles"] = [prof]
         return data
 
+    def _set_external_symbols(self, data):
+        self._runner.set_external_symbols(data)
+
     def _path_on_disk(self, path: str, sd: bool):
         try:
             return self._file_manager.path_on_disk(
@@ -204,6 +247,15 @@ class CPQPlugin(ContinuousPrintAPI):
     def _msg(self, data):
         # See continuousprint_viewmodel.js onDataUpdaterPluginMessage
         self._plugin_manager.send_plugin_message(self._identifier, data)
+
+    def get_exceptions(self):
+        return self._exceptions
+
+    def _exception_msg(self, msg):
+        self._logger.error(msg)
+        self._exceptions.append(msg)
+        self._logger.error(traceback.format_exc())
+        self._msg(dict(msg=msg + "\n\nSee sysinfo logs for details", type="danger"))
 
     def _setup_thirdparty_plugin_integration(self):
         # Turn on "restart on pause" when Obico plugin is detected (must be version 1.8.11 or higher for custom event hook)
@@ -246,26 +298,63 @@ class CPQPlugin(ContinuousPrintAPI):
         self.fileshare_dir = self._path_on_disk(
             f"{PRINT_FILE_DIR}/fileshare/", sd=False
         )
-        fileshare_addr = f"{self.get_local_ip()}:0"
+        try:
+            fileshare_addr = self.get_local_addr()
+        except OSError:
+            self._exception_msg(
+                "Failed to find a local addr for LAN fileshare; LAN queues will be disabled."
+            )
+            self._fileshare = None
+            return
+
         self._logger.info(f"Starting fileshare with address {fileshare_addr}")
         self._fileshare = fs_cls(fileshare_addr, self.fileshare_dir, self._logger)
-        self._fileshare.connect()
+        try:
+            self._fileshare.connect()
+            self._logger.info(
+                f"Fileshare listening on {self._fileshare.host}:{self._fileshare.port}"
+            )
+        except OSError:
+            self._exception_msg(
+                "Failed to bind Fileshare HTTP server; hosting LAN jobs will fail, but fetching jobs may still work."
+            )
 
     def _init_db(self):
         init_db(
-            db_path=Path(self._data_folder) / "queue.sqlite3",
+            queues_db=Path(self._data_folder) / "queue.sqlite3",
+            automation_db=Path(self._data_folder) / "automation.sqlite3",
             logger=self._logger,
         )
 
         # Migrate from old JSON state if needed
-        state_data = self._get_key(Keys.QUEUE)
+        state_data = self._get_key(Keys.QUEUE_DEPRECATED)
         try:
             if state_data is not None and state_data != "[]":
                 settings_state = json.loads(state_data)
                 migrateFromSettings(settings_state)
-                self._get_key(Keys.QUEUE)
+                self._set_key(Keys.QUEUE_DEPRECATED, None)
+                self._logger.info("Migrated queue data from settings to DB")
         except Exception:
             self._logger.error(f"Could not migrate old json state: {state_data}")
+            self._logger.error(traceback.format_exc())
+
+        # Migrate from settings scripts if needed
+        dep_scripts = [
+            Keys.CLEARING_SCRIPT_DEPRECATED,
+            Keys.FINISHED_SCRIPT_DEPRECATED,
+            Keys.BED_COOLDOWN_SCRIPT_DEPRECATED,
+        ]
+        script_data = [self._get_key(k) for k in dep_scripts]
+        try:
+            if True in [s is not None for s in script_data]:
+                migrateScriptsFromSettings(*script_data)
+                for k in dep_scripts:
+                    self._set_key(k, None)
+                self._logger.info("Migrated scripts from settings to DB")
+        except Exception:
+            self._logger.error(
+                f"Could not migrate from settings scripts: {script_data}"
+            )
             self._logger.error(traceback.format_exc())
 
         self._queries.clearOldState()
@@ -282,9 +371,7 @@ class CPQPlugin(ContinuousPrintAPI):
                 try:
                     lq = lancls(
                         q.name,
-                        q.addr
-                        if q.addr.lower() != "auto"
-                        else f"{self.get_local_ip()}:{self.get_open_port()}",
+                        q.addr if q.addr.lower() != "auto" else self.get_local_addr(),
                         self._logger,
                         Strategy.IN_ORDER,
                         self._on_queue_update,
@@ -294,10 +381,11 @@ class CPQPlugin(ContinuousPrintAPI):
                     )
                     lq.connect()
                     self.q.add(q.name, lq)
-                except ValueError:
-                    self._logger.error(
-                        f"Unable to join network queue (name {q.name}, addr {q.addr}) due to ValueError"
+                except Exception:
+                    self._exception_msg(
+                        f'Unable to join network queue "{q.name}" with address {q.addr}'
                     )
+
             elif q.name != ARCHIVE_QUEUE:
                 self.q.add(
                     q.name,
@@ -314,7 +402,6 @@ class CPQPlugin(ContinuousPrintAPI):
     def _init_driver(self, srcls=ScriptRunner, dcls=Driver):
         self._runner = srcls(
             self.popup,
-            self._get_key,
             self._file_manager,
             self._logger,
             self._printer,
@@ -409,7 +496,7 @@ class CPQPlugin(ContinuousPrintAPI):
             self._logger.info(f"Enqueued {counter} files for CPQ analysis")
 
     def _enqueue(self, path, high_priority=False):
-        if path in TEMP_FILES.values():
+        if path.startswith(TEMP_FILE_DIR):
             return False  # Exclude temp files from analysis
         queue_entry = QueueEntry(
             name=path.split("/")[-1],
@@ -433,6 +520,9 @@ class CPQPlugin(ContinuousPrintAPI):
         self.on_event(self.CPQ_ANALYSIS_FINISHED, dict(path=entry.path, result=result))
 
     def _cleanup_fileshare(self):
+        if not os.path.exists(self.fileshare_dir):
+            return n
+
         # This cleans up all non-useful fileshare files across all network queues, so they aren't just taking up space.
         # First we collect all non-local queue items hosted by us - these are excluded from cleanup as someone may need to fetch them.
         keep_hashes = set()
@@ -445,6 +535,7 @@ class CPQPlugin(ContinuousPrintAPI):
 
         # Loop through all .gjob and .gcode files in base directory and delete them if they aren't referenced or acquired by us
         n = 0
+
         for d in os.listdir(self.fileshare_dir):
             name, suffix = os.path.splitext(d)
             if suffix not in ("", ".gjob", ".gcode", ".gco"):
@@ -539,12 +630,11 @@ class CPQPlugin(ContinuousPrintAPI):
                     self._sync_state()
             else:
                 return
-
         if event == Events.MOVIE_DONE:
+            self._timelapse_start_ts = None
             # Optionally delete time-lapses created from bed clearing/finishing scripts
-            temp_files_base = [f.split("/")[-1] for f in TEMP_FILES.values()]
             if (
-                payload["gcode"] in temp_files_base
+                payload["gcode"].startswith(TEMP_FILE_DIR)
                 and self._get_key(Keys.AUTOMATION_TIMELAPSE_ACTION) == "auto_remove"
             ):
                 if self._delete_timelapse(payload["movie"]):
@@ -561,9 +651,17 @@ class CPQPlugin(ContinuousPrintAPI):
                     f"Annotated run of {payload['gcode']} with timelapse details"
                 )
                 self._sync_history()
+            self._update(DA.TICK)
             return
-
+        elif event == Events.MOVIE_FAILED:
+            self._timelapse_start_ts = None
+            return
         elif event == Events.PRINT_DONE:
+            # Timelapse TS is set here instead of on MOVIE_RENDERING, because we
+            # must know when we're rendering *before* calling _update(SUCCESS)
+            # so the driver can appropriately wait for the timelapse to finish.
+            self._timelapse_start_ts = time.time()
+
             self._update(DA.SUCCESS)
             n = self._cleanup_fileshare()
             if n > 0:
@@ -638,7 +736,14 @@ class CPQPlugin(ContinuousPrintAPI):
         if bed_temp is not None:
             bed_temp = bed_temp.get("actual", 0)
 
-        if self.d.action(a, p, path, materials, bed_temp):
+        timelapse_start_ts = None
+        timelapsesEnabled = (
+            self._settings.global_get(["webcam", "timelapse", "type"]) != "off"
+        )
+        if timelapsesEnabled:
+            timelapse_start_ts = self._timelapse_start_ts
+
+        if self.d.action(a, p, path, materials, bed_temp, timelapse_start_ts):
             self._sync_state()
 
         run = self.q.get_run()
@@ -688,9 +793,7 @@ class CPQPlugin(ContinuousPrintAPI):
             try:
                 lq = LANQueue(
                     a["name"],
-                    a["addr"]
-                    if a["addr"].lower() != "auto"
-                    else f"{self.get_local_ip()}:{self.get_open_port()}",
+                    a["addr"] if a["addr"].lower() != "auto" else self.get_local_addr(),
                     self._logger,
                     Strategy.IN_ORDER,
                     self._on_queue_update,

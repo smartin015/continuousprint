@@ -1,6 +1,7 @@
 import time
 from multiprocessing import Lock
 from enum import Enum, auto
+from .data import CustomEvents
 
 
 class Action(Enum):
@@ -38,6 +39,7 @@ def timeAgo(elapsed):
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
     PRINTING_IDLE_BREAKOUT_SEC = 15.0
+    TIMELAPSE_WAIT_SEC = 30
 
     def __init__(
         self,
@@ -68,6 +70,8 @@ class Driver:
         self._update_ui = False
         self._cur_path = None
         self._cur_materials = []
+        self._bed_temp = 0
+        self._timelapse_start_ts = None
 
     def action(
         self,
@@ -76,6 +80,7 @@ class Driver:
         path: str = None,
         materials: list = [],
         bed_temp=None,
+        timelapse_start_ts=None,
     ):
         # Given that some calls to action() come from a watchdog timer, we hold a mutex when performing the action
         # so the state is updated in a thread safe way.
@@ -83,7 +88,7 @@ class Driver:
             now = time.time()
             if self.printer_state_ts + 15 > now or a != Action.TICK:
                 self._logger.debug(
-                    f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}"
+                    f"{a.name}, {p.name}, path={path}, materials={materials}, bed_temp={bed_temp}, timelapse_ts={timelapse_start_ts}"
                 )
             elif a == Action.TICK and not self.printer_state_logs_suppressed:
                 self.printer_state_logs_suppressed = True
@@ -102,11 +107,20 @@ class Driver:
                 self._cur_materials = materials
             if bed_temp is not None:
                 self._bed_temp = bed_temp
+            self._timelapse_start_ts = timelapse_start_ts
+            self._runner.set_current_symbols(
+                dict(
+                    path=self._cur_path,
+                    materials=self._cur_materials,
+                    bed_temp=self._bed_temp,
+                    state=self.state.__name__.strip("_state_"),
+                )
+            )
 
             # Deactivation must be allowed on all states, so we hande it here for
             # completeness.
             if a == Action.DEACTIVATE and self.state != self._state_inactive:
-                nxt = self._state_inactive
+                nxt = self._enter_inactive()
             else:
                 nxt = self.state(a, p)
 
@@ -123,11 +137,18 @@ class Driver:
     def _state_unknown(self, a: Action, p: Printer):
         pass
 
+    def _enter_inactive(self):
+        self._runner.run_script_for_event(CustomEvents.DEACTIVATE)
+        return self._state_inactive
+
     def _state_inactive(self, a: Action, p: Printer):
         self.q.release()
         self.retries = 0
 
         if a == Action.ACTIVATE:
+            if self._runner.run_script_for_event(CustomEvents.ACTIVATE) is not None:
+                return self._state_activating
+
             if p != Printer.IDLE:
                 return self._state_printing
             else:
@@ -139,6 +160,11 @@ class Driver:
             self._set_status(
                 "Inactive (active print continues unmanaged)", StatusType.NEEDS_ACTION
             )
+
+    def _state_activating(self, a: Action, p: Printer):
+        self._set_status("Running startup script")
+        if a == Action.SUCCESS or self._long_idle(p):
+            return self._state_idle(a, p)
 
     def _state_idle(self, a: Action, p: Printer):
         self.q.release()
@@ -152,8 +178,17 @@ class Driver:
             else:
                 return self._enter_start_print(a, p)
 
-    def _enter_start_print(self, a: Action, p: Printer):
-        # TODO "clear bed on startup" setting
+    def _state_preprint(self, a: Action, p: Printer):
+        self._set_status("Running pre-print script")
+        if a == Action.SUCCESS or self._long_idle(p):
+            # Skip running the pre-print script this time
+            return self._enter_start_print(a, p, run_pre_script=False)
+
+    def _enter_start_print(self, a: Action, p: Printer, run_pre_script=True):
+        if run_pre_script and self._runner.run_script_for_event(
+            CustomEvents.PRINT_START
+        ):
+            return self._state_preprint
 
         # Pre-call start_print on entry to eliminate tick delay
         self.start_failures = 0
@@ -169,6 +204,29 @@ class Driver:
         except AttributeError:
             return mk
 
+    def _materials_match(self, item):
+        for i, im in enumerate(item.materials()):
+            if im is None:  # No constraint
+                continue
+            cur = self._cur_materials[i] if i < len(self._cur_materials) else None
+            if im != cur:
+                return False
+        return True
+
+    def _state_awaiting_material(self, a: Action, p: Printer):
+        item = self.q.get_set_or_acquire()
+        if item is None:
+            self._set_status("No work to do; going idle")
+            return self._state_idle
+
+        if self._materials_match(item):
+            return self._enter_start_print(a, p)
+        else:
+            self._set_status(
+                f"Need {self._fmt_material_key(im)} in tool {i}, but {self._fmt_material_key(cur)} is loaded",
+                StatusType.NEEDS_ACTION,
+            )
+
     def _state_start_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -179,17 +237,9 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        # Block until we have the right materials loaded (if required)
-        for i, im in enumerate(item.materials()):
-            if im is None:  # No constraint
-                continue
-            cur = self._cur_materials[i] if i < len(self._cur_materials) else None
-            if im != cur:
-                self._set_status(
-                    f"Need {self._fmt_material_key(im)} in tool {i}, but {self._fmt_material_key(cur)} is loaded",
-                    StatusType.NEEDS_ACTION,
-                )
-                return
+        if not self._materials_match(item):
+            self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
+            return self._state_awaiting_material
 
         self.q.begin_run()
         if self._runner.start_print(item):
@@ -199,7 +249,7 @@ class Driver:
             self.start_failures += 1
             if self.start_failures >= self.max_startup_attempts:
                 self._set_status("Failed to start; too many attempts", StatusType.ERROR)
-                return self._state_inactive
+                return self._enter_inactive()
             else:
                 self._set_status(
                     f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
@@ -259,14 +309,14 @@ class Driver:
         if self._long_idle(p):
             # Here, IDLE implies the user cancelled the print.
             # Go inactive to prevent stomping on manual changes
-            return self._state_inactive
+            return self._enter_inactive()
         elif p == Printer.BUSY:
             return self._state_printing
 
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
         self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
-            self._runner.cancel_print()
+            self._runner.run_script_for_event(CustomEvents.PRINT_CANCEL)
             return self._state_failure
 
     def _state_failure(self, a: Action, p: Printer):
@@ -279,16 +329,26 @@ class Driver:
         else:
             self.q.end_run("failure")
             self._set_status("Failure (max retries exceeded", StatusType.ERROR)
-            return self._state_inactive
+            return self._enter_inactive()
 
     def _state_success(self, a: Action, p: Printer):
+        # Wait for timelapse to complete; allows associating the timelapse
+        # in the history and prevents performance issues due to render cpu
+        now = time.time()
+        if (
+            self._timelapse_start_ts is not None
+            and now < self._timelapse_start_ts + self.TIMELAPSE_WAIT_SEC
+        ):
+            self._set_status("Waiting for timelapse to render", StatusType.NORMAL)
+            return
+
         # Complete prior queue item if that's what we just finished.
         # Note that end_run fails silently if there's no active run
         # (e.g. if we start managing mid-print)
         self.q.end_run("success")
         self.retries = 0
 
-        # Clear bed if we have a next queue item, otherwise run finishing script
+        # Clear bed if we have a next item, otherwise run finishing script
         item = self.q.get_set_or_acquire()
         if item is not None:
             self._logger.debug(
@@ -305,14 +365,14 @@ class Driver:
             return
 
         if self.managed_cooldown:
-            self._runner.start_cooldown()
+            self._runner.run_script_for_event(CustomEvents.COOLDOWN)
             self.cooldown_start = time.time()
             self._logger.info(
                 f"Cooldown initiated (threshold={self.cooldown_threshold}, timeout={self.cooldown_timeout})"
             )
             return self._state_cooldown
         else:
-            self._runner.clear_bed()
+            self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
     def _state_cooldown(self, a: Action, p: Printer):
@@ -329,7 +389,7 @@ class Driver:
             self._set_status("Cooling down")
 
         if clear:
-            self._runner.clear_bed()
+            self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
     def _state_clearing(self, a: Action, p: Printer):
@@ -337,7 +397,7 @@ class Driver:
             return self._enter_start_print(a, p)
         elif a == Action.FAILURE:
             self._set_status("Error when clearing bed - aborting", StatusType.ERROR)
-            return self._state_inactive  # Skip past failure state to inactive
+            return self._enter_inactive()  # Skip past failure state to inactive
 
         if self._long_idle(p):  # Idle state without event; assume success
             return self._enter_start_print(a, p)
@@ -349,12 +409,12 @@ class Driver:
             self._set_status("Waiting for printer to be ready")
             return
 
-        self._runner.run_finish_script()
+        self._runner.run_script_for_event(CustomEvents.FINISH)
         return self._state_finishing
 
     def _state_finishing(self, a: Action, p: Printer):
         if a == Action.FAILURE:
-            return self._state_inactive
+            return self._enter_inactive()
 
         # Idle state without event -> assume success and go idle
         if a == Action.SUCCESS or self._long_idle(p):

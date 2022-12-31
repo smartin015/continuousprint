@@ -208,6 +208,16 @@ test('removeFile shows dialog', () => {
   expect(rmfile).not.toHaveBeenCalled();
 });
 
+test('removeFile with exception fails gracefully', () => {
+  let m = mocks();
+  let rmfile = m[2].removeFile;
+  let v = init(1, m);
+  v.defaultQueue = null; // Can't call .jobs() on null queue
+  let data = {path: 'asdf'};
+  v.files.removeFile(data, null); // Raises exception
+  expect(rmfile).toHaveBeenCalledWith(data, null); // But still gets forwarded through
+});
+
 test('removeConfirm calls removeFile', () => {
   let m = mocks();
   let rmfile = m[2].removeFile;

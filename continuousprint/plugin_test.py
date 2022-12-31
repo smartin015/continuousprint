@@ -11,7 +11,7 @@ from octoprint.events import Events
 import logging
 import tempfile
 import json
-from .data import Keys, TEMP_FILES
+from .data import Keys, TEMP_FILE_DIR
 from .plugin import CPQPlugin
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -27,8 +27,14 @@ class MockSettings:
     def get(self, k):
         return self.s.get(k[0])
 
+    def global_get(self, gk):
+        return self.get([":".join(gk)])
+
     def set(self, k, v):
         self.s[k[0]] = v
+
+    def global_set(self, gk, v):
+        return self.set([":".join(gk)], v)
 
 
 def mockplugin():
@@ -84,10 +90,22 @@ class TestStartup(unittest.TestCase):
             p._data_folder = td
             p._init_db()
 
+    @patch("continuousprint.plugin.migrateScriptsFromSettings")
+    def testDBMigrateScripts(self, msfs):
+        p = mockplugin()
+        p._set_key(Keys.CLEARING_SCRIPT_DEPRECATED, "s1")
+        p._set_key(Keys.FINISHED_SCRIPT_DEPRECATED, "s2")
+        p._set_key(Keys.BED_COOLDOWN_SCRIPT_DEPRECATED, "s3")
+        with tempfile.TemporaryDirectory() as td:
+            p._data_folder = td
+            p._init_db()
+            # Ensure we're calling with the script body, not just the event name
+            msfs.assert_called_with("s1", "s2", "s3")
+
     def testDBWithLegacySettings(self):
         p = mockplugin()
         p._set_key(
-            Keys.QUEUE,
+            Keys.QUEUE_DEPRECATED,
             json.dumps(
                 [
                     {
@@ -113,12 +131,27 @@ class TestStartup(unittest.TestCase):
     def testFileshare(self):
         p = mockplugin()
         fs = MagicMock()
-        p.get_local_ip = MagicMock(return_value="111.111.111.111")
+        p.get_local_addr = lambda: ("111.111.111.111:0")
         p._file_manager.path_on_disk.return_value = "/testpath"
 
         p._init_fileshare(fs_cls=fs)
 
         fs.assert_called_with("111.111.111.111:0", "/testpath", logging.getLogger())
+
+    def testFileshareAddrFailure(self):
+        p = mockplugin()
+        fs = MagicMock()
+        p.get_local_addr = MagicMock(side_effect=[OSError("testing")])
+        p._init_fileshare(fs_cls=fs)  # Does not raise exception
+        self.assertEqual(p._fileshare, None)
+
+    def testFileshareConnectFailure(self):
+        p = mockplugin()
+        fs = MagicMock()
+        p.get_local_addr = lambda: "111.111.111.111:0"
+        fs.connect.side_effect = OSError("testing")
+        p._init_fileshare(fs_cls=fs)  # Does not raise exception
+        self.assertEqual(p._fileshare, fs())
 
     def testQueues(self):
         p = mockplugin()
@@ -155,7 +188,7 @@ class TestEventHandling(unittest.TestCase):
 
     def testTick(self):
         self.p.tick()
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testTickExceptionHandled(self):
         self.p.d.action.side_effect = Exception(
@@ -238,7 +271,7 @@ class TestEventHandling(unittest.TestCase):
         self.p._delete_timelapse = MagicMock()
         self.p.on_event(
             Events.MOVIE_DONE,
-            dict(gcode=list(TEMP_FILES.values())[0].split("/")[-1], movie="test.mp4"),
+            dict(gcode=TEMP_FILE_DIR + "/test.gcode", movie="test.mp4"),
         )
         self.p._delete_timelapse.assert_called_with("test.mp4")
 
@@ -250,19 +283,19 @@ class TestEventHandling(unittest.TestCase):
     def testPrintDone(self):
         self.p._cleanup_fileshare = lambda: 0
         self.p.on_event(Events.PRINT_DONE, dict())
-        self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.SUCCESS, ANY, ANY, ANY, ANY, ANY)
 
     def testPrintFailed(self):
         self.p.on_event(Events.PRINT_FAILED, dict())
-        self.p.d.action.assert_called_with(DA.FAILURE, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.FAILURE, ANY, ANY, ANY, ANY, ANY)
 
     def testPrintCancelledByUser(self):
         self.p.on_event(Events.PRINT_CANCELLED, dict(user="admin"))
-        self.p.d.action.assert_called_with(DA.DEACTIVATE, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.DEACTIVATE, ANY, ANY, ANY, ANY, ANY)
 
     def testPrintCancelledBySystem(self):
         self.p.on_event(Events.PRINT_CANCELLED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testObicoPauseCommand(self):
         self.p._printer.get_current_job.return_value = dict(
@@ -272,7 +305,7 @@ class TestEventHandling(unittest.TestCase):
         self.p.EVENT_OBICO_COMMAND = "obico_cmd"
 
         self.p.on_event("obico_cmd", dict(cmd="pause", initiator="system"))
-        self.p.d.action.assert_called_with(DA.SPAGHETTI, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.SPAGHETTI, ANY, ANY, ANY, ANY, ANY)
 
     def testObicoPauseByUser(self):
         # User pause events (e.g. through the Obico UI) should not trigger automation
@@ -288,12 +321,12 @@ class TestEventHandling(unittest.TestCase):
     def testSpoolSelected(self):
         self.p.EVENT_SPOOL_SELECTED = "spool_selected"
         self.p.on_event("spool_selected", dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testSpoolDeselected(self):
         self.p.EVENT_SPOOL_DESELECTED = "spool_desel"
         self.p.on_event("spool_desel", dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testPrintPaused(self):
         self.p._printer.get_current_job.return_value = dict(
@@ -301,7 +334,7 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p.d.current_path.return_value = "test.gcode"
         self.p.on_event(Events.PRINT_PAUSED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testPrintResumed(self):
         self.p._printer.get_current_job.return_value = dict(
@@ -309,12 +342,12 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p.d.current_path.return_value = "test.gcode"
         self.p.on_event(Events.PRINT_RESUMED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testPrinterOperational(self):
         self.p._printer.get_state_id.return_value = "OPERATIONAL"
         self.p.on_event(Events.PRINTER_STATE_CHANGED, dict())
-        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY)
+        self.p.d.action.assert_called_with(DA.TICK, ANY, ANY, ANY, ANY, ANY)
 
     def testSettingsUpdated(self):
         self.p.on_event(Events.SETTINGS_UPDATED, dict())
@@ -551,3 +584,25 @@ class TestCleanupFileshare(unittest.TestCase):
             self.assertTrue((p / f"{n}.gcode").exists())
         self.assertFalse((p / "c.gcode").exists())
         self.assertFalse((p / "d").exists())
+
+
+class TestLocalAddressResolution(unittest.TestCase):
+    def setUp(self):
+        self.p = mockplugin()
+
+    @patch("continuousprint.plugin.socket")
+    def testResolutionViaCheckAddrOK(self, msock):
+        self.p._settings.global_set(["server", "onlineCheck", "host"], "checkhost")
+        self.p._settings.global_set(["server", "onlineCheck", "port"], 5678)
+        s = msock.socket()
+        s.getsockname.return_value = ("1.2.3.4", "1234")
+        self.assertEqual(self.p.get_local_addr(), "1.2.3.4:1234")
+        s.connect.assert_called_with(("checkhost", 5678))
+
+    @patch("continuousprint.plugin.socket")
+    def testResolutionFailoverToMDNS(self, msock):
+        self.p._can_bind_addr = lambda a: False
+        msock.gethostbyname.return_value = "1.2.3.4"
+        s = msock.socket()
+        s.getsockname.return_value = ("ignored", "1234")
+        self.assertEqual(self.p.get_local_addr(), "1.2.3.4:1234")

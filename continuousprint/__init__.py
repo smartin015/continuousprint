@@ -59,7 +59,8 @@ class ContinuousprintPlugin(
                 self._logger,
                 self._identifier,
                 self._basefolder,
-                self._event_bus.fire,
+                # Events are of type CustomEvents and need to be unpacked:w
+                lambda e: self._event_bus.fire(e.event),
             )
 
     def on_after_startup(self):
@@ -96,10 +97,17 @@ class ContinuousprintPlugin(
 
     # ---------------------- Begin TemplatePlugin -------------------
     def get_template_vars(self):
+        try:
+            local_ip = self._plugin.get_local_addr().split(":")[0]
+        except Exception:
+            # Local IP details are used for display only
+            local_ip = "<ip_address>"
         return dict(
+            exceptions=self._plugin.get_exceptions(),
             printer_profiles=list(PRINTER_PROFILES.values()),
             gcode_scripts=list(GCODE_SCRIPTS.values()),
-            local_ip=self._plugin.get_local_ip(),
+            custom_events=[e.as_dict() for e in CustomEvents],
+            local_ip=local_ip,
         )
 
     def get_template_configs(self):

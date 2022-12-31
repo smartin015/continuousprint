@@ -21,6 +21,9 @@
   <a href="https://smartin015.github.io/continuousprint/" target="blank"><img src="plugin/continuousprint/static/img/CPQ.svg" alt="Continuous Print" class="cpq_logo"></a>
   <li class="active"><a href="#continuousprint_tab_queues" data-toggle="tab">Queues</a></li>
   <li><a href="#continuousprint_tab_history" data-toggle="tab">History</a></li>
+  <button class="btn btn-secondary pull-right cpq-leftpad" data-bind="click: showSettingsHelp" title="Show help">
+    <i class="fas fa-question-circle"></i>
+  </button>
 
   <button class="btn btn-secondary pull-right cpq-leftpad" data-bind="visible: active(), click: function() {setActive(false);}" title="Stop the print queue">
     <i class="fa fa-stop"></i>&nbsp;&nbsp;Stop Managing
@@ -64,7 +67,22 @@
       <!-- /ko -->
       </div>
   </div>
+
+  <div class="alert alert-error" data-bind="visible: CP_EXCEPTIONS.length > 0">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <p>
+      <i class="fas fa-exclamation-triangle"></i> Encountered the following exceptions:
+    </p>
+    <ul data-bind="foreach: CP_EXCEPTIONS">
+      <li data-bind="text: $data"></li>
+    </ul>
+    <p>
+      Please <a target="_blank" href="https://github.com/smartin015/continuousprint/issues/new/choose">file a bug report</a> - be sure to follow the template instructions to generate a sysinfo bundle.
+    </p>
+  </div>
+
   <div class="alert alert-warning" data-bind="visible: badMaterialCount">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
     <i class="fas fa-exclamation-triangle"></i> <span data-bind="text: badMaterialCount"></span> spool(s) configured without a material.
     <br/>These will be excluded from material selection until you configure them (in the Spools tab) and reload.
   </div>
@@ -74,6 +92,7 @@
   </div>
 
   <div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
+
     <div class="cp-queue" data-bind="css: {'loading': $root.loading() || !ready()}">
     <div class="cp-header action-bar">
         <div class="multiselect">
@@ -224,6 +243,7 @@
                                 <!-- /ko -->
                             </select>
                            </div>
+                            <div class="hint">Hint: Print start and ending scripts can be adjusted in the plugin settings</div>
                         </div>
                         <div data-bind="visible: job.draft() && $root.materials().length > 0">
                           <h4>Materials</h4>
@@ -255,12 +275,15 @@
                   </div>
                 </div>
                 </div>
-                <div class="job-stats" data-bind="hidden: !draft()">
-                  <div style="flex: 1;">Total items printed</div>
-                  <div class="completed" data-bind="text: $root.humanize(totals().completed)"></div>
-                  <div class="count" data-bind="text: $root.humanize(totals().count)"></div>
-                  <div class="remaining" data-bind="text: $root.humanize(totals().remaining)"></div>
-                  <div class="total" data-bind="text: $root.humanize(totals().total)"></div>
+                <div data-bind="foreach: totals, visible: draft">
+                  <div class="job-stats">
+                    <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
+                    <div class="completed" data-bind="text: completed"></div>
+                    <div class="count" data-bind="text: count"></div>
+                    <div class="remaining" data-bind="text: remaining"></div>
+                    <div class="total" data-bind="text: total"></div>
+                    <div class="error" data-bind="visible: error, text=error"></div>
+                  </div>
                 </div>
                 <div class="job-gutter">
                   <div class="btn" data-bind="visible: draft, click: editCancel">Cancel</div>

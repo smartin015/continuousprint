@@ -1,6 +1,6 @@
 import unittest
 import logging
-from ..storage.database_test import DBTest
+from ..storage.database_test import QueuesDBTest
 from ..storage import queries
 from ..storage.lan import LANJobView
 from ..storage.database import JobView
@@ -14,13 +14,13 @@ from .abstract_test import (
 from .local import LocalQueue
 from dataclasses import dataclass, asdict
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
-class TestAbstractImpl(AbstractQueueTests, DBTest):
+class TestAbstractImpl(AbstractQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
-        DBTest.setUp(self)
+        QueuesDBTest.setUp(self)
         self.q = LocalQueue(
             queries,
             "local",
@@ -33,10 +33,10 @@ class TestAbstractImpl(AbstractQueueTests, DBTest):
         self.q._set_path_exists = lambda p: True
 
 
-class TestEditableImpl(EditableQueueTests, DBTest):
+class TestEditableImpl(EditableQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
-        DBTest.setUp(self)
+        QueuesDBTest.setUp(self)
         self.q = LocalQueue(
             queries,
             "local",
@@ -115,7 +115,7 @@ class TestLocalQueueInOrderNoInitialJob(unittest.TestCase):
         self.assertEqual(self.q.acquire(), False)
 
     def test_import_job(self):
-        pass  # TODO
+        self.skipTest("TODO")
 
 
 class TestLocalQueueInOrderInitial(unittest.TestCase):
@@ -140,7 +140,7 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         self.assertEqual(self.q.get_set(), self.s)
 
     def test_mv(self):
-        pass  # TODO
+        self.skipTest("TODO")
 
     def test_acquire_2x(self):
         # Second acquire should do nothing, return True
@@ -181,13 +181,12 @@ class TestLocalQueueInOrderInitial(unittest.TestCase):
         )
 
 
-# TODO test SD card behavior on importing/exporting and printing
-# class TestSD(unittest.TestCase):
-#    def testSDExport(self):
-#        raise NotImplementedError
-#
-#    def testSDImport(self):
-#        raise NotImplementedError
-#
-#    def testSDPrintExists(self):
-#        raise NotImplementedError
+class TestSD(unittest.TestCase):
+    def testSDExport(self):
+        self.skipTest("TODO")
+
+    def testSDImport(self):
+        self.skipTest("TODO")
+
+    def testSDPrintExists(self):
+        self.skipTest("TODO")
