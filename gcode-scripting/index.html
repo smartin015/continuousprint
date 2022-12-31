@@ -13,7 +13,7 @@
     
     
       
-        <title>GCODE Scripting - Continuous Print</title>
+        <title>Scripting - Continuous Print</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gcode-scripting" class="md-skip">
+        <a href="#scripting" class="md-skip">
           Skip to content
         </a>
       
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              GCODE Scripting
+              Scripting
             
           </span>
         </div>
@@ -245,12 +245,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          GCODE Scripting
+          Scripting
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        GCODE Scripting
+        Scripting
       </a>
       
         
@@ -269,12 +269,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bed-clearing-script" class="md-nav__link">
-    Bed clearing script
+  <a href="#events" class="md-nav__link">
+    Events
   </a>
   
-    <nav class="md-nav" aria-label="Bed clearing script">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts" class="md-nav__link">
+    Scripts
+  </a>
+  
+    <nav class="md-nav" aria-label="Scripts">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#load-defaults" class="md-nav__link">
+    Load Defaults
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-scripts" class="md-nav__link">
+    Custom Scripts
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#optional-use-bedready-to-check-bed-state" class="md-nav__link">
@@ -289,9 +310,64 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#queue-finished-script" class="md-nav__link">
-    Queue finished script
+  <a href="#preprocessors" class="md-nav__link">
+    Preprocessors
   </a>
+  
+    <nav class="md-nav" aria-label="Preprocessors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#language" class="md-nav__link">
+    Language
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#return-value" class="md-nav__link">
+    Return Value
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notifications" class="md-nav__link">
+    Notifications
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    Examples
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-state" class="md-nav__link">
+    Available State
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-carryover" class="md-nav__link">
+    State Carryover
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-state" class="md-nav__link">
+    External State
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -423,21 +499,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../custom-events/" class="md-nav__link">
-        Custom Events
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../action-commands/" class="md-nav__link">
         Action Commands
       </a>
@@ -502,12 +563,33 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#bed-clearing-script" class="md-nav__link">
-    Bed clearing script
+  <a href="#events" class="md-nav__link">
+    Events
   </a>
   
-    <nav class="md-nav" aria-label="Bed clearing script">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts" class="md-nav__link">
+    Scripts
+  </a>
+  
+    <nav class="md-nav" aria-label="Scripts">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#load-defaults" class="md-nav__link">
+    Load Defaults
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-scripts" class="md-nav__link">
+    Custom Scripts
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#optional-use-bedready-to-check-bed-state" class="md-nav__link">
@@ -522,9 +604,64 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#queue-finished-script" class="md-nav__link">
-    Queue finished script
+  <a href="#preprocessors" class="md-nav__link">
+    Preprocessors
   </a>
+  
+    <nav class="md-nav" aria-label="Preprocessors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#language" class="md-nav__link">
+    Language
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#return-value" class="md-nav__link">
+    Return Value
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notifications" class="md-nav__link">
+    Notifications
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    Examples
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#available-state" class="md-nav__link">
+    Available State
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state-carryover" class="md-nav__link">
+    State Carryover
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#external-state" class="md-nav__link">
+    External State
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -549,16 +686,121 @@
                 
 
 
-<h1 id="gcode-scripting">GCODE Scripting</h1>
-<p>GCODE scripts can be quite complex - if you want to learn the basics, try reading through <a href="https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/">this primer</a>.</p>
-<h2 id="bed-clearing-script">Bed clearing script</h2>
-<p>When Continuous Print is managing the queue, this script is run after every print completes - <strong>including prints started before queue managing begins</strong>.</p>
-<p>Your cleaning script should remove all 3D print material from the build area to make way for the next print.</p>
+<h1 id="scripting">Scripting</h1>
+<p><strong>Control what happens in between queued prints by using Events to run Scripts</strong>.</p>
+<h2 id="events">Events</h2>
+<p>Events fire at certain points when the queue is being run - when a print completes, for instance. You can see the full list of events by going to <code>Settings &gt; Continuous Print &gt; Events</code> or <a href="https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/__init__.py">looking here in the source code</a>.</p>
+<p>When an event fires, you can run one or more configured scripts. These events are also visible to other OctoPrint plugins (e.g. <a href="https://plugins.octoprint.org/plugins/IFTTT/">OctoPrint-IFTTT</a>) and can be used to perform actions in them.</p>
+<h2 id="scripts">Scripts</h2>
+<p>Event scripts, just like 3D print files, are in GCODE. Each script is a series of commands that are sent to the printer that tell it to move, heat up, cool down, etc.</p>
+<p>GCODE scripts can be quite complex - it's recommended to load default scripts if you're just getting started, or as examples to modify. If you want to learn to make your own scripts, try reading through <a href="https://www.simplify3d.com/support/articles/3d-printing-gcode-tutorial/">this primer</a>.</p>
+<h3 id="load-defaults">Load Defaults</h3>
+<p>If your 3D printer is common, you should first check the user-contributed default scripts for your printer.</p>
+<p>To load default scripts:</p>
+<ol>
+<li>Navigate to <code>Settings &gt; Continuous Print &gt; Profile</code> and ensure the make and model of your 3D printer is correct.</li>
+<li>Click on the <code>Scripts</code> tab, then click <code>Load from Profile</code>. You should see two new scripts ("Bed Clearing" and "Finished") appear matching your printer make and model.</li>
+<li>Click on the <code>Events</code> tab and scroll down to <code>Print Success</code>.</li>
+<li>Replace the Bed Clearing script there with the new one.</li>
+<li>Scroll down to <code>Queue Finished</code> and replace its script with the new script.</li>
+<li>Click <code>Save</code>.</li>
+</ol>
+<p>If you want to contribute a change or a new default script, read the <a href="#contributing">Contributing</a> section below. You can browse through all the scripts <a href="https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/gcode_scripts.yaml">here</a>.</p>
+<h3 id="custom-scripts">Custom Scripts</h3>
+<p>You can also set up your own custom scripts to run when events happen.</p>
+<p>To add a new custom script:</p>
+<ol>
+<li>Navigate to <code>Settings &gt; Continuous Print &gt; Scripts</code>, then click <code>New Script</code>. A new (unnamed) script will appear in the list.</li>
+<li>Put your GCODE script in the large text box - as an example, try typing in <code>@pause</code> to pause the print and wait for you to resume it.</li>
+<li>Give the script a name (e.g. "Example Script"), then click the Done button at the bottom of the edit area.</li>
+</ol>
+<p>Your script is now created, but it will not run until we assign it to one or more events.</p>
+<p>To register the script to an event:</p>
+<ol>
+<li>Click the <code>Events</code> tab and scroll to the desired event. For example, <code>Queue Deactivated</code> which runs when you click the <code>Stop Managing</code> button.</li>
+<li>Click the <code>Add Script</code> button, then the name of your script. You should now see it listed below the event name.</li>
+<li>Click <code>Save</code> to save your settings.</li>
+</ol>
+<p>Now try it out! Whenever your event fires, it should run this new script.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>You can use the same script for multiple events, e.g. run bed clearing after each print <em>and</em> when the last print is finished.</p>
+<p>You can also run multiple scripts in the same event - they are executed from top to bottom, and you can drag to reorder them.</p>
+</div>
 <h3 id="optional-use-bedready-to-check-bed-state">Optional: Use BedReady to check bed state</h3>
 <p><a href="https://plugins.octoprint.org/plugins/bedready/">OctoPrint-BedReady</a> is a plugin that checks the webcam image of the bed against a refrence image where the bed is clear.</p>
 <p>If you install BedReady, you can add an automated check that the bed is clear for the next print by adding <code>@BEDREADY</code> onto the end of your bed clearing script.</p>
-<h2 id="queue-finished-script">Queue finished script</h2>
-<p>This script is run after all prints in the queue have been printed. Use this script to put the machine in a safe resting state. Note that the last print will have already been cleared by the bed cleaning script (above).</p>
+<h2 id="preprocessors">Preprocessors</h2>
+<p>You may discover that you want more complex behavior than just running the same script every time an event happens - maybe you want to revert to manual part removal if the print is too small to remove automatically, or you want to sweep prints off in a different direction depending on their material or file name.</p>
+<p>This can be done by adding a <strong>Preprocessor</strong>, which is a little bit of extra code that modifies how your GCODE script is executed.</p>
+<p>Preprocessors are optionally added to assigned scripts in the <code>Events</code> settings tab. They evaluate based on instantaneous state details, print file metadata, and optional externally provided state.</p>
+<h3 id="language">Language</h3>
+<p>Preprocessors are evaluated using <a href="https://newville.github.io/asteval/">ASTEVAL</a> which is a <a href="https://www.python.org/">Python</a>-like interpreter. Most simple Python scripts will run just fine.</p>
+<p>If you're new to writing Python code and the examples in <code>Settings &gt; Continuous Print &gt; Scripts</code> don't have the answers you need, check out <a href="https://wiki.python.org/moin/BeginnersGuide">here</a> for language resources, or open a new <a href="https://github.com/smartin015/continuousprint/discussions">discussion on GitHub</a>.</p>
+<h3 id="return-value">Return Value</h3>
+<p>The final line of a preprocessor is used to modify the behavior of the GCODE script:</p>
+<ul>
+<li><strong>If the last line evaluates to <code>True</code> or <code>False</code></strong>, then it either runs or supresses the script, respectively.</li>
+<li><strong>If the last line evaluates to <code>None</code></strong>, then it suppresses the script.</li>
+<li><strong>If the last line evalutes to a <code>dict</code> object</strong>, then the items are injected into the GCODE script (they're treated as keyword arguments in a call to <a href="https://docs.python.org/3/tutorial/inputoutput.html#the-string-format-method">format()</a>)</li>
+</ul>
+<p>To clarify that last option, if you have a GCODE script that looks like:</p>
+<pre><code>G0 X{move_dist}
+</code></pre>
+<p>And you have a preprocessor that looks like:</p>
+<pre><code>dict(move_dist = 10 if current['path'].endswith(&quot;_right.gcode&quot;) else -10)
+</code></pre>
+<p>Then the printer will receive <code>G0 X10</code> for files named e.g. <code>file_right.gcode</code> and <code>G0 X-10</code> for all other files.</p>
+<h3 id="notifications">Notifications</h3>
+<p>If you want to display any output from running your script, use the <code>print()</code> function like so:</p>
+<pre><code>print(&quot;Hello there!&quot;)
+</code></pre>
+<p>This will cause a status message to pop up with your printed message displayed. Multiple calls to <code>print</code> will be concatenated and shown in a single message.</p>
+<h3 id="examples">Examples</h3>
+<p>For more examples, see the default preprocessors and scripts in <code>Settings &gt; Continuous Print &gt; Scripts &amp; Preprocessors</code> within OctoPrint. You can also browse <a href="https://github.com/smartin015/continuousprint/blob/master/continuousprint/data/preprocessors.yaml">this YAML file</a> which is the source of those entries.</p>
+<h3 id="available-state">Available State</h3>
+<p>When you write a Preprocessor, you will reference external information in your expression in order to return a boolean result. This is done by accessing <code>State</code> variables (referred to in <a href="https://newville.github.io/asteval/">ASTEVAL docs</a> as the "symbol table").</p>
+<p>Here's an example of what you can expect for state variables:</p>
+<pre><code>current: {
+    'path': 'testprint.gcode',
+    'materials': ['PLA_red_#ff0000'],
+    'bed_temp': 23.59,
+    'state': '_state_printing',
+    'action': 'SUCCESS',
+}
+external: {&lt;user provided&gt;}
+metadata: {
+    'hash': '38eea2d4463053bd79af52c3fadc37deaa7bfff7',
+    'analysis': {
+        'printingArea': {'maxX': 5.3, 'maxY': 7.65, 'maxZ': 19.7, 'minX': -5.3, 'minY': -8.5608, 'minZ': 0.0},
+        'dimensions': {'depth': 16.2108, 'height': 19.7, 'width': 10.6},
+        'estimatedPrintTime': 713.6694555778557,
+        'filament': {'tool0': {'length': 311.02239999999875, 'volume': 0.0}}
+    },
+    'continuousprint': {
+        'profile': 'Monoprice Mini Delta V2'
+    },
+    'history': [
+        {
+          'timestamp': 1660053581.8503253,
+          'printTime': 109.47731690102955,
+          'success': True,
+          'printerProfile': '_default'
+        },
+    ],
+    'statistics': {
+        'averagePrintTime': {'_default': 113.51082421375965},
+        'lastPrintTime': {'_default': 306.7005050050211}
+    }
+}
+</code></pre>
+<p>Note that all variables in <code>current</code> (such as <code>path</code>, <code>materials</code>, and <code>bed_temp</code>) are all instantaneous variables about the current state, while <code>metadata</code> comes from file metadata analysis and is absent if <code>path</code> is None or empty.</p>
+<p>See also <code>update_interpreter_symbols</code> in <a href="https://github.com/smartin015/continuousprint/blob/master/continuousprint/driver.py">driver.py</a> for how state is constructed and sent to the interpreter.</p>
+<h3 id="state-carryover">State Carryover</h3>
+<p>Any variable that you set when running a Preprocessor will also be made available to preprocessors that run after on the same event.</p>
+<h3 id="external-state">External State</h3>
+<p>The <code>external</code> section of the state example above is where you'll find any custom data you inject via POST request to <code>/automation/external</code> - see the <a href="/api/#inject-external-data-into-preprocessor-state">API docs</a> for details.</p>
+<p>External data can come from anywhere that can reach your OctoPrint instance on the network - microservices, CRON jobs, IOT and other embedded systems, etc. However, ASTEVAL disables many of the more complex features of Python for security reasons. For this reason, you may want to do heavy processing (e.g. image or video segmentation, object detection, point cloud processing) elsewhere and then push only the information needed to format the event script.</p>
 <h2 id="contributing">Contributing</h2>
 <p>When you come up with a useful script for e.g. clearing the print bed, consider contributing it back to the community!</p>
 <ol>
@@ -566,6 +808,7 @@
 <li>Go to <a href="https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/printer_profiles.yaml">printer_profiles.yaml</a> and check to see if your printer make and model are present. If they aren't, click the pencil icon on the top right of the file to begin editing.</li>
 <li>When you're done adding details, save it to a new branch of your fork.</li>
 <li>Now go to <a href="https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/gcode_scripts.yaml">gcode_scripts.yaml</a> and edit it in the same way, adding your gcode and any additional fields.</li>
+<li>Do the same for any new preprocessors with <a href="https://github.com/smartin015/continuousprint/tree/rc/continuousprint/data/preprocessors.yaml">preprocessors.yaml</a>.</li>
 <li>Save your changes - to a new branch if you didn't have to do anything on step 2, otherwise to the same branch you created earlier.</li>
 <li>Check one last time that the script names match those provided in your printer profiles <code>defaults</code> section, then submit a pull request. <strong>Make sure to do a PR against the <code>rc</code> branch, NOT the <code>master</code> branch.</strong></li>
 </ol>

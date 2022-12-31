@@ -236,7 +236,7 @@
   
     <li class="md-nav__item">
       <a href="../gcode-scripting/" class="md-nav__link">
-        GCODE Scripting
+        Scripting
       </a>
     </li>
   
@@ -355,21 +355,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../custom-events/" class="md-nav__link">
-        Custom Events
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../action-commands/" class="md-nav__link">
         Action Commands
       </a>
@@ -454,6 +439,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#inject-external-data-into-preprocessor-state" class="md-nav__link">
+    Inject external data into preprocessor state
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -505,6 +497,13 @@
         <li class="md-nav__item">
   <a href="#startstop-managing-the-queue" class="md-nav__link">
     Start/stop managing the queue
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inject-external-data-into-preprocessor-state" class="md-nav__link">
+    Inject external data into preprocessor state
   </a>
   
 </li>
@@ -610,6 +609,13 @@ jobDraft: bool (optional, default True)
 </div>
 <p><strong>Response</strong></p>
 <p>Same as <code>/state</code> above</p>
+<h2 id="inject-external-data-into-preprocessor-state">Inject external data into preprocessor state</h2>
+<p><strong>Request</strong></p>
+<p><strong><code>HTTP POST http://printer:5000/plugin/continuousprint/automation/external</code></strong></p>
+<p>Payload: any <a href="https://www.w3schools.com/js/js_json_intro.asp">JSON</a> dictionary object, e.g. <code>{"a": 1, "b": "hello"}</code></p>
+<p>This makes external data available to <a href="/gcode-scripting.md">Preprocessors</a>.</p>
+<p><strong>Response</strong></p>
+<p><code>OK</code> if the data was successfully injected.</p>
 
               
             </article>
