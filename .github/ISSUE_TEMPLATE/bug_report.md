@@ -8,17 +8,6 @@ assignees: ''
 ---
 
 <!-- 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-     .
-       .
-   . ;.
-    .;
-     ;;.
-   ;.;;
-   ;;;;.
-   ;;;;;
-   ;;;;;
    ;;;;;
    ;;;;;
    ;;;;;
@@ -28,11 +17,11 @@ assignees: ''
 
 **PLEASE READ THIS FIRST!**
 
-If you are reporting an issue, you **must** submit a System Info bundle so I can troubleshoot it.
+If you are reporting an issue, you **must** attach a System Info bundle to the issue so I can troubleshoot it.
 
 If you create an issue without one, then I'll ask you to submit one and will wait until you do. 
 
-Please save us both time, and do this first:
+Please save us both time, and do this first. You can find instructions here:
 
 https://community.octoprint.org/t/what-is-a-systeminfo-bundle-and-how-can-i-obtain-one/29887
      .
@@ -41,17 +30,6 @@ https://community.octoprint.org/t/what-is-a-systeminfo-bundle-and-how-can-i-obta
    ;;;;;
    ;;;;;
    ;;;;;
-   ;;;;;
-   ;:;;;
-   : ;;;
-     ;:;
-   . :.;
-     . :
-   .   .
-
-      .
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 -->
 
 **Describe the bug**
