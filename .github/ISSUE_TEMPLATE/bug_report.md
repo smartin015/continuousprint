@@ -7,6 +7,53 @@ assignees: ''
 
 ---
 
+<!-- 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+     .
+       .
+   . ;.
+    .;
+     ;;.
+   ;.;;
+   ;;;;.
+   ;;;;;
+   ;;;;;
+   ;;;;;
+   ;;;;;
+   ;;;;;
+ ..;;;;;..
+  ':::::'
+    ':`
+
+**PLEASE READ THIS FIRST!**
+
+If you are reporting an issue, you **must** submit a System Info bundle so I can troubleshoot it.
+
+If you create an issue without one, then I'll ask you to submit one and will wait until you do. 
+
+Please save us both time, and do this first:
+
+https://community.octoprint.org/t/what-is-a-systeminfo-bundle-and-how-can-i-obtain-one/29887
+     .
+   .:;:.
+ .:;;;;;:.
+   ;;;;;
+   ;;;;;
+   ;;;;;
+   ;;;;;
+   ;:;;;
+   : ;;;
+     ;:;
+   . :.;
+     . :
+   .   .
+
+      .
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-->
+
 **Describe the bug**
 A clear and concise description of what the bug is.
 
