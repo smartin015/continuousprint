@@ -9,6 +9,7 @@
   const CP_CUSTOM_EVENTS = {{plugin_continuousprint_custom_events|tojson|safe}};
   const CP_LOCAL_IP = {{plugin_continuousprint_local_ip|tojson|safe}};
   const CP_EXCEPTIONS = {{plugin_continuousprint_exceptions|tojson|safe}};
+  const CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {{plugin_continuousprint_simulator_default_symtable|tojson|safe}}; };
 </script>
 
 <ul id="settings_continuousprint_tabs" class="nav nav-pills">
@@ -101,6 +102,9 @@
           </div>
         </div> <!-- foreach actions -->
 
+        <div class="simulation">
+        <div data-bind="text: JSON.stringify(simulation())"></div>
+        </div>
 
         <div class="dropdown pull-right" style="width: 120px">
           <a class="btn dropdown-toggle" data-toggle="dropdown">

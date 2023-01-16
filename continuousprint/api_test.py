@@ -87,6 +87,7 @@ class TestAPI(unittest.TestCase):
             ("GETAUTOMATION", "/automation/get"),
             ("EDITAUTOMATION", "/automation/edit"),
             ("EDITAUTOMATION", "/automation/external"),
+            ("EDITAUTOMATION", "/automation/simulate"),
         ]
         self.api._get_queue = None  # MagicMock interferes with checking
 
@@ -301,3 +302,33 @@ class TestAPI(unittest.TestCase):
         rep = self.client.post("/automation/external", json=dict(foo="bar"))
         self.assertEqual(rep.status_code, 200)
         self.api._set_external_symbols.assert_called_with(dict(foo="bar"))
+
+    @patch("continuousprint.api.queries")
+    def test_automation_simulate(self, q):
+        self.perm.PLUGIN_CONTINUOUSPRINT_EDITAUTOMATION.can.return_value = True
+        mi = MagicMock(symtable=dict(b=2, c=3))
+        out = MagicMock()
+        out.read.return_value = "stdout"
+        err = MagicMock()
+        err.read.return_value = "stderr"
+
+        q.getInterpreter.return_value = (mi, out, err)
+        q.genEventScript.return_value = "gcode"
+
+        rep = self.client.post(
+            "/automation/simulate",
+            data=dict(
+                event="continuousprint_finish",
+                symtable=json.dumps(dict(a=1, b=1)),
+            ),
+        )
+        self.assertEqual(rep.status_code, 200)
+        self.assertEqual(
+            json.loads(rep.get_data(as_text=True)),
+            {
+                "gcode": "gcode",
+                "stderr": "stderr",
+                "stdout": "stdout",
+                "symtable_diff": {"b": 2, "c": 3},
+            },
+        )

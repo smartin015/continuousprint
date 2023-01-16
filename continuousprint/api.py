@@ -7,6 +7,7 @@ import flask
 import json
 from .storage import queries
 from .storage.database import DEFAULT_QUEUE
+from .data import CustomEvents
 from .driver import Action as DA
 from abc import ABC, abstractmethod
 
@@ -344,3 +345,27 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def set_automation_external_symbols(self):
         self._set_external_symbols(flask.request.get_json())
         return json.dumps("OK")
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/automation/simulate", methods=["POST"])
+    @restricted_access
+    @cpq_permission(Permission.EDITAUTOMATION)
+    def simulate_automation(self):
+        symtable = json.loads(flask.request.form.get("symtable"))
+        automation = json.loads(flask.request.form.get("automation"))
+        interp, out, err = queries.getInterpreter(symtable)
+        symtable = interp.symtable.copy()  # Pick up defaults
+        result = dict(
+            gcode=queries.genEventScript(automation, interp),
+            symtable_diff={},
+        )
+
+        err.seek(0)
+        result["stderr"] = err.read()
+        out.seek(0)
+        result["stdout"] = out.read()
+        for k, v in interp.symtable.items():
+            if k not in symtable or symtable[k] != v:
+                result["symtable_diff"][k] = repr(v)
+        print(result)
+        return json.dumps(result)

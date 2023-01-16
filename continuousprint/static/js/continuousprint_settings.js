@@ -343,10 +343,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
               preprocessor: ko.observable(preprocessors[a.preprocessor]),
             });
           }
-          events.push({
-            ...k,
-            actions: ko.observableArray(actions),
-          });
+          events.push(new CPSettingsEvent(k, actions, self.api));
         }
         events.sort((a, b) => a.display < b.display);
         self.events(events);
@@ -377,7 +374,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       for (let e of self.events()) {
         let ks = [];
         for (let a of e.actions()) {
-          let pp = a.preprocessor()
+          let pp = a.preprocessor();
           if (pp !== null) {
             pp = pp.name();
           }

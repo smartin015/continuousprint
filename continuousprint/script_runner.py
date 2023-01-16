@@ -1,7 +1,5 @@
 import time
-from io import BytesIO, StringIO
-
-from asteval import Interpreter
+from io import BytesIO
 from pathlib import Path
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
@@ -9,7 +7,7 @@ from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.server import current_user
 from .storage.lan import ResolveError
 from .data import TEMP_FILE_DIR, CustomEvents
-from .storage.queries import genEventScript
+from .storage.queries import genEventScript, getInterpreter, getAutomationForEvent
 
 
 class ScriptRunner:
@@ -94,18 +92,10 @@ class ScriptRunner:
         assert type(symbols) is dict
         self._symbols["external"] = symbols
 
-    def _get_interpreter(self):
-        out = StringIO()
-        err = StringIO()
-        interp = Interpreter(writer=out, err_writer=err)
-        # Merge in so default symbols (e.g. exceptions) are retained
-        for (k, v) in self._symbols.items():
-            interp.symtable[k] = v
-        return interp, out, err
-
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        interp, out, err = self._get_interpreter()
-        gcode = genEventScript(evt, interp, self._logger)
+        interp, out, err = getInterpreter(self._symbols)
+        automation = getAutomationForEvent(evt)
+        gcode = genEventScript(automation, interp, self._logger)
         if len(interp.error) > 0:
             for err in interp.error:
                 self._logger.error(err.get_error())
