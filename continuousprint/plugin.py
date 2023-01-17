@@ -16,6 +16,7 @@ import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
 from .analysis import CPQProfileAnalysisQueue
+from .thirdparty.spoolmanager import SpoolManagerIntegration
 from .driver import Driver, Action as DA, Printer as DP, shouldBlockCoreEvents
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
@@ -271,7 +272,9 @@ class CPQPlugin(ContinuousPrintAPI):
         # Code based loosely on https://github.com/OllisGit/OctoPrint-PrintJobHistory/ (see _getPluginInformation)
         smplugin = self._plugin_manager.plugins.get("SpoolManager")
         if smplugin is not None and smplugin.enabled:
-            self._spool_manager = smplugin.implementation
+            self._spool_manager = SpoolManagerIntegration(
+                smplugin.implementation, self._logger
+            )
             self._logger.info("SpoolManager found - enabling material selection")
             self._set_key(Keys.MATERIAL_SELECTION, True)
         else:
@@ -458,6 +461,7 @@ class CPQPlugin(ContinuousPrintAPI):
             self._printer,
             self._sync_state,
             self._fire_event,
+            self._spool_manager,
         )
         self.d = dcls(
             queue=self.q,
@@ -770,18 +774,7 @@ class CPQPlugin(ContinuousPrintAPI):
         if self._spool_manager is not None:
             # We need *all* selected spools for all tools, so we must look it up from the plugin itself
             # (event payload also excludes color hex string which is needed for our identifiers)
-            try:
-                materials = self._spool_manager.api_getSelectedSpoolInformations()
-                materials = [
-                    f"{m['material']}_{m['colorName']}_{m['color']}"
-                    if m is not None
-                    else None
-                    for m in materials
-                ]
-            except Exception:
-                self._logger.warning(
-                    "SpoolManager getSelectedSpoolInformations() returned error; skipping material assignment"
-                )
+            materials = self._spool_manager.get_materials()
 
         bed_temp = self._printer.get_current_temperatures().get("bed")
         if bed_temp is not None:

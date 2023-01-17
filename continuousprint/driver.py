@@ -237,6 +237,31 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
+        rep = self._runner.verify_active()[1]
+        if rep is not None:
+            if rep.get("metaOrAttributesMissing", False):
+                self._set_status(
+                    "SpoolManager claims needed filament could not calculated (missing metadata or spool-fields)",
+                    StatusType.NEEDS_ACTION,
+                )
+                return
+            elif len(rep.get("noSpoolSelected", [])) > 0:
+                self._set_status(
+                    "SpoolManager: extruder(s) in use do not have a spool selected",
+                    StatusType.NEEDS_ACTION,
+                )
+                return
+            elif len(rep.get("filamentNotEnough", [])) > 0:
+                tools = [
+                    f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
+                    for i in rep["filamentNotEnough"]
+                ]
+                self._set_status(
+                    "SpoolManager: not enough filament left for tools "
+                    + ",".join(tools)
+                )
+                return
+
         if self._materials_match(item):
             return self._enter_start_print(a, p)
         else:
@@ -255,7 +280,10 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        if not self._materials_match(item):
+        if not self._runner.set_active(item):
+            # TODO: handle this gracefully by marking the job as not runnable somehow and moving on
+            return self._state_inactive
+        elif not self._materials_match(item) or not self._runner.verify_active()[0]:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
             return self._state_awaiting_material
 
