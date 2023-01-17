@@ -63,7 +63,7 @@ function CPSettingsEvent(evt, actions, api, default_symtable) {
       if (self.running()) {
         return "...";
       }
-      return s.stdout + s.stderr;
+      return s.stdout + '\n' + s.stderr;
     });
     self.simSymtable = ko.computed(function() {
       let s = self.simulation();
@@ -138,9 +138,15 @@ function CPSettingsEvent(evt, actions, api, default_symtable) {
           self.simulation(result);
           self.timeout = null;
           self.running(false);
-        }, (err) => {
-          console.error(err);
-          self.simulation(err);
+        }, (code, reason) => {
+          let msg = `Server error (${code}): ${reason}`;
+          console.error(msg);
+          self.simulation({
+            gcode: '',
+            stdout: '',
+            stderr: msg,
+            symtable_diff: [],
+          });
           self.timeout = null;
           self.running(false);
         });
