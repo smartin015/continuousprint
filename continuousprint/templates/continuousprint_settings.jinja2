@@ -102,9 +102,42 @@
           </div>
         </div> <!-- foreach actions -->
 
-        <div class="simulation">
-        <div data-bind="text: JSON.stringify(simulation())"></div>
-        </div>
+
+        <span stye="height:0px; width:0px;" data-bind="text: updater">
+          This hidden element needed for rendering simulation() results;
+          see CPSettingsEvent class
+        </span>
+        <div class="accordion-group">
+          <div class="accordion-heading" data-bind="click: simExpanded(!simExpanded())" style="cursor:pointer">
+            <i class="fa" data-bind="css: simExpanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+            <div style="display:inline; margin-left: 5px" data-bind="text: simSummary"></div>
+          </div>
+          <div class="accordion-body collapse" data-bind="css: {'in': simExpanded}">
+            <div class="accordion-inner">
+              <div class="simulation-output">
+                <div>
+                  <h5>GCODE</h5>
+                  <pre class="output-block" data-bind="text: simGcodeOutput"></pre>
+                </div>
+                <div>
+                  <h5>Notifications & Errors</h5>
+                  <pre class="output-block" data-bind="text: combinedSimOutput"></pre>
+                </div>
+              </div>
+              <a style="text-align: center; display: block;" href="#" data-bind="click: symtableExpanded(!symtableExpanded())">toggle symtable details</a>
+              <div data-bind="visible: symtableExpanded">
+                <h5>Modified symbols</h5>
+                <div data-bind="visible: simSymtable().length === 0">None</div>
+                <div data-bind="foreach: simSymtable">
+                  <div><span data-bind="text: key"></span> = <span data-bind="text: value"></span></div>
+                </div>
+                <h5>Symtable</h5>
+                <div data-bind="visible: symtableEditError, text: symtableEditError"></div>
+                <textarea style="width:100%; min-height: 50vh" data-bind="value: symtableEdit"></textarea>
+              </div>
+            </div>  <!-- /accordion-inner -->
+          </div> <!-- /accordion-body -->
+        </div> <!-- /accordion-group -->
 
         <div class="dropdown pull-right" style="width: 120px">
           <a class="btn dropdown-toggle" data-toggle="dropdown">

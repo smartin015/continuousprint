@@ -22,33 +22,114 @@ function CPSettingsEvent(evt, actions, api) {
     let sym = CP_SIMULATOR_DEFAULT_SYMTABLE();
     sym.current.state = evt.sym_state;
     self.symtable = ko.observable(sym);
+    self.symtableEdit = ko.observable(JSON.stringify(sym, null, 2));
+    self.symtableEditError = ko.observable(null);
+    self.symtableEdit.subscribe(function(newValue) {
+      try {
+        let v = JSON.parse(newValue);
+        self.symtableEditError(null);
+        self.symtable(v);
+      } catch(e) {
+        self.symtableEditError(e.toString());
+      }
+    });
 
     // actions is an array of {script, preprocessor (observable)}
     self.actions = ko.observableArray(actions);
 
     self.timeout = null;
     self.running = ko.observable(false);
-    self.simulation = ko.observable(null);
+    self.simulation = ko.observable({
+      gcode: "",
+      stdout: "",
+      stderr: "",
+      symtable_diff: {},
+    });
+    self.simGcodeOutput = ko.computed(function() {
+      let s = self.simulation();
+      if (self.running()) {
+        return "...";
+      } else if (s.stderr !== "") {
+        return "@PAUSE; Preprocessor error";
+      } else {
+        return s.gcode;
+      }
+    });
+    self.combinedSimOutput = ko.computed(function() {
+      let s = self.simulation();
+      if (self.running()) {
+        return "...";
+      }
+      return s.stdout + s.stderr;
+    });
+    self.simSymtable = ko.computed(function() {
+      let s = self.simulation();
+      if (self.running()) {
+        return [];
+      }
+      let r = [];
+      for (let k of Object.keys(s.symtable_diff)) {
+        r.push({key: k, value: s.symtable_diff[k]});
+      }
+      return r;
+    });
+    self.apply = function() {
+      // This is called by the sortable code for some reason, no idea why
+      // but otherwise it raises an exception.
+    };
+    let numlines = function(text) {
+      if (text === "") {
+        return 0;
+      }
+      let m = text.match(/\n/g);
+      if (m === null) {
+        return 1;
+      } else if (text[text.length-1] == "\n") {
+        return m.length;
+      }
+      return m.length + 1;
+    }
+    self.simSummary = ko.computed(function() {
+      let s = self.simulation();
+      if (self.running()) {
+        return "running simulation...";
+      } else if (s.stderr !== "") {
+        return "Simulation: execution error!";
+      }
+      let r = "Simulation OK: ";
+      r += `${numlines(s.gcode)} lines, `;
+      r += `${numlines(s.stdout)} notifications`;
+      return r;
+    });
+    self.simExpanded = ko.observable(true);
+    self.symtableExpanded = ko.observable(true);
     self.updater = ko.computed(function() {
+      console.log("updater()");
       // Computed function doesn't return anything itself, but does
-      // update the simulation observable abovself.
+      // update the simulation observable above. It does need to be
+      // referenced from the HTML though.
       // We operate after a timeout so as not to send unnecessary load
       // to the server.
       self.running(true);
+
+      // This must run on *every* call to the updater, so that the
+      // correct listeners are applied
+      let automation = [];
+      let sym = self.symtable();
+      for (let a of self.actions()) {
+        let pp = a.preprocessor();
+        automation.push([
+          a.script.body(),
+          (pp && pp.body())
+        ]);
+      }
+
       if (self.timeout !== null) {
         clearTimeout(self.timeout);
       }
       self.timeout = setTimeout(function() {
-        automation = [];
-        for (let a of self.actions()) {
-          let pp = a.preprocessor();
-          automation.push([
-            a.script.body(),
-            (pp && pp.body())
-          ]);
-        }
-        console.log("simUpdater", self.name, automation, self.symtable());
-        self.api.simulate(automation, self.symtable(), (result) => {
+        console.log("simUpdater", self.name, automation, sym);
+        self.api.simulate(automation, sym, (result) => {
           self.simulation(result);
           self.timeout = null;
           self.running(false);

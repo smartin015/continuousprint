@@ -281,6 +281,30 @@
   margin-top: var(--cpq-pad2);
   padding-top: var(--cpq-pad2);
 }
+#settings_plugin_continuousprint .simulation-output {
+  display:flex;
+  flex-direction: row;
+  justify-content: center;
+}
+#settings_plugin_continuousprint .simulation-output > div {
+  flex: 1;
+  padding: var(--cpq-pad);
+}
+#settings_plugin_continuousprint .simulation-output h5 {
+  margin: 0;
+  text-align: center;
+  opacity: 0.5;
+}
+#settings_plugin_continuousprint .output-block {
+  border: 1px #e5e5e5 solid; /* copy from .accordion-group */
+	border-radius: var(--cpq-pad);
+  width: 100%;
+  min-height: 150px;
+  max-height: 400px;
+  overflow-y: scroll;
+  padding: 0;
+  margin: 0;
+}
 #tab_plugin_continuousprint .queue-header, #settings_continuousprint_queues .queue-header {
   display: flex;
   justify-content: space-between;
