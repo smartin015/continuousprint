@@ -11,7 +11,7 @@ if (typeof log === "undefined" || log === null) {
   CPAPI = require('./continuousprint_api');
 }
 
-function CPSettingsEvent(evt, actions, api) {
+function CPSettingsEvent(evt, actions, api, default_symtable) {
     var self = this;
     self.api = api;
     self.name = evt.name;
@@ -20,8 +20,10 @@ function CPSettingsEvent(evt, actions, api) {
     self.desc = evt.desc;
 
     // Construct symtable used for simulating output
-    let sym = CP_SIMULATOR_DEFAULT_SYMTABLE();
-    sym.current.state = evt.sym_state;
+    let sym = default_symtable;
+    if (sym.current) {
+      sym.current.state = evt.sym_state;
+    }
     self.symtable = ko.observable(sym);
     self.symtableEdit = ko.observable(JSON.stringify(sym, null, 2));
     self.symtableEditError = ko.observable(null);
@@ -109,7 +111,6 @@ function CPSettingsEvent(evt, actions, api) {
     self.simExpanded = ko.observable(true);
     self.symtableExpanded = ko.observable(true);
     self.updater = ko.computed(function() {
-      console.log("updater()");
       // Computed function doesn't return anything itself, but does
       // update the simulation observable above. It does need to be
       // referenced from the HTML though.
@@ -133,7 +134,6 @@ function CPSettingsEvent(evt, actions, api) {
         clearTimeout(self.timeout);
       }
       self.timeout = setTimeout(function() {
-        console.log("simUpdater", self.name, automation, sym);
         self.api.simulate(automation, sym, (result) => {
           self.simulation(result);
           self.timeout = null;
@@ -166,7 +166,5 @@ function CPSettingsEvent(evt, actions, api) {
 }
 
 try {
-module.exports = {
-  CPSettingsEvent,
-};
+module.exports = CPSettingsEvent;
 } catch {}

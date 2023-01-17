@@ -1,4 +1,5 @@
 from io import StringIO
+import re
 from asteval import Interpreter
 
 

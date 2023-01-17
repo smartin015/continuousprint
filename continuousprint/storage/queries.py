@@ -501,7 +501,7 @@ def getAutomation():
 
 def getAutomationForEvent(evt: CustomEvents) -> list:
     return [
-        (e.script.body, e.preprocessor.body)
+        (e.script.body, e.preprocessor.body if e.preprocessor else None)
         for e in (
             EventHook.select()
             .join_from(EventHook, Script, JOIN.LEFT_OUTER)

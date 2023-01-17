@@ -380,7 +380,7 @@ class TestAutomation(AutomationDBTest):
         self.assertEqual(got["events"][evt], [dict(script="foo", preprocessor=None)])
 
     def testAssignBadEventKey(self):
-        with self.assertRaisesRegexp(KeyError, "No such CPQ event"):
+        with self.assertRaisesRegex(KeyError, "No such CPQ event"):
             q.assignAutomation(
                 dict(), dict(), dict(evt=[dict(script="foo", preprocessor=None)])
             )
@@ -393,7 +393,6 @@ class TestAutomation(AutomationDBTest):
             )
 
     def testMultiScriptEvent(self):
-        raise Exception("TODO convert to getAutomationForevent")
         evt = CustomEvents.PRINT_SUCCESS.event
         q.assignAutomation(
             dict(s1="gcode1", s2="gcode2"),
@@ -410,7 +409,10 @@ class TestAutomation(AutomationDBTest):
                 ]
             ),
         )
-        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode1\ngcode2")
+        self.assertEqual(
+            [a[0] for a in q.getAutomationForEvent(CustomEvents.PRINT_SUCCESS)],
+            ["gcode1", "gcode2"],
+        )
 
         # Ordering of event matters
         q.assignAutomation(
@@ -428,4 +430,7 @@ class TestAutomation(AutomationDBTest):
                 ]
             ),
         )
-        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode2\ngcode1")
+        self.assertEqual(
+            [a[0] for a in q.getAutomationForEvent(CustomEvents.PRINT_SUCCESS)],
+            ["gcode2", "gcode1"],
+        )

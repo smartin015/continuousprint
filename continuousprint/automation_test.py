@@ -8,7 +8,7 @@ class TestInterpreter(unittest.TestCase):
         self.assertEqual(interp.symtable["a"], 1)
 
 
-class TestGenEventScript(AutomationDBTest):
+class TestGenEventScript(unittest.TestCase):
     def testEvalTrueFalseNone(self):
         a = [("gcode1", "p1")]
         self.assertEqual(genEventScript(a, lambda cond: True), "gcode1")
@@ -18,20 +18,20 @@ class TestGenEventScript(AutomationDBTest):
     def testPlaceholderNoPreprocessor(self):
         a = [("{foo} will never be formatted!", None)]
         with self.assertRaises(Exception):
-            q.genEventScript(a, lambda cond: False)
+            genEventScript(a, lambda cond: False)
 
     def testEvalMissedPlaceholder(self):
         a = [("{foo} will never be formatted!", "p1")]
         with self.assertRaises(Exception):
-            q.genEventScript(a, lambda cond: dict(bar="baz"))
+            genEventScript(a, lambda cond: dict(bar="baz"))
 
     def testEvalFormat(self):
         a = [("Hello {val}", "p1")]
         self.assertEqual(
-            q.genEventScript(a, lambda cond: dict(val="World")), "Hello World"
+            genEventScript(a, lambda cond: dict(val="World")), "Hello World"
         )
 
     def testEvalBadType(self):
         a = [("dontcare", "p1")]
         with self.assertRaises(Exception):
-            q.genEventScript(a, lambda cond: 7)
+            genEventScript(a, lambda cond: 7)
