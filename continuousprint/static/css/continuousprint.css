@@ -342,7 +342,7 @@
   font-weight: italic;
   opacity: 0.7;
 }
-#tab_plugin_continuousprint .hint {
+#tab_plugin_continuousprint, #settings_plugin_continuousprint .hint {
   font-weight: italic;
   font-size: 85%;
   opacity: 0.7;
