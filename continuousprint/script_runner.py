@@ -7,7 +7,8 @@ from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.server import current_user
 from .storage.lan import ResolveError
 from .data import TEMP_FILE_DIR, CustomEvents
-from .storage.queries import genEventScript, getInterpreter, getAutomationForEvent
+from .storage.queries import getAutomationForEvent
+from .automation import genEventScript, getInterpreter
 
 
 class ScriptRunner:

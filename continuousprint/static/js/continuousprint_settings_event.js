@@ -15,6 +15,7 @@ function CPSettingsEvent(evt, actions, api) {
     var self = this;
     self.api = api;
     self.name = evt.name;
+    self.event = evt.event;
     self.display = evt.display;
     self.desc = evt.desc;
 
@@ -97,8 +98,12 @@ function CPSettingsEvent(evt, actions, api) {
         return "Simulation: execution error!";
       }
       let r = "Simulation OK: ";
-      r += `${numlines(s.gcode)} lines, `;
-      r += `${numlines(s.stdout)} notifications`;
+      let gline = numlines(s.gcode);
+      r += (gline === 1) ? '1 line' : `${gline} lines`;
+      let nline = numlines(s.stdout);
+      if (nline > 0) {
+        r += (nline === 1) ? ', 1 notification' : `, ${nline} notifications`;
+      }
       return r;
     });
     self.simExpanded = ko.observable(true);
@@ -142,7 +147,7 @@ function CPSettingsEvent(evt, actions, api) {
       }, 1000);
     });
 
-    self.prep_for_submit = function() {
+    self.pack = function() {
       let ks = [];
       for (let a of self.actions()) {
         let pp = a.preprocessor();
@@ -155,7 +160,7 @@ function CPSettingsEvent(evt, actions, api) {
         });
       }
       if (ks.length !== 0) {
-        events[self.event] = ks;
+        return ks;
       }
     };
 }

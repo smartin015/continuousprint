@@ -372,19 +372,9 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       }
       let events = {};
       for (let e of self.events()) {
-        let ks = [];
-        for (let a of e.actions()) {
-          let pp = a.preprocessor();
-          if (pp !== null) {
-            pp = pp.name();
-          }
-          ks.push({
-            script: a.script.name(),
-            preprocessor: pp,
-          });
-        }
-        if (ks.length !== 0) {
-          events[e.event] = ks;
+        let e2 = e.pack();
+        if (e2) {
+          events[e.event] = e2;
         }
       }
       let data = {scripts, preprocessors, events};

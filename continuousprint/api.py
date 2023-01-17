@@ -3,6 +3,7 @@ from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
 from .queues.lan import ValidationError
+from .automation import getInterpreter, genEventScript
 import flask
 import json
 from .storage import queries
@@ -353,10 +354,10 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def simulate_automation(self):
         symtable = json.loads(flask.request.form.get("symtable"))
         automation = json.loads(flask.request.form.get("automation"))
-        interp, out, err = queries.getInterpreter(symtable)
+        interp, out, err = getInterpreter(symtable)
         symtable = interp.symtable.copy()  # Pick up defaults
         result = dict(
-            gcode=queries.genEventScript(automation, interp),
+            gcode=genEventScript(automation, interp),
             symtable_diff={},
         )
 

@@ -393,6 +393,7 @@ class TestAutomation(AutomationDBTest):
             )
 
     def testMultiScriptEvent(self):
+        raise Exception("TODO convert to getAutomationForevent")
         evt = CustomEvents.PRINT_SUCCESS.event
         q.assignAutomation(
             dict(s1="gcode1", s2="gcode2"),
@@ -428,56 +429,3 @@ class TestAutomation(AutomationDBTest):
             ),
         )
         self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode2\ngcode1")
-
-    def testPreprocessorEvalTrueFalseNone(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="gcode1"),
-            dict(p1="python1"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-
-        self.assertEqual(q.genEventScript(e, lambda cond: True), "gcode1")
-        self.assertEqual(q.genEventScript(e, lambda cond: False), "")
-        self.assertEqual(q.genEventScript(e, lambda cond: None), "")
-
-    def testNoProcessorPlaceholder(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="{foo} will never be formatted!"),
-            dict(),
-            dict([(e.event, [dict(script="s1", preprocessor=None)])]),
-        )
-        with self.assertRaises(Exception):
-            q.genEventScript(e, lambda cond: False)
-
-    def testProcessorEvalFormat(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="Hello {val}"),
-            dict(p1="mocked"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-        self.assertEqual(
-            q.genEventScript(e, lambda cond: dict(val="World")), "Hello World"
-        )
-
-    def testProcessorEvalBadType(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="don'tcare"),
-            dict(p1="mocked"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-        with self.assertRaises(Exception):
-            q.genEventScript(e, lambda cond: 7)
-
-    def testProcessorEvalMissedPlaceholder(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="{foo} will never be formatted!"),
-            dict(p1="mocked"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-        with self.assertRaises(Exception):
-            q.genEventScript(e, lambda cond: dict(bar="baz"))
