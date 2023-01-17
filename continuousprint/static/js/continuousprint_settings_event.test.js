@@ -27,7 +27,6 @@ describe('visible text computed vars', () => {
     expect(vm.simSummary()).toEqual("running simulation...");
   });
   test('sim successful', () => {
-    // TODO simGcodeOutput, combinedSimOutput, simSymtable, simSummary
     let vm = testEvent();
     vm.simulation({
       gcode: "gcode",
@@ -43,7 +42,6 @@ describe('visible text computed vars', () => {
     expect(vm.simSummary()).toEqual("Simulation OK: 1 line, 1 notification");
   });
   test('sim error', () => {
-    // TODO simGcodeOutput, combinedSimOutput, simSymtable, simSummary
     let vm = testEvent();
     vm.simulation({
       gcode: "gcode ignored",
