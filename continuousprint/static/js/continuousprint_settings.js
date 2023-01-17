@@ -9,9 +9,11 @@ if (typeof log === "undefined" || log === null) {
   CP_CUSTOM_EVENTS = [];
   CP_LOCAL_IP = '';
   CPAPI = require('./continuousprint_api');
+  CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {};};
+  CPSettingsEvent = require('./continuousprint_settings_event');
 }
 
-function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS) {
+function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS, default_symtable=CP_SIMULATOR_DEFAULT_SYMTABLE) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
@@ -343,10 +345,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
               preprocessor: ko.observable(preprocessors[a.preprocessor]),
             });
           }
-          events.push({
-            ...k,
-            actions: ko.observableArray(actions),
-          });
+          events.push(new CPSettingsEvent(k, actions, self.api, default_symtable()));
         }
         events.sort((a, b) => a.display < b.display);
         self.events(events);
@@ -375,19 +374,9 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       }
       let events = {};
       for (let e of self.events()) {
-        let ks = [];
-        for (let a of e.actions()) {
-          let pp = a.preprocessor()
-          if (pp !== null) {
-            pp = pp.name();
-          }
-          ks.push({
-            script: a.script.name(),
-            preprocessor: pp,
-          });
-        }
-        if (ks.length !== 0) {
-          events[e.event] = ks;
+        let e2 = e.pack();
+        if (e2) {
+          events[e.event] = e2;
         }
       }
       let data = {scripts, preprocessors, events};

@@ -9,6 +9,7 @@
   const CP_CUSTOM_EVENTS = {{plugin_continuousprint_custom_events|tojson|safe}};
   const CP_LOCAL_IP = {{plugin_continuousprint_local_ip|tojson|safe}};
   const CP_EXCEPTIONS = {{plugin_continuousprint_exceptions|tojson|safe}};
+  const CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {{plugin_continuousprint_simulator_default_symtable|tojson|safe}}; };
 </script>
 
 <ul id="settings_continuousprint_tabs" class="nav nav-pills">
@@ -101,6 +102,48 @@
           </div>
         </div> <!-- foreach actions -->
 
+
+        <span stye="height:0px; width:0px;" data-bind="text: updater">
+          This hidden element needed for rendering simulation() results;
+          see CPSettingsEvent class
+        </span>
+        <div class="accordion-group" data-bind="visible: actions().length > 0">
+          <div class="accordion-heading" data-bind="click: simExpanded(!simExpanded())" style="cursor:pointer">
+            <i class="fa" data-bind="css: simExpanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+            <div style="display:inline; margin-left: 5px" data-bind="text: simSummary"></div>
+          </div>
+          <div class="accordion-body collapse" data-bind="css: {'in': simExpanded}">
+            <div class="accordion-inner">
+              <div class="simulation-output">
+                <div>
+                  <h5>GCODE</h5>
+                  <pre class="output-block" data-bind="text: simGcodeOutput"></pre>
+                </div>
+                <div>
+                  <h5>Notifications & Errors</h5>
+                  <pre class="output-block" data-bind="text: combinedSimOutput"></pre>
+                </div>
+              </div>
+              <a style="text-align: center; display: block;" href="#" data-bind="click: symtableExpanded(!symtableExpanded())">toggle state details</a>
+              <div data-bind="visible: symtableExpanded">
+                <h5>Modified state</h5>
+                <div class="hint" data-bind="visible: simSymtable().length > 0">
+                  Hint: these variables were modified by preprocessors during the simulation.
+                </div>
+                <div data-bind="visible: simSymtable().length === 0">None</div>
+                <div data-bind="foreach: simSymtable">
+                  <div><span data-bind="text: key"></span> = <span data-bind="text: value"></span></div>
+                </div>
+                <h5>Simulation initial state</h5>
+                <div class="hint">
+                  Hint: edit to simulate behavior with different states of the printer, file etc. - this has no effect when the event is fired for real.
+                </div>
+                <div class="alert alert-error" data-bind="visible: symtableEditError, text: symtableEditError"></div>
+                <textarea style="width:100%; min-height: 50vh" data-bind="value: symtableEdit"></textarea>
+              </div>
+            </div>  <!-- /accordion-inner -->
+          </div> <!-- /accordion-body -->
+        </div> <!-- /accordion-group -->
 
         <div class="dropdown pull-right" style="width: 120px">
           <a class="btn dropdown-toggle" data-toggle="dropdown">

@@ -12,6 +12,7 @@ from .data import (
     ASSETS,
     TEMPLATES,
     update_info,
+    SIMULATOR_DEFAULT_SYMTABLE,
 )
 from .storage import queries
 from .api import Permission as CPQPermission
@@ -110,6 +111,7 @@ class ContinuousprintPlugin(
             gcode_scripts=list(GCODE_SCRIPTS.values()),
             custom_events=[e.as_dict() for e in CustomEvents],
             local_ip=local_ip,
+            simulator_default_symtable=SIMULATOR_DEFAULT_SYMTABLE,
         )
 
     def get_template_configs(self):
