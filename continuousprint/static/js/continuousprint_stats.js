@@ -10,23 +10,17 @@ if (typeof ko === "undefined" || ko === null) {
 }
 if (typeof CPSet === "undefined" || CPSet === null) {
   CPSet = require('./continuousprint_set');
+  CP_STATS_DIMENSIONS={};
 }
 
 // Computes aggregate statistics of time, filament, counts etc.
-function CPStats(jobs) {
+function CPStats(jobs, stats_dimensions=CP_STATS_DIMENSIONS) {
   var self = this;
 
   const Stat = {
     COUNT: 0,
     TIME: 1,
     MASS: 2,
-  };
-
-  const DIMENSION = {
-    remaining:0,
-    total:0,
-    count:0,
-    completed:0,
   };
 
   self.header = [
@@ -41,10 +35,9 @@ function CPStats(jobs) {
   };
 
   self._appendCount = function(r, d) {
-    r[Stat.COUNT].remaining += d.rem;
-    r[Stat.COUNT].total += d.tot;
-    r[Stat.COUNT].count += d.count;
-    r[Stat.COUNT].completed += d.cplt;
+    for (let dim of Object.keys(stats_dimensions)) {
+      r[Stat.COUNT][dim] += d[dim];
+    }
   };
 
   self._appendTime = function(r, d) {
@@ -52,10 +45,9 @@ function CPStats(jobs) {
       r[Stat.TIME].error += 1;
       return;
     }
-    r[Stat.TIME].remaining += d.rem * d.ept;
-    r[Stat.TIME].total += d.tot * d.ept
-    r[Stat.TIME].count += d.count * d.ept;
-    r[Stat.TIME].completed += d.cplt * d.ept;
+    for (let dim of Object.keys(stats_dimensions)) {
+      r[Stat.COUNT][dim] += d[dim] * d.ept;
+    }
   };
 
   self._appendMass = function(r, d) {
@@ -71,17 +63,18 @@ function CPStats(jobs) {
       r[Stat.MASS].error += 1;
       return;
     }
-
-    r[Stat.MASS].remaining += rem * mass;
-    r[Stat.MASS].total += tot * mass;
-    r[Stat.MASS].count += count * mass;
-    r[Stat.MASS].completed += cplt * mass;
+    for (let dim of Object.keys(stats_dimensions)) {
+      r[Stat.MASS][dim] += d[dim] * mass;
+    }
   };
 
   self.values = ko.computed(function() {
     r = Array(Object.keys(Stat).length);
     for (let i = 0; i < Object.keys(Stat).length; i++) {
-      r[i] = {...DIMENSION, error:0};
+      r[i] = {error:0};
+      for (let d of Object.keys(stats_dimensions)) {
+        r[i][d] = 0;
+      }
     }
     for (let j of jobs()) {
       let lm = j.getMaterialLinearMasses();
@@ -91,10 +84,10 @@ function CPStats(jobs) {
         }
         let meta = qs.metadata;
         let d = {
-          rem: self._safeParse(qs.remaining()),
-          tot: self._safeParse(qs.length_remaining()),
+          remaining: self._safeParse(qs.remaining()),
+          total: self._safeParse(qs.length_remaining()),
           count: self._safeParse(qs.count()),
-          cplt: self._safeParse(qs.completed()),
+          completed: self._safeParse(qs.completed()),
           ept: meta && meta.estimatedPrintTime,
           len: meta && meta.filamentLengths,
           linmasses: lm,
@@ -140,7 +133,7 @@ function CPStats(jobs) {
     for (let i=0; i < r.length; i++) {
       r[i] = { ...self.header[i], ...r[i]};
     }
-    for (let k of Object.keys(DIMENSION)) {
+    for (let k of Object.keys(stats_dimensions)) {
       r[Stat.COUNT][k] = self.humanize(r[0][k]);
       r[Stat.TIME][k] = self.humanTime(r[1][k]);
       r[Stat.MASS][k] = self.humanize(r[2][k], 'g');

@@ -32,6 +32,7 @@ function CPQueue(data, api, files, profile, materials) {
     self.shiftsel = ko.observable(-1);
     self.details = ko.observable("");
     self.fullDetails = ko.observable("");
+    self.showStats = ko.observable(true);
     self.ready = ko.observable(data.name === 'local' || Object.keys(data.peers).length > 0);
     if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);

@@ -10,6 +10,29 @@
   const CP_LOCAL_IP = {{plugin_continuousprint_local_ip|tojson|safe}};
   const CP_EXCEPTIONS = {{plugin_continuousprint_exceptions|tojson|safe}};
   const CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {{plugin_continuousprint_simulator_default_symtable|tojson|safe}}; };
+
+  const CP_STATS_DIMENSIONS = {
+    completed: {
+      name: "completed",
+      display: "Complete",
+      desc: "Number of prints completed for this iteration of the job",
+    },
+    count: {
+      name: "count",
+      display: "Per Run",
+      desc: "Number of prints per each iteration of the job",
+    },
+    remaining: {
+      name: "remaining",
+      display: "This Run",
+      desc: "Number of prints yet to be printed for the current job iteration",
+    },
+    total: {
+      name: "total",
+      display: "Pending",
+      desc: "Total number of prints yet to be printed across all remaining iterations of the job",
+    },
+  };
 </script>
 
 <ul id="settings_continuousprint_tabs" class="nav nav-pills">
