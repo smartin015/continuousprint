@@ -230,6 +230,20 @@ class Driver:
                 return False
         return True
 
+    def _verify_active_status_msg(self, rep):
+        if rep["misconfig"]:
+            return "SpoolManager: missing metadata or spool fields"
+        elif len(rep["nospool"]) > 0:
+            return "SpoolManager: extruder(s) in use do not have a spool selected"
+        elif len(rep["notenough"]) > 0:
+            tools = [
+                f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
+                for i in rep["notenough"]
+            ]
+            return "SpoolManager: not enough filament left for " + ",".join(tools)
+        else:
+            return "SpoolManager: failed validation"
+
     @blockCoreEventScripts
     def _state_awaiting_material(self, a: Action, p: Printer):
         item = self.q.get_set_or_acquire()
@@ -239,33 +253,9 @@ class Driver:
 
         valid, rep = self._runner.verify_active()
         if not valid and rep is not None:
-            if rep["misconfig"]:
-                self._set_status(
-                    "SpoolManager: missing metadata or spool fields",
-                    StatusType.NEEDS_ACTION,
-                )
-                return
-            elif len(rep["nospool"]) > 0:
-                self._set_status(
-                    "SpoolManager: extruder(s) in use do not have a spool selected",
-                    StatusType.NEEDS_ACTION,
-                )
-                return
-            elif len(rep["notenough"]) > 0:
-                tools = [
-                    f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
-                    for i in rep["notenough"]
-                ]
-                self._set_status(
-                    "SpoolManager: not enough filament left for " + ",".join(tools),
-                    StatusType.NEEDS_ACTION,
-                )
-                return
-            else:
-                self._set_status(
-                    "SpoolManager: failed validation",
-                    StatusType.NEEDS_ACTION,
-                )
+            self._set_status(
+                self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+            )
 
         if self._materials_match(item):
             return self._enter_start_print(a, p)
@@ -288,14 +278,15 @@ class Driver:
         if not self._runner.set_active(item):
             # TODO: handle this gracefully by marking the job as not runnable somehow and moving on
             return self._state_inactive
-        elif not self._materials_match(item) or not self._runner.verify_active()[0]:
-            self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
 
-            # Run quickly now to show the proper status
-            return (
-                self._state_awaiting_material(Action.TICK, p)
-                or self._state_awaiting_material
-            )
+        valid, rep = self._runner.verify_active()
+        if not self._materials_match(item) or not valid:
+            self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
+            if rep is not None:
+                self._set_status(
+                    self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+                )
+            return self._state_awaiting_material
 
         self.q.begin_run()
         if self._runner.start_print(item):

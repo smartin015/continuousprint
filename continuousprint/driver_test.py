@@ -17,6 +17,7 @@ class TestFromInactive(unittest.TestCase):
             script_runner=MagicMock(),
             logger=logging.getLogger(),
         )
+        self.d._runner.verify_active.return_value = (True, None)
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
         self.d._runner.run_script_for_event.reset_mock()
@@ -218,6 +219,7 @@ class TestFromStartPrint(unittest.TestCase):
             script_runner=MagicMock(),
             logger=logging.getLogger(),
         )
+        self.d._runner.verify_active.return_value = (True, None)
         self.d.set_retry_on_pause(True)
         item = MagicMock(path="asdf")  # return same item by default every time
         self.d.q.get_set_or_acquire.return_value = item
@@ -367,33 +369,28 @@ class MaterialTest(unittest.TestCase):
 class TestSpoolVerification(MaterialTest):
     def testNotOK(self):
         self._setItemMaterials(["tool1mat"])
-        self.d._runner.verify_active.return_value = (False, None)
-        self.d.action(
-            DA.ACTIVATE, DP.IDLE, materials=["tool1mat"]
-        )  # -> awaiting material
-
         for retval, expr in (
             (
                 dict(
-                    metaOrAttributesMissing=True,
-                    noSpoolSelected=[],
-                    filamentNotEnough=[],
+                    misconfig=True,
+                    nospool=[],
+                    notenough=[],
                 ),
                 "missing metadata",
             ),
             (
                 dict(
-                    metaOrAttributesMissing=False,
-                    noSpoolSelected=[1, 2, 3],
-                    filamentNotEnough=[],
+                    misconfig=False,
+                    nospool=[1, 2, 3],
+                    notenough=[],
                 ),
                 "do not have a spool",
             ),
             (
                 dict(
-                    metaOrAttributesMissing=False,
-                    noSpoolSelected=[],
-                    filamentNotEnough=[dict(toolIndex=0, spoolName="spool")],
+                    misconfig=False,
+                    nospool=[],
+                    notenough=[dict(toolIndex=0, spoolName="spool")],
                 ),
                 "not enough filament",
             ),

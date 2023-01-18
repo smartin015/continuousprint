@@ -66,11 +66,13 @@ class TestScriptRunner(unittest.TestCase):
         )
         self.assertEqual(self.s.verify_active()[0], False)
 
-        self.s._spool_manager.allowed_to_print.return_value = dict(noSpoolSelected=[1])
+        self.s._spool_manager.allowed_to_print.return_value = dict(
+            result=dict(noSpoolSelected=[1])
+        )
         self.assertEqual(self.s.verify_active()[0], False)
 
         self.s._spool_manager.allowed_to_print.return_value = dict(
-            filamentNotEnough=[1]
+            result=(dict(filamentNotEnough=[1]))
         )
         self.assertEqual(self.s.verify_active()[0], False)
 
