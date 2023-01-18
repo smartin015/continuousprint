@@ -83,14 +83,16 @@ function CPViewModel(parameters) {
     let oldRemove = self.files.removeFile;
     let remove_cb = null;
     self.files.removeFile = function(data, evt) {
-      for (let j of self.defaultQueue.jobs()) {
-        for (let s of j.sets()) {
-          if (s.path() === data.path) {
-            remove_cb = () => oldRemove(data, evt);
-            return self.showRemoveConfirmModal()
+      try {
+        for (let j of self.defaultQueue.jobs()) {
+          for (let s of j.sets()) {
+            if (s.path() === data.path) {
+              remove_cb = () => oldRemove(data, evt);
+              return self.showRemoveConfirmModal()
+            }
           }
         }
-      }
+      } catch {} // Fail silently on error, and pass through
       return oldRemove(data, evt);
     };
 		self.rmDialog = $("#cpq_removeConfirmDialog");

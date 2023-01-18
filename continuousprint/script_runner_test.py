@@ -43,13 +43,15 @@ class TestScriptRunner(unittest.TestCase):
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),
             fire_event=MagicMock(),
+            spool_manager=MagicMock(),
         )
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
         self.s._get_interpreter = lambda: (MagicMock(error=[]), StringIO(), StringIO())
 
     @patch("continuousprint.script_runner.genEventScript", return_value="foo")
-    def test_run_script_for_event(self, ges):
+    @patch("continuousprint.script_runner.getAutomationForEvent", return_value=[])
+    def test_run_script_for_event(self, gae, ges):
         # Note: default scripts are populated on db_init for FINISH and PRINT_SUCCESS
         self.s.run_script_for_event(CustomEvents.FINISH)
         self.s._file_manager.add_file.assert_called()
@@ -59,19 +61,44 @@ class TestScriptRunner(unittest.TestCase):
             printAfterSelect=True,
             user="foo",
         )
+        self.s._spool_manager.start_print_confirmed.assert_not_called()
         self.s._fire_event.assert_called_with(CustomEvents.FINISH)
 
     @patch("continuousprint.script_runner.genEventScript", return_value="")
-    def test_run_script_for_event_cancel(self, ges):
+    @patch("continuousprint.script_runner.getAutomationForEvent", return_value=[])
+    def test_run_script_for_event_cancel(self, gae, ges):
         # Script run behavior is already tested in test_run_script_for_event
         self.s.run_script_for_event(CustomEvents.PRINT_CANCEL)
         self.s._printer.cancel_print.assert_called()
 
     @patch("continuousprint.script_runner.genEventScript", return_value="")
-    def test_run_script_for_event_cooldown(self, ges):
+    @patch("continuousprint.script_runner.getAutomationForEvent", return_value=[])
+    def test_run_script_for_event_cooldown(self, gae, ges):
         # Script run behavior is already tested in test_run_script_for_event
         self.s.run_script_for_event(CustomEvents.COOLDOWN)
         self.s._printer.set_temperature.assert_called_with("bed", 0)
+
+    def test_verify_active(self):
+        self.s._spool_manager.allowed_to_print.return_value = dict(
+            metaOrAttributesMissing=True
+        )
+        self.assertEqual(self.s.verify_active()[0], False)
+
+        self.s._spool_manager.allowed_to_print.return_value = dict(
+            result=dict(noSpoolSelected=[1])
+        )
+        self.assertEqual(self.s.verify_active()[0], False)
+
+        self.s._spool_manager.allowed_to_print.return_value = dict(
+            result=(dict(filamentNotEnough=[1]))
+        )
+        self.assertEqual(self.s.verify_active()[0], False)
+
+        self.s._spool_manager.allowed_to_print.return_value = dict()
+        self.assertEqual(self.s.verify_active()[0], True)
+
+        self.s._spool_manager = None
+        self.assertEqual(self.s.verify_active()[0], True)
 
     def test_start_print_local(self):
         self.assertEqual(
@@ -80,9 +107,11 @@ class TestScriptRunner(unittest.TestCase):
         self.s._printer.select_file.assert_called_with(
             "a.gcode",
             sd=False,
-            printAfterSelect=True,
+            printAfterSelect=False,
             user="foo",
         )
+        self.s._printer.start_print.assert_called_once()
+        self.s._spool_manager.start_print_confirmed.assert_called()
         self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_sd(self):
@@ -92,9 +121,11 @@ class TestScriptRunner(unittest.TestCase):
         self.s._printer.select_file.assert_called_with(
             "a.gcode",
             sd=True,
-            printAfterSelect=True,
+            printAfterSelect=False,
             user="foo",
         )
+        self.s._printer.start_print.assert_called_once()
+        self.s._spool_manager.start_print_confirmed.assert_called()
         self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
     def test_start_print_lan_resolve_error(self):
@@ -155,12 +186,16 @@ class TestScriptRunner(unittest.TestCase):
         self.s._printer.select_file.assert_called_with(
             "ContinuousPrint/tmp/a.stl.gcode",
             sd=False,
-            printAfterSelect=True,
+            printAfterSelect=False,
             user="foo",
         )
+        self.s._printer.start_print.assert_called_once()
+        self.s._spool_manager.start_print_confirmed.assert_called()
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
+
         cb.reset_mock()
         self.s._printer.select_file.reset_mock()
-
+        
         slice_cb(_error="bar")
         cb.assert_called_with(success=False, error="bar")
         self.s._printer.select_file.assert_not_called()
@@ -193,6 +228,7 @@ class TestWithInterpreter(AutomationDBTest):
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),
             fire_event=MagicMock(),
+            spool_manager=MagicMock(),
         )
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)

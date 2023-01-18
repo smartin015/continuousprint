@@ -499,47 +499,14 @@ def getAutomation():
     return dict(scripts=scripts, events=events, preprocessors=preprocessors)
 
 
-def genEventScript(evt: CustomEvents, interp=None, logger=None) -> str:
-    result = []
-    for e in (
-        EventHook.select()
-        .join_from(EventHook, Script, JOIN.LEFT_OUTER)
-        .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
-        .where(EventHook.name == evt.event)
-        .order_by(EventHook.rank)
-    ):
-        procval = True
-        if e.preprocessor is not None and e.preprocessor.body.strip() != "":
-            procval = interp(e.preprocessor.body)
-            if logger:
-                logger.info(
-                    f"EventHook preprocessor for script {e.script.name} ({e.preprocessor.name}): {e.preprocessor.body}\nSymbols: {interp.symtable}\nResult: {procval}"
-                )
-
-        if procval is None or procval is False:
-            continue
-        elif procval is True:
-            formatted = e.script.body
-        elif type(procval) is dict:
-            if logger:
-                logger.info(
-                    f"Appending script {e.script.name} using formatting data {procval}"
-                )
-            formatted = e.script.body.format(**procval)
-        else:
-            raise Exception(
-                f"Invalid return type {type(procval)} for peprocessor {e.preprocessor.name}"
-            )
-
-        leftovers = re.findall(r"\{.*?\}", formatted)
-        if len(leftovers) > 0:
-            ppname = (
-                f"f from preprocessor {e.preprocessor.name}"
-                if e.preprocessor is not None
-                else ""
-            )
-            raise Exception(
-                f"Unformatted placeholders in {e.script.name}{ppname}: {leftovers}"
-            )
-        result.append(formatted)
-    return "\n".join(result)
+def getAutomationForEvent(evt: CustomEvents) -> list:
+    return [
+        (e.script.body, e.preprocessor.body if e.preprocessor else None)
+        for e in (
+            EventHook.select()
+            .join_from(EventHook, Script, JOIN.LEFT_OUTER)
+            .join_from(EventHook, Preprocessor, JOIN.LEFT_OUTER)
+            .where(EventHook.name == evt.event)
+            .order_by(EventHook.rank)
+        )
+    ]

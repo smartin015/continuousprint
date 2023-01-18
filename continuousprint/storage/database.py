@@ -136,7 +136,7 @@ class JobView:
         # for the given profile/filter. If this is False then
         # decrementing the set/job won't do anything WRT set availability
         any_printable = False
-        for s in self.sets:
+        for s in sorted(self.sets, key=lambda s: s.rank):
             if custom_filter is not None and not custom_filter(s):
                 continue
             printable = s.is_printable(profile)

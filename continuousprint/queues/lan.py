@@ -309,6 +309,7 @@ class LANQueue(AbstractEditableQueue):
     def edit_job(self, job_id, data) -> bool:
         # For lan queues, "editing" a job is basically resubmission of the whole thing.
         # This is because the backing .gjob format is a single file containing the full manifest.
+
         j = self.get_job_view(job_id)
         for (k, v) in data.items():
             if k in ("id", "peer_", "queue"):
@@ -319,6 +320,13 @@ class LANQueue(AbstractEditableQueue):
                 )  # Set data must be translated into views, done by updateSets()
             else:
                 setattr(j, k, v)
+
+        # We must resolve the set paths so we have them locally, as editing can
+        # also occur on servers other than the one that submitted the job.
+        j.remap_set_paths()
+
+        # We are also now the source of this job
+        j.peer = self.addr
 
         # Exchange the old job for the new job (reuse job ID)
         jid = self.import_job_from_view(j, j.id)

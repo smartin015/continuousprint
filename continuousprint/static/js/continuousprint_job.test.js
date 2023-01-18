@@ -52,17 +52,19 @@ test('onSetModified existing', () => {
 });
 
 test('totals', () => {
-  let j = new Job({count: 3, completed: 2, remaining: 1, sets: sets()}, [], api(), prof(), mats());
+  let j = new Job({
+    count: 3, completed: 2, remaining: 1, sets: sets()
+  }, [], api(), prof(), mats());
 
-  let t = j.totals();
+  let t = j.totals().values_humanized();
   expect(t[0]).toStrictEqual({
     completed: "2", // sets have 1/2 completed this run
     count: "4", // 2 sets each with count=2
     remaining: "2", // 2 left in this run, one from each set
     total: "2", // 2 pending
     error: "",
-    legend: "Total items printed",
-    title: expect.anything(),
+    legend: "Total items",
+    title: null,
   });
 
   // Values are as above, but x100 and converted to minutes

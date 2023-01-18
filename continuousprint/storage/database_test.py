@@ -294,13 +294,14 @@ class TestMultiSet(QueuesDBTest):
             queue=self.q, name="a", rank=0, count=5, remaining=5, draft=False
         )
         self.s = []
-        for name in ("a", "b"):
+        # Note: b's rank is earlier than A but inserted later (i.e. later DB id)
+        for name, rank in (("a", 1), ("b", 0)):
             self.s.append(
                 Set.create(
                     path="a",
                     sd=False,
                     job=self.j,
-                    rank=0,
+                    rank=rank,
                     count=2,
                     remaining=2,
                     material_keys="m1,m2",
@@ -308,15 +309,15 @@ class TestMultiSet(QueuesDBTest):
                 )
             )
 
-    def testSetsAreSequential(self):
+    def testSetsAreSequentialByRank(self):
         p = dict(name="p1")
-        self.assertEqual(self.j.next_set(p), self.s[0])
-        Set.get(1).decrement(p)
-        self.assertEqual(self.j.next_set(p), self.s[0])
-        Set.get(1).decrement(p)
         self.assertEqual(self.j.next_set(p), self.s[1])
         Set.get(2).decrement(p)
         self.assertEqual(self.j.next_set(p), self.s[1])
+        Set.get(2).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[0])
+        Set.get(1).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[0])
 
 
 class TestSet(QueuesDBTest):

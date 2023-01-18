@@ -305,7 +305,7 @@ PrinterProfile:
       clearBed: Pause
       finished: Generic Off
     depth: 210
-    extra_tags: []
+    extra_tags: ["MK3", "MK3S"]
     formFactor: rectangular
     height: 210
     make: Prusa

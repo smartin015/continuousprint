@@ -33,6 +33,11 @@ class LANViewTest(unittest.TestCase):
         with self.assertRaises(STLResolveError):
             self.s.resolve()
 
+    def test_remap_set_paths(self):
+        self.lq.get_gjob_dirpath.return_value = "/path/to/"
+        self.j.remap_set_paths()
+        self.assertEqual(self.s.path, "/path/to/a.gcode")
+
     def test_resolve_http_error(self):
         self.lq.get_gjob_dirpath.side_effect = HTTPError
         with self.assertRaises(LANResolveError):

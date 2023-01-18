@@ -71,6 +71,7 @@ function mocks() {
       init: jest.fn(),
       get: jest.fn((_, cb) => cb([])),
       edit: jest.fn(),
+      simulate: jest.fn(),
     },
   ];
 }

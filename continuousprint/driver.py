@@ -27,6 +27,21 @@ class StatusType(Enum):
     ERROR = auto()
 
 
+def blockCoreEventScripts(func):
+    """Decorates driver `_state_*` functions where running OctoPrint's
+    default GCODE event scripts would cause unexpected behavior, e.g.
+    `beforePrintStarted` happening before a CPQ bed clearing script is run.
+
+    See https://docs.octoprint.org/en/master/features/gcode_scripts.html#gcode-scripts
+    """
+    func._block_core_events = True
+    return func
+
+
+def shouldBlockCoreEvents(state):
+    return getattr(state, "_block_core_events", False)
+
+
 # Inspired by answers at
 # https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
 def timeAgo(elapsed):
@@ -40,7 +55,7 @@ def timeAgo(elapsed):
 
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
-    PRINTING_IDLE_BREAKOUT_SEC = 15.0
+    PRINTING_IDLE_BREAKOUT_SEC = 20.0
     TIMELAPSE_WAIT_SEC = 30
 
     def __init__(
@@ -115,7 +130,7 @@ class Driver:
                     path=self._cur_path,
                     materials=self._cur_materials,
                     bed_temp=self._bed_temp,
-                    state=self.state.__name__,
+                    state=self.state.__name__.strip("_state_"),
                 )
             )
 
@@ -163,6 +178,7 @@ class Driver:
                 "Inactive (active print continues unmanaged)", StatusType.NEEDS_ACTION
             )
 
+    @blockCoreEventScripts
     def _state_activating(self, a: Action, p: Printer):
         self._set_status("Running startup script")
         if a == Action.SUCCESS or self._long_idle(p):
@@ -180,6 +196,7 @@ class Driver:
             else:
                 return self._enter_start_print(a, p)
 
+    @blockCoreEventScripts
     def _state_preprint(self, a: Action, p: Printer):
         self._set_status("Running pre-print script")
         if a == Action.SUCCESS or self._long_idle(p):
@@ -215,11 +232,32 @@ class Driver:
                 return False
         return True
 
+    def _verify_active_status_msg(self, rep):
+        if rep["misconfig"]:
+            return "SpoolManager: missing metadata or spool fields"
+        elif len(rep["nospool"]) > 0:
+            return "SpoolManager: extruder(s) in use do not have a spool selected"
+        elif len(rep["notenough"]) > 0:
+            tools = [
+                f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
+                for i in rep["notenough"]
+            ]
+            return "SpoolManager: not enough filament left for " + ",".join(tools)
+        else:
+            return "SpoolManager: failed validation"
+
+    @blockCoreEventScripts
     def _state_awaiting_material(self, a: Action, p: Printer):
         item = self.q.get_set_or_acquire()
         if item is None:
             self._set_status("No work to do; going idle")
             return self._state_idle
+
+        valid, rep = self._runner.verify_active()
+        if not valid and rep is not None:
+            self._set_status(
+                self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+            )
 
         if self._materials_match(item):
             return self._enter_start_print(a, p)
@@ -239,8 +277,17 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        if not self._materials_match(item):
+        if not self._runner.set_active(item):
+            # TODO: handle this gracefully by marking the job as not runnable somehow and moving on
+            return self._state_inactive
+
+        valid, rep = self._runner.verify_active()
+        if not self._materials_match(item) or not valid:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
+            if rep is not None:
+                self._set_status(
+                    self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+                )
             return self._state_awaiting_material
 
         self.q.begin_run()
@@ -340,6 +387,7 @@ class Driver:
         elif p == Printer.BUSY:
             return self._state_printing
 
+    @blockCoreEventScripts
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
         self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
@@ -386,6 +434,7 @@ class Driver:
             self._logger.debug("_state_success no next item --> _start_finishing")
             return self._state_start_finishing
 
+    @blockCoreEventScripts
     def _state_start_clearing(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -402,6 +451,7 @@ class Driver:
             self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
+    @blockCoreEventScripts
     def _state_cooldown(self, a: Action, p: Printer):
         clear = False
         if self._bed_temp < self.cooldown_threshold:
@@ -419,6 +469,7 @@ class Driver:
             self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
+    @blockCoreEventScripts
     def _state_clearing(self, a: Action, p: Printer):
         if a == Action.SUCCESS:
             return self._enter_start_print(a, p)
@@ -431,6 +482,7 @@ class Driver:
         else:
             self._set_status("Clearing bed")
 
+    @blockCoreEventScripts
     def _state_start_finishing(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -439,6 +491,7 @@ class Driver:
         self._runner.run_script_for_event(CustomEvents.FINISH)
         return self._state_finishing
 
+    @blockCoreEventScripts
     def _state_finishing(self, a: Action, p: Printer):
         if a == Action.FAILURE:
             return self._enter_inactive()

@@ -147,7 +147,7 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             pp(
                 dict(
-                    current=dict(state="_state_clearing"),
+                    current=dict(state="clearing"),
                 )
             )[0],
             False,
@@ -155,7 +155,7 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             pp(
                 dict(
-                    current=dict(state="_state_inactive"),
+                    current=dict(state="inactive"),
                 )
             )[0],
             True,
@@ -163,8 +163,13 @@ class TestPreprocessors(unittest.TestCase):
         self.assertEqual(
             pp(
                 dict(
-                    current=dict(state="_state_idle"),
+                    current=dict(state="idle"),
                 )
             )[0],
             True,
         )
+
+    @test_preprocessor("If externally set variable is True")
+    def test_extern(self, pp):
+        self.assertEqual(pp(dict(external=dict(testval=True)))[0], True)
+        self.assertEqual(pp(dict(external=dict(testval=False)))[0], False)

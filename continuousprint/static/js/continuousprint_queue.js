@@ -9,12 +9,19 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   // In the testing environment, dependencies must be manually imported
   ko = require('knockout');
   CPJob = require('./continuousprint_job');
+  CPStats = require('./continuousprint_stats');
+  CP_STATS_DIMENSIONS={
+    completed: null,
+    count: null,
+    remaining: null,
+    total: null,
+  };
   log = {
     "getLogger": () => {return console;}
   };
 }
 
-function CPQueue(data, api, files, profile, materials) {
+function CPQueue(data, api, files, profile, materials, stats_dimensions=CP_STATS_DIMENSIONS) {
     var self = this;
     self.api = api;
     self.files = files;
@@ -23,7 +30,7 @@ function CPQueue(data, api, files, profile, materials) {
     self.addr = data.addr;
     self.jobs = ko.observableArray([]);
     self._pushJob = function(jdata) {
-      self.jobs.push(new CPJob(jdata, data.peers, self.api, profile, materials));
+      self.jobs.push(new CPJob(jdata, data.peers, self.api, profile, materials, stats_dimensions));
     };
     for (let j of data.jobs) {
       self._pushJob(j);
@@ -31,6 +38,7 @@ function CPQueue(data, api, files, profile, materials) {
     self.shiftsel = ko.observable(-1);
     self.details = ko.observable("");
     self.fullDetails = ko.observable("");
+    self.showStats = ko.observable(true);
     self.ready = ko.observable(data.name === 'local' || Object.keys(data.peers).length > 0);
     if (self.addr !== null && data.peers !== undefined) {
       let pkeys = Object.keys(data.peers);
@@ -95,18 +103,19 @@ function CPQueue(data, api, files, profile, materials) {
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.raw_stats().completed === 0);
+            let t = j.totals().values()[0];
+            j.onChecked(j.sets().length !== 0 && t.completed === 0 && j.completed() === 0);
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
-            let t = j.raw_stats();
-            j.onChecked(t.remaining > 0 && t.remaining < t.count);
+            let t = j.totals().values()[0];
+            j.onChecked(j.remaining() > 0 && (j.completed() > 0 || t.completed > 0));
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.raw_stats().remaining == 0);
+            j.onChecked(j.sets().length !== 0 && j.remaining() === 0);
           }
           break;
         default:
@@ -157,6 +166,10 @@ function CPQueue(data, api, files, profile, materials) {
       }
       e.preventDefault();
     }
+
+    self.totals = ko.computed(function() {
+      return new CPStats(self.jobs, stats_dimensions);
+    });
 
     // *** ko template methods ***
     self._getSelections = function() {

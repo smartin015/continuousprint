@@ -1,7 +1,5 @@
 import time
-from io import BytesIO, StringIO
-
-from asteval import Interpreter
+from io import BytesIO
 from pathlib import Path
 from octoprint.filemanager.util import StreamWrapper
 from octoprint.filemanager.destinations import FileDestinations
@@ -11,7 +9,8 @@ from octoprint.slicing.exceptions import SlicingException
 from .storage.lan import LANResolveError
 from .storage.database import STLResolveError
 from .data import TEMP_FILE_DIR, CustomEvents, Keys
-from .storage.queries import genEventScript
+from .storage.queries import getAutomationForEvent
+from .automation import genEventScript, getInterpreter
 
 
 class ScriptRunner:
@@ -25,6 +24,7 @@ class ScriptRunner:
         printer,
         refresh_ui_state,
         fire_event,
+        spool_manager,
     ):
         self._msg = msg
         self._file_manager = file_manager
@@ -34,6 +34,7 @@ class ScriptRunner:
         self._get_key = get_key
         self._refresh_ui_state = refresh_ui_state
         self._fire_event = fire_event
+        self._spool_manager = spool_manager
         self._symbols = dict(
             current=dict(),
             external=dict(),
@@ -100,18 +101,59 @@ class ScriptRunner:
         assert type(symbols) is dict
         self._symbols["external"] = symbols
 
-    def _get_interpreter(self):
-        out = StringIO()
-        err = StringIO()
-        interp = Interpreter(writer=out, err_writer=err)
-        # Merge in so default symbols (e.g. exceptions) are retained
-        for (k, v) in self._symbols.items():
-            interp.symtable[k] = v
-        return interp, out, err
+    def set_active(self, item):
+        path = item.path
+        # Sets may not link directly to the path of the print file, instead to .gjob, .stl
+        # or other format where unpacking or transformation is needed to get to .gcode.
+        try:
+            path = item.resolve()
+        except LANResolveError as e:
+            self._logger.error(e)
+            self._msg(f"Could not resolve LAN print path for {path}", type="error")
+            return False
+        except STLResolveError as e:
+            self._logger.warning(e)
+            return self._start_slicing(item, cb)
+
+        try:
+            self._logger.info(f"Selecting {path} (sd={item.sd})")
+            self._printer.select_file(
+                path, sd=item.sd, printAfterSelect=False, user=self._get_user()
+            )
+            return True
+        except InvalidFileLocation as e:
+            self._logger.error(e)
+            self._msg("File not found: " + path, type="error")
+            return False
+        except InvalidFileType as e:
+            self._logger.error(e)
+            self._msg("File not gcode: " + path, type="error")
+            return False
+
+    def verify_active(self):
+        # SpoolManager does its filament estimation based on the current active
+        # gcode file (the "job" in OctoPrint parlance).
+        # Failing this verification should put the queue in a "needs action" state and prevent printing the next file.
+        if self._spool_manager is not None:
+            ap = self._spool_manager.allowed_to_print()
+            ap = dict(
+                misconfig=ap.get("metaOrAttributesMissing", False),
+                nospool=ap.get("result", {}).get("noSpoolSelected", []),
+                notenough=ap.get("result", {}).get("filamentNotEnough", []),
+            )
+            valid = (
+                not ap["misconfig"]
+                and len(ap["nospool"]) == 0
+                and len(ap["notenough"]) == 0
+            )
+            return valid, ap
+        else:
+            return True, None
 
     def run_script_for_event(self, evt, msg=None, msgtype=None):
-        interp, out, err = self._get_interpreter()
-        gcode = genEventScript(evt, interp, self._logger)
+        interp, out, err = getInterpreter(self._symbols)
+        automation = getAutomationForEvent(evt)
+        gcode = genEventScript(automation, interp, self._logger)
         if len(interp.error) > 0:
             for err in interp.error:
                 self._logger.error(err.get_error())
@@ -132,8 +174,8 @@ class ScriptRunner:
             else:
                 self._do_msg(evt, running=(gcode != ""))
 
-        # Cancellation happens before custom scripts are run
         if evt == CustomEvents.PRINT_CANCEL:
+            # Cancellation happens before custom scripts are run
             self._printer.cancel_print()
 
         result = self._execute_gcode(evt, gcode) if gcode != "" else None
@@ -219,35 +261,21 @@ class ScriptRunner:
             return False
         return None  # "none" indicates upstream to wait for cb()
 
-    def start_print(self, item, cb):
-
-        path = item.path
-        # Sets may not link directly to the path of the print file, instead to .gjob, .stl
-        # or other format where unpacking or transformation is needed to get to .gcode.
-        try:
-            path = item.resolve()
-        except LANResolveError as e:
-            self._logger.error(e)
-            self._msg(f"Could not resolve LAN print path for {path}", type="error")
-            return False
-        except STLResolveError as e:
-            self._logger.warning(e)
-            return self._start_slicing(item, cb)
-
+    def start_print(self, item):
         self._msg(f"{item.job.name}: printing {item.path}")
-        try:
-            self._logger.info(f"Attempting to print {path} (sd={item.sd})")
-            self._printer.select_file(
-                path, sd=item.sd, printAfterSelect=True, user=self._get_user()
-            )
-            self._fire_event(CustomEvents.PRINT_START)
-        except InvalidFileLocation as e:
-            self._logger.error(e)
-            self._msg("File not found: " + path, type="error")
-            return False
-        except InvalidFileType as e:
-            self._logger.error(e)
-            self._msg("File not gcode: " + path, type="error")
-            return False
+        sa = self.set_active(item):
+        if sa is not True:
+            return sa
+
+        if self._spool_manager is not None:
+            # SpoolManager has additional actions that are normally run in JS
+            # before a print starts.
+            # We must run startPrintConfirmed before starting a new print, or else
+            # temperature offsets aren't applied.
+            # See https://github.com/smartin015/continuousprint/issues/191
+            self._spool_manager.start_print_confirmed()
+
+        self._fire_event(CustomEvents.PRINT_START)
+        self._printer.start_print()
         self._refresh_ui_state()
         return True
