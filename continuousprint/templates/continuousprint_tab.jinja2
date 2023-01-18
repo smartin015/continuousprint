@@ -93,6 +93,11 @@
 
   <div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
 
+    <div class="stats" data-bind="visible: $root.hasDraftJob">
+      Totals:
+      <div data-bind="text: JSON.stringify(totals().values_humanized())"></div>
+    </div>
+
     <div class="cp-queue" data-bind="css: {'loading': $root.loading() || !ready()}">
     <div class="cp-header action-bar">
         <div class="multiselect">
@@ -275,7 +280,7 @@
                   </div>
                 </div>
                 </div>
-                <div data-bind="foreach: totals, visible: draft">
+                <div data-bind="foreach: totals().values_humanized, visible: draft">
                   <div class="job-stats">
                     <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
                     <div class="completed" data-bind="text: completed"></div>

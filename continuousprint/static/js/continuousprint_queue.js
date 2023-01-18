@@ -9,6 +9,7 @@ if (typeof CPJob === "undefined" || CPJob === null) {
   // In the testing environment, dependencies must be manually imported
   ko = require('knockout');
   CPJob = require('./continuousprint_job');
+  CPStats = require('./continuousprint_stats');
   log = {
     "getLogger": () => {return console;}
   };
@@ -95,18 +96,20 @@ function CPQueue(data, api, files, profile, materials) {
           break;
         case "Unstarted Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.raw_stats().completed === 0);
+            let t = j.totals().values()[0];
+            j.onChecked(j.sets().length !== 0 && t.completed === 0);
           }
           break;
         case "Incomplete Jobs":
           for (let j of self.jobs()) {
-            let t = j.raw_stats();
+            let t = j.totals().values()[0];
             j.onChecked(t.remaining > 0 && t.remaining < t.count);
           }
           break;
         case "Completed Jobs":
           for (let j of self.jobs()) {
-            j.onChecked(j.sets().length !== 0 && j.raw_stats().remaining == 0);
+            let t = j.totals().values()[0];
+            j.onChecked(j.sets().length !== 0 && t.remaining == 0);
           }
           break;
         default:
@@ -157,6 +160,10 @@ function CPQueue(data, api, files, profile, materials) {
       }
       e.preventDefault();
     }
+
+    self.totals = ko.computed(function() {
+      return new CPStats(self.jobs);
+    });
 
     // *** ko template methods ***
     self._getSelections = function() {
