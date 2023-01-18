@@ -124,7 +124,7 @@ class TestStartup(unittest.TestCase):
         p.d = MagicMock(_state_printing="foo", state="bar")
         gnfj.side_effect = [("foo 1", None, None)]
         self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
-        
+
     def testPatchComms(self):
         p = setupPlugin()
         sgs = p._printer._comm.sendGcodeScript
@@ -249,6 +249,7 @@ class TestEventHandling(unittest.TestCase):
         self.p.d = MagicMock()
         self.p.q = MagicMock()
         self.p._sync_state = MagicMock()
+        self.p._plugin_manager.plugins.get.return_value = None
         self.p._setup_thirdparty_plugin_integration()
 
     def testTick(self):

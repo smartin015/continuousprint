@@ -237,30 +237,35 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        rep = self._runner.verify_active()[1]
-        if rep is not None:
-            if rep.get("metaOrAttributesMissing", False):
+        valid, rep = self._runner.verify_active()
+        if not valid and rep is not None:
+            if rep["misconfig"]:
                 self._set_status(
-                    "SpoolManager claims needed filament could not calculated (missing metadata or spool-fields)",
+                    "SpoolManager: missing metadata or spool fields",
                     StatusType.NEEDS_ACTION,
                 )
                 return
-            elif len(rep.get("noSpoolSelected", [])) > 0:
+            elif len(rep["nospool"]) > 0:
                 self._set_status(
                     "SpoolManager: extruder(s) in use do not have a spool selected",
                     StatusType.NEEDS_ACTION,
                 )
                 return
-            elif len(rep.get("filamentNotEnough", [])) > 0:
+            elif len(rep["notenough"]) > 0:
                 tools = [
                     f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
-                    for i in rep["filamentNotEnough"]
+                    for i in rep["notenough"]
                 ]
                 self._set_status(
-                    "SpoolManager: not enough filament left for tools "
-                    + ",".join(tools)
+                    "SpoolManager: not enough filament left for " + ",".join(tools),
+                    StatusType.NEEDS_ACTION,
                 )
                 return
+            else:
+                self._set_status(
+                    "SpoolManager: failed validation",
+                    StatusType.NEEDS_ACTION,
+                )
 
         if self._materials_match(item):
             return self._enter_start_print(a, p)
@@ -285,7 +290,12 @@ class Driver:
             return self._state_inactive
         elif not self._materials_match(item) or not self._runner.verify_active()[0]:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
-            return self._state_awaiting_material
+
+            # Run quickly now to show the proper status
+            return (
+                self._state_awaiting_material(Action.TICK, p)
+                or self._state_awaiting_material
+            )
 
         self.q.begin_run()
         if self._runner.start_print(item):

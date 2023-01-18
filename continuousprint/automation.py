@@ -21,7 +21,7 @@ def genEventScript(automation: list, interp=None, logger=None) -> str:
             procval = interp(preprocessor)
             if logger:
                 logger.info(
-                    f"EventHook preprocessor: {preprocessor}\nSymbols: {interp.symtable}\nResult: {procval}"
+                    f"EventHook preprocessor: {preprocessor}\nResult: {procval}"
                 )
 
         if procval is None or procval is False:

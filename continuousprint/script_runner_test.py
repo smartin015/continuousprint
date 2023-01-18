@@ -60,6 +60,26 @@ class TestScriptRunner(unittest.TestCase):
         self.s.run_script_for_event(CustomEvents.COOLDOWN)
         self.s._printer.set_temperature.assert_called_with("bed", 0)
 
+    def test_verify_active(self):
+        self.s._spool_manager.allowed_to_print.return_value = dict(
+            metaOrAttributesMissing=True
+        )
+        self.assertEqual(self.s.verify_active()[0], False)
+
+        self.s._spool_manager.allowed_to_print.return_value = dict(noSpoolSelected=[1])
+        self.assertEqual(self.s.verify_active()[0], False)
+
+        self.s._spool_manager.allowed_to_print.return_value = dict(
+            filamentNotEnough=[1]
+        )
+        self.assertEqual(self.s.verify_active()[0], False)
+
+        self.s._spool_manager.allowed_to_print.return_value = dict()
+        self.assertEqual(self.s.verify_active()[0], True)
+
+        self.s._spool_manager = None
+        self.assertEqual(self.s.verify_active()[0], True)
+
     def test_start_print_local(self):
         self.assertEqual(self.s.start_print(LI(False, "a.gcode", LJ("job1"))), True)
         self.s._printer.select_file.assert_called_with(
