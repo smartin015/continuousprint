@@ -52,9 +52,11 @@ test('onSetModified existing', () => {
 });
 
 test('totals', () => {
-  let j = new Job({count: 3, completed: 2, remaining: 1, sets: sets()}, [], api(), prof(), mats());
+  let j = new Job({
+    count: 3, completed: 2, remaining: 1, sets: sets()
+  }, [], api(), prof(), mats());
 
-  let t = j.totals();
+  let t = j.totals().values_humanized();
   expect(t[0]).toStrictEqual({
     completed: "2", // sets have 1/2 completed this run
     count: "4", // 2 sets each with count=2

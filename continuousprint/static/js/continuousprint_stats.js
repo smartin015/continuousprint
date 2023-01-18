@@ -10,11 +10,10 @@ if (typeof ko === "undefined" || ko === null) {
 }
 if (typeof CPSet === "undefined" || CPSet === null) {
   CPSet = require('./continuousprint_set');
-  CP_STATS_DIMENSIONS={};
 }
 
 // Computes aggregate statistics of time, filament, counts etc.
-function CPStats(jobs, stats_dimensions=CP_STATS_DIMENSIONS) {
+function CPStats(jobs, stats_dimensions) {
   var self = this;
 
   const Stat = {
@@ -46,7 +45,7 @@ function CPStats(jobs, stats_dimensions=CP_STATS_DIMENSIONS) {
       return;
     }
     for (let dim of Object.keys(stats_dimensions)) {
-      r[Stat.COUNT][dim] += d[dim] * d.ept;
+      r[Stat.TIME][dim] += d[dim] * d.ept;
     }
   };
 
@@ -128,8 +127,7 @@ function CPStats(jobs, stats_dimensions=CP_STATS_DIMENSIONS) {
   };
 
   self.values_humanized = ko.computed(function() {
-    let r = self.values();
-    console.log("values() returned", r);
+    let r = JSON.parse(JSON.stringify(self.values())); // Simple but expensive deep-copy, otherwise changes here will affect the result of values()
     for (let i=0; i < r.length; i++) {
       r[i] = { ...self.header[i], ...r[i]};
     }
@@ -143,11 +141,14 @@ function CPStats(jobs, stats_dimensions=CP_STATS_DIMENSIONS) {
     r[Stat.TIME].error = (r[1].error > 0) ? `${r[1].error} sets missing time estimates` : '';
     r[Stat.MASS].error = (r[2].error > 0) ? `${r[1].error} errors calculating mass` : '';
 
-    // TODO
-    // Hide mass details if linmasses is empty (implies SpoolManager not set up)
-    //if (linmasses().length === 0) {
-    //  r.splice(2,1);
-    //}
+    // Hide mass details if mass is zero (implies SpoolManager not set up)
+    let hasMass = false;
+    for (let d of Object.keys(stats_dimensions)) {
+      hasMass |= (r[Stat.MASS][d] !== '0g');
+    }
+    if (!hasMass) {
+      r.splice(Stat.MASS,1);
+    }
     return r;
   });
 }

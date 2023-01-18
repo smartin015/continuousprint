@@ -10,14 +10,18 @@ if (typeof ko === "undefined" || ko === null) {
 }
 if (typeof CPSet === "undefined" || CPSet === null) {
   CPSet = require('./continuousprint_set');
-}
-if (typeof CPStats === "undefined" || CPStats === null) {
   CPStats = require('./continuousprint_stats');
+  CP_STATS_DIMENSIONS={
+    completed: null,
+    count: null,
+    remaining: null,
+    total: null,
+  };
 }
 
 // jobs and sets are derived from self.queue, but they must be
 // observableArrays in order for Sortable to be able to reorder it.
-function CPJob(obj, peers, api, profile, materials) {
+function CPJob(obj, peers, api, profile, materials, stats_dimensions=CP_STATS_DIMENSIONS) {
   if (api === undefined) {
     throw Error("API must be provided when creating CPJob");
   }
@@ -130,7 +134,7 @@ function CPJob(obj, peers, api, profile, materials) {
   });
 
   self.totals = ko.computed(function() {
-    return new CPStats(() => [self]);
+    return new CPStats(() => [self], stats_dimensions);
   });
 
   self.checkFraction = ko.computed(function() {
