@@ -53,7 +53,7 @@ def timeAgo(elapsed):
 
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
-    PRINTING_IDLE_BREAKOUT_SEC = 15.0
+    PRINTING_IDLE_BREAKOUT_SEC = 20.0
     TIMELAPSE_WAIT_SEC = 30
 
     def __init__(
