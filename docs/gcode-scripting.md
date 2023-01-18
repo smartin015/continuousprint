@@ -109,7 +109,14 @@ You may discover that you want more complex behavior than just running the same 
 
 This can be done by adding a **Preprocessor**, which is a little bit of extra code that modifies how your GCODE script is executed.
 
+### The Basics
+
 Preprocessors are optionally added to assigned scripts in the `Events` settings tab. They evaluate based on instantaneous state details, print file metadata, and optional externally provided state.
+
+* An Event can have multiple Scripts; each Script executes in-order when the Event fires.
+* Each Script can have either zero or one Preprocessor assigned.
+  * If it does not have a Preprocessor, it is run as-is.
+  * If it does have a Preprocessor, the Preprocessor is run first and its output is applied to that Script before that script is executed.
 
 ### Language
 
