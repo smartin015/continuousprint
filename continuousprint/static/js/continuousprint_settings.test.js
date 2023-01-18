@@ -310,7 +310,7 @@ test('Get slicers and profiles for dropdowns', () => {
       done: (c) => cb = c
     };
   };
-  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS, op);
+  let v = new VM.CPSettingsViewModel(mocks(), PROFILES, SCRIPTS, EVENTS, CP_SIMULATOR_DEFAULT_SYMTABLE, op);
   cb({"preprintservice":{
     "configured":false,
     "default":false,

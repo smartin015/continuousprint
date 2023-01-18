@@ -101,7 +101,7 @@ class ScriptRunner:
         assert type(symbols) is dict
         self._symbols["external"] = symbols
 
-    def set_active(self, item):
+    def set_active(self, item, cb):
         path = item.path
         # Sets may not link directly to the path of the print file, instead to .gjob, .stl
         # or other format where unpacking or transformation is needed to get to .gcode.
@@ -231,6 +231,7 @@ class ScriptRunner:
         self._msg(msg)
 
         def slicer_cb(*args, **kwargs):
+            print("slicer_cb", args, kwargs)
             if kwargs.get("_error") is not None:
                 cb(success=False, error=kwargs["_error"])
                 self._msg(
@@ -241,8 +242,7 @@ class ScriptRunner:
                 self._msg("Slicing was cancelled")
             else:
                 item.resolve(gcode_path)  # override the resolve value
-                result = self.start_print(item, cb)  # reattempt the print
-                cb(success=result, error=None)
+                cb(success=True, error=None)
 
         # We use _slicing_manager here instead of _file_manager to prevent FileAdded events
         # from causing additional queue activity.
@@ -262,11 +262,17 @@ class ScriptRunner:
         return None  # "none" indicates upstream to wait for cb()
 
     def start_print(self, item):
-        self._msg(f"{item.job.name}: printing {item.path}")
-        sa = self.set_active(item):
-        if sa is not True:
-            return sa
+        current_file = self._printer.get_current_job().get("file", {}).get("name")
+        # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
+        # the file name, not the full path to the file.
+        # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterCallback.on_printer_send_current_data
+        resolved = item.resolve()
+        if resolved.split("/")[-1] != current_file:
+            raise Exception(
+                f"File loaded is {current_file}, but attempting to print {resolved}"
+            )
 
+        self._msg(f"{item.job.name}: printing {item.path}")
         if self._spool_manager is not None:
             # SpoolManager has additional actions that are normally run in JS
             # before a print starts.
@@ -278,4 +284,3 @@ class ScriptRunner:
         self._fire_event(CustomEvents.PRINT_START)
         self._printer.start_print()
         self._refresh_ui_state()
-        return True

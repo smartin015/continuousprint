@@ -277,10 +277,14 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        if not self._runner.set_active(item):
-            # TODO: handle this gracefully by marking the job as not runnable somehow and moving on
-            return self._state_inactive
+        sa = self._runner.set_active(item, self._slicing_callback)
+        if sa is False:
+            return self._fail_start()
+        elif sa is None:  # Implies slicing
+            return self._state_slicing
 
+        # Invariant: item's path has been set as the active file in OctoPrint
+        # and the file is a .gcode file that's ready to go.
         valid, rep = self._runner.verify_active()
         if not self._materials_match(item) or not valid:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
@@ -291,24 +295,19 @@ class Driver:
             return self._state_awaiting_material
 
         self.q.begin_run()
-        result = self._runner.start_print(item, self._start_print_callback)
-        if result is False:
-            return self._fail_start()
-        elif result is True:
-            return self._state_printing
-        elif result is None:
-            return self._state_start_print
-        else:
-            raise Exception(f"Unexpected return value for start_print: {result}")
+        self._runner.start_print(item)
+        return self._state_printing
 
-    def _state_start_print(self, a: Action, p: Printer):
+    def _state_slicing(self, a: Action, p: Printer):
         self._set_status("Waiting for print file to be ready")
         if a == Action.RESOLVED:
-            return self._state_printing
+            return (
+                self._state_resolve_print(Action.TICK, p) or self._state_resolve_print
+            )
         elif a == Action.RESOLVE_FAILURE:
             return self._fail_start()
 
-    def _start_print_callback(self, success: bool, error):
+    def _slicing_callback(self, success: bool, error):
         if error is not None:
             return
 

@@ -15,10 +15,6 @@ OctoPrint supports integration with slicers via the [`SlicerPlugin` mixin](https
 
 Any plugin that uses this mixin should enable automated slicing, but for the sake of awesomeness we will use [PrePrintService](https://github.com/christophschranz/OctoPrint-PrePrintService) which can also automatically orient your model before slicing it to maximize the likelihood of a successful print.
 
-!!! Important
-
-    Until the PrePrintService maintainer [accepts a few changes](https://github.com/ChristophSchranz/Octoprint-PrePrintService/pull/12), the plugin **will not work without edits**. If you're having trouble getting things to work, make sure you followed the installation instructions using the `test_and_fix` branch of the [forked version](https://github.com/smartin015/Octoprint-PrePrintService/tree/test_and_fix).
-
 !!! Warning
 
     Just because the file automatically slices, doesn't mean it'll slice *correctly*.
@@ -32,17 +28,12 @@ You will need:
 * A machine with [Docker](https://www.docker.com/) installed and running - this may be the same as the OctoPrint server, or a different one on the same network.
 * Some form of [git](https://git-scm.com/) tool to download the forked PrePrintService repository
 
-
 ### Install PrePrintService
-
-!!! Important
-
-    This is using a **forked** version of PrePrintService; the original will not work until the changes are upstreamed.
 
 First, we'll set up the slicer server. On your OctoPrint machine or another machine accessible over the network, run the following commands (assuming Linux):
 
 ```
-git clone https://github.com/smartin015/Octoprint-PrePrintService.git --branch test_and_fix --single-branch
+git clone https://github.com/ChristophSchranz/Octoprint-PrePrintService.git --branch test_and_fix --single-branch
 cd Octoprint-PrePrintService
 docker-compose up --build -d
 

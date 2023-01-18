@@ -21,10 +21,14 @@ from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
 import sys
+import logging
 import inspect
 import os
 import yaml
 import time
+
+
+logging.getLogger("peewee").setLevel(logging.INFO)
 
 
 class STLResolveError(Exception):
