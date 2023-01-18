@@ -231,7 +231,6 @@ class ScriptRunner:
         self._msg(msg)
 
         def slicer_cb(*args, **kwargs):
-            print("slicer_cb", args, kwargs)
             if kwargs.get("_error") is not None:
                 cb(success=False, error=kwargs["_error"])
                 self._msg(
