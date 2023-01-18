@@ -42,6 +42,7 @@ def setupPlugin():
         printer=MagicMock(),
         settings=MockSettings(),
         file_manager=MagicMock(),
+        slicing_manager=MagicMock(),
         plugin_manager=MagicMock(),
         fire_event=MagicMock(),
         queries=MagicMock(),
@@ -309,7 +310,7 @@ class TestEventHandling(unittest.TestCase):
         )
 
     def testUploadNoAction(self):
-        self.p.on_event(Events.UPLOAD, dict())
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.gcode"))
         self.p.d.action.assert_not_called()
 
     def testUploadAddPrintableInvalidFile(self):
@@ -331,6 +332,12 @@ class TestEventHandling(unittest.TestCase):
         self.p._get_queue(DEFAULT_QUEUE).import_job.assert_called_with(
             "testpath.gjob", draft=False
         )
+
+    def testUploadAddSTL(self):
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.stl", target="local"))
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.stl")
 
     def testTempFileMovieDone(self):
         self.p._set_key(Keys.AUTOMATION_TIMELAPSE_ACTION, "auto_remove")

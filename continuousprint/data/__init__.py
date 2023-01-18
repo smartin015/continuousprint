@@ -159,6 +159,8 @@ class Keys(Enum):
     INFER_PROFILE = ("cp_infer_profile", True)
     AUTO_RECONNECT = ("cp_auto_reconnect", False)
     SKIP_GCODE_COMMANDS = ("cp_skip_gcode_commands", "")
+    SLICER = ("cp_slicer", "")
+    SLICER_PROFILE = ("cp_slicer_profile", "")
 
     def __init__(self, setting, default):
         self.setting = setting

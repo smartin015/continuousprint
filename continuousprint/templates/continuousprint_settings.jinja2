@@ -430,6 +430,7 @@
             </select>
           </div>
         </div>
+
         <div class="control-group" title="How to handle time lapses when running automation scripts">
           <label class="control-label">Clearing/Finishing Timelapses</label>
           <div class="controls">
@@ -439,6 +440,7 @@
             </select>
           </div>
         </div>
+
         <div class="control-group" title="Automatically try to assign printer profiles based on .gcode file contents - this may only work for some printers / slicers">
           <label class="control-label">Auto-assign printer profiles</label>
           <div class="controls">
@@ -451,6 +453,28 @@
             <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_auto_reconnect">
           </div>
         </div>
+
+        <div class="control-group" title="Set a slicer to use so your queued STLs can auto-slice">
+          <label class="control-label">Slicer for auto-slicing</label>
+          <div class="controls">
+            <select data-bind="value: slicer">
+              <option></option>
+              <!-- ko foreach: Object.values(slicers()) -->
+              <option data-bind="text: name, value: key"></option>
+              <!-- /ko -->
+            </select>
+          </div>
+          <label class="control-label">Slicer Profile</label>
+          <div class="controls">
+            <select data-bind="value: slicer_profile">
+              <option></option>
+              <!-- ko foreach: slicerProfiles -->
+              <option data-bind="text: $data, value: $data"></option>
+              <!-- /ko -->
+            </select>
+          </div>
+        </div>
+
         <div class="control-group" title="Put a newline-separated list of GCODE commands to ignore while the queue is running, e.g. 'M104 S0' to prevent gcode files from turning off the hotend. CPQ event scripts/preprocessors are unaffected. Changes take effect after restarting OctoPrint">
           <label class="control-label">Ignore GCODE lines while printing</label>
           <div class="controls">

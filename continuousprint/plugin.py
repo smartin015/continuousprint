@@ -59,6 +59,7 @@ class CPQPlugin(ContinuousPrintAPI):
         printer,
         settings,
         file_manager,
+        slicing_manager,
         plugin_manager,
         queries,
         data_folder,
@@ -71,6 +72,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._printer = printer
         self._settings = settings
         self._file_manager = file_manager
+        self._slicing_manager = slicing_manager
         self._plugin_manager = plugin_manager
         self._queries = queries
         self._data_folder = data_folder
@@ -457,6 +459,8 @@ class CPQPlugin(ContinuousPrintAPI):
         self._runner = srcls(
             self.popup,
             self._file_manager,
+            self._get_key,
+            self._slicing_manager,
             self._logger,
             self._printer,
             self._sync_state,
@@ -529,7 +533,9 @@ class CPQPlugin(ContinuousPrintAPI):
         for k, v in data.items():
             if v["type"] == "folder":
                 backlog += self._backlog_from_file_list(v["children"])
-            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None:
+            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None and v["path"].split(
+                "."
+            )[-1] in ("gcode", "g", "gco"):
                 self._logger.debug(f"File \"{v['path']}\" needs analysis")
                 backlog.append(v["path"])
             else:
@@ -645,8 +651,10 @@ class CPQPlugin(ContinuousPrintAPI):
             # it's placed in a pending queue (see self._add_set). Now that
             # the processing is done, we actually add the set.
             path = payload["path"]
-            self._logger.debug(f"Handling completed analysis for {path}")
             pend = self._set_add_awaiting_metadata.get(path)
+            self._logger.debug(
+                f"Handling completed analysis for {path} - pending: {pend}"
+            )
             if pend is not None:
                 (path, sd, draft, profiles) = pend
                 prof = payload["result"][CPQProfileAnalysisQueue.PROFILE_KEY]
@@ -658,33 +666,30 @@ class CPQPlugin(ContinuousPrintAPI):
                 self._add_set(path, sd, draft, profiles)
                 del self._set_add_awaiting_metadata[path]
             return
-        if (
-            event == Events.FILE_ADDED
-            and self._profile_from_path(payload["path"]) is None
-        ):
-            # Added files should be checked for metadata and enqueued into CPQ custom analysis
-            if self._enqueue(payload["path"]):
-                self._logger.debug(f"Enqueued newly added file {payload['path']}")
-            return
 
-        if (
-            event == Events.UPLOAD
-        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
+        if event == Events.FILE_ADDED:
+            if self._profile_from_path(payload["path"]) is None:
+                # Added files should be checked for metadata and enqueued into CPQ custom analysis
+                if self._enqueue(payload["path"]):
+                    self._logger.debug(f"Enqueued newly added file {payload['path']}")
+        if event == Events.UPLOAD:
             upload_action = self._get_key(Keys.UPLOAD_ACTION, "do_nothing")
             if upload_action != "do_nothing":
-                if payload["path"].endswith(".gcode"):
+                path = payload["path"]
+                # TODO get object list from octoprint
+                if path.endswith(".gcode") or path.endswith(".stl"):
                     self._add_set(
-                        path=payload["path"],
-                        sd=payload["target"] != "local",
+                        path=path,
+                        # Events.UPLOAD uses "target", EVents.FILE_ADDED uses "storage"
+                        sd=payload.get("storage", payload.get("target")) != "local",
                         draft=(upload_action != "add_printable"),
                     )
-                elif payload["path"].endswith(".gjob"):
+                elif path.endswith(".gjob"):
                     self._get_queue(DEFAULT_QUEUE).import_job(
-                        payload["path"], draft=(upload_action != "add_printable")
+                        path, draft=(upload_action != "add_printable")
                     )
                     self._sync_state()
-            else:
-                return
+            return
         if event == Events.MOVIE_DONE:
             self._timelapse_start_ts = None
             # Optionally delete time-lapses created from bed clearing/finishing scripts

@@ -7,6 +7,8 @@ from .data import CustomEvents
 class Action(Enum):
     ACTIVATE = auto()
     DEACTIVATE = auto()
+    RESOLVED = auto()
+    RESOLVE_FAILURE = auto()
     SUCCESS = auto()
     FAILURE = auto()
     SPAGHETTI = auto()
@@ -207,10 +209,10 @@ class Driver:
         ):
             return self._state_preprint
 
-        # Pre-call start_print on entry to eliminate tick delay
+        # Pre-call resolve_print on entry to eliminate tick delay
         self.start_failures = 0
-        nxt = self._state_start_print(a, p)
-        return nxt if nxt is not None else self._state_start_print
+        nxt = self._state_resolve_print(a, p)
+        return nxt if nxt is not None else self._state_resolve_print
 
     def _fmt_material_key(self, mk):
         try:
@@ -265,7 +267,7 @@ class Driver:
                 StatusType.NEEDS_ACTION,
             )
 
-    def _state_start_print(self, a: Action, p: Printer):
+    def _state_resolve_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
@@ -275,10 +277,14 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        if not self._runner.set_active(item):
-            # TODO: handle this gracefully by marking the job as not runnable somehow and moving on
-            return self._state_inactive
+        sa = self._runner.set_active(item, self._slicing_callback)
+        if sa is False:
+            return self._fail_start()
+        elif sa is None:  # Implies slicing
+            return self._state_slicing
 
+        # Invariant: item's path has been set as the active file in OctoPrint
+        # and the file is a .gcode file that's ready to go.
         valid, rep = self._runner.verify_active()
         if not self._materials_match(item) or not valid:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
@@ -288,20 +294,45 @@ class Driver:
                 )
             return self._state_awaiting_material
 
-        self.q.begin_run()
-        if self._runner.start_print(item):
-            return self._state_printing
+        try:
+            self.q.begin_run()
+            self._runner.start_print(item)
+        except Exception as e:
+            self._logger.error(e)
+            return self._fail_start()
+
+        return self._state_printing
+
+    def _state_slicing(self, a: Action, p: Printer):
+        self._set_status("Waiting for print file to be ready")
+        if a == Action.RESOLVED:
+            return (
+                self._state_resolve_print(Action.TICK, p) or self._state_resolve_print
+            )
+        elif a == Action.RESOLVE_FAILURE:
+            return self._fail_start()
+
+    def _slicing_callback(self, success: bool, error):
+        if error is not None:
+            return
+
+        # Forward action. We assume printer is idle here.
+        self.action(
+            Action.RESOLVED if success else Action.RESOLVE_FAILURE, Printer.IDLE
+        )
+
+    def _fail_start(self):
+        # TODO bail out of the job and mark it as bad rather than dropping into inactive state
+        self.start_failures += 1
+        if self.start_failures >= self.max_startup_attempts:
+            self._set_status("Failed to start; too many attempts", StatusType.ERROR)
+            return self._enter_inactive()
         else:
-            # TODO bail out of the job and mark it as bad rather than dropping into inactive state
-            self.start_failures += 1
-            if self.start_failures >= self.max_startup_attempts:
-                self._set_status("Failed to start; too many attempts", StatusType.ERROR)
-                return self._enter_inactive()
-            else:
-                self._set_status(
-                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
-                    StatusType.ERROR,
-                )
+            self._set_status(
+                f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
+                StatusType.ERROR,
+            )
+            return self._state_resolve_print
 
     def _long_idle(self, p):
         # We wait until we're in idle state for a long-ish period before acting, as
@@ -334,11 +365,11 @@ class Driver:
             # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
             # the file name, not the full path to the file.
             # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterCallback.on_printer_send_current_data
-            if item.path.split("/")[-1] == self._cur_path:
+            if item.resolve().split("/")[-1] == self._cur_path:
                 return self._state_success
             else:
                 self._logger.info(
-                    f"Completed print {self._cur_path} not matching current queue item {item.path} - clearing it in prep to start queue item"
+                    f"Completed print {self._cur_path} not matching current queue item {item.resolve()} - clearing it in prep to start queue item"
                 )
                 return self._state_start_clearing
 

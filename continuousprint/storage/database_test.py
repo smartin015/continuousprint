@@ -11,11 +11,13 @@ from .database import (
     migrateQueuesV2ToV3,
     Job,
     Set,
+    SetView,
     Run,
     Script,
     EventHook,
     StorageDetails,
     DEFAULT_QUEUE,
+    STLResolveError,
 )
 from ..data import CustomEvents
 import tempfile
@@ -27,10 +29,7 @@ class QueuesDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpQueues = tempfile.NamedTemporaryFile(delete=True)
         self.addCleanup(self.tmpQueues.close)
-        init_queues(
-            self.tmpQueues.name,
-            logger=logging.getLogger(),
-        )
+        init_queues(self.tmpQueues.name)
         self.q = Queue.get(name=DEFAULT_QUEUE)
 
 
@@ -38,10 +37,7 @@ class AutomationDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpAutomation = tempfile.NamedTemporaryFile(delete=True)
         self.addCleanup(self.tmpAutomation.close)
-        init_automation(
-            self.tmpAutomation.name,
-            logger=logging.getLogger(),
-        )
+        init_automation(self.tmpAutomation.name)
 
 
 class DBTest(QueuesDBTest, AutomationDBTest):
@@ -360,6 +356,23 @@ class TestSet(QueuesDBTest):
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.j.remaining, 0)
         self.assertEqual(self.s.remaining, 0)
+
+    def testResolveUnimplemented(self):
+        sv = SetView()
+        with self.assertRaises(NotImplementedError):
+            sv.resolve()
+
+    def testResolveGcode(self):
+        self.assertEqual(self.s.resolve(), self.s.path)
+
+    def testResolveSTL(self):
+        self.s.path = "testpath.stl"
+        with self.assertRaises(STLResolveError):
+            self.s.resolve()
+
+    def testResolveAlreadySet(self):
+        self.s._resolved = "testval"
+        self.assertEqual(self.s.resolve(), "testval")
 
     def testFromDict(self):
         d = self.s.as_dict()

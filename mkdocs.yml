@@ -32,6 +32,7 @@ nav:
   - 'material-selection.md'
   - 'printer-profiles.md'
   - 'managed-bed-cooldown.md'
+  - 'auto-slicer.md'
   - 'action-commands.md'
   - 'contributing.md'
   - 'api.md'

@@ -48,6 +48,9 @@ class IntegrationTest(DBTest):
         self.d._runner.run_script_for_event.return_value = None
         self.d._runner.verify_active.return_value = (True, None)
 
+        # Default to succeeding when activating print
+        self.d._runner.set_active.return_value = True
+
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
 
@@ -191,6 +194,8 @@ class TestDriver(DBTest):
         self.s = ScriptRunner(
             msg=MagicMock(),
             file_manager=self.fm,
+            get_key=MagicMock(),
+            slicing_manager=MagicMock(),
             logger=logging.getLogger(),
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),
@@ -297,7 +302,9 @@ class TestLANQueue(IntegrationTest):
         )
         self.lq.lan.q.locks = LocalLockManager(dict(), "lq")
         self.lq.lan.q.jobs = TestReplDict(lambda a, b: None)
-        self.lq.lan.q.peers = dict()
+        self.lq.lan.q.peers = {}
+        self.lq.lan.q.peers[self.lq.addr] = (time.time(), dict(fs_addr="mock"))
+        self.lq._fileshare.fetch.return_value = "from_fileshare.gcode"
 
     def test_completes_job_in_order(self):
         self.lq.lan.q.setJob(
@@ -346,12 +353,11 @@ class TestMultiDriverLANQueue(unittest.TestCase):
 
         self.locks = {}
         self.peers = []
-        lqpeers = {}
-        lqjobs = TestReplDict(lambda a, b: None)
         for i, db in enumerate(self.dbs):
             with db.bind_ctx(MODELS):
                 populate_queues()
             fsm = MagicMock(host="fsaddr", port=0)
+            fsm.fetch.return_value = "from_fileshare.gcode"
             profile = dict(name="profile")
             lq = LANQueue(
                 "LAN",
@@ -372,16 +378,26 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             )
             d._runner.verify_active.return_value = (True, None)
             d._runner.run_script_for_event.return_value = None
+            d._runner.set_active.return_value = True
             d.set_retry_on_pause(True)
             d.action(DA.DEACTIVATE, DP.IDLE)
             lq.lan.q = LANPrintQueueBase(
                 lq.ns, lq.addr, MagicMock(), logging.getLogger("lantestbase")
             )
             lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
-            lq.lan.q.jobs = lqjobs
-            lq.lan.q.peers = lqpeers
-            lq.update_peer_state(lq.addr, "status", "run", profile)
+            if i == 0:
+                lq.lan.q.jobs = TestReplDict(lambda a, b: None)
+                lq.lan.q.peers = dict()
+            else:
+                lq.lan.q.peers = self.peers[0][2].lan.q.peers
+                lq.lan.q.jobs = self.peers[0][2].lan.q.jobs
             self.peers.append((d, mq, lq, db))
+
+        for p in self.peers:
+            self.peers[0][2].lan.q.peers[p[2].addr] = (
+                time.time(),
+                dict(fs_addr="fakeaddr", profile=dict(name="profile")),
+            )
 
     def test_ordered_acquisition(self):
         logging.info("============ BEGIN TEST ===========")

@@ -21,7 +21,9 @@ class TestFromInactive(unittest.TestCase):
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
         self.d._runner.run_script_for_event.reset_mock()
+        self.d._runner.start_print.return_value = True
         item = MagicMock(path="asdf")  # return same item by default every time
+        item.resolve.return_value = "asdf"
         self.d.q.get_set_or_acquire.return_value = item
         self.d.q.get_set.return_value = item
 
@@ -58,9 +60,45 @@ class TestFromInactive(unittest.TestCase):
         self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
         self.d._runner.start_print.assert_called()
 
+    def test_activate_start_print_failure(self):
+        self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.set_active.return_value = False
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> fail, resolve_print
+        self.assertEqual(self.d.state.__name__, self.d._state_resolve_print.__name__)
+        self.assertEqual(self.d.start_failures, 1)
+
+    def test_activate_start_print_failure_from_exception(self):
+        self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.set_active.return_value = True
+        self.d._runner.start_print.side_effect = Exception("test")
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> fail, resolve_print
+        self.assertEqual(self.d.state.__name__, self.d._state_resolve_print.__name__)
+        self.assertEqual(self.d.start_failures, 1)
+
+    def test_activate_start_print_slicer_failure(self):
+        self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.set_active.return_value = None  # Indicate callback
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> slicing
+        self.assertEqual(self.d.state.__name__, self.d._state_slicing.__name__)
+        self.d.action(DA.RESOLVE_FAILURE, DP.IDLE)  # -> resolve_print attempt #2
+        self.assertEqual(self.d.state.__name__, self.d._state_resolve_print.__name__)
+        self.assertEqual(self.d.start_failures, 1)
+
+    def test_activate_start_print_slicer_success(self):
+        self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.set_active.return_value = None  # Indicate callback
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> slicing
+        self.assertEqual(self.d.state.__name__, self.d._state_slicing.__name__)
+
+        self.d._runner.set_active.return_value = True  # Now resolvable
+        self.d.action(
+            DA.RESOLVED, DP.IDLE
+        )  # script_runner finished slicing and started the print
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+
     def test_activate_not_yet_printing(self):
         self.d._runner.run_script_for_event.return_value = None
-        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_printing -> printing
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> resolve_print -> printing
         self.d.q.begin_run.assert_called()
         self.d._runner.start_print.assert_called_with(self.d.q.get_set.return_value)
         self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
@@ -103,6 +141,20 @@ class TestFromInactive(unittest.TestCase):
 
         # Verify no end_run call anywhere in this process, since print was not in queue
         self.d.q.end_run.assert_not_called()
+
+    def test_completed_stl(self):
+        # In the case of STLs, the item path is not the print path
+        # But we should still complete the currently active print item
+        item = MagicMock(path="asdf.stl")
+        item.resolve.return_value = "asdf.stl.gcode"
+        self.d.q.get_set_or_acquire.return_value = item
+        self.d.q.get_set.return_value = item
+        self.d._runner.run_script_for_event.return_value = None
+        self.d.action(DA.ACTIVATE, DP.BUSY)  # -> start print -> printing
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+        self.d.action(DA.SUCCESS, DP.IDLE, "asdf.stl.gcode")  # -> success
+        self.d.action(DA.TICK, DP.IDLE)  # -> start_clearing, end_run() called
+        self.d.q.end_run.assert_called()
 
     def test_start_clearing_waits_for_idle(self):
         self.d.state = self.d._state_start_clearing
@@ -222,9 +274,11 @@ class TestFromStartPrint(unittest.TestCase):
         self.d._runner.verify_active.return_value = (True, None)
         self.d.set_retry_on_pause(True)
         item = MagicMock(path="asdf")  # return same item by default every time
+        item.resolve.return_value = "asdf"
         self.d.q.get_set_or_acquire.return_value = item
         self.d.q.get_set.return_value = item
         self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.start_print.return_value = True
         self.d.action(DA.DEACTIVATE, DP.IDLE)
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.d._runner.run_script_for_event.reset_mock()
@@ -239,6 +293,7 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.action(DA.TICK, DP.IDLE)  # -> start_clearing
         self.d.q.end_run.assert_called_once()
         item2 = MagicMock(path="basdf")
+        item2.resolve.return_value = "basdf"
         self.d.q.get_set_or_acquire.return_value = (
             item2  # manually move the supervisor forward in the queue
         )
@@ -357,6 +412,7 @@ class MaterialTest(unittest.TestCase):
         )
         self.d.set_retry_on_pause(True)
         self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.start_print.return_value = True
         self.d.action(DA.DEACTIVATE, DP.IDLE)
 
     def _setItemMaterials(self, m):
