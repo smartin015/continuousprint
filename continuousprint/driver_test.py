@@ -17,6 +17,7 @@ class TestFromInactive(unittest.TestCase):
             script_runner=MagicMock(),
             logger=logging.getLogger(),
         )
+        self.d._runner.verify_active.return_value = (True, None)
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
         self.d._runner.run_script_for_event.reset_mock()
@@ -218,6 +219,7 @@ class TestFromStartPrint(unittest.TestCase):
             script_runner=MagicMock(),
             logger=logging.getLogger(),
         )
+        self.d._runner.verify_active.return_value = (True, None)
         self.d.set_retry_on_pause(True)
         item = MagicMock(path="asdf")  # return same item by default every time
         self.d.q.get_set_or_acquire.return_value = item
@@ -344,7 +346,9 @@ class TestFromStartPrint(unittest.TestCase):
         self.d.q.end_run.assert_not_called()
 
 
-class TestMaterialConstraints(unittest.TestCase):
+class MaterialTest(unittest.TestCase):
+    """Test harness for testing material & spool checking"""
+
     def setUp(self):
         self.d = Driver(
             queue=MagicMock(),
@@ -354,6 +358,64 @@ class TestMaterialConstraints(unittest.TestCase):
         self.d.set_retry_on_pause(True)
         self.d._runner.run_script_for_event.return_value = None
         self.d.action(DA.DEACTIVATE, DP.IDLE)
+
+    def _setItemMaterials(self, m):
+        item = MagicMock()
+        item.materials.return_value = m
+        self.d.q.get_set.return_value = item
+        self.d.q.get_set_or_acquire.return_value = item
+
+
+class TestSpoolVerification(MaterialTest):
+    def testNotOK(self):
+        self._setItemMaterials(["tool1mat"])
+        for retval, expr in (
+            (
+                dict(
+                    misconfig=True,
+                    nospool=[],
+                    notenough=[],
+                ),
+                "missing metadata",
+            ),
+            (
+                dict(
+                    misconfig=False,
+                    nospool=[1, 2, 3],
+                    notenough=[],
+                ),
+                "do not have a spool",
+            ),
+            (
+                dict(
+                    misconfig=False,
+                    nospool=[],
+                    notenough=[dict(toolIndex=0, spoolName="spool")],
+                ),
+                "not enough filament",
+            ),
+        ):
+            with self.subTest(retval=retval, expr=expr):
+                self.d._runner.verify_active.return_value = (False, retval)
+                self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool1mat"])
+                self.d._runner.start_print.assert_not_called()
+                self.assertEqual(
+                    self.d.state.__name__, self.d._state_awaiting_material.__name__
+                )
+                self.assertRegex(self.d.status, expr)
+
+    def testOK(self):
+        self._setItemMaterials(["tool1mat"])
+        self.d._runner.verify_active.return_value = (True, {})
+        self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool1mat"])
+        self.d._runner.start_print.assert_called()
+        self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
+
+
+class TestMaterialConstraints(MaterialTest):
+    def setUp(self):
+        super().setUp()
+        self.d._runner.verify_active.return_value = (True, None)  # No spoolmanager
 
     def _setItemMaterials(self, m):
         item = MagicMock()
@@ -426,7 +488,11 @@ class TestMaterialConstraints(unittest.TestCase):
 
     def test_recovery(self):
         self._setItemMaterials(["tool0mat"])
-        self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool0bad"])  # awaiting
+        self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool0bad"])
+        self.assertEqual(
+            self.d.state.__name__, self.d._state_awaiting_material.__name__
+        )
+
         self.d.action(DA.ACTIVATE, DP.IDLE, materials=["tool0mat"])
         self.d._runner.start_print.assert_called()
         self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)

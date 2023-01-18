@@ -368,5 +368,5 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         for k, v in interp.symtable.items():
             if k not in symtable or symtable[k] != v:
                 result["symtable_diff"][k] = repr(v)
-        print(result)
+        self._logger.debug(f"Simulator result: {result}")
         return json.dumps(result)

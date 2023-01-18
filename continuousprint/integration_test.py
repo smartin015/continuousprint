@@ -46,6 +46,7 @@ class IntegrationTest(DBTest):
 
         # Bypass running of scripts on activate, start print, deactivate etc.
         self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.verify_active.return_value = (True, None)
 
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
@@ -194,6 +195,7 @@ class TestDriver(DBTest):
             printer=MagicMock(),
             refresh_ui_state=MagicMock(),
             fire_event=MagicMock(),
+            spool_manager=None,
         )
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
@@ -368,6 +370,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
                 script_runner=MagicMock(),
                 logger=logging.getLogger(f"peer{i}:Driver"),
             )
+            d._runner.verify_active.return_value = (True, None)
             d._runner.run_script_for_event.return_value = None
             d.set_retry_on_pause(True)
             d.action(DA.DEACTIVATE, DP.IDLE)

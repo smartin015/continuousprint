@@ -53,7 +53,7 @@ def timeAgo(elapsed):
 
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
-    PRINTING_IDLE_BREAKOUT_SEC = 15.0
+    PRINTING_IDLE_BREAKOUT_SEC = 20.0
     TIMELAPSE_WAIT_SEC = 30
 
     def __init__(
@@ -230,12 +230,32 @@ class Driver:
                 return False
         return True
 
+    def _verify_active_status_msg(self, rep):
+        if rep["misconfig"]:
+            return "SpoolManager: missing metadata or spool fields"
+        elif len(rep["nospool"]) > 0:
+            return "SpoolManager: extruder(s) in use do not have a spool selected"
+        elif len(rep["notenough"]) > 0:
+            tools = [
+                f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
+                for i in rep["notenough"]
+            ]
+            return "SpoolManager: not enough filament left for " + ",".join(tools)
+        else:
+            return "SpoolManager: failed validation"
+
     @blockCoreEventScripts
     def _state_awaiting_material(self, a: Action, p: Printer):
         item = self.q.get_set_or_acquire()
         if item is None:
             self._set_status("No work to do; going idle")
             return self._state_idle
+
+        valid, rep = self._runner.verify_active()
+        if not valid and rep is not None:
+            self._set_status(
+                self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+            )
 
         if self._materials_match(item):
             return self._enter_start_print(a, p)
@@ -255,8 +275,17 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        if not self._materials_match(item):
+        if not self._runner.set_active(item):
+            # TODO: handle this gracefully by marking the job as not runnable somehow and moving on
+            return self._state_inactive
+
+        valid, rep = self._runner.verify_active()
+        if not self._materials_match(item) or not valid:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
+            if rep is not None:
+                self._set_status(
+                    self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+                )
             return self._state_awaiting_material
 
         self.q.begin_run()
