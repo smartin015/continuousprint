@@ -8,6 +8,7 @@ import shutil
 import traceback
 import random
 from pathlib import Path
+from octoprint import __version__ as octoprint_version
 from octoprint.events import Events
 from octoprint.filemanager import NoSuchStorage
 from octoprint.filemanager.analysis import AnalysisQueue, QueueEntry
@@ -112,6 +113,10 @@ class CPQPlugin(ContinuousPrintAPI):
     def _get_key(self, k, default=None):
         v = self._settings.get([k.setting])
         return v if v is not None else default
+
+    def _octoprint_version_exceeds(self, major: int, minor: int):
+        cur_major, cur_minor = [int(c) for c in octoprint_version.split(".")[:2]]
+        return cur_major > major or (cur_major == major and cur_minor > minor)
 
     def _add_folder(self, path):
         return self._file_manager.add_folder(
@@ -667,9 +672,24 @@ class CPQPlugin(ContinuousPrintAPI):
                 self._logger.debug(f"Enqueued newly added file {payload['path']}")
             return
 
-        if (
-            event == Events.UPLOAD
-        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
+        # Events.UPLOAD only applies to REST file upload calls.
+        # This ignores other file addition events from plugins
+        # and the file watcher.
+        # https://github.com/OctoPrint/OctoPrint/pull/4687 adds the
+        # `operation`attribute to Events.FILE_ADDED and eliminates the
+        # need for Events.UPLOAD to discriminate adding/copying/moving files.
+        file_uploaded = False
+        version_after_1_8 = self._octoprint_version_exceeds(1, 8)
+        if not version_after_1_8 and event == Events.UPLOAD:
+            file_uploaded = True
+        elif (
+            version_after_1_8
+            and event == Events.FILE_ADDED
+            and payload["operation"] == "add"
+        ):
+            file_uploaded = True
+
+        if file_uploaded:
             upload_action = self._get_key(Keys.UPLOAD_ACTION, "do_nothing")
             if upload_action != "do_nothing":
                 if payload["path"].endswith(".gcode"):

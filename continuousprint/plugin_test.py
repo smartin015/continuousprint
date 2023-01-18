@@ -250,6 +250,7 @@ class TestEventHandling(unittest.TestCase):
         self.p.q = MagicMock()
         self.p._sync_state = MagicMock()
         self.p._plugin_manager.plugins.get.return_value = None
+        self.p._octoprint_version_exceeds = lambda a, b: False
         self.p._setup_thirdparty_plugin_integration()
 
     def testTick(self):
@@ -426,6 +427,16 @@ class TestEventHandling(unittest.TestCase):
         )
         self.p.on_event(Events.FILE_ADDED, dict(path="a.gcode"))
         self.p._analysis_queue.enqueue.assert_called()
+
+    def testFileAddedWithOperationPrintable(self):
+        self.p._octoprint_version_exceeds = lambda a, b: True
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(
+            Events.FILE_ADDED,
+            dict(path="testpath.gcode", storage="local", operation="add"),
+        )
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.gcode")
 
 
 class TestGetters(unittest.TestCase):
