@@ -92,7 +92,6 @@
   </div>
 
   <div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
-
     <div class="cp-queue" data-bind="css: {'loading': $root.loading() || !ready()}">
     <div class="cp-header action-bar">
         <div class="multiselect">
@@ -181,10 +180,11 @@
               <!-- ko if: draft() -->
                 <div class="edit-header">
                   <div style="flex: 1;" class="has_title" title="Sets are print files, repeated multiple times">Set<sup>?</sup></div>
-                  <div class="completed has_title" title="Number of prints completed for this iteration of the job">Complete<sup>?</sup></div>
-                  <div class="count has_title" title="Number of prints per each iteration of the job">Per Run<sup>?</sup></div>
-                  <div class="remaining has_title" title="Number of prints yet to be printed for the current job iteration">This Run<sup>?</sup></div>
-                  <div class="total has_title" title="Total number of prints yet to be printed across all remaining iterations of the job">Pending<sup>?</sup></div>
+                  <!-- ko foreach: Object.values(CP_STATS_DIMENSIONS) -->
+                  <div data-bind="attr:{title: $data.desc, class: $data.name + ' has_title'}">
+                    <span data-bind="text: $data.display"></span><sup>?</sup>
+                  </div>
+                  <!-- /ko -->
                 </div>
               <!-- /ko -->
               <div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft, 'highlight': $root.draggingSet() && job.draft() && queue.ready()}" class="sets">
@@ -275,7 +275,7 @@
                   </div>
                 </div>
                 </div>
-                <div data-bind="foreach: totals, visible: draft">
+                <div data-bind="foreach: totals().values_humanized, visible: draft">
                   <div class="job-stats">
                     <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
                     <div class="completed" data-bind="text: completed"></div>
@@ -293,8 +293,31 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div data-bind="visible: hasDraftJobs()"> <!-- queue totals -->
+          <a style="display: block; text-align: center;" href="#" data-bind="click: showStats(!showStats())">show/hide queue stats</a>
+          <div class="stats" data-bind="visible: showStats">
+            <div class="edit-header">
+              <div style="flex: 1;"></div>
+              <!-- ko foreach: Object.values(CP_STATS_DIMENSIONS) -->
+              <div style="cursor: auto" data-bind="attr:{class: $data.name + ' has_title'}, text: $data.display"></div>
+              <!-- /ko -->
+            </div>
+            <div data-bind="foreach: totals().values_humanized">
+              <div class="job-stats">
+                <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
+                <div class="completed" data-bind="text: completed"></div>
+                <div class="count" data-bind="text: count"></div>
+                <div class="remaining" data-bind="text: remaining"></div>
+                <div class="total" data-bind="text: total"></div>
+                <div class="error" data-bind="visible: error, text=error"></div>
+              </div>
+            </div>
+          </div>
+        </div> <!-- queue totals -->
+
+      </div> <!-- accordion queue-list -->
+    </div> <!-- cp-queue -->
   </div><!-- tab foreach queues -->
   <div class="hint" data-bind="hidden: $root.queues().length > 1">
   Hint: Set up additional queues (including <a href="https://smartin015.github.io/continuousprint/lan-queues" target="_blank">LAN queues</a>) in the plugin settings.
