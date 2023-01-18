@@ -62,25 +62,35 @@ class TestFromInactive(unittest.TestCase):
 
     def test_activate_start_print_failure(self):
         self.d._runner.run_script_for_event.return_value = None
-        self.d._runner.start_print.return_value = False
+        self.d._runner.set_active.return_value = False
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> fail, resolve_print
+        self.assertEqual(self.d.state.__name__, self.d._state_resolve_print.__name__)
+        self.assertEqual(self.d.start_failures, 1)
+
+    def test_activate_start_print_failure_from_exception(self):
+        self.d._runner.run_script_for_event.return_value = None
+        self.d._runner.set_active.return_value = True
+        self.d._runner.start_print.side_effect = Exception("test")
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> fail, resolve_print
         self.assertEqual(self.d.state.__name__, self.d._state_resolve_print.__name__)
         self.assertEqual(self.d.start_failures, 1)
 
     def test_activate_start_print_slicer_failure(self):
         self.d._runner.run_script_for_event.return_value = None
-        self.d._runner.start_print.return_value = None  # Indicate callback
-        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print
-        self.assertEqual(self.d.state.__name__, self.d._state_start_print.__name__)
+        self.d._runner.set_active.return_value = None  # Indicate callback
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> slicing
+        self.assertEqual(self.d.state.__name__, self.d._state_slicing.__name__)
         self.d.action(DA.RESOLVE_FAILURE, DP.IDLE)  # -> resolve_print attempt #2
         self.assertEqual(self.d.state.__name__, self.d._state_resolve_print.__name__)
         self.assertEqual(self.d.start_failures, 1)
 
     def test_activate_start_print_slicer_success(self):
         self.d._runner.run_script_for_event.return_value = None
-        self.d._runner.start_print.return_value = None  # Indicate callback
-        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print
-        self.assertEqual(self.d.state.__name__, self.d._state_start_print.__name__)
+        self.d._runner.set_active.return_value = None  # Indicate callback
+        self.d.action(DA.ACTIVATE, DP.IDLE)  # -> slicing
+        self.assertEqual(self.d.state.__name__, self.d._state_slicing.__name__)
+
+        self.d._runner.set_active.return_value = True  # Now resolvable
         self.d.action(
             DA.RESOLVED, DP.IDLE
         )  # script_runner finished slicing and started the print
@@ -90,9 +100,7 @@ class TestFromInactive(unittest.TestCase):
         self.d._runner.run_script_for_event.return_value = None
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> resolve_print -> printing
         self.d.q.begin_run.assert_called()
-        self.d._runner.start_print.assert_called_with(
-            self.d.q.get_set.return_value, ANY
-        )
+        self.d._runner.start_print.assert_called_with(self.d.q.get_set.return_value)
         self.assertEqual(self.d.state.__name__, self.d._state_printing.__name__)
         self.d._runner.run_script_for_event.assert_called_with(CustomEvents.PRINT_START)
 
@@ -128,9 +136,7 @@ class TestFromInactive(unittest.TestCase):
 
         # Non-queue print completion while the driver is active
         # should kick off a new print from the head of the queue
-        self.d._runner.start_print.assert_called_with(
-            self.d.q.get_set.return_value, ANY
-        )
+        self.d._runner.start_print.assert_called_with(self.d.q.get_set.return_value)
         self.d.q.begin_run.assert_called_once()
 
         # Verify no end_run call anywhere in this process, since print was not in queue
@@ -299,7 +305,7 @@ class TestFromStartPrint(unittest.TestCase):
         )
 
         self.d.action(DA.SUCCESS, DP.IDLE)  # -> start_print -> printing
-        self.d._runner.start_print.assert_called_with(item2, ANY)
+        self.d._runner.start_print.assert_called_with(item2)
 
     def test_success_waits_for_timelapse(self):
         now = time.time()

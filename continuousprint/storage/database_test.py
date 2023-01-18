@@ -29,10 +29,7 @@ class QueuesDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpQueues = tempfile.NamedTemporaryFile(delete=True)
         self.addCleanup(self.tmpQueues.close)
-        init_queues(
-            self.tmpQueues.name,
-            logger=logging.getLogger(),
-        )
+        init_queues(self.tmpQueues.name)
         self.q = Queue.get(name=DEFAULT_QUEUE)
 
 
@@ -40,10 +37,7 @@ class AutomationDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpAutomation = tempfile.NamedTemporaryFile(delete=True)
         self.addCleanup(self.tmpAutomation.close)
-        init_automation(
-            self.tmpAutomation.name,
-            logger=logging.getLogger(),
-        )
+        init_automation(self.tmpAutomation.name)
 
 
 class DBTest(QueuesDBTest, AutomationDBTest):

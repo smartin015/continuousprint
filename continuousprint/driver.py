@@ -294,8 +294,13 @@ class Driver:
                 )
             return self._state_awaiting_material
 
-        self.q.begin_run()
-        self._runner.start_print(item)
+        try:
+            self.q.begin_run()
+            self._runner.start_print(item)
+        except Exception as e:
+            self._logger.error(e)
+            return self._fail_start()
+
         return self._state_printing
 
     def _state_slicing(self, a: Action, p: Printer):

@@ -48,8 +48,8 @@ class IntegrationTest(DBTest):
         self.d._runner.run_script_for_event.return_value = None
         self.d._runner.verify_active.return_value = (True, None)
 
-        # Default to succeeding when starting print
-        self.d._runner.start_print.return_value = True
+        # Default to succeeding when activating print
+        self.d._runner.set_active.return_value = True
 
         self.d.set_retry_on_pause(True)
         self.d.action(DA.DEACTIVATE, DP.IDLE)
@@ -353,14 +353,11 @@ class TestMultiDriverLANQueue(unittest.TestCase):
 
         self.locks = {}
         self.peers = []
-        self.fs = MagicMock()
-        self.fs.fetch.return_value = "from_fileshare.gcode"
-        lqpeers = {}
-        lqjobs = TestReplDict(lambda a, b: None)
         for i, db in enumerate(self.dbs):
             with db.bind_ctx(MODELS):
                 populate_queues()
             fsm = MagicMock(host="fsaddr", port=0)
+            fsm.fetch.return_value = "from_fileshare.gcode"
             profile = dict(name="profile")
             lq = LANQueue(
                 "LAN",
@@ -381,7 +378,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             )
             d._runner.verify_active.return_value = (True, None)
             d._runner.run_script_for_event.return_value = None
-            d._runner.start_print.return_value = True
+            d._runner.set_active.return_value = True
             d.set_retry_on_pause(True)
             d.action(DA.DEACTIVATE, DP.IDLE)
             lq.lan.q = LANPrintQueueBase(
@@ -399,7 +396,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
         for p in self.peers:
             self.peers[0][2].lan.q.peers[p[2].addr] = (
                 time.time(),
-                dict(fs_addr="fakeaddr"),
+                dict(fs_addr="fakeaddr", profile=dict(name="profile")),
             )
 
     def test_ordered_acquisition(self):

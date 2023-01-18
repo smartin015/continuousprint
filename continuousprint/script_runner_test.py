@@ -100,9 +100,26 @@ class TestScriptRunner(unittest.TestCase):
         self.s._spool_manager = None
         self.assertEqual(self.s.verify_active()[0], True)
 
-    def test_start_print_local(self):
+    def test_start_print_ok(self):
+        self.s._printer.get_current_job.return_value = dict(file=dict(name="foo.gcode"))
+        self.s.start_print(LI(False, "foo.gcode", LJ("job1")))
+
+        self.s._printer.start_print.assert_called_once()
+        self.s._spool_manager.start_print_confirmed.assert_called()
+        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
+
+    def test_start_print_file_mismatch(self):
+        self.s._printer.get_current_job.return_value = dict(file=dict(name="foo.gcode"))
+        with self.assertRaises(Exception):
+            self.s.start_print(LI(False, "bar.gcode", LJ("job1")))
+
+        self.s._printer.start_print.assert_not_called()
+        self.s._spool_manager.start_print_confirmed.assert_not_called()
+        self.s._fire_event.assert_not_called()
+
+    def test_set_active_local(self):
         self.assertEqual(
-            self.s.start_print(LI(False, "a.gcode", LJ("job1")), MagicMock()), True
+            self.s.set_active(LI(False, "a.gcode", LJ("job1")), MagicMock()), True
         )
         self.s._printer.select_file.assert_called_with(
             "a.gcode",
@@ -110,13 +127,10 @@ class TestScriptRunner(unittest.TestCase):
             printAfterSelect=False,
             user="foo",
         )
-        self.s._printer.start_print.assert_called_once()
-        self.s._spool_manager.start_print_confirmed.assert_called()
-        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
-    def test_start_print_sd(self):
+    def test_set_active_sd(self):
         self.assertEqual(
-            self.s.start_print(LI(True, "a.gcode", LJ("job1")), MagicMock()), True
+            self.s.set_active(LI(True, "a.gcode", LJ("job1")), MagicMock()), True
         )
         self.s._printer.select_file.assert_called_with(
             "a.gcode",
@@ -124,52 +138,49 @@ class TestScriptRunner(unittest.TestCase):
             printAfterSelect=False,
             user="foo",
         )
-        self.s._printer.start_print.assert_called_once()
-        self.s._spool_manager.start_print_confirmed.assert_called()
-        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
 
-    def test_start_print_lan_resolve_error(self):
+    def test_set_active_lan_resolve_error(self):
         li = MagicMock(LI())
         li.resolve.side_effect = LANResolveError("testing error")
-        self.assertEqual(self.s.start_print(li, MagicMock()), False)
+        self.assertEqual(self.s.set_active(li, MagicMock()), False)
         self.s._printer.select_file.assert_not_called()
 
-    def test_start_print_invalid_location(self):
+    def test_set_active_invalid_location(self):
         self.s._printer.select_file.side_effect = InvalidFileLocation()
         self.assertEqual(
-            self.s.start_print(LI(True, "a.gcode", LJ("job1")), MagicMock()), False
+            self.s.set_active(LI(True, "a.gcode", LJ("job1")), MagicMock()), False
         )
         self.s._fire_event.assert_not_called()
 
-    def test_start_print_invalid_filetype(self):
+    def test_set_active_invalid_filetype(self):
         self.s._printer.select_file.side_effect = InvalidFileType()
         self.assertEqual(
-            self.s.start_print(LI(True, "a.gcode", LJ("job1")), MagicMock()), False
+            self.s.set_active(LI(True, "a.gcode", LJ("job1")), MagicMock()), False
         )
         self.s._fire_event.assert_not_called()
 
-    def test_start_print_stl_slicing_disabled(self):
+    def test_set_active_stl_slicing_disabled(self):
         self.s._file_manager = MagicMock(slicing_enabled=False)
         self.assertEqual(
-            self.s.start_print(LI(True, "a.stl", LJ("job1")), MagicMock()), False
+            self.s.set_active(LI(True, "a.stl", LJ("job1")), MagicMock()), False
         )
         self.s._fire_event.assert_not_called()
 
-    def test_start_print_stl_sd(self):
+    def test_set_active_stl_sd(self):
         self.s._file_manager = MagicMock(
             slicing_enabled=False, default_slicer="DEFAULT_SLICER"
         )
         self.assertEqual(
-            self.s.start_print(LI(True, "a.stl", LJ("job1")), MagicMock()), False
+            self.s.set_active(LI(True, "a.stl", LJ("job1")), MagicMock()), False
         )
         self.s._fire_event.assert_not_called()
 
-    def test_start_print_stl(self):
+    def test_set_active_stl(self):
         cb = MagicMock()
         self.s._file_manager.path_on_disk.side_effect = lambda d, p: p
         self.s._get_key.side_effect = ("testslicer", "testprofile")
 
-        self.assertEqual(self.s.start_print(LI(False, "a.stl", LJ("job1")), cb), None)
+        self.assertEqual(self.s.set_active(LI(False, "a.stl", LJ("job1")), cb), None)
         self.s._slicing_manager.slice.assert_called_with(
             "testslicer",
             "a.stl",
@@ -183,36 +194,23 @@ class TestScriptRunner(unittest.TestCase):
         slice_cb = self.s._slicing_manager.slice.call_args[1]["callback"]
         slice_cb(_analysis="foo")
         cb.assert_called_with(success=True, error=None)
-        self.s._printer.select_file.assert_called_with(
-            "ContinuousPrint/tmp/a.stl.gcode",
-            sd=False,
-            printAfterSelect=False,
-            user="foo",
-        )
-        self.s._printer.start_print.assert_called_once()
-        self.s._spool_manager.start_print_confirmed.assert_called()
-        self.s._fire_event.assert_called_with(CustomEvents.PRINT_START)
-
         cb.reset_mock()
-        self.s._printer.select_file.reset_mock()
-        
+
         slice_cb(_error="bar")
         cb.assert_called_with(success=False, error="bar")
-        self.s._printer.select_file.assert_not_called()
         cb.reset_mock()
 
         slice_cb(_cancelled=True)
         cb.assert_called_with(success=False, error=ANY)
-        self.s._printer.select_file.assert_not_called()
         cb.reset_mock()
 
-    def test_start_print_stl_exception(self):
+    def test_set_active_stl_exception(self):
         cb = MagicMock()
         self.s._file_manager.path_on_disk.side_effect = lambda d, p: p
         self.s._get_key.side_effect = ("testslicer", "testprofile")
 
         self.s._slicing_manager.slice.side_effect = SlicingException("test")
-        self.assertEqual(self.s.start_print(LI(False, "a.stl", LJ("job1")), cb), False)
+        self.assertEqual(self.s.set_active(LI(False, "a.stl", LJ("job1")), cb), False)
         self.s._printer.select_file.assert_not_called()
 
 
