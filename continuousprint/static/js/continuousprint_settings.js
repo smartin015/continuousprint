@@ -9,14 +9,17 @@ if (typeof log === "undefined" || log === null) {
   CP_CUSTOM_EVENTS = [];
   CP_LOCAL_IP = '';
   CPAPI = require('./continuousprint_api');
+  CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {};};
+  CPSettingsEvent = require('./continuousprint_settings_event');
+  OctoPrint = undefined;
 }
 
-function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS) {
+function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_scripts=CP_GCODE_SCRIPTS, custom_events=CP_CUSTOM_EVENTS, default_symtable=CP_SIMULATOR_DEFAULT_SYMTABLE, octoprint=OctoPrint) {
     var self = this;
     self.PLUGIN_ID = "octoprint.plugins.continuousprint";
     self.log = log.getLogger(self.PLUGIN_ID);
     self.settings = parameters[0];
-    self.files = parameters[1]
+    self.files = parameters[1];
     self.api = parameters[2] || new CPAPI();
     self.loading = ko.observable(false);
     self.api.init(self.loading, function(code, reason) {
@@ -31,6 +34,40 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     });
     self.local_ip = ko.observable(CP_LOCAL_IP || '');
 
+    // We have to use the global slicer data retriever instead of
+    // slicingViewModel because the latter does not make its profiles
+    // available without modifying the slicing modal.
+    self.slicers = ko.observable({});
+    self.slicer = ko.observable();
+    self.slicer_profile = ko.observable();
+    if (octoprint !== undefined) {
+      octoprint.slicing.listAllSlicersAndProfiles().done(function (data) {
+        let result = {};
+        for (let d of Object.values(data)) {
+          let profiles = [];
+          let default_profile = null;
+          for (let p of Object.keys(d.profiles)) {
+            if (d.profiles[p].default) {
+              default_profile = p;
+              continue;
+            }
+            profiles.push(p);
+          }
+          if (default_profile) {
+            profiles.unshift(default_profile);
+          }
+          result[d.key] = {
+            name: d.displayName,
+            key: d.key,
+            profiles,
+          };
+        }
+        self.slicers(result);
+      });
+    }
+    self.slicerProfiles = ko.computed(function() {
+      return (self.slicers()[self.slicer()] || {}).profiles;
+    });
     // Constants defined in continuousprint_settings.jinja2, passed from the plugin (see `get_template_vars()` in __init__.py)
     self.profiles = {};
     for (let prof of profiles) {
@@ -306,6 +343,8 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
           self.selected_model(prof.model);
           break;
         }
+        self.slicer(self.settings.settings.plugins.continuousprint.cp_slicer());
+        self.slicer_profile(self.settings.settings.plugins.continuousprint.cp_slicer_profile());
       }
       // Queues and scripts are stored in the DB; we must fetch them whenever
       // the settings page is loaded
@@ -343,10 +382,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
               preprocessor: ko.observable(preprocessors[a.preprocessor]),
             });
           }
-          events.push({
-            ...k,
-            actions: ko.observableArray(actions),
-          });
+          events.push(new CPSettingsEvent(k, actions, self.api, default_symtable()));
         }
         events.sort((a, b) => a.display < b.display);
         self.events(events);
@@ -356,6 +392,10 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
 
     // Called automatically by SettingsViewModel
     self.onSettingsBeforeSave = function() {
+      let cpset = self.settings.settings.plugins.continuousprint;
+      cpset.cp_slicer(self.slicer());
+      cpset.cp_slicer_profile(self.slicer_profile());
+
       let queues = self.queues();
       if (JSON.stringify(queues) !== self.queue_fingerprint) {
         // Sadly it appears flask doesn't have good parsing of nested POST structures,
@@ -375,19 +415,9 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       }
       let events = {};
       for (let e of self.events()) {
-        let ks = [];
-        for (let a of e.actions()) {
-          let pp = a.preprocessor()
-          if (pp !== null) {
-            pp = pp.name();
-          }
-          ks.push({
-            script: a.script.name(),
-            preprocessor: pp,
-          });
-        }
-        if (ks.length !== 0) {
-          events[e.event] = ks;
+        let e2 = e.pack();
+        if (e2) {
+          events[e.event] = e2;
         }
       }
       let data = {scripts, preprocessors, events};

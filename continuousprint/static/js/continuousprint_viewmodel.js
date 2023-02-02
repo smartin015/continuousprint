@@ -112,7 +112,6 @@ function CPViewModel(parameters) {
       self.hideRemoveConfirmModal();
     };
     self.showSettingsHelp = function() {
-      console.log(self.settings);
       self.settings.show('settings_plugin_continuousprint');
       $(`#settings_plugin_continuousprint a[href="#settings_continuousprint_help"]`).tab('show');
     };

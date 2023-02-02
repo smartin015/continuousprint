@@ -21,6 +21,7 @@ from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
 import sys
+import logging
 import inspect
 import os
 import yaml
@@ -32,6 +33,13 @@ def getint(d, k, default=0):
     if type(v) == str:
         v = int(v)
     return v
+
+
+logging.getLogger("peewee").setLevel(logging.INFO)
+
+
+class STLResolveError(Exception):
+    pass
 
 
 # Defer initialization
@@ -147,7 +155,7 @@ class JobView:
         # for the given profile/filter. If this is False then
         # decrementing the set/job won't do anything WRT set availability
         any_printable = False
-        for s in self.sets:
+        for s in sorted(self.sets, key=lambda s: s.rank):
             if custom_filter is not None and not custom_filter(s):
                 continue
             printable = s.is_printable(profile)
@@ -219,9 +227,6 @@ class SetView:
     def save(self):
         raise NotImplementedError()
 
-    def resolve(self):
-        raise NotImplementedError()
-
     def _csv2list(self, v):
         if v == "":
             return []
@@ -271,6 +276,24 @@ class SetView:
 
         for (k, v) in data.items():
             setattr(self, k, v)
+
+    def resolve(self, override=None):
+        if override is not None:
+            self._resolved = override
+
+        # TODO use registered slicer object types per octoprint hook
+        if not hasattr(self, "_resolved") or self._resolved is None:
+            raise NotImplementedError(
+                "Implementer of SetView must implement .resolve()"
+            )
+        elif self._resolved.endswith(".stl"):
+            raise STLResolveError(f"Set path {self._resolved} requires slicing")
+        else:
+            return self._resolved
+
+    @classmethod
+    def from_dict(self, s):
+        raise NotImplementedError
 
     def as_dict(self):
         return dict(
@@ -323,6 +346,22 @@ class Set(Model, SetView):
 
     class Meta:
         database = DB.queues
+
+    @classmethod
+    def from_dict(self, s):
+        for listform, csvform in [
+            ("materials", "material_keys"),
+            ("profiles", "profile_keys"),
+        ]:
+            if s.get(listform) is not None:
+                s[csvform] = ",".join(s[listform])
+                del s[listform]
+        return Set(**s)
+
+    def resolve(self, override=None):
+        if getattr(self, "_resolved", None) is None:
+            self._resolved = self.path
+        return super().resolve(override)
 
 
 class Run(Model):

@@ -17,55 +17,116 @@ with open(os.path.join(base, "preprocessors.yaml"), "r") as f:
     )
 
 
+# This is used for running the preprocessor simulator in the settings page.
+SIMULATOR_DEFAULT_SYMTABLE = {
+    "current": {
+        "path": "testprint.gcode",
+        "materials": ["PLA_red_#ff0000"],
+        "bed_temp": 23.59,
+        "state": "printing",
+        "action": "TICK",
+    },
+    "external": {},
+    "metadata": {
+        "hash": "123abc",
+        "analysis": {
+            "printingArea": {
+                "maxX": 3,
+                "maxY": 6,
+                "maxZ": 9,
+                "minX": -3,
+                "minY": -6,
+                "minZ": -9.0,
+            },
+            "dimensions": {"depth": 5, "height": 10, "width": 15},
+            "estimatedPrintTime": 12345,
+            "filament": {"tool0": {"length": 123, "volume": 456}},
+        },
+        "continuousprint": {"profile": "Generic"},
+        "history": [
+            {
+                "timestamp": 1234567890,
+                "printTime": 100.0,
+                "success": True,
+                "printerProfile": "_default",
+            },
+        ],
+        "statistics": {
+            "averagePrintTime": {"_default": 100.0},
+            "lastPrintTime": {"_default": 100.0},
+        },
+    },
+}
+
+
 class CustomEvents(Enum):
     ACTIVATE = (
         "continuousprint_activate",
         "Queue Activated",
         "Fires when the queue is started, e.g. via the 'Start Managing' button.",
+        "inactive",
     )
     PRINT_START = (
         "continuousprint_start_print",
         "Print Start",
         "Fires when a new print is starting from the queue. Unlike OctoPrint events, this does not fire when event scripts are executed.",
+        "idle",
     )
     PRINT_SUCCESS = (
         "continuousprint_success",
         "Print Success",
         "Fires when the active print finishes. This will also fire for prints running before the queue was started. The final print will fire QUEUE_FINISH instead of PRINT_SUCCESS.",
+        "printing",
     )
     PRINT_CANCEL = (
         "continuousprint_cancel",
         "Print Cancel",
         "Fires when automation or the user has cancelled the active print.",
+        "printing",
     )
     COOLDOWN = (
         "continuousprint_cooldown",
         "Bed Cooldown",
         "Fires when bed cooldown is starting. Bed Cooldown is disabled by default - see the settings below.",
+        "idle",
     )
     FINISH = (
         "continuousprint_finish",
         "Queue Finished",
         "Fires when there is no work left to do and the plugin goes idle.",
+        "printing",
     )
     AWAITING_MATERIAL = (
         "continuousprint_awaiting_material",
         "Awaiting Material",
         "Fires once when the current job requires a different material than what is currently loaded. This requires SpoolManager to be installed (see Integrations).",
+        "idle",
     )
     DEACTIVATE = (
         "continuousprint_deactivate",
         "Queue Deactivated",
         "Fires when the queue is no longer actively managed. This script may be skipped if another print is underway when the queue goes inactive.",
+        "idle",
     )
 
-    def __init__(self, event, displayName, desc):
+    def __init__(self, event, displayName, desc, sym_state):
         self.event = event
         self.displayName = displayName
         self.desc = desc
+        self.sym_state = sym_state
+
+    @classmethod
+    def from_event(self, k):
+        evts = dict([(e.event, e) for e in self])
+        return evts[k]
 
     def as_dict(self):
-        return dict(event=self.event, display=self.displayName, desc=self.desc)
+        return dict(
+            event=self.event,
+            display=self.displayName,
+            desc=self.desc,
+            sym_state=self.sym_state,
+        )
 
 
 class Keys(Enum):
@@ -101,6 +162,9 @@ class Keys(Enum):
         "cp_peerprint_server_path",
         "/home/oprint/continuousprint/peerprint/peerprint/server/peerprint_server",
     )
+    SKIP_GCODE_COMMANDS = ("cp_skip_gcode_commands", "")
+    SLICER = ("cp_slicer", "")
+    SLICER_PROFILE = ("cp_slicer_profile", "")
 
     def __init__(self, setting, default):
         self.setting = setting
@@ -119,9 +183,11 @@ ASSETS = dict(
         "js/continuousprint_api.js",
         "js/continuousprint_history_row.js",
         "js/continuousprint_set.js",
+        "js/continuousprint_stats.js",
         "js/continuousprint_job.js",
         "js/continuousprint_queue.js",
         "js/continuousprint_viewmodel.js",
+        "js/continuousprint_settings_event.js",
         "js/continuousprint_settings.js",
         "js/continuousprint.js",
     ],

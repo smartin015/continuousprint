@@ -55,7 +55,7 @@ class PeerSetView(SetView):
     def save(self):
         self.job.save()
 
-    def resolve(self) -> str:
+    def resolve(self, override=None) -> str:
         if self._resolved is None:
             try:
                 self._resolved = self.job.queue.q.resolve(
@@ -63,4 +63,4 @@ class PeerSetView(SetView):
                 )
             except HTTPError as e:
                 raise ResolveError(f"Failed to resolve {self.path}") from e
-        return self._resolved
+        return super().resolve(override)

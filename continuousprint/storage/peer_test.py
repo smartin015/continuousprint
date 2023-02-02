@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
-from .peer import PeerJobView, PeerSetView, ResolveError
+from .database import STLResolveError
+from .lan import LANJobView, LANSetView, ResolveError
 from requests.exceptions import HTTPError
 
 
@@ -25,8 +26,20 @@ class PeerViewsTest(unittest.TestCase):
         self.j.queue.q.resolve.return_value = "/path/to/a.gcode"
         self.assertEqual(self.s.resolve(), "/path/to/a.gcode")
 
+    def test_resolve_stl(self):
+        # Ensure STL checking from the parent class is still triggered
+        self.j.sets[0].path = "a.stl"
+        self.lq.get_gjob_dirpath.return_value = "/path/to/"
+        with self.assertRaises(STLResolveError):
+            self.s.resolve()
+
+    def test_remap_set_paths(self):
+        self.lq.get_gjob_dirpath.return_value = "/path/to/"
+        self.j.remap_set_paths()
+        self.assertEqual(self.s.path, "/path/to/a.gcode")
+
     def test_resolve_http_error(self):
-        self.j.queue.q.resolve.side_effect = HTTPError
+        self.lq.get_gjob_dirpath.side_effect = HTTPError
         with self.assertRaises(ResolveError):
             self.s.resolve()
 

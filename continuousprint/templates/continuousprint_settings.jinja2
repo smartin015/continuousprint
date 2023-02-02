@@ -9,6 +9,30 @@
   const CP_CUSTOM_EVENTS = {{plugin_continuousprint_custom_events|tojson|safe}};
   const CP_LOCAL_IP = {{plugin_continuousprint_local_ip|tojson|safe}};
   const CP_EXCEPTIONS = {{plugin_continuousprint_exceptions|tojson|safe}};
+  const CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {{plugin_continuousprint_simulator_default_symtable|tojson|safe}}; };
+
+  const CP_STATS_DIMENSIONS = {
+    completed: {
+      name: "completed",
+      display: "Complete",
+      desc: "Number of prints completed for this iteration of the job",
+    },
+    count: {
+      name: "count",
+      display: "Per Run",
+      desc: "Number of prints per each iteration of the job",
+    },
+    remaining: {
+      name: "remaining",
+      display: "This Run",
+      desc: "Number of prints yet to be printed for the current job iteration",
+    },
+    total: {
+      name: "total",
+      display: "Pending",
+      desc: "Total number of prints yet to be printed across all remaining iterations of the job",
+    },
+  };
 </script>
 
 <ul id="settings_continuousprint_tabs" class="nav nav-pills">
@@ -101,6 +125,48 @@
           </div>
         </div> <!-- foreach actions -->
 
+
+        <span stye="height:0px; width:0px;" data-bind="text: updater">
+          This hidden element needed for rendering simulation() results;
+          see CPSettingsEvent class
+        </span>
+        <div class="accordion-group" data-bind="visible: actions().length > 0">
+          <div class="accordion-heading" data-bind="click: simExpanded(!simExpanded())" style="cursor:pointer">
+            <i class="fa" data-bind="css: simExpanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+            <div style="display:inline; margin-left: 5px" data-bind="text: simSummary"></div>
+          </div>
+          <div class="accordion-body collapse" data-bind="css: {'in': simExpanded}">
+            <div class="accordion-inner">
+              <div class="simulation-output">
+                <div>
+                  <h5>GCODE</h5>
+                  <pre class="output-block" data-bind="text: simGcodeOutput"></pre>
+                </div>
+                <div>
+                  <h5>Notifications & Errors</h5>
+                  <pre class="output-block" data-bind="text: combinedSimOutput"></pre>
+                </div>
+              </div>
+              <a style="text-align: center; display: block;" href="#" data-bind="click: symtableExpanded(!symtableExpanded())">toggle state details</a>
+              <div data-bind="visible: symtableExpanded">
+                <h5>Modified state</h5>
+                <div class="hint" data-bind="visible: simSymtable().length > 0">
+                  Hint: these variables were modified by preprocessors during the simulation.
+                </div>
+                <div data-bind="visible: simSymtable().length === 0">None</div>
+                <div data-bind="foreach: simSymtable">
+                  <div><span data-bind="text: key"></span> = <span data-bind="text: value"></span></div>
+                </div>
+                <h5>Simulation initial state</h5>
+                <div class="hint">
+                  Hint: edit to simulate behavior with different states of the printer, file etc. - this has no effect when the event is fired for real.
+                </div>
+                <div class="alert alert-error" data-bind="visible: symtableEditError, text: symtableEditError"></div>
+                <textarea style="width:100%; min-height: 50vh" data-bind="value: symtableEdit"></textarea>
+              </div>
+            </div>  <!-- /accordion-inner -->
+          </div> <!-- /accordion-body -->
+        </div> <!-- /accordion-group -->
 
         <div class="dropdown pull-right" style="width: 120px">
           <a class="btn dropdown-toggle" data-toggle="dropdown">
@@ -367,6 +433,7 @@
             </select>
           </div>
         </div>
+
         <div class="control-group" title="How to handle time lapses when running automation scripts">
           <label class="control-label">Clearing/Finishing Timelapses</label>
           <div class="controls">
@@ -376,6 +443,7 @@
             </select>
           </div>
         </div>
+
         <div class="control-group" title="Automatically try to assign printer profiles based on .gcode file contents - this may only work for some printers / slicers">
           <label class="control-label">Auto-assign printer profiles</label>
           <div class="controls">
@@ -386,6 +454,34 @@
           <label class="control-label">Auto-reconnect to printer</label>
           <div class="controls">
             <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_auto_reconnect">
+          </div>
+        </div>
+
+        <div class="control-group" title="Set a slicer to use so your queued STLs can auto-slice">
+          <label class="control-label">Slicer for auto-slicing</label>
+          <div class="controls">
+            <select data-bind="value: slicer">
+              <option></option>
+              <!-- ko foreach: Object.values(slicers()) -->
+              <option data-bind="text: name, value: key"></option>
+              <!-- /ko -->
+            </select>
+          </div>
+          <label class="control-label">Slicer Profile</label>
+          <div class="controls">
+            <select data-bind="value: slicer_profile">
+              <option></option>
+              <!-- ko foreach: slicerProfiles -->
+              <option data-bind="text: $data, value: $data"></option>
+              <!-- /ko -->
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group" title="Put a newline-separated list of GCODE commands to ignore while the queue is running, e.g. 'M104 S0' to prevent gcode files from turning off the hotend. CPQ event scripts/preprocessors are unaffected. Changes take effect after restarting OctoPrint">
+          <label class="control-label">Ignore GCODE lines while printing</label>
+          <div class="controls">
+            <textarea rows="4" data-bind="value: settings.settings.plugins.continuousprint.cp_skip_gcode_commands"></textarea>
           </div>
         </div>
       </fieldset>

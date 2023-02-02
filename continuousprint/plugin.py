@@ -16,7 +16,8 @@ import octoprint.timelapse
 
 from peerprint.filesharing import Fileshare
 from .analysis import CPQProfileAnalysisQueue
-from .driver import Driver, Action as DA, Printer as DP
+from .thirdparty.spoolmanager import SpoolManagerIntegration
+from .driver import Driver, Action as DA, Printer as DP, shouldBlockCoreEvents
 from .queues.lan import LANQueue
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
@@ -60,6 +61,7 @@ class CPQPlugin(ContinuousPrintAPI):
         printer,
         settings,
         file_manager,
+        slicing_manager,
         plugin_manager,
         queries,
         data_folder,
@@ -72,6 +74,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._printer = printer
         self._settings = settings
         self._file_manager = file_manager
+        self._slicing_manager = slicing_manager
         self._plugin_manager = plugin_manager
         self._queries = queries
         self._data_folder = data_folder
@@ -273,7 +276,9 @@ class CPQPlugin(ContinuousPrintAPI):
         # Code based loosely on https://github.com/OllisGit/OctoPrint-PrintJobHistory/ (see _getPluginInformation)
         smplugin = self._plugin_manager.plugins.get("SpoolManager")
         if smplugin is not None and smplugin.enabled:
-            self._spool_manager = smplugin.implementation
+            self._spool_manager = SpoolManagerIntegration(
+                smplugin.implementation, self._logger
+            )
             self._logger.info("SpoolManager found - enabling material selection")
             self._set_key(Keys.MATERIAL_SELECTION, True)
         else:
@@ -294,6 +299,57 @@ class CPQPlugin(ContinuousPrintAPI):
         self.EVENT_SPOOL_DESELECTED = getattr(
             octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
         )
+
+    def patchCommJobReader(self):
+        # Patch the comms interface to allow for suppressing GCODE script events when the
+        # queue is running script events
+        try:
+            if self._get_key(Keys.SKIP_GCODE_COMMANDS).strip() == "":
+                self._logger.info(
+                    "Skipping patch of comm._get_next_from_job; no commands configured to skip"
+                )
+                return
+            self._ignore_cmd_list = set(
+                [
+                    c.split(";", 1)[0].strip().upper()
+                    for c in self._get_key(Keys.SKIP_GCODE_COMMANDS).split("\n")
+                ]
+            )
+
+            self._jobCommReaderOrig = self._printer._comm._get_next_from_job
+            self._printer._comm._get_next_from_job = self.gatedCommJobReader
+            self._logger.info(
+                f"Patched comm._get_next_from_job; will ignore commands: {self._ignore_cmd_list}"
+            )
+        except Exception:
+            self._logger.error(traceback.format_exc())
+
+    def gatedCommJobReader(self, *args, **kwargs):
+        # As this patches core OctoPrint functionality, we wrap *everything*
+        # in try/catch to ensure it continues to execute if CPQ raises an exception.
+        result = self._jobCommReaderOrig(*args, **kwargs)
+        try:
+            # Only mess with gcode commands of printed files, not events
+            if self.d.state != self.d._state_printing:
+                return result
+
+            while result[0] is not None:
+                if type(result[0]) != str:
+                    return result
+                line = result[0].strip()
+                if line == "":
+                    return result
+
+                # Normalize command, without uppercase
+                cmd = result[0].split(";", 1)[0].strip().upper()
+                if cmd not in self._ignore_cmd_list:
+                    break
+                self._logger.warning(f"Skip GCODE: {result}")
+                result = self._jobCommReaderOrig(*args, **kwargs)
+        except Exception:
+            self._logger.error(traceback.format_exc())
+        finally:
+            return result
 
     def _init_fileshare(self, fs_cls=Fileshare):
         # Note: fileshare_dir referenced when cleaning up old files
@@ -424,10 +480,13 @@ class CPQPlugin(ContinuousPrintAPI):
         self._runner = srcls(
             self.popup,
             self._file_manager,
+            self._get_key,
+            self._slicing_manager,
             self._logger,
             self._printer,
             self._sync_state,
             self._fire_event,
+            self._spool_manager,
         )
         self.d = dcls(
             queue=self.q,
@@ -495,7 +554,9 @@ class CPQPlugin(ContinuousPrintAPI):
         for k, v in data.items():
             if v["type"] == "folder":
                 backlog += self._backlog_from_file_list(v["children"])
-            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None:
+            elif v.get(CPQProfileAnalysisQueue.META_KEY) is None and v["path"].split(
+                "."
+            )[-1] in ("gcode", "g", "gco"):
                 self._logger.debug(f"File \"{v['path']}\" needs analysis")
                 backlog.append(v["path"])
             else:
@@ -611,8 +672,10 @@ class CPQPlugin(ContinuousPrintAPI):
             # it's placed in a pending queue (see self._add_set). Now that
             # the processing is done, we actually add the set.
             path = payload["path"]
-            self._logger.debug(f"Handling completed analysis for {path}")
             pend = self._set_add_awaiting_metadata.get(path)
+            self._logger.debug(
+                f"Handling completed analysis for {path} - pending: {pend}"
+            )
             if pend is not None:
                 (path, sd, draft, profiles) = pend
                 prof = payload["result"][CPQProfileAnalysisQueue.PROFILE_KEY]
@@ -624,33 +687,30 @@ class CPQPlugin(ContinuousPrintAPI):
                 self._add_set(path, sd, draft, profiles)
                 del self._set_add_awaiting_metadata[path]
             return
-        if (
-            event == Events.FILE_ADDED
-            and self._profile_from_path(payload["path"]) is None
-        ):
-            # Added files should be checked for metadata and enqueued into CPQ custom analysis
-            if self._enqueue(payload["path"]):
-                self._logger.debug(f"Enqueued newly added file {payload['path']}")
-            return
 
-        if (
-            event == Events.UPLOAD
-        ):  # https://docs.octoprint.org/en/master/events/index.html#file-handling
+        if event == Events.FILE_ADDED:
+            if self._profile_from_path(payload["path"]) is None:
+                # Added files should be checked for metadata and enqueued into CPQ custom analysis
+                if self._enqueue(payload["path"]):
+                    self._logger.debug(f"Enqueued newly added file {payload['path']}")
+        if event == Events.UPLOAD:
             upload_action = self._get_key(Keys.UPLOAD_ACTION, "do_nothing")
             if upload_action != "do_nothing":
-                if payload["path"].endswith(".gcode"):
+                path = payload["path"]
+                # TODO get object list from octoprint
+                if path.endswith(".gcode") or path.endswith(".stl"):
                     self._add_set(
-                        path=payload["path"],
-                        sd=payload["target"] != "local",
+                        path=path,
+                        # Events.UPLOAD uses "target", EVents.FILE_ADDED uses "storage"
+                        sd=payload.get("storage", payload.get("target")) != "local",
                         draft=(upload_action != "add_printable"),
                     )
-                elif payload["path"].endswith(".gjob"):
+                elif path.endswith(".gjob"):
                     self._get_queue(DEFAULT_QUEUE).import_job(
-                        payload["path"], draft=(upload_action != "add_printable")
+                        path, draft=(upload_action != "add_printable")
                     )
                     self._sync_state()
-            else:
-                return
+            return
         if event == Events.MOVIE_DONE:
             self._timelapse_start_ts = None
             # Optionally delete time-lapses created from bed clearing/finishing scripts
@@ -740,18 +800,7 @@ class CPQPlugin(ContinuousPrintAPI):
         if self._spool_manager is not None:
             # We need *all* selected spools for all tools, so we must look it up from the plugin itself
             # (event payload also excludes color hex string which is needed for our identifiers)
-            try:
-                materials = self._spool_manager.api_getSelectedSpoolInformations()
-                materials = [
-                    f"{m['material']}_{m['colorName']}_{m['color']}"
-                    if m is not None
-                    else None
-                    for m in materials
-                ]
-            except Exception:
-                self._logger.warning(
-                    "SpoolManager getSelectedSpoolInformations() returned error; skipping material assignment"
-                )
+            materials = self._spool_manager.get_materials()
 
         bed_temp = self._printer.get_current_temperatures().get("bed")
         if bed_temp is not None:
@@ -822,3 +871,29 @@ class CPQPlugin(ContinuousPrintAPI):
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)
         self._sync_state()
+
+    def patchComms(self):
+        # Patch the comms interface to allow for suppressing GCODE script events when the
+        # qeue is running script events
+        try:
+            self._sendGcodeScriptOrig = self._printer._comm.sendGcodeScript
+            self._printer._comm.sendGcodeScript = self.gatedSendGcodeScript
+            self._logger.info("Patched sendGCodeScript")
+        except Exception:
+            self._logger.error(traceback.format_exc())
+
+    def gatedSendGcodeScript(self, *args, **kwargs):
+        # As this patches core OctoPrint functionality, we wrap *everything*
+        # in try/catch to ensure it continues to execute if CPQ raises an exception.
+        shouldCall = True
+        try:
+            if shouldBlockCoreEvents(self.d.state):
+                shouldCall = False
+                self._logger.warning(
+                    f"Suppressing sendGcodeScript({args[0]}) as driver is in state {self.d.state}"
+                )
+        except Exception:
+            self._logger.error(traceback.format_exc())
+        finally:
+            if shouldCall:
+                return self._sendGcodeScriptOrig(*args, **kwargs)

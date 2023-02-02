@@ -4,9 +4,9 @@ from collections import namedtuple
 from .analysis import CPQProfileAnalysisQueue
 from .storage.queries import getJobsAndSets
 from .storage.database import DEFAULT_QUEUE, ARCHIVE_QUEUE
-from unittest.mock import MagicMock, patch, ANY, call
+from unittest.mock import MagicMock, patch, ANY, call, PropertyMock
 from octoprint.filemanager.analysis import QueueEntry
-from .driver import Action as DA
+from .driver import Driver, Action as DA
 from octoprint.events import Events
 import logging
 import tempfile
@@ -37,11 +37,12 @@ class MockSettings:
         return self.set([":".join(gk)], v)
 
 
-def mockplugin():
+def setupPlugin():
     return CPQPlugin(
         printer=MagicMock(),
         settings=MockSettings(),
         file_manager=MagicMock(),
+        slicing_manager=MagicMock(),
         plugin_manager=MagicMock(),
         fire_event=MagicMock(),
         queries=MagicMock(),
@@ -54,7 +55,7 @@ def mockplugin():
 
 class TestStartup(unittest.TestCase):
     def testThirdPartyMissing(self):
-        p = mockplugin()
+        p = setupPlugin()
         p._plugin_manager.plugins.get.return_value = None
 
         p._setup_thirdparty_plugin_integration()
@@ -63,7 +64,7 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._get_key(Keys.RESTART_ON_PAUSE), False)  # Obico
 
     def testObicoFound(self):
-        p = mockplugin()
+        p = setupPlugin()
         p._plugin_manager.plugins.get.return_value = None
 
         with patch(
@@ -75,7 +76,7 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._get_key(Keys.RESTART_ON_PAUSE), True)  # Obico
 
     def testSpoolManagerFound(self):
-        p = mockplugin()
+        p = setupPlugin()
         p._plugin_manager.plugins.get.return_value = MagicMock()
 
         p._setup_thirdparty_plugin_integration()
@@ -84,15 +85,80 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._get_key(Keys.MATERIAL_SELECTION), True)  # Spoolmanager
         self.assertEqual(p._get_key(Keys.RESTART_ON_PAUSE), False)  # Obico
 
+    def testPatchCommJobReader(self):
+        p = setupPlugin()
+        gnfj = p._printer._comm._get_next_from_job
+        p.d = MagicMock(_state_printing="foo", state="foo")
+        p._set_key(Keys.SKIP_GCODE_COMMANDS, "FOO 1\nBAR ; Settings comment")
+        p.patchCommJobReader()
+
+        mm = MagicMock()
+        gnfj.side_effect = [
+            (line, None, None)
+            for line in (
+                "",
+                mm,
+                "foo 1",  # Case insensitive
+                "BAR ; I have a comment that should be ignored ;;;",
+                "G0 X0",
+                None,
+            )
+        ]
+
+        # Passes whitespace lines
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("", ANY, ANY))
+
+        # Passes foreign objects (e.g. for SendQueueMarker in OctoPrint)
+        self.assertEqual(p._printer._comm._get_next_from_job(), (mm, ANY, ANY))
+
+        # Skips cmds in skip-list
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("G0 X0", ANY, ANY))
+
+        # Stops on end of file
+        self.assertEqual(p._printer._comm._get_next_from_job(), (None, ANY, ANY))
+
+        # Test exception inside loop returns a decent result
+        gnfj.side_effect = [("foo 1", None, None), Exception("Testing exception")]
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
+
+        # Ignored when not printing
+        p.d = MagicMock(_state_printing="foo", state="bar")
+        gnfj.side_effect = [("foo 1", None, None)]
+        self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
+
+    def testPatchComms(self):
+        p = setupPlugin()
+        sgs = p._printer._comm.sendGcodeScript
+        p.patchComms()
+
+        # Suppress states in which we're running user configured event scripts
+        sgs.reset_mock()
+        p.d = MagicMock(state=Driver._state_activating)
+        p._printer._comm.sendGcodeScript("FOO")
+        sgs.assert_not_called()
+
+        # Pass through states where default OctoPrint behavior should be obeyed
+        sgs.reset_mock()
+        p.d = MagicMock(state=Driver._state_printing)
+        p._printer._comm.sendGcodeScript("FOO")
+        sgs.assert_called()
+
+        # Passthru still happens despite exceptions
+        sgs.reset_mock()
+        p.d = MagicMock()
+        type(p.d).state = PropertyMock(side_effect=Exception("testing error"))
+        p._printer._comm.sendGcodeScript("FOO")
+        sgs.assert_called()
+
     def testDBNew(self):
-        p = mockplugin()
+        p = setupPlugin()
         with tempfile.TemporaryDirectory() as td:
             p._data_folder = td
             p._init_db()
 
     @patch("continuousprint.plugin.migrateScriptsFromSettings")
     def testDBMigrateScripts(self, msfs):
-        p = mockplugin()
+        p = setupPlugin()
         p._set_key(Keys.CLEARING_SCRIPT_DEPRECATED, "s1")
         p._set_key(Keys.FINISHED_SCRIPT_DEPRECATED, "s2")
         p._set_key(Keys.BED_COOLDOWN_SCRIPT_DEPRECATED, "s3")
@@ -103,7 +169,7 @@ class TestStartup(unittest.TestCase):
             msfs.assert_called_with("s1", "s2", "s3")
 
     def testDBWithLegacySettings(self):
-        p = mockplugin()
+        p = setupPlugin()
         p._set_key(
             Keys.QUEUE_DEPRECATED,
             json.dumps(
@@ -129,7 +195,7 @@ class TestStartup(unittest.TestCase):
             self.assertEqual(len(getJobsAndSets(DEFAULT_QUEUE)), 1)
 
     def testFileshare(self):
-        p = mockplugin()
+        p = setupPlugin()
         fs = MagicMock()
         p.get_local_addr = lambda: ("111.111.111.111:0")
         p._file_manager.path_on_disk.return_value = "/testpath"
@@ -139,14 +205,14 @@ class TestStartup(unittest.TestCase):
         fs.assert_called_with("111.111.111.111:0", "/testpath", logging.getLogger())
 
     def testFileshareAddrFailure(self):
-        p = mockplugin()
+        p = setupPlugin()
         fs = MagicMock()
         p.get_local_addr = MagicMock(side_effect=[OSError("testing")])
         p._init_fileshare(fs_cls=fs)  # Does not raise exception
         self.assertEqual(p._fileshare, None)
 
     def testFileshareConnectFailure(self):
-        p = mockplugin()
+        p = setupPlugin()
         fs = MagicMock()
         p.get_local_addr = lambda: "111.111.111.111:0"
         fs.connect.side_effect = OSError("testing")
@@ -154,7 +220,7 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._fileshare, fs())
 
     def testQueues(self):
-        p = mockplugin()
+        p = setupPlugin()
         QT = namedtuple("MockQueue", ["name", "addr"])
         p._queries.getQueues.return_value = [
             QT(name="LAN", addr="0.0.0.0:0"),
@@ -166,7 +232,7 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(len(p.q.queues), 2)  # 2 queues created, archive skipped
 
     def testDriver(self):
-        p = mockplugin()
+        p = setupPlugin()
         p.q = MagicMock()
         p._sync_state = MagicMock()
         p._printer_profile = None
@@ -178,12 +244,13 @@ class TestStartup(unittest.TestCase):
 
 class TestEventHandling(unittest.TestCase):
     def setUp(self):
-        self.p = mockplugin()
+        self.p = setupPlugin()
         self.p._spool_manager = None
         self.p._printer_profile = None
         self.p.d = MagicMock()
         self.p.q = MagicMock()
         self.p._sync_state = MagicMock()
+        self.p._plugin_manager.plugins.get.return_value = None
         self.p._setup_thirdparty_plugin_integration()
 
     def testTick(self):
@@ -243,7 +310,7 @@ class TestEventHandling(unittest.TestCase):
         )
 
     def testUploadNoAction(self):
-        self.p.on_event(Events.UPLOAD, dict())
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.gcode"))
         self.p.d.action.assert_not_called()
 
     def testUploadAddPrintableInvalidFile(self):
@@ -265,6 +332,12 @@ class TestEventHandling(unittest.TestCase):
         self.p._get_queue(DEFAULT_QUEUE).import_job.assert_called_with(
             "testpath.gjob", draft=False
         )
+
+    def testUploadAddSTL(self):
+        self.p._set_key(Keys.UPLOAD_ACTION, "add_printable")
+        self.p._add_set = MagicMock()
+        self.p.on_event(Events.UPLOAD, dict(path="testpath.stl", target="local"))
+        self.p._add_set.assert_called_with(draft=False, sd=False, path="testpath.stl")
 
     def testTempFileMovieDone(self):
         self.p._set_key(Keys.AUTOMATION_TIMELAPSE_ACTION, "auto_remove")
@@ -364,7 +437,7 @@ class TestEventHandling(unittest.TestCase):
 
 class TestGetters(unittest.TestCase):
     def setUp(self):
-        self.p = mockplugin()
+        self.p = setupPlugin()
         self.p._spool_manager = None
         self.p._printer_profile = None
         self.p.d = MagicMock()
@@ -415,7 +488,7 @@ class TestGetters(unittest.TestCase):
 
 class TestAutoReconnect(unittest.TestCase):
     def setUp(self):
-        self.p = mockplugin()
+        self.p = setupPlugin()
 
     def testOfflineAutoReconnectDisabledByDefault(self):
         # No need to _set_key here, since it should be off by default (prevent unexpected
@@ -467,7 +540,7 @@ class TestAutoReconnect(unittest.TestCase):
 
 class TestAnalysis(unittest.TestCase):
     def setUp(self):
-        self.p = mockplugin()
+        self.p = setupPlugin()
 
     def testInitAnalysisNoFiles(self):
         self.p._file_manager.list_files.return_value = dict(local=dict())
@@ -562,7 +635,7 @@ class TestCleanupFileshare(unittest.TestCase):
                 {"hash": "d", "peer_": "peer2", "acquired_by_": None},
             ]
         )
-        self.p = mockplugin()
+        self.p = setupPlugin()
         self.p.fileshare_dir = self.td.name
         self.p.q = MagicMock()
         self.p.q.queues.items.return_value = [("q", q)]
@@ -588,7 +661,7 @@ class TestCleanupFileshare(unittest.TestCase):
 
 class TestLocalAddressResolution(unittest.TestCase):
     def setUp(self):
-        self.p = mockplugin()
+        self.p = setupPlugin()
 
     @patch("continuousprint.plugin.socket")
     def testResolutionViaCheckAddrOK(self, msock):

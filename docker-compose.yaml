@@ -12,6 +12,9 @@ services:
     network_mode: "host"
     environment:
       - "PYTHONUNBUFFERED=1"
+    hostname: "octoprint"
+    networks:
+      - preprintservice
   dev2:
     image: continuousprint-dev
     build: .
@@ -23,3 +26,8 @@ services:
       - "/tmp:/tmp"
     environment:
       - "PYTHONUNBUFFERED=1"
+
+networks:
+  preprintservice:
+    name: octoprint-preprintservice_default
+    external: true
