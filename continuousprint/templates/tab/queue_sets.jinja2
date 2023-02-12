@@ -1,0 +1,103 @@
+<div id="queue_sets" data-bind="cpsortable: {foreach: sets, as: 'set', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove, group: 'sets'}}, css: {'empty': sets().length < 1, 'draft': job.draft, 'highlight': $root.draggingSet() && job.draft() && queue.ready()}" class="sets">
+  <div class="accordion-group">
+    <div class="accordion-heading">
+      <div class="queue-row-container">
+          <i class="fas fa-grip-vertical" data-bind="visible: job.draft"></i>
+          <p class="file-name" style="cursor:pointer" data-bind="click: $root.expand, style: { 'font-weight': queue.local_active_set() === id ? 'bold': null }">
+          <i class="fa" data-bind="css: expanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+          <span class="materials" data-bind="visible: materials().length > 0, foreach: materials">
+          <span class="label" data-bind="attr: {title: title}, text: shortName, style: {'background-color': bgColor, 'color': color}"></span>
+            </span>
+            <span data-bind="text: shortName"/>
+          </p>
+          <div class="set_warning has_title" data-bind="hidden: profile_matches() || missing_file()" title="Set profile doesn't match this printer and will be skipped">
+            <i class="fas fa-angle-double-right"  style="margin-top: 3px; opacity: 0.5;"></i>
+          </div>
+          <div class="set_warning has_title" data-bind="hidden: !missing_file()" title="File is missing; this will be skipped">
+            <i class="fas fa-exclamation-triangle" style="color: #aa0000"></i>
+          </div>
+          <!-- ko if: !job.draft() || queue.active_sets().indexOf(id) !== -1 -->
+          <div class="progress" title="The number of iterations out of the total for this iteration/run of the job" data-bind="hidden: !profile_matches() || missing_file(), css: { 'active': $root.status() === 'Printing',  'progress-striped': queue.active_sets().indexOf(id) !== -1 }">
+            <div class="progresstext" data-bind="text: progress_text"></div>
+            <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
+            <div data-bind="visible: queue.active_sets().indexOf(id) !== -1, style: { width: pct_active() }" class="bar active"></div>
+          </div>
+          <!-- /ko -->
+          <!-- ko if: job.draft() && queue.active_sets().indexOf(id) === -1 -->
+            <div class="completed" data-bind="text: $root.humanize(completed())"></div>
+            <!-- _vkenabled fixes dynamic form bug on virtual keyboard: https://github.com/xontab/chrome-virtual-keyboard/issues/5 -->
+
+            <input class="count fa fa-text count-box" type="number" min="0" data-bind="textInput: count, attr: {'_vkenabled': false}, event: {keypress: job.onEnter, focus: onCountFocus, blur: onCountBlur}"></input>
+            <input class="remaining fa fa-text count-box" type="number" min="0" data-bind="textInput: remaining, attr: {'_vkenabled': false}, event: {keypress: job.onEnter}"></input>
+            <div class="total" data-bind="text: $root.humanize(length_remaining())"></div>
+          <!-- /ko -->
+        </div>
+      </div>
+    <div class="accordion-body collapse" data-bind="css: {'in': set.expanded}">
+      <div class="accordion-inner">
+        <div class="queue-set-list">
+          <div class="full">
+            <div>Full path: <strong data-bind="text: path"></strong></div>
+            <div>
+              Profiles:
+              <span data-bind="visible: set.profiles().length === 0 && !job.draft()">any</span>
+              <span data-bind="foreach: set.profiles">
+                <span class="label label-info">
+                  <i style="cursor: pointer", class="fas fa-times" data-bind="click: set.rmProfile, visible: job.draft"></i>
+                  <span data-bind="text:$data"></span>
+                </span>
+              </span>
+              <select class="profile-select" data-bind="event: {change: set.addProfile}, visible: job.draft">
+                  <option key=""></option>
+                  <!-- ko foreach: $root.cpPrinterProfiles -->
+                  <option data-bind="value: name, text: name"></option>
+                  <!-- /ko -->
+              </select>
+             </div>
+              <div class="hint">Hint: Print start and ending scripts can be adjusted in the plugin settings</div>
+          </div>
+          <div data-bind="visible: job.draft() && $root.materials().length > 0">
+            <h4>Materials</h4>
+            <div data-bind="foreach: new Array($root.extruders() || 0)">
+              <div>
+                <span data-bind="text: '' + $index() + ':'"></span>
+                <select data-bind="value: (set.materials()[$index()] || {}).key, event: {change: (_, evt) => set.set_material($index(), evt.target.value)}">
+                  <option key="">Any</option>
+                  <!-- ko foreach: $root.materials -->
+                    <option data-bind="value: value, text: text"></option>
+                  <!-- /ko -->
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="full gutter" data-bind="visible: job.draft()">
+            <div class="hint" data-bind="hidden: $root.hasSpoolManager()">
+            Hint: Install the <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a> plugin to enable <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">material selection</a>.
+            </div>
+            <div class="hint" data-bind="visible: $root.hasSpoolManager() && $root.materials().length == 0">
+            Hint: Add spools, then reload to enable <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">material selection</a>.
+            </div>
+            <button class="btn pull-right" data-bind="click: remove" title="delete set">
+              <i style="cursor: pointer" class="far fa-trash-alt"></i> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <div data-bind="foreach: totals().values_humanized, visible: draft">
+    <div class="job-stats">
+      <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
+      <div class="completed" data-bind="text: completed"></div>
+      <div class="count" data-bind="text: count"></div>
+      <div class="remaining" data-bind="text: remaining"></div>
+      <div class="total" data-bind="text: total"></div>
+      <div class="error" data-bind="visible: error, text=error"></div>
+    </div>
+  </div>
+  <div class="action-gutter">
+    <div class="btn" data-bind="visible: draft, click: editCancel">Cancel</div>
+    <div class="btn btn-primary cpq-leftpad" data-bind="visible: draft, click: editEnd">Save</div>
+  </div>
+</div>

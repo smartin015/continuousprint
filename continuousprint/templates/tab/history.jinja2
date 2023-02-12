@@ -1,0 +1,33 @@
+<div id="continuousprint_tab_history" class="tab-pane">
+  <div class="header">
+    <div>Status</div>
+    <div>Duration</div>
+    <div>Date</div>
+    <div>Time</div>
+  </div>
+  <div class="entries" data-bind="foreach: history">
+    <!-- ko if: $data.divider -->
+      <div class="separator">
+        <div data-bind="text: queue_name"></div>:
+        <div data-bind="text: job_name"></div>
+        <div class="line"></div>
+        <div data-bind="text: set_path"></div>
+      </div>
+    <!-- /ko -->
+    <!-- ko ifnot: $data.divider -->
+    <div class="entry" data-bind="css: {'success': result().startsWith('success')}">
+        <div style="text-align: left">
+          <i data-bind="css: icon_class"></i>
+          <span data-bind="text:result"></span>
+          <div class="timelapse_thumbnail" data-bind="visible: thumbURL">
+            <i class="fas fa-film"></i>
+            <img data-bind="attr: {src: thumbURL}, click: showTimelapse"></img>
+          </div>
+        </div>
+        <div data-bind="text:duration"></div>
+        <div data-bind="text:startedDate"></div>
+        <div data-bind="text:startedTime"></div>
+      </div>
+    <!-- /ko -->
+    </div>
+</div>

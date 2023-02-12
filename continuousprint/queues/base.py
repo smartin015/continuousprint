@@ -46,33 +46,33 @@ class AbstractQueue(ABC):
 
     @abstractmethod
     def resolve(self, path, peer, hash_) -> Optional[str]:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def acquire(self) -> bool:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def release(self) -> None:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def decrement(
         self,
     ) -> bool:  # Returns true if the job has more work, false if job complete+released
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def as_dict(self) -> dict:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def remove_jobs(self, job_ids) -> dict:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def reset_jobs(self, job_ids) -> dict:
-        raise NotImplementedError()
+        pass
 
 
 class AbstractEditableQueue(AbstractQueue):
@@ -80,20 +80,20 @@ class AbstractEditableQueue(AbstractQueue):
 
     @abstractmethod
     def mv_job(self, job_id, after_id):
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def edit_job(self, job_id, data):
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def get_job_view(self, job_id):
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def import_job_from_view(self, job_view):
         """Imports a JobView into storage. Returns ID of the imported job"""
-        raise NotImplementedError()
+        pass
 
 
 class AbstractFactoryQueue(AbstractEditableQueue):
@@ -101,16 +101,16 @@ class AbstractFactoryQueue(AbstractEditableQueue):
 
     @abstractmethod
     def add_job(self, name="") -> JobView:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def add_set(self, job_id, data) -> SetView:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def import_job(self, gjob_path, out_dir) -> dict:
-        raise NotImplementedError()
+        pass
 
     @abstractmethod
     def export_job(self, job_id):
-        raise NotImplementedError()
+        pass

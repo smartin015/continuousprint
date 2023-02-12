@@ -17,6 +17,9 @@ class MultiQueue(AbstractQueue):
         self.active_queue = None
         self.update_cb = update_cb
 
+    def resolve(self, path, peer, hash_) -> Optional[str]:
+        raise NotImplementedError()
+
     def update_peer_state(self, *args):
         for q in self.queues.values():
             if hasattr(q, "update_peer_state"):

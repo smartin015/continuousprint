@@ -1,0 +1,37 @@
+<div class="cp-header action-bar">
+  <div class="multiselect">
+    <div class="dropdown">
+      <a class="btn dropdown-toggle" data-toggle="dropdown">
+        <i style="cursor: pointer" data-bind="click: onChecked, css: (checkFraction() >= 1) ? 'fas fa-check-square' : ((checkFraction() > 0) ? 'fas fa-minus-square' : 'far fa-square')"></i>
+        <i style="cursor: pointer" class="fa fa-caret-down"></i>
+      </a>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
+        <li><a tabindex="-1" data-bind="click: batchSelect">All</a></li>
+        <li><a tabindex="-1" data-bind="click: batchSelect">None</a></li>
+        <li class="divider"></li>
+        <li><a tabindex="-1" data-bind="click: batchSelect">Empty Jobs</a></li>
+        <li><a tabindex="-1" data-bind="click: batchSelect">Unstarted Jobs</a></li>
+        <li><a tabindex="-1" data-bind="click: batchSelect">Incomplete Jobs</a></li>
+        <li><a tabindex="-1" data-bind="click: batchSelect">Completed Jobs</a></li>
+      </ul>
+    </div>
+    <div class="btn-group cpq-leftpad">
+      <button class="btn" data-bind="visible: checkFraction() > 0, click: deleteSelected" title="Delete selected">
+        <i style="cursor: pointer" class="far fa-trash-alt"></i>
+      </button>
+      <button class="btn" data-bind="visible: checkFraction() > 0, click: resetSelected" title="Reset selected progress">
+        <i style="cursor: pointer" class="fas fa-redo"></i>
+      </button>
+      <button class="btn" data-bind="visible: checkFraction() > 0 && name === 'local', click: exportSelected" title="Save .gjob to files list">
+        <i style="cursor: pointer" class="far fa-save"></i>
+      </button>
+    </div>
+  </div>
+  <div style="flex: 1; text-align: right">
+    <span data-bind="visible: $root.loadout().length > 1, text: name"></span>
+    <span data-bind="attr: {title: fullDetails}, visible: details() !== ''" style="cursor: pointer; display: inline-block">
+      <span data-bind="text: details"></span>
+      <i class="fas fa-info-circle"></i>
+    </span>
+  </div>
+</div>

@@ -1,0 +1,121 @@
+<div id="settings_continuousprint_scripts" class="tab-pane">
+  <form class="form-horizontal">
+    <legend>Scripts</legend>
+    <p>
+      <strong>Scripts</strong> are made with GCODE and are attached to <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('events')">Events</a> to run whenever that event occurs.
+    </p>
+    <p>
+    For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
+    </p>
+
+    <div class="alert alert-error" data-bind="hidden: allUniqueScriptNames">
+      <p>
+      <i class="fas fa-exclamation-circle"></i> Two or more scripts have the same name.
+      </p>
+      <p>
+        All scripts must have a unique name for the configuration to be valid.
+      </p>
+    </div>
+
+    <div class="scripts accordion" data-bind="foreach: scripts">
+      <div class="accordion-group">
+        <div class="accordion-heading header-row">
+          <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: () => expanded(true)"></i>
+          <div style="flex: 1">
+            <div data-bind="hidden: expanded">
+              <div data-bind="text: name"></div>
+              <div class="subheader" data-bind="visible: registrations().length > 0">Fires on <span data-bind="text: registrations().join(', ')"></span></div>
+            </div>
+            <div data-bind="visible: expanded">
+              <input type="text" placeholder="Script Name" data-bind="value: name"></input>
+            </div>
+          </div>
+          <div style="width: 30px">
+            <div data-bind="click: $root.downloadScript" title="Download"><i class="fa fa-download"></i></div>
+          </div>
+          <div style="width: 30px">
+            <div data-bind="click: $root.rmScript" title="Delete"><i class="far fa-trash-alt"></i></div>
+          </div>
+        </div>
+        <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
+          <div class="accordion-inner">
+            <textarea placeholder="GCODE goes here" rows="8" class="input-block-level" data-bind="value: body"></textarea>
+            <button class="btn btn-primary pull-right" data-bind="click: () => expanded(false)">Done</button>
+          </div>
+        </div>
+      </div>
+    </div> <!-- foreach scripts -->
+
+    <div style="text-align: right">
+      <button class="btn" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
+        <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Import Defaults from Current Profile
+      </button>
+
+      <label class="btn">
+        <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadScriptFromFile($element.files[0]) }}"/>
+        <i class="fa fa-upload"></i>&nbsp;Upload File
+      </label>
+
+      <button class="btn" data-bind="click: () => addScript()" title="Create a new script">
+        <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Script
+      </button>
+    </div>
+
+    <legend>Preprocessors</legend>
+    <p>
+      <strong>Preprocessors</strong> are optional Python-like expressions that change the behavior of Scripts assigned in the <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('events')">Events</a> tab. Use these to add special running conditions or to inject dynamic values into your scripts.
+    </p>
+    <p>
+    For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">scripting guide</a>.
+    </p>
+
+    <div class="alert alert-error" data-bind="hidden: allUniquePreprocessorNames">
+      <p>
+      <i class="fas fa-exclamation-circle"></i> Two or more preprocessors have the same name.
+      </p>
+      <p>
+        All preprocessors must have a unique name for the configuration to be valid.
+      </p>
+    </div>
+
+    <div class="scripts accordion" data-bind="foreach: preprocessors">
+      <div class="accordion-group">
+        <div class="accordion-heading header-row">
+          <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: () => expanded(true)"></i>
+          <div style="flex: 1">
+            <div data-bind="hidden: expanded">
+              <div data-bind="text: name"></div>
+              <div class="subheader" data-bind="visible: registrations().length > 0">Fires on <span data-bind="text: registrations().join(', ')"></span></div>
+            </div>
+            <div data-bind="visible: expanded">
+              <input placeholder="Preprocessor name" type="text" data-bind="value: name"></input>
+            </div>
+          </div>
+          <div style="width: 30px">
+            <div data-bind="click: $root.downloadPreprocessor" title="Download"><i class="fa fa-download"></i></div>
+          </div>
+          <div style="width: 30px">
+            <div data-bind="click: $root.rmPreprocessor" title="Delete"><i class="far fa-trash-alt"></i></div>
+          </div>
+        </div>
+        <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
+          <div class="accordion-inner">
+            <textarea placeholder="Pythonic code goes here" rows="8" class="input-block-level" data-bind="value: body"></textarea>
+            <button class="btn btn-primary pull-right" data-bind="click: () => expanded(false)">Done</button>
+          </div>
+        </div>
+      </div>
+    </div> <!-- foreach preprocessors -->
+
+    <div style="text-align: right">
+      <label class="btn">
+        <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadPreprocessorFromFile($element.files[0]) }}"/>
+        <i class="fa fa-upload"></i>&nbsp;Upload File
+      </label>
+
+      <button class="btn" data-bind="click: () => addPreprocessor()" title="Create a new Preprocessor">
+        <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Preprocessor
+      </button>
+    </div>
+  </form>
+</div> <!-- /settings_continuousprint_scripts -->

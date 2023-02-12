@@ -99,8 +99,7 @@ class Queue(Model):
     name = CharField(unique=True)
     created = DateTimeField(default=datetime.datetime.now)
     rank = FloatField()
-    addr = CharField(null=True)  # null == local queue
-    registry = CharField(null=True)  # Only present for WAN (peerprint) queues
+    addr = CharField(null=True)  # null == local (offline) queue
     strategy = CharField()
 
     class Meta:
@@ -111,7 +110,6 @@ class Queue(Model):
             name=self.name,
             addr=self.addr,
             strategy=self.strategy,
-            registry=self.registry,
         )
         return q
 
@@ -519,15 +517,6 @@ def init_queues(db_path, logger=None):
                     )
                 migrate(
                     migrator.add_column("set", "metadata", Set.metadata),
-                )
-                details.schemaVersion = "0.0.4"
-                details.save()
-
-            if details.schemaVersion == "0.0.3":
-                if logger is not None:
-                    logger.warning(f"Updating schema from {details.schemaVersion}")
-                migrate(
-                    migrator.add_column("queue", "registry", Queue.registry),
                 )
                 details.schemaVersion = "0.0.4"
                 details.save()

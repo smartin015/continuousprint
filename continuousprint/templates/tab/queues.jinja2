@@ -1,0 +1,72 @@
+<div id="continuousprint_tab_queues" class="tab-pane active" data-bind="foreach: {data: queues, as: 'queue'}">
+  <div class="cp-queue" data-bind="css: {'loading': $root.loading() || !ready()}">
+  {% include "plugin_continuousprint/tab/queue_action_bar.jinja2" %}
+    <div class="queue-header">
+      <div style="flex: 1" class="has_title" title="Jobs are collections of Sets (print files) run one or more times">Job<sup>?</sup></div>
+      <div style="flex: 1" class="has_title" title="The number of iterations/runs completed out of the total. For Sets (print files), this is progress on the current iteration of the Job.">Progress<sup>?</sup></div>
+    </div>
+    <!-- `cpsortable` is renamed from `sortable` - see https://github.com/smartin015/continuousprint/issues/14 -->
+    <div class="accordion queue-list">
+      <div class="hint" data-bind="visible: jobs().length == 0 && name === 'local'">
+      Hint: click New Job above or the <i class="fas fa-plus"></i> next to a file to add it to the queue.
+      </div>
+      <div class="hint" data-bind="visible: jobs().length == 0 && name !== 'local'">
+        Hint: drag a job here from the local queue to send it to printers on the network.
+      </div>
+      <div data-bind="cpsortable: {foreach: jobs, as: 'job', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd, onMove: $root.sortMove}}, css: {'loading': $root.loading() || !ready(), 'local': name === 'local', 'highlight': $root.draggingJob() && ready()}" style="width: 100%">
+      <div class="accordion-group job" data-bind="css: {acquired: acquiredBy() !== undefined, draft: draft, shiftsel: queue.shiftsel() === $index()}">
+        <!-- ko if: !draft() -->
+        <div class="btn floatedit btn-primary" data-bind="click: editStart" style="cursor: pointer">
+            <i class="fas fa-edit"></i>
+        </div>
+        <!-- /ko -->
+        <div class="accordion-heading job-header">
+          <div class="queue-row-container">
+          <i class="fas fa-grip-vertical"></i>
+            <i style="cursor: pointer" data-bind="hidden: draft() || (acquiredBy() && $root.active()), css: selected() ? 'fas fa-check-square' : 'far fa-square', event: {mousedown: queue.onChecked}"></i>
+            <i data-bind="visible: acquiredBy(), attr: {title: 'Printer: ' + acquiredBy()}" class="fas fa-cube"></i>
+            <!-- ko if: draft -->
+            <input class="job-name" type="text" data-bind="textInput: _name, attr: {'_vkenabled': false}, event: {keypress: onEnter}"></input>
+            <span>x</span>
+            <input title="How many additional times to run this job (from now onwards)" class="remaining fa fa-text count-box" type="number" min="0" data-bind="textInput: remaining, attr: {'_vkenabled': false}, event: {keypress: onEnter, blur: job.onBlur}"></input>
+            <span title="How many additional times to run this job (from now onwards)" class="has_title">
+              <sup>?</sup>
+            </span>
+            <span>&nbsp&#8594;&nbsp;</span>
+            </span>
+            <!-- /ko -->
+            <!-- ko if: !draft() -->
+            <div class="job-name" data-bind="text: _name"></div>
+            <!-- /ko -->
+            <div class="progress" title="The number of iterations/runs completed out of the total for the job" data-bind="css: { 'active': $root.status() === 'Printing', 'progress-striped': queue.active_jobs().indexOf(id()) !== -1}">
+              <div class="progresstext" data-bind="text: $root.humanize(completed()) + '/' + $root.humanize(count())"></div>
+              <div data-bind="visible: pct_complete() !== '0%', style: { width: pct_complete() }" class="bar bar-success"></div>
+              <div data-bind="visible: queue.active_jobs().indexOf(id()) !== -1, style: { width: pct_active() }" class="bar active"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-body collapse in">
+          <div class="accordion-inner">
+            <!-- ko if: draft() -->
+              <div class="edit-header">
+                <div style="flex: 1;" class="has_title" title="Sets are print files, repeated multiple times">Set<sup>?</sup></div>
+                <!-- ko foreach: Object.values(CP_STATS_DIMENSIONS) -->
+                <div data-bind="attr:{title: $data.desc, class: $data.name + ' has_title'}">
+                  <span data-bind="text: $data.display"></span><sup>?</sup>
+                </div>
+                <!-- /ko -->
+              </div>
+            <!-- /ko -->
+            {% include "plugin_continuousprint/tab/queue_sets.jinja2" %}
+          </div>
+        </div>
+      </div>
+      {% include "plugin_continuousprint/tab/queue_totals.jinja2" %}
+    </div> <!-- accordion queue-list -->
+  </div> <!-- cp-queue -->
+</div><!-- tab foreach queues -->
+
+<div class="hint" data-bind="hidden: $root.queues().length > 1">
+Hint: Set up additional queues (including <a href="https://smartin015.github.io/continuousprint/lan-queues" target="_blank">LAN queues</a>) in the plugin settings.
+</div>

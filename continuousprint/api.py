@@ -314,7 +314,25 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.GETQUEUES)
     def get_queues(self):
-        return json.dumps([q.as_dict() for q in queries.getQueues()])
+        qs = [q.as_dict() for q in queries.getQueues()]
+        local_ads = [a for a in self._peerprint().get_advertisements(local=True)]
+        global_ads = [a for a in self._peerprint().get_advertisements(local=False)]
+        return json.dumps(dict(queues=qs, local_ads=local_ads, global_ads=global_ads))
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/peerprint/search", methods=["GET"])
+    @restricted_access
+    @cpq_permission(Permission.GETQUEUES)
+    def search_networks(self):
+        return json.dumps(self._peerprint().get_networks())
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/peerprint/generate_psk", methods=["GET"])
+    @restricted_access
+    def gen_psk(self):
+        from peerprint.data.psk_gen import gen_phrase
+
+        return json.dumps(gen_phrase(k=5))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/queues/edit", methods=["POST"])

@@ -1,0 +1,18 @@
+<div id="cpq_removeConfirmDialog" class="modal hide fade">
+    <div class="modal-header">
+      <a href="https://smartin015.github.io/continuousprint/"><img src="plugin/continuousprint/static/img/CPQ.svg" alt="Continuous Print" style="height: 60px;" class="cpq_logo"></a>
+      <h2 class="modal-title">File is in queue. Are you sure?</h2>
+    </div>
+    <div class="modal-body">
+        <p>
+          The file is currently present in the Continuous Print Queue.
+        <p>
+        <p>
+          If you delete this file, its queue entries will be skipped.
+        </p>
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-cancel" data-dismiss="modal" aria-hidden="true">Cancel</button>
+        <button class="btn btn-danger btn-confirm" data-bind="click: removeConfirm">Confirm</button>
+    </div>
+</div>

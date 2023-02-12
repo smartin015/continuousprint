@@ -44,6 +44,9 @@ class LocalQueue(AbstractFactoryQueue):
 
     # --------------------- Begin AbstractQueue ------------------
 
+    def resolve(self, path, peer, hash_):
+        raise NotImplementedError()
+
     def acquire(self) -> bool:
         if self.job is not None:
             return True

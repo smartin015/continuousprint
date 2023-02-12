@@ -4,7 +4,6 @@ FROM python:3.7
 # ZMQ libraries are peerprint dependencies - TODO need to find a way to auto install
 # Also install vim for later edit based debugging
 RUN apt-get update && apt-get -y install --no-install-recommends ffmpeg libczmq-dev libzmq5 vim && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get -y install --no-install-recommends ffmpeg vim && rm -rf /var/lib/apt/lists/*
 
 # IPFS installation for LAN filesharing
 RUN wget https://dist.ipfs.tech/kubo/v0.15.0/kubo_v0.15.0_linux-amd64.tar.gz \

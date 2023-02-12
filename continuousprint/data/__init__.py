@@ -158,9 +158,9 @@ class Keys(Enum):
     )  # One of "do_nothing", "add_draft", "add_printable"
     INFER_PROFILE = ("cp_infer_profile", True)
     AUTO_RECONNECT = ("cp_auto_reconnect", False)
-    PEERPRINT_SERVER_PATH = (
-        "cp_peerprint_server_path",
-        "/home/oprint/continuousprint/peerprint/peerprint/server/peerprint_server",
+    PEERPRINT_ADDR = (
+        "cp_peerprint_addr",
+        "",
     )
     SKIP_GCODE_COMMANDS = ("cp_skip_gcode_commands", "")
     SLICER = ("cp_slicer", "")
@@ -191,7 +191,17 @@ ASSETS = dict(
         "js/continuousprint_settings.js",
         "js/continuousprint.js",
     ],
-    css=["css/continuousprint.css"],
+    css=[
+        "css/continuousprint.css",
+        # TODO render CSS
+    ],
+    less=[
+        "less/continuousprint_history.less",
+        "less/continuousprint_settings.less",
+        "less/continuousprint_shared.less",
+        "less/continuousprint_tab.less",
+        "less/continuousprint_themeify_compat.less",
+    ],
 )
 
 TEMPLATES = [

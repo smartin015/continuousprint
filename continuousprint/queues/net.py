@@ -1,45 +1,25 @@
 import uuid
-import os
+import time
 import json
+from threading import Thread
 from typing import Optional
 from bisect import bisect_left
-from peerprint.wan.wan_queue import PeerPrintQueue, ChangeType
-from peerprint.wan.proc import ServerProcessOpts as PPOpts
-from ..storage.peer import PeerJobView, PeerQueueView, PeerSetView
-from ..storage.rank import Rational, rational_intermediate
+from ..storage.peer import PeerJobView
+from ..storage.database import JobView, SetView
 from pathlib import Path
 from .base import AbstractEditableQueue, QueueData, Strategy, ValidationError
 import dataclasses
 
 
-class Codec:
-    PROTOCOL_JSON = "json"
-
-    @classmethod
-    def decode(self, data, protocol, logger):
-        if protocol == Codec.PROTOCOL_JSON:
-            try:
-                return json.loads(data)
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON decode error: {str(e)}")
-        else:
-            logger.error(f"No decoder for protocol '{protocol}'")
-
-    @classmethod
-    def encode(self, manifest):
-        return (json.dumps(manifest).encode("utf8"), self.PROTOCOL_JSON)
-
-
-class WANQueue(AbstractEditableQueue):
+class NetworkQueue(AbstractEditableQueue):
     def __init__(
         self,
-        binary_path,
-        opts,
+        ns,
+        p2p_server,
         logger,
         strategy: Strategy,
         update_cb,
         fileshare,
-        keydir,
         profile,
         path_on_disk_fn,
     ):
@@ -47,64 +27,94 @@ class WANQueue(AbstractEditableQueue):
         self._logger = logger
         self._profile = profile
         self.strategy = strategy
-        self.ns = opts.queue
+        self.ns = ns
+        self._srv = p2p_server
         self.job_id = None
         self.set_id = None
         self.update_cb = update_cb
         self._fileshare = fileshare
         self._path_on_disk = path_on_disk_fn
 
-        self.wq = PeerPrintQueue(
-            opts,
-            Codec,
-            binary_path,
-            self._on_update,
-            logger=self._logger,
-            keydir=keydir,
-        )
-
-    # ---------- WAN queue methods ---------
-
-    def is_ready(self) -> bool:
-        return self.wq.is_ready()
+    # ---------- Network queue methods ---------
 
     def connect(self):
-        self.wq.connect()
+        self._logger.debug("Waiting for p2p server...")
+        while True:
+            if self._srv.is_ready() and self._srv.ping():
+                break
+            time.sleep(1.0)
+        Thread(target=self._loop_stream, daemon=True).start()
+
+    def resolve(self, path, peer, hash_):
+        raise NotImplementedError()
+
+    def is_ready(self) -> bool:
+        return self._srv.is_ready()
+
+    def _loop_stream(self):
+        while True:
+            self._logger.debug("starting event stream")
+            evts = self._srv.stream_events(self.ns)
+            for e in evts:
+                self._on_update(e)
 
     def _on_update(self, changetype, prev, nxt):
-        print("TODO filter change", changetype)
-        self.update_cb(self)
+        self._logger.debug("_on_update:", e.__repr__())
+        raise Exception("TODO")
+        # self.update_cb(self)
 
-    def destroy(self):
-        self.wq.destroy()
-
-    def update_peer_state(self, status, profile):
-        if self.wq is not None:
-            self.wq.syncPeer(status, profile)
+    def update_peer_state(self, name, status, profile):
+        if self._srv is not None:
+            self._srv.set_status(
+                self.ns,
+                active_unit=json.dumps(self._active_set()),
+                name=name,
+                status=str(status),
+                profile=str(profile),
+            )
 
     def set_job(self, jid: str, manifest: dict):
         # Preserve peer address of job if present in the manifest
-        return self.wq.setJob(jid, manifest, addr=manifest.get("peer_", None))
+        # TODO construct spb.Record
+        return self._srv.set_record(
+            self.ns,
+            manifest=manifest,
+            approver=manifest.get("peer_", None),
+            uuid=jid,
+            # TODO rank, created,tags
+        )
 
-    # -------- Wrappers around PeerPrintQueue ------
+    def get_gjob_dirpath(self, cid):
+        # fetch unpacked job from fileshare (may be cached) and return the real path
+        return self._fileshare.fetch(hash_, unpack=True)
+
+    # -------- Wrappers around NetworkQueue to add/remove metadata ------
 
     def _get_jobs(self) -> list:
-        return list(self.wq.getJobs().values())
+        if not self._srv.is_ready():
+            return []
+        records = [r for r in self._srv.get_records(self.ns)]
+        return [json.loads(r.manifest) for r in records]
 
     def _get_job(self, jid) -> dict:
-        return self.wq.getJobs().get(jid)
+        if not self._srv.is_ready():
+            return None
+        for r in self._srv.get_records(self.ns, uuid=jid):
+            if r.approver == r.signer:
+                return json.loads(r.manifest)
 
     def _get_peers(self) -> list:
-        return self.wq.getPeers().sample
+        if not self._srv.is_ready():
+            return []
+        return [p for p in self._srv.get_peers(self.ns)]
 
     # --------- begin AbstractQueue --------
 
-    def get_job(self) -> Optional[PeerJobView]:
+    def get_job(self) -> Optional[JobView]:
         # Override to ensure the latest data is received
         return self.get_job_view(self.job_id)
 
-    def get_set(self) -> Optional[PeerSetView]:
-        print("get_set with set_id", self.set_id)
+    def get_set(self) -> Optional[SetView]:
         if self.job_id is not None and self.set_id is not None:
             # Linear search through sets isn't efficient, but it works.
             j = self.get_job_view(self.job_id)
@@ -112,46 +122,40 @@ class WANQueue(AbstractEditableQueue):
                 if s.id == self.set_id:
                     return s
 
-    def resolve(self, path, peer, hash_):
-        base_dir = self.q.get_gjob_dirpath(self.peer, self.hash)
-        return str(Path(base_dir) / self.path)
-
     def _peek(self):
-        if self.wq is None:
+        if not self.is_ready():
             return (None, None)
         for data in self._get_jobs():
             acq = data.get("acquired_by_")
             if acq is not None and acq != self.addr:
                 continue  # Acquired by somebody else, so don't consider for scheduling
-            job = PeerJobView()
-            job.load_dict(data, PeerQueueView(self))
+            job = PeerJobView(data, self)
             s = job.next_set(self._profile)
             if s is not None:
                 return (job, s)
         return (None, None)
 
     def acquire(self) -> bool:
-        if self.wq is None:
+        if not self.is_ready():
             return False
         (job, s) = self._peek()
-        if job is not None and s is not None:
-            self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
-            if self.wq.acquireJob(job.id):
-                self.job_id = job.id
-                self.set_id = s.id
-                self._logger.debug(
-                    f"acquire() success for job id {job.id}, set id {s.id}"
-                )
-                return True
-            else:
-                self._logger.debug("acquire() failed")
-                return False
-        else:
+        if job is None or s is None:
             return False
+        raise Exception("TODO set_completion to acquire job")
+        # if acquireJob(job.id):
+        #     self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
+        #     self.job_id = job.id
+        #     self.set_id = s.id
+        #     self._logger.debug("acquire() success")
+        #     return True
+        # else:
+        #     self._logger.debug("acquire() failed")
+        #     return False
 
     def release(self) -> None:
         if self.job_id is not None:
-            self.wq.releaseJob(self.job_id)
+            raise Exception("TODO set_completion to release job")
+            # releaseJob(self.job_id)
             self.job_id = None
             self.set_id = None
 
@@ -178,7 +182,7 @@ class WANQueue(AbstractEditableQueue):
     def as_dict(self) -> dict:
         jobs = []
         peers = {}
-        if self.wq is not None:
+        if self.is_ready():
             jobs = self._get_jobs()
             peers = self._get_peers()
             for j in jobs:
@@ -187,7 +191,7 @@ class WANQueue(AbstractEditableQueue):
         return dataclasses.asdict(
             QueueData(
                 name=self.ns,
-                addr="",
+                addr="p2p",
                 strategy=self.strategy.name,
                 jobs=jobs,
                 peers=peers,
@@ -205,13 +209,15 @@ class WANQueue(AbstractEditableQueue):
             for s in j.get("sets", []):
                 s["remaining"] = s["count"]
                 s["completed"] = 0
-            self.wq.setJob(jid, j, addr=j["peer_"])
+            raise Exception("TODO set_record to reset remaining/completed")
+            # setJob(jid, j, addr=j["peer_"])
 
     def remove_jobs(self, job_ids) -> dict:
         n = 0
         for jid in job_ids:
-            if self.wq.removeJob(jid) is not None:
-                n += 1
+            raise Exception("TODO set_record to delete job")
+            # if removeJob(jid) is not None:
+            #    n += 1
         return dict(jobs_deleted=n)
 
     # --------- end AbstractQueue ------
@@ -221,10 +227,7 @@ class WANQueue(AbstractEditableQueue):
     def get_job_view(self, job_id):
         j = self._get_job(job_id)
         if j is not None:
-            job = PeerJobView()
-            job.load_dict(j, PeerQueueView(self))
-            print("Loaded view:", job.as_dict())
-            return job
+            return PeerJobView(j, self)
 
     def import_job_from_view(self, j, jid=None):
         err = self._validate_job(j)
@@ -240,31 +243,21 @@ class WANQueue(AbstractEditableQueue):
 
         # Propagate peer if importing from a PeerJobView
         # But don't fail with AttributeError if it's just a JobView
-        self.wq.setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
+        raise Exception("TODO set_record to propagate job peer when importing rom view")
+        # setJob(manifest["id"], manifest, addr=getattr(j, "peer", None))
         return manifest["id"]
 
-    def _get_rational(self, job_id, default):
-        if job_id is None:
-            return default
-        j = self._get_job(job_id)
-        if "rn" not in j or "rd" not in j:
-            return default
-        return Rational(j["rn"], j["rd"])
-
     def mv_job(self, job_id, after_id, before_id):
-        rx = self._get_rational(after_id, Rational(0, 1))
-        ry = self._get_rational(before_id, Rational(1, 0))
-        dest = rational_intermediate(rx, ry)
-        j = self.get_job_view(job_id)
-        j.rank = dest
-        j.save()
+        raise Exception("TODO set_record to move job rank")
+        # jobs.mv(job_id, after_id)
 
     def _path_exists(self, fullpath):
         return Path(fullpath).exists()
 
-    def _validate_job(self, j: PeerJobView) -> str:
-        peer_profiles = set([p.profile or "UNKNOWN" for p in self._get_peers()])
-
+    def _validate_job(self, j: JobView) -> str:
+        peer_profiles = set(
+            [p.get("profile", dict()).get("name", "UNKNOWN") for p in self._get_peers()]
+        )
         for s in j.sets:
             sprof = set(s.profiles())
             # All sets in the job *must* have an assigned profile
@@ -290,6 +283,7 @@ class WANQueue(AbstractEditableQueue):
     def edit_job(self, job_id, data) -> bool:
         # For lan queues, "editing" a job is basically resubmission of the whole thing.
         # This is because the backing .gjob format is a single file containing the full manifest.
+
         j = self.get_job_view(job_id)
         for (k, v) in data.items():
             if k in ("id", "peer_", "queue"):
@@ -300,6 +294,14 @@ class WANQueue(AbstractEditableQueue):
                 )  # Set data must be translated into views, done by updateSets()
             else:
                 setattr(j, k, v)
+
+        # We must resolve the set paths so we have them locally, as editing can
+        # also occur on servers other than the one that submitted the job.
+        for s in j.sets:
+            s.path = s.resolve()
+
+        # We are also now the source of this job
+        j.peer = self.addr
 
         # Exchange the old job for the new job (reuse job ID)
         jid = self.import_job_from_view(j, j.id)

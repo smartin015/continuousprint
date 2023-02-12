@@ -1,0 +1,165 @@
+<div id="settings_continuousprint_queues" class="tab-pane">
+  <legend>Queues</legend>
+  <p>
+    Continuous Print uses <strong><a href="https://github.com/smartin015/peerprint" target="_blank">PeerPrint</a></strong>, an open framework for decentralized 3D printing networks. PeerPrint provides both local (LAN) and global (WAN) networks and supports encrypted, secure queueing.
+  </p>
+
+  <h4>Server</h4>
+  <p>
+    PeerPrint can run as a server on its own, or you can have OctoPrint start a subprocess on the device that's hosting OctoPrint.
+  </p>
+  <form class="form-horizontal"><fieldset>
+    <div class="control-group" title="Address of peerprint server - e.g. localhost:6789. If you wish to auto-host a server, leave this empty">
+      <label class="control-label">PeerPrint server address:</label>
+      <div class="controls">
+        <input type="text" placeholder="Leave empty for built-in server" data-bind="value: settings.settings.plugins.continuousprint.cp_peerprint_server_addr"></input>
+      </div>
+    </div>
+  </fieldset></form>
+
+
+  <h4>Lobby</h4>
+  <p>
+    Find and join existing networks! You can also advertise your own by adjusting the "Visibility" setting in your loadout below.
+  </p>
+  <p>
+    <strong>Any network in your loadout can print files on your 3D printer</strong>, so only join networks you trust.
+  </p>
+  <div>
+    <input type="text" placeholder="Search queues..." data-bind="text-value: queue_search"></input>
+  </div>
+
+  <div class="queue-header">
+    <div>Network</div>
+    <div style="flex: 1" class="has_title" title="TODO">Active Peers<sup>?</sup></div>
+    <div style="flex: 1" class="has_title" title="TODO">Type<sup>?</sup></div>
+    <div style="flex: 1" class="has_title" title="TODO">Password<sup>?</sup></div>
+  </div>
+  <div id="lobby" data-bind="foreach: lobby">
+    <div class="accordion-group">
+      <div class="accordion-heading">
+        <div class="queue-row-container">
+          <p class="row-name" style="cursor:pointer" data-bind="click: expanded(!expanded())">
+            <i class="fa" data-bind="css: expanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+            <span class="name" data-bind="text: name"></span>
+          </p>
+          <div data-bind="text: num_peers"></div>
+          <div data-bind="text: network"></div>
+          <div data-bind="text: psk_required"></div>
+        </div> <!-- queue-row-container -->
+      </div> <!-- accordion-heading -->
+      <div class="accordion-body collapse" data-bind="css: {'in': expanded}">
+        <div class="accordion-inner">
+          <div data-bind="text: description"></div>
+          <div class="lobby-network-details">
+            <div>
+              <strong>Configuration</strong>
+              <div>Key: Value</div>
+              <div>Key: Value</div>
+              <div>Key: Value</div>
+              <div>Key: Value</div>
+              <div>Key: Value</div>
+            </div>
+            <div>
+              <strong>Stats</strong>
+              <div>Key: Value</div>
+              <div>Key: Value</div>
+              <div>Key: Value</div>
+            </div>
+          </div>
+          <div class="action-gutter">
+            <button class="btn">Add to Loadout</button>
+          </div>
+        </div> <!-- accordion-inner -->
+      </div> <!-- accordion-body -->
+    </div> <!-- accordion-group -->
+  </div> <!-- lobby -->
+
+  <h4>Add Custom</h4>
+
+  <form class="form-horizontal"><fieldset>
+    <div class="control-group" title="TODO">
+      <label class="control-label">Network name</label>
+      <div class="controls">
+        <input type="text"
+          data-bind="value: custom.network"></input>
+      </div>
+    </div>
+    <div class="control-group" title="TODO">
+      <label class="control-label">Display name</label>
+      <div class="controls">
+        <input type="text"
+          data-bind="value: custom.display_name"></input>
+      </div>
+    </div>
+    <div class="control-group" title="TODO">
+      <label class="control-label">Rendezvous</label>
+      <div class="controls">
+        <input type="text"
+          data-bind="value: custom.rendezvous"></input>
+      </div>
+    </div>
+    <div class="control-group" title="TODO">
+      <label class="control-label">Pre-shared Key</label>
+      <div class="controls">
+        <input type="text"
+          data-bind="value: custom.psk"></input>
+        <i class="fas fa-sync" data-bind="click: generatePSK"></i>
+      </div>
+    </div>
+    <div class="control-group" title="TODO">
+      <label class="control-label">LAN only</label>
+      <div class="controls">
+        <input type="checkbox"
+          data-bind="value: custom.local"></input>
+      </div>
+    </div>
+  </fieldset></form>
+  <div class="action-gutter">
+    <button class="btn btn-confirm" data-bind="click: customQueueSubmit">Add to Loadout</button>
+  </div>
+
+  <h4>Loadout</h4>
+  <p>Drag to reorder queues, or click the arrows to expand and configure them.</p>
+  <p>Your printer will attempt to print all printable jobs in the top queue, then the next one down, etc.</p>
+  <div class="queue-header">
+    <div>Network</div>
+    <div style="flex: 1" class="has_title" title="TODO">Strategy<sup>?</sup></div>
+    <div style="flex: 1" class="has_title" title="TODO">Visibility<sup>?</sup></div>
+  </div>
+  <div data-bind="cpsortable: {foreach: queues, as: 'queue', options: {handle: '.fa-grip-vertical', onStart: $root.sortStart, onEnd: $root.sortEnd}}">
+    <div class="accordion-group">
+      <div class="accordion-heading">
+        <div class="queue-row-container">
+          <i class="fas fa-grip-vertical"></i>
+          <p class="row-name" style="cursor:pointer" data-bind="click: expanded(!expanded())">
+            <i class="fa" data-bind="css: expanded() ? 'fa-caret-down' : 'fa-caret-right'"></i>
+            <span data-bind="text: name"></span>
+          </p>
+          <div data-bind="text: strategy"></div>
+          <div data-bind="text: visibility"></div>
+        </div> <!-- queue-row-container -->
+      </div> <!-- accordion-heading -->
+      <div class="accordion-body collapse" data-bind="css: {'in': expanded}">
+        <div class="accordion-inner">
+          <div>Strategy:
+            <select>
+              <option>In-Order</option>
+            </select>
+          </div>
+          <div>Visibility:
+            <select>
+              <option>Unlisted</option>
+              <option>LAN Only</option>
+              <option>World</option>
+            </select>
+          </div>
+          <div class="action-gutter">
+            <button class="btn btn-danger">Delete</button>
+          </div>
+        </div> <!-- accordion-inner -->
+      </div> <!-- accordion-body -->
+    </div> <!-- accordion-group -->
+  </div> <!-- loadout sortable -->
+
+</div> <!-- settings_continuousprint_queues -->
