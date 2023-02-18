@@ -565,3 +565,15 @@ PrinterProfile:
     name: GridBot One
     selfClearing: false
     width: 300
+- name: Creality Ender 3 S1 Pro
+    make: Creality
+    model: Ender 3 S1 Pro
+    width: 220
+    depth: 220
+    height: 270
+    formFactor: rectangular
+    selfClearing: false
+    defaults:
+      clearBed: Pause
+      finished: Generic Off
+    extra_tags: []
