@@ -111,6 +111,8 @@ GScript:
       G91 ; Set relative for lift
       G0 Z10 ; lift z by 10
       G90 ;back to absolute positioning
+      M104 T0 S0 ; extruder heater off
+      M140 S0 ; heated bed heater off
       M190 R25 ; set bed to 25 and wait for cooldown
       G0 X220 Y220 ;move to back corner
       G0 X110 Y220 ;move to mid bed aft
