@@ -1,4 +1,4 @@
-from .abstract import Strategy, QueueData, AbstractFactoryQueue
+from .base import Strategy, QueueData, AbstractFactoryQueue
 import tempfile
 import shutil
 import os
@@ -43,6 +43,9 @@ class LocalQueue(AbstractFactoryQueue):
         return Path(path).exists()
 
     # --------------------- Begin AbstractQueue ------------------
+
+    def resolve(self, path, peer, hash_):
+        raise NotImplementedError()
 
     def acquire(self) -> bool:
         if self.job is not None:
@@ -134,7 +137,7 @@ class LocalQueue(AbstractFactoryQueue):
             self.add_set(j.id, s)
         return j.id
 
-    def mv_job(self, job_id, after_id):
+    def mv_job(self, job_id, after_id, before_id):
         return self.queries.moveJob(job_id, after_id)
 
     def edit_job(self, job_id, data):

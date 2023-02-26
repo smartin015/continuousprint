@@ -3,37 +3,27 @@ import logging
 import tempfile
 from datetime import datetime
 from unittest.mock import MagicMock
-from .abstract import Strategy
-from .abstract_test import (
+from .base import Strategy
+from .base_test import (
     AbstractQueueTests,
     EditableQueueTests,
     testJob as makeAbstractTestJob,
 )
-from .lan import LANQueue, ValidationError
-from ..storage.database import JobView, SetView
-from peerprint.lan_queue_test import LANQueueLocalTest as PeerPrintLANTest
+from .net import NetworkQueue, ValidationError
+from ..storage.peer import PeerJobView, PeerSetView
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 
-class LANQueueTest(unittest.TestCase, PeerPrintLANTest):
+class NetworkQueueTest(unittest.TestCase):
     def setUp(self):
-        PeerPrintLANTest.setUp(self)  # Generate peerprint LANQueue as self.q
-        self.q.q.syncPeer(
-            dict(
-                profile=dict(name="profile"),
-                fs_addr="mock_fs_addr",
-            ),
-            addr=self.q.q.addr,
-        )  # Helps pass validation
-        ppq = self.q  # Rename to make way for CPQ LANQueue
-
         self.ucb = MagicMock()
         self.fs = MagicMock()
         self.fs.fetch.return_value = "asdf.gcode"
-        self.q = LANQueue(
+        self.srv = MagicMock()
+        self.q = NetworkQueue(
             "ns",
-            "localhost:1234",
+            self.srv,
             logging.getLogger(),
             Strategy.IN_ORDER,
             self.ucb,
@@ -41,26 +31,30 @@ class LANQueueTest(unittest.TestCase, PeerPrintLANTest):
             dict(name="profile"),
             lambda path, sd: path,
         )
-        self.q.lan = ppq
+
+        # To pass validation, need a peer with the right profile
+        self.srv.stream_peers.return_value = [
+            dict(name="testpeer", profile=dict(name="profile"))
+        ]
         self.q._path_exists = lambda p: True  # Override path check for validation
 
 
-class TestAbstractImpl(AbstractQueueTests, LANQueueTest):
+class TestAbstractImpl(AbstractQueueTests, NetworkQueueTest):
     def setUp(self):
-        LANQueueTest.setUp(self)
-        self.jid = self.q.import_job_from_view(makeAbstractTestJob(0))
+        NetworkQueueTest.setUp(self)
+        self.jid = self.q.import_job_from_view(makeAbstractTestJob(0, cls=PeerJobView))
 
 
-class TestEditableImpl(EditableQueueTests, LANQueueTest):
+class TestEditableImpl(EditableQueueTests, NetworkQueueTest):
     def setUp(self):
-        LANQueueTest.setUp(self)
+        NetworkQueueTest.setUp(self)
         self.jids = [
-            self.q.import_job_from_view(makeAbstractTestJob(i))
+            self.q.import_job_from_view(makeAbstractTestJob(i, cls=PeerJobView))
             for i in range(EditableQueueTests.NUM_TEST_JOBS)
         ]
 
 
-class TestLANQueueNoConnection(LANQueueTest):
+class TestNetworkQueueNoConnection(NetworkQueueTest):
     def test_update_peer_state(self):
         self.q.update_peer_state("HI", {}, {}, {})  # No explosions? Good
 
@@ -69,7 +63,7 @@ class DummyQueue:
     name = "lantest"
 
 
-class TestLANQueueConnected(LANQueueTest):
+class TestNetworkQueueConnected(NetworkQueueTest):
     def setUp(self):
         super().setUp()
         self.q.lan = MagicMock()
@@ -89,11 +83,11 @@ class TestLANQueueConnected(LANQueueTest):
         self.fs.fetch.assert_called_with("123", "hash", unpack=True)
 
     def _jbase(self, path="a.gcode"):
-        j = JobView()
+        j = PeerJobView()
         j.id = 1
         j.name = "j1"
         j.queue = DummyQueue()
-        s = SetView()
+        s = PeerSetView()
         s.path = path
         s.id = 2
         s.sd = False
@@ -132,27 +126,27 @@ class TestLANQueueConnected(LANQueueTest):
         self.fs.post.assert_not_called()
 
 
-class TestLANQueueWithJob(LANQueueTest):
+class TestNetworkQueueWithJob(NetworkQueueTest):
     def setUp(self):
-        pass
+        self.skipTest("TODO")
 
     def test_acquire_success(self):
-        pass
+        self.skipTest("TODO")
 
     def test_acquire_failed(self):
-        pass
+        self.skipTest("TODO")
 
     def test_acquire_failed_no_jobs(self):
-        pass
+        self.skipTest("TODO")
 
     def test_release(self):
-        pass
+        self.skipTest("TODO")
 
     def test_decrement_more_work(self):
-        pass
+        self.skipTest("TODO")
 
     def test_decrement_no_more_work(self):
-        pass
+        self.skipTest("TODO")
 
     def test_as_dict(self):
-        pass
+        self.skipTest("TODO")

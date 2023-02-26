@@ -1,0 +1,39 @@
+<div id="settings_continuousprint_profile" class="tab-pane active">
+  <form class="form-horizontal">
+    <legend>Printer Profile</legend>
+    <p>If you tag queue items with <a href="https://smartin015.github.io/continuousprint/printer-profiles/">profiles</a>, they will be skipped unless they match this profile.</p>
+    <fieldset>
+      <div class="control-group" title="The manufacturer of the printer">
+        <label class="control-label">Manufacturer</label>
+        <div class="controls">
+          <select data-bind="foreach: printer_makes, value:selected_make">
+            <option data-bind="text: $data"/>
+          </select>
+        </div>
+      </div>
+      <div class="control-group" title="The model of the printer">
+        <label class="control-label">Model</label>
+        <div class="controls">
+          <select data-bind="foreach: printer_models, value: selected_model, event:{ change: modelChanged }">
+            <option data-bind="text: $data"/>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    After setting a profile, try loading community-contributed scripts on the <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('scripts')">Scripts &amp; Preprocessors</a> section.
+
+    <legend>Network Identity</legend>
+
+    <p>These settings identify the printer to LAN queues and other networked printers.</p>
+
+    <fieldset>
+      <div class="control-group" title="Name of this printer when viewed from other OctoPrint instances">
+        <label class="control-label">Hostname</label>
+        <div class="controls">
+        <textarea rows="1" data-bind="value: settings.settings.plugins.continuousprint.cp_network_name"></textarea>
+        </div>
+      </div>
+    </fieldset>
+  </form>
+</div> <!-- settings_continuousprint_profile -->

@@ -1,49 +1,52 @@
-from ..storage.database import JobView, SetView
-
-
 class DummyQueue:
     name = "foo"
 
 
-def testJob(inst):
-    s = SetView()
-    s.id = inst
-    s.path = f"set{inst}.gcode"
-    s.count = 2
-    s.remaining = 2
-    s.rank = 0
-    s.sd = False
-    s.material_keys = ""
-    s.metadata = None
-    s.profile_keys = "profile"
-    s.completed = 0
-    s.save = lambda: True
-    j = JobView()
-    s.job = j
-    j.id = inst
-    j.acquired = False
-    j.name = f"job{inst}"
-    j.count = 2
-    j.remaining = 2
-    j.sets = [s]
-    j.draft = False
-    j.rank = 0
-    j.queue = DummyQueue()
-    j.created = 5
-    j.save = lambda: True
+def testJob(inst, cls):
+    j = cls()
+    j.load_dict(
+        dict(
+            job=j,
+            id=inst,
+            acquired=False,
+            name=f"job{inst}",
+            count=2,
+            remaining=2,
+            draft=False,
+            rank=0,
+            peer_="foo",
+            created=5,
+            sets=[
+                dict(
+                    id=f"set{inst}",
+                    path=f"set{inst}.gcode",
+                    count=2,
+                    remaining=2,
+                    rank=0,
+                    sd=False,
+                    material_keys="",
+                    metadata=None,
+                    profiles=["profile"],
+                    completed=0,
+                )
+            ],
+        ),
+        DummyQueue(),
+    )
     return j
 
 
 class JobEqualityTests:
     def _strip(self, d, ks):
         for k in ks:
-            del d[k]
+            if k in d:
+                del d[k]
 
     def assertJobsEqual(self, v1, v2, ignore=[]):
         d1 = v1.as_dict()
         d2 = v2.as_dict()
         for d in (d1, d2):
-            self._strip(d, [*ignore, "id", "queue"])
+            self._strip(d, [*ignore, "id", "queue", "hash"])
         for s in d1["sets"]:
             self._strip(s, ("id", "rank"))
         for s in d2["sets"]:
@@ -51,23 +54,34 @@ class JobEqualityTests:
         self.assertEqual(d1, d2)
 
     def assertSetsEqual(self, s1, s2):
-        d1 = s1.as_dict()
-        d2 = s2.as_dict()
-        for d in (d1, d2):
-            self._strip(d, ("id", "rank"))
-        self.assertEqual(d1, d2)
+        self.assertTrue(s1 is not None)
+        self.assertTrue(s2 is not None)
+        for k in (
+            "path",
+            "count",
+            "metadata",
+            "material_keys",
+            "profile_keys",
+            "sd",
+            "remaining",
+            "completed",
+        ):
+            self.assertEqual(getattr(s1, k), getattr(s2, k))
 
 
 class AbstractQueueTests(JobEqualityTests):
+    maxDiff = None
+
     def setUp(self):
-        raise NotImplementedError("Must create queue as self.q with testJob() inserted")
+        raise NotImplementedError(
+            "Must create queue as self.q with testJob() inserted, also assign self.j"
+        )
 
     def test_acquire_get_release(self):
-        j = testJob(0)
         self.assertEqual(self.q.acquire(), True)
         self.assertEqual(self.q.get_job().acquired, True)
-        self.assertJobsEqual(self.q.get_job(), j, ignore=["acquired"])
-        self.assertSetsEqual(self.q.get_set(), j.sets[0])
+        self.assertJobsEqual(self.q.get_job(), self.j, ignore=["acquired", "sd"])
+        self.assertSetsEqual(self.q.get_set(), self.j.sets[0])
         self.q.release()
         self.assertEqual(self.q.get_job(), None)
         self.assertEqual(self.q.get_set(), None)
@@ -103,17 +117,17 @@ class EditableQueueTests(JobEqualityTests):
         )
 
     def test_mv_job_exchange(self):
-        self.q.mv_job(self.jids[1], self.jids[2])
+        self.q.mv_job(self.jids[1], self.jids[2], self.jids[3])
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (0, 2, 1, 3)])
 
     def test_mv_to_front(self):
-        self.q.mv_job(self.jids[2], None)
+        self.q.mv_job(self.jids[2], None, self.jids[1])
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (2, 0, 1, 3)])
 
     def test_mv_to_back(self):
-        self.q.mv_job(self.jids[2], self.jids[3])
+        self.q.mv_job(self.jids[2], self.jids[3], None)
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (0, 1, 3, 2)])
 

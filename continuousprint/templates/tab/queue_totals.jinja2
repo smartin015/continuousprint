@@ -1,0 +1,21 @@
+<div data-bind="visible: hasDraftJobs()"> <!-- queue totals -->
+  <a style="display: block; text-align: center;" href="#" data-bind="click: showStats(!showStats())">show/hide queue stats</a>
+  <div class="stats" data-bind="visible: showStats">
+    <div class="edit-header">
+      <div style="flex: 1;"></div>
+      <!-- ko foreach: Object.values(CP_STATS_DIMENSIONS) -->
+      <div style="cursor: auto" data-bind="attr:{class: $data.name + ' has_title'}, text: $data.display"></div>
+      <!-- /ko -->
+    </div>
+    <div data-bind="foreach: totals().values_humanized">
+      <div class="job-stats">
+        <div style="flex: 1;" data-bind="attr: {title: title}"><span data-bind="text: legend"></span><sup data-bind="visible: title">?</sup></div>
+        <div class="completed" data-bind="text: completed"></div>
+        <div class="count" data-bind="text: count"></div>
+        <div class="remaining" data-bind="text: remaining"></div>
+        <div class="total" data-bind="text: total"></div>
+        <div class="error" data-bind="visible: error, text=error"></div>
+      </div>
+    </div>
+  </div>
+</div> <!-- queue totals -->

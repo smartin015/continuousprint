@@ -1,6 +1,6 @@
 from typing import Optional
 from ..storage.database import Run, SetView
-from .abstract import AbstractQueue, Strategy
+from .base import AbstractQueue, Strategy
 import dataclasses
 
 
@@ -16,6 +16,9 @@ class MultiQueue(AbstractQueue):
         self.run = None
         self.active_queue = None
         self.update_cb = update_cb
+
+    def resolve(self, path, peer, hash_) -> Optional[str]:
+        raise NotImplementedError()
 
     def update_peer_state(self, *args):
         for q in self.queues.values():

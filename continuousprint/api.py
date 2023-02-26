@@ -2,7 +2,7 @@ import octoprint.plugin
 from enum import Enum
 from octoprint.access.permissions import Permissions, ADMIN_GROUP
 from octoprint.server.util.flask import restricted_access
-from .queues.lan import ValidationError
+from .queues.base import ValidationError
 from .automation import getInterpreter, genEventScript
 import flask
 import json
@@ -210,8 +210,11 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def mv_job(self):
         src_id = flask.request.form["id"]
         after_id = flask.request.form["after_id"]
+        before_id = flask.request.form["before_id"]
         if after_id == "":  # Treat empty string as 'none' i.e. front of queue
             after_id = None
+        if before_id == "":  # Treat empty as 'none' i.e. end of queue
+            before_id = None
         sq = self._get_queue(flask.request.form["src_queue"])
         dq = self._get_queue(flask.request.form.get("dest_queue"))
 
@@ -225,7 +228,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
             src_id = new_id
 
         # Finally, move the job
-        dq.mv_job(src_id, after_id)
+        dq.mv_job(src_id, after_id, before_id)
         return json.dumps("OK")
 
     # PRIVATE API METHOD - may change without warning.
@@ -311,7 +314,25 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.GETQUEUES)
     def get_queues(self):
-        return json.dumps([q.as_dict() for q in queries.getQueues()])
+        qs = [q.as_dict() for q in queries.getQueues()]
+        local_ads = [a for a in self._peerprint().get_advertisements(local=True)]
+        global_ads = [a for a in self._peerprint().get_advertisements(local=False)]
+        return json.dumps(dict(queues=qs, local_ads=local_ads, global_ads=global_ads))
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/peerprint/search", methods=["GET"])
+    @restricted_access
+    @cpq_permission(Permission.GETQUEUES)
+    def search_networks(self):
+        return json.dumps(self._peerprint().get_networks())
+
+    # PRIVATE API METHOD - may change without warning.
+    @octoprint.plugin.BlueprintPlugin.route("/peerprint/generate_psk", methods=["GET"])
+    @restricted_access
+    def gen_psk(self):
+        from peerprint.data.psk_gen import gen_phrase
+
+        return json.dumps(gen_phrase(k=5))
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/queues/edit", methods=["POST"])

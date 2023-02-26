@@ -5,8 +5,8 @@ from ..storage import queries
 from ..storage.lan import LANJobView
 from ..storage.database import JobView
 from unittest.mock import MagicMock
-from .abstract import Strategy, QueueData
-from .abstract_test import (
+from .base import Strategy, QueueData
+from .base_test import (
     AbstractQueueTests,
     EditableQueueTests,
     testJob as makeAbstractTestJob,

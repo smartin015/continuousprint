@@ -5,6 +5,10 @@ from ..storage.database import JobView, SetView
 from abc import ABC, abstractmethod
 
 
+class ValidationError(Exception):
+    pass
+
+
 class Strategy(Enum):
     IN_ORDER = auto()  # Jobs and sets printed in lexRank order
     LEAST_MANUAL = auto()  # Choose the job which produces the least manual changes
@@ -39,6 +43,10 @@ class AbstractQueue(ABC):
 
     def get_set(self) -> Optional[SetView]:
         return self.set
+
+    @abstractmethod
+    def resolve(self, path, peer, hash_) -> Optional[str]:
+        pass
 
     @abstractmethod
     def acquire(self) -> bool:

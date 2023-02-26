@@ -1,7 +1,7 @@
 import unittest
 import logging
 from unittest.mock import MagicMock
-from .abstract import Strategy
+from .base import Strategy
 from .multi import MultiQueue
 
 # logging.basicConfig(level=logging.DEBUG)

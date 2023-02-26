@@ -254,7 +254,7 @@ class TestJobWithSet(QueuesDBTest):
         self.j.decrement()
         self.assertEqual(self.j.remaining, 0)
 
-    def testFromDict(self):
+    def testLoadDict(self):
         Set.create(
             path="a",
             sd=False,
@@ -275,7 +275,10 @@ class TestJobWithSet(QueuesDBTest):
         )
         j = Job.get(id=self.j.id)
         d = j.as_dict()
-        j2 = Job.from_dict(d)
+        print(d)
+
+        j2 = Job()
+        j2.load_dict(d, None)
         self.assertEqual(j2.name, j.name)
         self.assertEqual(j2.count, j.count)
         self.assertEqual([s.path for s in j2.sets], [s.path for s in j.sets])
@@ -374,9 +377,10 @@ class TestSet(QueuesDBTest):
         self.s._resolved = "testval"
         self.assertEqual(self.s.resolve(), "testval")
 
-    def testFromDict(self):
+    def testLoadDict(self):
         d = self.s.as_dict()
-        s = Set.from_dict(d)
+        s = Set()
+        s.load_dict(d, None)
         self.assertEqual(s.path, self.s.path)
         self.assertEqual(s.count, self.s.count)
         self.assertEqual(s.materials(), self.s.materials())

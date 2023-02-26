@@ -28,6 +28,13 @@ import yaml
 import time
 
 
+def getint(d, k, default=0):
+    v = d.get(k, default)
+    if type(v) == str:
+        v = int(v)
+    return v
+
+
 logging.getLogger("peewee").setLevel(logging.INFO)
 
 
@@ -92,7 +99,7 @@ class Queue(Model):
     name = CharField(unique=True)
     created = DateTimeField(default=datetime.datetime.now)
     rank = FloatField()
-    addr = CharField(null=True)  # null == local queue
+    addr = CharField(null=True)  # null == local (offline) queue
     strategy = CharField()
 
     class Meta:
@@ -113,6 +120,12 @@ class JobView:
     This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)"""
 
     def refresh_sets(self):
+        raise NotImplementedError()
+
+    def save(self):
+        raise NotImplementedError()
+
+    def _load_set(self, data, idx):
         raise NotImplementedError()
 
     def decrement(self):
@@ -149,9 +162,16 @@ class JobView:
                 return (s, True)
         return (None, any_printable)
 
-    @classmethod
-    def from_dict(self, data: dict):
-        raise NotImplementedError
+    def load_dict(self, data: dict, queue):
+        self.queue = queue
+        self.name = data.get("name", "")
+        self.created = getint(data, "created")
+        self.count = getint(data, "count")
+        self.remaining = getint(data, "remaining", default=self.count)
+        self.id = data["id"]
+        self.draft = data.get("draft", False)
+        self.acquired = data.get("acquired", False)
+        self.sets = [self._load_set(s, i) for i, s in enumerate(data["sets"])]
 
     def as_dict(self):
         sets = list(self.sets)
@@ -190,11 +210,10 @@ class Job(Model, JobView):
     class Meta:
         database = DB.queues
 
-    @classmethod
-    def from_dict(self, data: dict):
-        j = Job(**data)
-        j.sets = [Set.from_dict(s) for s in data["sets"]]
-        return j
+    def _load_set(self, data, idx):
+        s = Set()
+        s.load_dict(data, self, idx)
+        return s
 
     def refresh_sets(self):
         Set.update(remaining=Set.count, completed=0).where(Set.job == self).execute()
@@ -202,6 +221,9 @@ class Job(Model, JobView):
 
 class SetView:
     """See JobView for rationale for this class."""
+
+    def save(self):
+        raise NotImplementedError()
 
     def _csv2list(self, v):
         if v == "":
@@ -225,6 +247,33 @@ class SetView:
         self.completed += 1
         self.save()  # Save must occur before job is observed
         return self.job.next_set(profile)
+
+    def load_dict(self, data, job, rank=None):
+        self.job = job
+        for listform, csvform in [
+            ("materials", "material_keys"),
+            ("profiles", "profile_keys"),
+        ]:
+            if data.get(listform) is not None:
+                data[csvform] = ",".join(data[listform])
+                del data[listform]
+            else:
+                data[csvform] = data.get(csvform, "")
+
+        for numeric in ("count", "remaining", "completed"):
+            data[numeric] = getint(data, numeric, 0)
+
+        if rank is not None:
+            data["rank"] = rank
+        elif data.get("rank") is not None:
+            data["rank"] = float(data["rank"])
+
+        for filler in ("id", "sd"):
+            if filler not in data:
+                data[filler] = None
+
+        for (k, v) in data.items():
+            setattr(self, k, v)
 
     def resolve(self, override=None):
         if override is not None:

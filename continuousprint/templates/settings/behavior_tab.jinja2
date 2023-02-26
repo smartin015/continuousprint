@@ -1,0 +1,111 @@
+<div id="settings_continuousprint_behavior" class="tab-pane">
+  <form class="form-horizontal">
+    <legend>Behavior</legend>
+    <fieldset>
+      <div class="control-group" title="What to do when a print is uploaded">
+        <label class="control-label">Upload Action</label>
+        <div class="controls">
+          <select data-bind="value: settings.settings.plugins.continuousprint.cp_upload_action">
+            <option value="do_nothing">Do nothing</option>
+            <option value="add_draft">Add to queue as a new draft job</option>
+            <option value="add_printable">Add to queue as an immediately printable job</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group" title="How to handle time lapses when running automation scripts">
+        <label class="control-label">Clearing/Finishing Timelapses</label>
+        <div class="controls">
+          <select data-bind="value: settings.settings.plugins.continuousprint.cp_automation_timelapse_action">
+            <option value="do_nothing">Do nothing</option>
+            <option value="auto_remove">Auto-remove</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group" title="Automatically try to assign printer profiles based on .gcode file contents - this may only work for some printers / slicers">
+        <label class="control-label">Auto-assign printer profiles</label>
+        <div class="controls">
+          <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_infer_profile">
+        </div>
+      </div>
+      <div class="control-group" title="Attempt to reconnect if the printer goes offline - think carefully about your printer's behavior when the serial port opens before enabling this feature.">
+        <label class="control-label">Auto-reconnect to printer</label>
+        <div class="controls">
+          <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.cp_auto_reconnect">
+        </div>
+      </div>
+
+      <div class="control-group" title="Set a slicer to use so your queued STLs can auto-slice">
+        <label class="control-label">Slicer for auto-slicing</label>
+        <div class="controls">
+          <select data-bind="value: slicer">
+            <option></option>
+            <!-- ko foreach: Object.values(slicers()) -->
+            <option data-bind="text: name, value: key"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <label class="control-label">Slicer Profile</label>
+        <div class="controls">
+          <select data-bind="value: slicer_profile">
+            <option></option>
+            <!-- ko foreach: slicerProfiles -->
+            <option data-bind="text: $data, value: $data"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group" title="Put a newline-separated list of GCODE commands to ignore while the queue is running, e.g. 'M104 S0' to prevent gcode files from turning off the hotend. CPQ event scripts/preprocessors are unaffected. Changes take effect after restarting OctoPrint">
+        <label class="control-label">Ignore GCODE lines while printing</label>
+        <div class="controls">
+          <textarea rows="4" data-bind="value: settings.settings.plugins.continuousprint.cp_skip_gcode_commands"></textarea>
+        </div>
+      </div>
+    </fieldset>
+
+    <legend>Bed Cooldown Settings</legend>
+      <p>
+        Some printers do not respect the <a target="_blank" href="https://marlinfw.org/docs/gcode/M190.html">M190</a> (Wait for Bed Temperature) command (see <a target="_blank" href="https://github.com/smartin015/continuousprint/issues/6">this bug</a>).
+      </p>
+      <p>Enable this if you use M190 commands in the <b>Clearing script</b> but your printer isn't properly waiting.</p>
+
+      <div class="control-group" title="This enables Bed Cooldown and exposes additional config options">
+          <label class="control-label">Enable Bed Cooldown</label>
+          <div class="controls">
+                  <input type=checkbox data-bind="checked: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
+          </div>
+      </div>
+
+      <div id="cooldownSettings" data-bind="visible: settings.settings.plugins.continuousprint.bed_cooldown_enabled">
+          <p>
+              When the print is finished, OctoPrint will fire the Bed Cooldown event (see above),
+              turn the heated bed off and monitor the bed temperature.
+          </p>
+          <p>
+              After either the <b>Bed Cooldown Threshold</b> or <b>Bed Cooldown Timeout</b> is
+              met, the <b>Print Success</b> event will trigger.
+          </p>
+
+          <div class="control-group" title="Bed temperature target to reach before moving on">
+              <label class="control-label">Threshold</label>
+              <div class="controls">
+                  <div class="input-append">
+                  <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_threshold"></input>
+                  <span class="add-on">°C</span>
+                  </div>
+              </div>
+          </div>
+          <div class="control-group" title="Number of seconds to wait before moving on">
+              <label class="control-label">Timeout</label>
+              <div class="controls">
+                <div class="input-append">
+                  <input type="number" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.bed_cooldown_timeout"></input>
+                  <span class="add-on">min</span>
+                </div>
+              </div>
+          </div>
+      </div>
+  </form>
+</div> <!-- settings_continuousprint_behavior -->

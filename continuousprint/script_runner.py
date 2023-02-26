@@ -6,7 +6,7 @@ from octoprint.filemanager.destinations import FileDestinations
 from octoprint.printer import InvalidFileLocation, InvalidFileType
 from octoprint.server import current_user
 from octoprint.slicing.exceptions import SlicingException
-from .storage.lan import LANResolveError
+from .storage.peer import ResolveError
 from .storage.database import STLResolveError
 from .data import TEMP_FILE_DIR, CustomEvents, Keys
 from .storage.queries import getAutomationForEvent
@@ -107,9 +107,9 @@ class ScriptRunner:
         # or other format where unpacking or transformation is needed to get to .gcode.
         try:
             path = item.resolve()
-        except LANResolveError as e:
+        except ResolveError as e:
             self._logger.error(e)
-            self._msg(f"Could not resolve LAN print path for {path}", type="error")
+            self._msg(f"Could not resolve print path for {path}", type="error")
             return False
         except STLResolveError as e:
             self._logger.warning(e)

@@ -7,6 +7,7 @@ import base64
 
 from pathlib import Path
 from .database import (
+    getint,
     Queue,
     Job,
     Set,
@@ -22,13 +23,6 @@ from ..data import CustomEvents
 
 
 MAX_COUNT = 999999
-
-
-def getint(d, k, default=0):
-    v = d.get(k, default)
-    if type(v) == str:
-        v = int(v)
-    return v
 
 
 def clearOldState():
@@ -124,12 +118,16 @@ def assignQueues(queues):
                 Queue.create(
                     name=qdata["name"],
                     strategy=qdata["strategy"],
+                    registry=qdata["registry"],
                     addr=qdata["addr"],
                     rank=rank,
                 )
             else:
                 Queue.update(
-                    strategy=qdata["strategy"], addr=qdata["addr"], rank=rank
+                    strategy=qdata["strategy"],
+                    addr=qdata["addr"],
+                    rank=rank,
+                    registry=qdata["registry"],
                 ).where(Queue.name == qdata["name"]).execute()
     return (absent_names, added)
 

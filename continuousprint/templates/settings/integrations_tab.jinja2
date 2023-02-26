@@ -1,0 +1,53 @@
+<div id="settings_continuousprint_integrations" class="tab-pane">
+  <form class="form-horizontal">
+    <fieldset>
+      <legend>Failure Recovery</legend>
+      <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+        <p><strong>Plugin Needed:</strong> Failure recovery requires <a href="https://www.obico.io/" target="_blank">Obico</a> version &geq; 1.8.11, but the plugin does not appear to be installed.<p>
+        <p>Read more about how to set this up in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.</p>
+      </div>
+      <div data-bind="visible: settings.settings.plugins.continuousprint.cp_restart_on_pause_enabled">
+        <p>
+          Failure recovery is enabled because <a href="https://www.obico.io/" target="_blank">Obico</a> is installed.
+        </p>
+        <p>
+          Read more about failure recovery settings in the <a href="https://smartin015.github.io/continuousprint/failure-recovery/" target="_blank">Failure Recovery guide</a>.
+        </p>
+        <div class="control-group">
+          <label class="control-label">Retry if started less than</label>
+          <div class="controls">
+            <div class="input-append">
+              <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.cp_restart_on_pause_max_seconds"/>
+              <span class="add-on">seconds ago</span>
+            </div>
+          </div>
+        </div>
+        <div class="control-group">
+          <label class="control-label">Stop the queue after</label>
+          <div class="controls">
+            <div class="input-append">
+              <input type="number" step="any" min="0" class="input-mini text-right" data-bind="value: settings.settings.plugins.continuousprint.cp_restart_on_pause_max_restarts"/>
+              <span class="add-on">retries</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Material Selection</legend>
+      <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
+        <p><strong>Plugin Needed:</strong> Material selection requires <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a>, but the plugin does not appear to be installed or enabled.<p>
+        <p>Read more about this feature in the <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">Material Selection guide</a>.</p>
+      </div>
+      <div data-bind="visible: settings.settings.plugins.continuousprint.cp_material_selection_enabled">
+        <p>
+          Material selection is enabled because <a href="https://plugins.octoprint.org/plugins/SpoolManager/" target="_blank">SpoolManager</a> is installed and enabled.
+        </p>
+        <p>
+          Read more about material selection in the <a href="https://smartin015.github.io/continuousprint/material-selection/" target="_blank">Material Selection guide</a>.
+        </p>
+      </div>
+    </fieldset>
+  </form>
+</div> <!-- continuousprint_settings_integrations -->

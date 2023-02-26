@@ -33,6 +33,13 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       });
     });
     self.local_ip = ko.observable(CP_LOCAL_IP || '');
+    self.custom = {
+      network: ko.observable(""),
+      display_name: ko.observable(""),
+      rendezvous: ko.observable(""),
+      psk: ko.observable(""),
+      local: ko.observable(true),
+    };
 
     // We have to use the global slicer data retriever instead of
     // slicingViewModel because the latter does not make its profiles
@@ -86,11 +93,27 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
     self.settings.exchanging_orig = self.settings.exchanging;
     self.settings.exchanging = ko.pureComputed(function () {
         return self.settings.exchanging_orig() ||
-          !self.allValidQueueNames() || !self.allValidQueueAddr() ||
+          !self.allValidQueueNames() ||
           !self.allUniqueScriptNames() || !self.allUniquePreprocessorNames();
     });
 
-    self.queues = ko.observableArray();
+    self.loadout = ko.observableArray();
+    self.lobby = ko.observableArray([
+      { expanded: ko.observable(true),
+        draft: ko.observable(false),
+        name: 'test1',
+        description: "testdesc",
+        num_peers: 5,
+        network: "world",
+        psk_required: "Y",
+        config: [
+          {key: 'network', val: 'test1'},
+          {key: 'psk', val: 'secretsecret'}
+        ],
+      },
+    ]);
+    self.new_connections = ko.observableArray([]);
+    self.queue_search = ko.observable("");
     self.queue_fingerprint = null;
     self.scripts = ko.observableArray([]);
     self.preprocessors = ko.observableArray([]);
@@ -301,33 +324,27 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       return true;
     });
 
-    self.newBlankQueue = function() {
-      self.queues.push({name: "", addr: "", strategy: ""});
+    self.newLoadout = function(data) {
+      return {
+        name: "",
+        strategy: "",
+        visibility: "",
+        expanded: ko.observable(true),
+        apply: function() {
+          // This is called by the sortable code for some reason, no idea why
+          // but otherwise it raises an exception.
+        },
+        ...data
+      };
     };
     self.rmQueue = function(q) {
-      self.queues.remove(q);
+      self.loadout.remove(q);
     }
     self.queueChanged = function() {
-      self.queues.valueHasMutated();
+      self.loadout.valueHasMutated();
     }
-    self.allValidQueueAddr = ko.computed(function() {
-      for (let q of self.queues()) {
-        if (q.name === 'local' || q.addr.toLowerCase() === "auto") {
-          continue;
-        }
-        let sp = q.addr.split(':');
-        if (sp.length !== 2) {
-          return false;
-        }
-        let port = parseInt(sp[1]);
-        if (isNaN(port) || port < 5000) {
-          return false;
-        }
-      }
-      return true;
-    });
     self.allValidQueueNames = ko.computed(function() {
-      for (let q of self.queues()) {
+      for (let q of self.loadout()) {
         if (q.name.trim() === '') {
           return false;
         }
@@ -350,13 +367,14 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       // the settings page is loaded
       self.api.get(self.api.QUEUES, (result) => {
         let queues = []
-        for (let r of result) {
+        console.log("TODO handle local/global adverts");
+        for (let r of result.queues) {
           if (r.name === "archive") {
             continue; // Archive is hidden
           }
-          queues.push(r);
+          queues.push(self.newLoadout(r));
         }
-        self.queues(queues);
+        self.loadout(queues);
         self.queue_fingerprint = JSON.stringify(queues);
       });
 
@@ -396,12 +414,14 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       cpset.cp_slicer(self.slicer());
       cpset.cp_slicer_profile(self.slicer_profile());
 
-      let queues = self.queues();
-      if (JSON.stringify(queues) !== self.queue_fingerprint) {
+      let loadout = self.loadout();
+      let new_connections = self.new_connections();
+      if (JSON.stringify(loadout) !== self.queue_fingerprint) {
         // Sadly it appears flask doesn't have good parsing of nested POST structures,
         // So we pass it a JSON string instead.
-        self.api.edit(self.api.QUEUES, queues, () => {
-          // Editing queues causes a UI refresh to the main viewmodel; no work is needed here
+        self.api.edit(self.api.QUEUES, {loadout, new_connections}, () => {
+          // Editing queues causes a UI refresh to the main viewmodel
+          self.new_connections([]);
         });
       }
 
@@ -435,6 +455,23 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       // Re-enable default drag and drop behavior
       self.files.onServerConnect();
     };
+
+    self.customQueueSubmit = function() {
+      let data = {};
+      for (let k of Object.keys(self.custom)) {
+        data[k] = self.custom[k]();
+      }
+      // Since loadout normally doesn't contain detailed
+      // connection data, need to keep track of this separately
+      self.new_connections.push(data);
+      self.loadout.push(self.newLoadout(data));
+    }
+
+    self.generatePSK = function() {
+      self.api.gen_psk((result) => {
+        self.custom.psk(result);
+      });
+    }
 }
 
 
