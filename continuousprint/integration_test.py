@@ -202,6 +202,7 @@ class TestDriver(DBTest):
             fire_event=MagicMock(),
             spool_manager=None,
         )
+        self.s._ensure_tempdir = MagicMock()
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
         self.mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)

@@ -45,6 +45,7 @@ class TestScriptRunner(unittest.TestCase):
             fire_event=MagicMock(),
             spool_manager=MagicMock(),
         )
+        self.s._ensure_tempdir = MagicMock()
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
         self.s._get_interpreter = lambda: (MagicMock(error=[]), StringIO(), StringIO())
@@ -228,6 +229,7 @@ class TestWithInterpreter(AutomationDBTest):
             fire_event=MagicMock(),
             spool_manager=MagicMock(),
         )
+        self.s._ensure_tempdir = MagicMock()
         self.s._get_user = lambda: "foo"
         self.s._wrap_stream = MagicMock(return_value=None)
         self.s._execute_gcode = MagicMock()

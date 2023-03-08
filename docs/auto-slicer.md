@@ -4,7 +4,7 @@
 
 Continuous Print normally prints `.gcode` files. These files are sliced for a specific printer and are not portable across makes/models.
 
-Typically, 3d models are sliced by external slicer programs, and [profiles](/printer-profiles) are assigned in the queue so it only runs on compatible printers. This is especially important for heterogeneous [LAN queues](/lan-queues).
+Typically, 3d models are sliced by external slicer programs, and [profiles](printer-profiles.md) are assigned in the queue so it only runs on compatible printers. This is especially important for heterogeneous [LAN queues](lan-queues.md).
 
 With automatic slicing, **you can add 3D models directly to the queue for printing**. This eliminates some manual effort and sources of error.
 
@@ -81,7 +81,7 @@ Connection to PrePrintService on <...> is ready
 
     It's strongly recommended to watch your first few print attempts until you're confident in the setup.
 
-    Also, consider setting up [failure recovery](/failure-recovery) so failing prints are more likely to be caught automatically.
+    Also, consider setting up [failure recovery](failure-recovery.md) so failing prints are more likely to be caught automatically.
 
 With the default slicer configured, it's time to try it out!
 
