@@ -21,10 +21,18 @@ from collections import defaultdict
 import datetime
 from enum import IntEnum, auto
 import sys
+import logging
 import inspect
 import os
 import yaml
 import time
+
+
+logging.getLogger("peewee").setLevel(logging.INFO)
+
+
+class STLResolveError(Exception):
+    pass
 
 
 # Defer initialization
@@ -102,7 +110,8 @@ class Queue(Model):
 class JobView:
     """The job view contains functions used to manipulate an underlying Job model.
 
-    This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)"""
+    This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)
+    """
 
     def refresh_sets(self):
         raise NotImplementedError()
@@ -132,7 +141,7 @@ class JobView:
         # for the given profile/filter. If this is False then
         # decrementing the set/job won't do anything WRT set availability
         any_printable = False
-        for s in self.sets:
+        for s in sorted(self.sets, key=lambda s: s.rank):
             if custom_filter is not None and not custom_filter(s):
                 continue
             printable = s.is_printable(profile)
@@ -218,6 +227,20 @@ class SetView:
         self.save()  # Save must occur before job is observed
         return self.job.next_set(profile)
 
+    def resolve(self, override=None):
+        if override is not None:
+            self._resolved = override
+
+        # TODO use registered slicer object types per octoprint hook
+        if not hasattr(self, "_resolved") or self._resolved is None:
+            raise NotImplementedError(
+                "Implementer of SetView must implement .resolve()"
+            )
+        elif self._resolved.endswith(".stl"):
+            raise STLResolveError(f"Set path {self._resolved} requires slicing")
+        else:
+            return self._resolved
+
     @classmethod
     def from_dict(self, s):
         raise NotImplementedError
@@ -284,6 +307,11 @@ class Set(Model, SetView):
                 s[csvform] = ",".join(s[listform])
                 del s[listform]
         return Set(**s)
+
+    def resolve(self, override=None):
+        if getattr(self, "_resolved", None) is None:
+            self._resolved = self.path
+        return super().resolve(override)
 
 
 class Run(Model):
@@ -462,7 +490,7 @@ def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script
     # In v2.2.0 and earlier, a fixed list of scripts were stored in OctoPrint settings.
     # This converts them to DB format for use in events.
     with DB.automation.atomic():
-        for (evt, name, body) in [
+        for evt, name, body in [
             (CustomEvents.PRINT_SUCCESS, BED_CLEARING_SCRIPT, clearing_script),
             (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),
             (CustomEvents.COOLDOWN, COOLDOWN_SCRIPT, cooldown_script),

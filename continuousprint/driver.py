@@ -7,6 +7,8 @@ from .data import CustomEvents
 class Action(Enum):
     ACTIVATE = auto()
     DEACTIVATE = auto()
+    RESOLVED = auto()
+    RESOLVE_FAILURE = auto()
     SUCCESS = auto()
     FAILURE = auto()
     SPAGHETTI = auto()
@@ -25,6 +27,21 @@ class StatusType(Enum):
     ERROR = auto()
 
 
+def blockCoreEventScripts(func):
+    """Decorates driver `_state_*` functions where running OctoPrint's
+    default GCODE event scripts would cause unexpected behavior, e.g.
+    `beforePrintStarted` happening before a CPQ bed clearing script is run.
+
+    See https://docs.octoprint.org/en/master/features/gcode_scripts.html#gcode-scripts
+    """
+    func._block_core_events = True
+    return func
+
+
+def shouldBlockCoreEvents(state):
+    return getattr(state, "_block_core_events", False)
+
+
 # Inspired by answers at
 # https://stackoverflow.com/questions/6108819/javascript-timestamp-to-relative-time
 def timeAgo(elapsed):
@@ -38,7 +55,7 @@ def timeAgo(elapsed):
 
 class Driver:
     # If the printer is idle for this long while printing, break out of the printing state (consider it a failure)
-    PRINTING_IDLE_BREAKOUT_SEC = 15.0
+    PRINTING_IDLE_BREAKOUT_SEC = 20.0
     TIMELAPSE_WAIT_SEC = 30
 
     def __init__(
@@ -161,6 +178,7 @@ class Driver:
                 "Inactive (active print continues unmanaged)", StatusType.NEEDS_ACTION
             )
 
+    @blockCoreEventScripts
     def _state_activating(self, a: Action, p: Printer):
         self._set_status("Running startup script")
         if a == Action.SUCCESS or self._long_idle(p):
@@ -178,6 +196,7 @@ class Driver:
             else:
                 return self._enter_start_print(a, p)
 
+    @blockCoreEventScripts
     def _state_preprint(self, a: Action, p: Printer):
         self._set_status("Running pre-print script")
         if a == Action.SUCCESS or self._long_idle(p):
@@ -190,10 +209,10 @@ class Driver:
         ):
             return self._state_preprint
 
-        # Pre-call start_print on entry to eliminate tick delay
+        # Pre-call resolve_print on entry to eliminate tick delay
         self.start_failures = 0
-        nxt = self._state_start_print(a, p)
-        return nxt if nxt is not None else self._state_start_print
+        nxt = self._state_resolve_print(a, p)
+        return nxt if nxt is not None else self._state_resolve_print
 
     def _fmt_material_key(self, mk):
         try:
@@ -213,11 +232,32 @@ class Driver:
                 return False
         return True
 
+    def _verify_active_status_msg(self, rep):
+        if rep["misconfig"]:
+            return "SpoolManager: missing metadata or spool fields"
+        elif len(rep["nospool"]) > 0:
+            return "SpoolManager: extruder(s) in use do not have a spool selected"
+        elif len(rep["notenough"]) > 0:
+            tools = [
+                f"T{i.get('toolIndex', -1)} ({i.get('spoolName', '')})"
+                for i in rep["notenough"]
+            ]
+            return "SpoolManager: not enough filament left for " + ",".join(tools)
+        else:
+            return "SpoolManager: failed validation"
+
+    @blockCoreEventScripts
     def _state_awaiting_material(self, a: Action, p: Printer):
         item = self.q.get_set_or_acquire()
         if item is None:
             self._set_status("No work to do; going idle")
             return self._state_idle
+
+        valid, rep = self._runner.verify_active()
+        if not valid and rep is not None:
+            self._set_status(
+                self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+            )
 
         if self._materials_match(item):
             return self._enter_start_print(a, p)
@@ -227,7 +267,7 @@ class Driver:
                 StatusType.NEEDS_ACTION,
             )
 
-    def _state_start_print(self, a: Action, p: Printer):
+    def _state_resolve_print(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
             return
@@ -237,24 +277,62 @@ class Driver:
             self._set_status("No work to do; going idle")
             return self._state_idle
 
-        if not self._materials_match(item):
+        sa = self._runner.set_active(item, self._slicing_callback)
+        if sa is False:
+            return self._fail_start()
+        elif sa is None:  # Implies slicing
+            return self._state_slicing
+
+        # Invariant: item's path has been set as the active file in OctoPrint
+        # and the file is a .gcode file that's ready to go.
+        valid, rep = self._runner.verify_active()
+        if not self._materials_match(item) or not valid:
             self._runner.run_script_for_event(CustomEvents.AWAITING_MATERIAL)
+            if rep is not None:
+                self._set_status(
+                    self._verify_active_status_msg(rep), StatusType.NEEDS_ACTION
+                )
             return self._state_awaiting_material
 
-        self.q.begin_run()
-        if self._runner.start_print(item):
-            return self._state_printing
+        try:
+            self.q.begin_run()
+            self._runner.start_print(item)
+        except Exception as e:
+            self._logger.error(e)
+            return self._fail_start()
+
+        return self._state_printing
+
+    def _state_slicing(self, a: Action, p: Printer):
+        self._set_status("Waiting for print file to be ready")
+        if a == Action.RESOLVED:
+            return (
+                self._state_resolve_print(Action.TICK, p) or self._state_resolve_print
+            )
+        elif a == Action.RESOLVE_FAILURE:
+            return self._fail_start()
+
+    def _slicing_callback(self, success: bool, error):
+        if error is not None:
+            return
+
+        # Forward action. We assume printer is idle here.
+        self.action(
+            Action.RESOLVED if success else Action.RESOLVE_FAILURE, Printer.IDLE
+        )
+
+    def _fail_start(self):
+        # TODO bail out of the job and mark it as bad rather than dropping into inactive state
+        self.start_failures += 1
+        if self.start_failures >= self.max_startup_attempts:
+            self._set_status("Failed to start; too many attempts", StatusType.ERROR)
+            return self._enter_inactive()
         else:
-            # TODO bail out of the job and mark it as bad rather than dropping into inactive state
-            self.start_failures += 1
-            if self.start_failures >= self.max_startup_attempts:
-                self._set_status("Failed to start; too many attempts", StatusType.ERROR)
-                return self._enter_inactive()
-            else:
-                self._set_status(
-                    f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
-                    StatusType.ERROR,
-                )
+            self._set_status(
+                f"Start attempt failed ({self.start_failures}/{self.max_startup_attempts})",
+                StatusType.ERROR,
+            )
+            return self._state_resolve_print
 
     def _long_idle(self, p):
         # We wait until we're in idle state for a long-ish period before acting, as
@@ -287,11 +365,11 @@ class Driver:
             # A limitation of `octoprint.printer`, the "current file" path passed to the driver is only
             # the file name, not the full path to the file.
             # See https://docs.octoprint.org/en/master/modules/printer.html#octoprint.printer.PrinterCallback.on_printer_send_current_data
-            if item.path.split("/")[-1] == self._cur_path:
+            if item.resolve().split("/")[-1] == self._cur_path:
                 return self._state_success
             else:
                 self._logger.info(
-                    f"Completed print {self._cur_path} not matching current queue item {item.path} - clearing it in prep to start queue item"
+                    f"Completed print {self._cur_path} not matching current queue item {item.resolve()} - clearing it in prep to start queue item"
                 )
                 return self._state_start_clearing
 
@@ -313,6 +391,7 @@ class Driver:
         elif p == Printer.BUSY:
             return self._state_printing
 
+    @blockCoreEventScripts
     def _state_spaghetti_recovery(self, a: Action, p: Printer):
         self._set_status("Cancelling (spaghetti early in print)", StatusType.ERROR)
         if p == Printer.PAUSED:
@@ -359,6 +438,7 @@ class Driver:
             self._logger.debug("_state_success no next item --> _start_finishing")
             return self._state_start_finishing
 
+    @blockCoreEventScripts
     def _state_start_clearing(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -375,6 +455,7 @@ class Driver:
             self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
+    @blockCoreEventScripts
     def _state_cooldown(self, a: Action, p: Printer):
         clear = False
         if self._bed_temp < self.cooldown_threshold:
@@ -392,6 +473,7 @@ class Driver:
             self._runner.run_script_for_event(CustomEvents.PRINT_SUCCESS)
             return self._state_clearing
 
+    @blockCoreEventScripts
     def _state_clearing(self, a: Action, p: Printer):
         if a == Action.SUCCESS:
             return self._enter_start_print(a, p)
@@ -404,6 +486,7 @@ class Driver:
         else:
             self._set_status("Clearing bed")
 
+    @blockCoreEventScripts
     def _state_start_finishing(self, a: Action, p: Printer):
         if p != Printer.IDLE:
             self._set_status("Waiting for printer to be ready")
@@ -412,6 +495,7 @@ class Driver:
         self._runner.run_script_for_event(CustomEvents.FINISH)
         return self._state_finishing
 
+    @blockCoreEventScripts
     def _state_finishing(self, a: Action, p: Printer):
         if a == Action.FAILURE:
             return self._enter_inactive()

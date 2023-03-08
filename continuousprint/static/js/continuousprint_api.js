@@ -101,6 +101,9 @@ class CPAPI {
     this._call_base(`${this.BASE}/set_active`, {active}, cb);
   }
 
+  simulate(automation, symtable, cb, err_cb) {
+    this._call(this.AUTOMATION, 'simulate', {symtable: JSON.stringify(symtable), automation: JSON.stringify(automation)}, cb, err_cb, false);
+  }
 }
 
 try {

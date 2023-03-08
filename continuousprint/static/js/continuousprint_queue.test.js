@@ -90,7 +90,7 @@ test('setCount', () => {
 describe('batchSelect', () => {
   let v = init(njobs=4);
   v.jobs()[0].sets([]); // job 1 is empty
-  // job 2 is unstarted; no action needed
+  // job 2 (idx 1) is unstarted; no action needed
   v.jobs()[2].sets()[0].count(3); // Job 3 is incomplete, set 5 is incomplete
   v.jobs()[2].sets()[0].completed(1);
   v.jobs()[2].sets()[0].remaining(2);

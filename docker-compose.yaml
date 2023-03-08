@@ -10,6 +10,9 @@ services:
       - "./volume:/home/oprint/.octoprint"
     environment:
       - "PYTHONUNBUFFERED=1"
+    hostname: "octoprint"
+    networks:
+      - preprintservice
   dev2:
     image: continuousprint-dev
     build: .
@@ -20,3 +23,8 @@ services:
       - "./volume2:/home/oprint/.octoprint"
     environment:
       - "PYTHONUNBUFFERED=1"
+
+networks:
+  preprintservice:
+    name: octoprint-preprintservice_default
+    external: true

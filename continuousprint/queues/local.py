@@ -124,7 +124,7 @@ class LocalQueue(AbstractFactoryQueue):
 
         # TODO make transaction, move to storage/queries.py
         j = self.add_job()
-        for (k, v) in manifest.items():
+        for k, v in manifest.items():
             if k in ("peer_", "sets", "id", "acquired", "queue"):
                 continue
             setattr(j, k, v)

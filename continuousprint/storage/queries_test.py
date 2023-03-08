@@ -300,7 +300,7 @@ class TestMultiItemQueue(QueuesDBTest):
             )
 
     def testMoveJob(self):
-        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, None), [2, 1])]:
+        for moveArgs, want in [((1, 2), [2, 1]), ((2, None), [2, 1])]:
             with self.subTest(f"moveJob({moveArgs}) -> want {want}"):
                 q.moveJob(*moveArgs)
                 self.assertEqual([j.id for j in q.getJobsAndSets(DEFAULT_QUEUE)], want)
@@ -380,7 +380,7 @@ class TestAutomation(AutomationDBTest):
         self.assertEqual(got["events"][evt], [dict(script="foo", preprocessor=None)])
 
     def testAssignBadEventKey(self):
-        with self.assertRaisesRegexp(KeyError, "No such CPQ event"):
+        with self.assertRaisesRegex(KeyError, "No such CPQ event"):
             q.assignAutomation(
                 dict(), dict(), dict(evt=[dict(script="foo", preprocessor=None)])
             )
@@ -409,7 +409,10 @@ class TestAutomation(AutomationDBTest):
                 ]
             ),
         )
-        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode1\ngcode2")
+        self.assertEqual(
+            [a[0] for a in q.getAutomationForEvent(CustomEvents.PRINT_SUCCESS)],
+            ["gcode1", "gcode2"],
+        )
 
         # Ordering of event matters
         q.assignAutomation(
@@ -427,57 +430,7 @@ class TestAutomation(AutomationDBTest):
                 ]
             ),
         )
-        self.assertEqual(q.genEventScript(CustomEvents.PRINT_SUCCESS), "gcode2\ngcode1")
-
-    def testPreprocessorEvalTrueFalseNone(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="gcode1"),
-            dict(p1="python1"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-
-        self.assertEqual(q.genEventScript(e, lambda cond: True), "gcode1")
-        self.assertEqual(q.genEventScript(e, lambda cond: False), "")
-        self.assertEqual(q.genEventScript(e, lambda cond: None), "")
-
-    def testNoProcessorPlaceholder(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="{foo} will never be formatted!"),
-            dict(),
-            dict([(e.event, [dict(script="s1", preprocessor=None)])]),
-        )
-        with self.assertRaises(Exception):
-            q.genEventScript(e, lambda cond: False)
-
-    def testProcessorEvalFormat(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="Hello {val}"),
-            dict(p1="mocked"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
         self.assertEqual(
-            q.genEventScript(e, lambda cond: dict(val="World")), "Hello World"
+            [a[0] for a in q.getAutomationForEvent(CustomEvents.PRINT_SUCCESS)],
+            ["gcode2", "gcode1"],
         )
-
-    def testProcessorEvalBadType(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="don'tcare"),
-            dict(p1="mocked"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-        with self.assertRaises(Exception):
-            q.genEventScript(e, lambda cond: 7)
-
-    def testProcessorEvalMissedPlaceholder(self):
-        e = CustomEvents.PRINT_SUCCESS
-        q.assignAutomation(
-            dict(s1="{foo} will never be formatted!"),
-            dict(p1="mocked"),
-            dict([(e.event, [dict(script="s1", preprocessor="p1")])]),
-        )
-        with self.assertRaises(Exception):
-            q.genEventScript(e, lambda cond: dict(bar="baz"))

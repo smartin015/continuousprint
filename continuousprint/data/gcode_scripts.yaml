@@ -101,3 +101,22 @@ GScript:
       G90 ; back to absolute positioning
       M104 S0; Set Hot-end to 0C (off)
       M140 S0; Set bed to 0C (off)
+  - name: "Creality Ender 3 S1 Pro"
+    description: >
+      This script is for Creality Ender 3 S1 Pro with a build volume of 220mm x 220mm XY build area and z-height of 270mm.
+      It uses the printer's extruder to push the part off the build plate."
+    version: 0.0.1
+    gcode: |
+      M17 ;enable steppers
+      G91 ; Set relative for lift
+      G0 Z10 ; lift z by 10
+      G90 ;back to absolute positioning
+      M104 T0 S0 ; extruder heater off
+      M140 S0 ; heated bed heater off
+      M190 R25 ; set bed to 25 and wait for cooldown
+      G0 X220 Y220 ;move to back corner
+      G0 X110 Y220 ;move to mid bed aft
+      G0 Z5 ;come down to 5MM from bed
+      G0 Y0 ;wipe forward
+      G0 Y220 ;wipe aft
+      G28 ; home

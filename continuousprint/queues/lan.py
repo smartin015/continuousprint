@@ -117,7 +117,7 @@ class LANQueue(AbstractEditableQueue):
     def _get_jobs(self) -> list:
         joblocks = self.lan.q.getLocks()
         jobs = []
-        for (jid, v) in self.lan.q.getJobs():
+        for jid, v in self.lan.q.getJobs():
             jobs.append(self._annotate_job(v, joblocks.get(jid)))
         return jobs
 
@@ -311,7 +311,7 @@ class LANQueue(AbstractEditableQueue):
         # This is because the backing .gjob format is a single file containing the full manifest.
 
         j = self.get_job_view(job_id)
-        for (k, v) in data.items():
+        for k, v in data.items():
             if k in ("id", "peer_", "queue"):
                 continue
             if k == "sets":

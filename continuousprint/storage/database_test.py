@@ -11,11 +11,13 @@ from .database import (
     migrateQueuesV2ToV3,
     Job,
     Set,
+    SetView,
     Run,
     Script,
     EventHook,
     StorageDetails,
     DEFAULT_QUEUE,
+    STLResolveError,
 )
 from ..data import CustomEvents
 import tempfile
@@ -27,10 +29,7 @@ class QueuesDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpQueues = tempfile.NamedTemporaryFile(delete=True)
         self.addCleanup(self.tmpQueues.close)
-        init_queues(
-            self.tmpQueues.name,
-            logger=logging.getLogger(),
-        )
+        init_queues(self.tmpQueues.name)
         self.q = Queue.get(name=DEFAULT_QUEUE)
 
 
@@ -38,10 +37,7 @@ class AutomationDBTest(unittest.TestCase):
     def setUp(self):
         self.tmpAutomation = tempfile.NamedTemporaryFile(delete=True)
         self.addCleanup(self.tmpAutomation.close)
-        init_automation(
-            self.tmpAutomation.name,
-            logger=logging.getLogger(),
-        )
+        init_automation(self.tmpAutomation.name)
 
 
 class DBTest(QueuesDBTest, AutomationDBTest):
@@ -292,13 +288,14 @@ class TestMultiSet(QueuesDBTest):
             queue=self.q, name="a", rank=0, count=5, remaining=5, draft=False
         )
         self.s = []
-        for name in ("a", "b"):
+        # Note: b's rank is earlier than A but inserted later (i.e. later DB id)
+        for name, rank in (("a", 1), ("b", 0)):
             self.s.append(
                 Set.create(
                     path="a",
                     sd=False,
                     job=self.j,
-                    rank=0,
+                    rank=rank,
                     count=2,
                     remaining=2,
                     material_keys="m1,m2",
@@ -306,15 +303,15 @@ class TestMultiSet(QueuesDBTest):
                 )
             )
 
-    def testSetsAreSequential(self):
+    def testSetsAreSequentialByRank(self):
         p = dict(name="p1")
-        self.assertEqual(self.j.next_set(p), self.s[0])
-        Set.get(1).decrement(p)
-        self.assertEqual(self.j.next_set(p), self.s[0])
-        Set.get(1).decrement(p)
         self.assertEqual(self.j.next_set(p), self.s[1])
         Set.get(2).decrement(p)
         self.assertEqual(self.j.next_set(p), self.s[1])
+        Set.get(2).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[0])
+        Set.get(1).decrement(p)
+        self.assertEqual(self.j.next_set(p), self.s[0])
 
 
 class TestSet(QueuesDBTest):
@@ -359,6 +356,23 @@ class TestSet(QueuesDBTest):
         self.j = Job.get(id=self.j.id)
         self.assertEqual(self.j.remaining, 0)
         self.assertEqual(self.s.remaining, 0)
+
+    def testResolveUnimplemented(self):
+        sv = SetView()
+        with self.assertRaises(NotImplementedError):
+            sv.resolve()
+
+    def testResolveGcode(self):
+        self.assertEqual(self.s.resolve(), self.s.path)
+
+    def testResolveSTL(self):
+        self.s.path = "testpath.stl"
+        with self.assertRaises(STLResolveError):
+            self.s.resolve()
+
+    def testResolveAlreadySet(self):
+        self.s._resolved = "testval"
+        self.assertEqual(self.s.resolve(), "testval")
 
     def testFromDict(self):
         d = self.s.as_dict()
