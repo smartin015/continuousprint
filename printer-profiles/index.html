@@ -559,12 +559,13 @@
 <p>In <code>Settings &gt; Plugins &gt; Continuous Print</code>, in the <code>Scripts &gt; Printer Profile</code> section, select the manufacturer and model of your printer. If your printer is not present in the list, follow <a href="https://smartin015.github.io/continuousprint/gcode-scripting/#contributing">these directions</a> to add it.</p>
 <p>When you click <code>Save</code>, this profile will be associated with your printer.</p>
 <h2 id="automatic-profile-assignment">Automatic profile assignment</h2>
-<p>Starting with version <code>2.1.0</code>, Continuous Print will attempt to automatically infer the correct printer profile for gcode files added to the queue. This currently only works the following slicers:</p>
+<p>Starting with version <code>2.1.0</code>, Continuous Print will attempt to automatically infer the correct printer profile for gcode files added to the queue. Slicer support is as follows:</p>
 <ul>
 <li><a href="https://grid.space/kiri/">Kiri:Moto slicer</a></li>
 <li><a href="https://www.prusa3d.com/page/prusaslicer_424/">PrusaSlicer</a></li>
-<li>TODO <a href="https://ultimaker.com/software/ultimaker-cura">Ultimaker Cura</a></li>
-<li>TODO <a href="https://www.simplify3d.com/">Simplify3D</a></li>
+<li><a href="https://www.simplify3d.com/">Simplify3D</a></li>
+<li><a href="https://slic3r.org/">Slic3r</a> (requires <a href="https://github.com/slic3r/Slic3r/issues/5148">manual addition to the Notes field</a>)</li>
+<li><a href="https://ultimaker.com/software/ultimaker-cura">Ultimaker Cura</a> (still <a href="https://github.com/Ultimaker/Cura/issues/14283">under discussion</a>)</li>
 </ul>
 <p>If you want your slicer to be supported, <a href="https://github.com/smartin015/continuousprint/issues/new?assignees=&amp;labels=&amp;template=feature_request.md">open a Feature Request</a> and include an example gcode script that you've sliced as an example.</p>
 <h2 id="assigning-and-removing-printer-profiles-tofrom-sets">Assigning and removing printer profiles to/from Sets</h2>
