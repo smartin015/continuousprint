@@ -565,7 +565,7 @@
 <h1 id="automatic-slicing">Automatic Slicing</h1>
 <h2 id="use-case">Use Case</h2>
 <p>Continuous Print normally prints <code>.gcode</code> files. These files are sliced for a specific printer and are not portable across makes/models.</p>
-<p>Typically, 3d models are sliced by external slicer programs, and <a href="/printer-profiles">profiles</a> are assigned in the queue so it only runs on compatible printers. This is especially important for heterogeneous <a href="/lan-queues">LAN queues</a>.</p>
+<p>Typically, 3d models are sliced by external slicer programs, and <a href="../printer-profiles/">profiles</a> are assigned in the queue so it only runs on compatible printers. This is especially important for heterogeneous <a href="../lan-queues/">LAN queues</a>.</p>
 <p>With automatic slicing, <strong>you can add 3D models directly to the queue for printing</strong>. This eliminates some manual effort and sources of error.</p>
 <h2 id="setup">Setup</h2>
 <p>OctoPrint supports integration with slicers via the <a href="https://docs.octoprint.org/en/master/plugins/mixins.html#slicerplugin"><code>SlicerPlugin</code> mixin</a> - this mixin is inherited by various plugins to allow slicing models in the OctoPrint file manager by clicking a "slice" button next to the file.</p>
@@ -623,7 +623,7 @@ docker-compose logs -f
 <p class="admonition-title">Warning</p>
 <p>Auto-slicing may make weird decisions about how to orient your print, or even incorrect decisions if your printer is not correctly modeled (<a href="https://github.com/ChristophSchranz/Tweaker-3/issues/24">e.g. belt printers are not currently supported in Tweaker</a>).</p>
 <p>It's strongly recommended to watch your first few print attempts until you're confident in the setup.</p>
-<p>Also, consider setting up <a href="/failure-recovery">failure recovery</a> so failing prints are more likely to be caught automatically.</p>
+<p>Also, consider setting up <a href="../failure-recovery/">failure recovery</a> so failing prints are more likely to be caught automatically.</p>
 </div>
 <p>With the default slicer configured, it's time to try it out!</p>
 <ol>
