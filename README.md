@@ -5,7 +5,8 @@
 
 This plugin automates your 3D printing!
 
-[![v2.3.0 demo thumbnail](https://user-images.githubusercontent.com/607666/210150942-d323ed1c-6d07-41eb-aecc-e504ed9e7705.png)](https://www.youtube.com/watch?v=07XfCi9YR_k&list=PLBLlNoYKuCw3dnUcdPQk6Tc_GmNsfYAr7&index=1)
+[![v2.4.0 demo thumbnail](https://user-images.githubusercontent.com/607666/223739024-3b159085-06f9-45e3-8b1e-cadaa435ca3d.png)](https://www.youtube.com/watch?v=Bem-Rczt8TE&list=PLBLlNoYKuCw3dnUcdPQk6Tc_GmNsfYAr7&index=6)
+
 
 * **Add gcode files to the queue and set a number of times to print each.** The plugin will print them in sequence, running "bed clearing" script after each.
 * **Group multiple files together into "jobs" and run them multiple times.** Don't make 10 boxes by printing 10 bases, then 10 lids - just define a "box" job and print box/lid combos in sequence.
