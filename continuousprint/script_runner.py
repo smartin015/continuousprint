@@ -53,6 +53,7 @@ class ScriptRunner:
     def _execute_gcode(self, evt, gcode):
         file_wrapper = self._wrap_stream(evt.event, gcode)
         path = str(Path(TEMP_FILE_DIR) / f"{evt.event}.gcode")
+        self._ensure_tempdir()
         added_file = self._file_manager.add_file(
             FileDestinations.LOCAL,
             path,
@@ -187,6 +188,14 @@ class ScriptRunner:
         self._fire_event(evt)
         return result
 
+    def _ensure_tempdir(self):
+        tmpFileDir = Path(
+            self._file_manager.path_on_disk(FileDestinations.LOCAL, TEMP_FILE_DIR)
+        )
+        if not tmpFileDir.exists():
+            self._logger.info(f"Creating temp file directory: {TEMP_FILE_DIR}")
+            tmpFileDir.mkdir()
+
     def _output_gcode_path(self, item):
         # Avoid splitting suffixes so that we can more easily
         # match against the item when checking if the print is finished
@@ -223,6 +232,7 @@ class ScriptRunner:
             self._msg(msg, type="error")
             return False
 
+        self._ensure_tempdir()
         gcode_path = self._file_manager.path_on_disk(
             FileDestinations.LOCAL, self._output_gcode_path(item)
         )
