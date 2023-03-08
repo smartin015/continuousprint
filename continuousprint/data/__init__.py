@@ -130,7 +130,6 @@ class CustomEvents(Enum):
 
 
 class Keys(Enum):
-
     BED_COOLDOWN_SCRIPT_DEPRECATED = (
         "cp_bed_cooldown_script",
         "; Put script to run before bed cools here\n",

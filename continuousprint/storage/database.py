@@ -110,7 +110,8 @@ class Queue(Model):
 class JobView:
     """The job view contains functions used to manipulate an underlying Job model.
 
-    This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)"""
+    This is distinct from the Job class to facilitate other storage implementations (e.g. LAN queue data)
+    """
 
     def refresh_sets(self):
         raise NotImplementedError()
@@ -489,7 +490,7 @@ def migrateScriptsFromSettings(clearing_script, finished_script, cooldown_script
     # In v2.2.0 and earlier, a fixed list of scripts were stored in OctoPrint settings.
     # This converts them to DB format for use in events.
     with DB.automation.atomic():
-        for (evt, name, body) in [
+        for evt, name, body in [
             (CustomEvents.PRINT_SUCCESS, BED_CLEARING_SCRIPT, clearing_script),
             (CustomEvents.FINISH, FINISHING_SCRIPT, finished_script),
             (CustomEvents.COOLDOWN, COOLDOWN_SCRIPT, cooldown_script),

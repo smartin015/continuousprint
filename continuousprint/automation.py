@@ -8,7 +8,7 @@ def getInterpreter(symbols):
     err = StringIO()
     interp = Interpreter(writer=out, err_writer=err)
     # Merge in so default symbols (e.g. exceptions) are retained
-    for (k, v) in symbols.items():
+    for k, v in symbols.items():
         interp.symtable[k] = v
     return interp, out, err
 

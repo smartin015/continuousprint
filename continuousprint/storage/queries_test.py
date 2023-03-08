@@ -300,7 +300,7 @@ class TestMultiItemQueue(QueuesDBTest):
             )
 
     def testMoveJob(self):
-        for (moveArgs, want) in [((1, 2), [2, 1]), ((2, None), [2, 1])]:
+        for moveArgs, want in [((1, 2), [2, 1]), ((2, None), [2, 1])]:
             with self.subTest(f"moveJob({moveArgs}) -> want {want}"):
                 q.moveJob(*moveArgs)
                 self.assertEqual([j.id for j in q.getJobsAndSets(DEFAULT_QUEUE)], want)

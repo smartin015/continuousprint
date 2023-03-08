@@ -52,7 +52,7 @@ def test_preprocessor(name):
             def runInterp(symtable):
                 stdout = StringIO()
                 interp = Interpreter(writer=stdout)
-                for (k, v) in symtable.items():
+                for k, v in symtable.items():
                     interp.symtable[k] = v
                 return interp(PREPROCESSORS[name]["body"], raise_errors=True), stdout
 

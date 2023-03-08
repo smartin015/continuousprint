@@ -245,8 +245,8 @@ def _rankBalance(cls):
     with DB.queues.atomic():
         # TODO discriminate by queue - may case weirdness with archived jobs
         ranker = _genRank(cls.select().count())
-        for (l, c) in zip(ranker, cls.select().order_by(cls.rank)):
-            c.rank = l
+        for r, c in zip(ranker, cls.select().order_by(cls.rank)):
+            c.rank = r
             c.save()
 
 

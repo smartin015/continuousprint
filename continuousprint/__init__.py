@@ -27,7 +27,6 @@ class ContinuousprintPlugin(
     octoprint.plugin.StartupPlugin,
     octoprint.plugin.EventHandlerPlugin,
 ):
-
     # -------------------- Begin BlueprintPlugin --------------------
 
     def get_blueprint(self):

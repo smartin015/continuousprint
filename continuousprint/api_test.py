@@ -103,7 +103,7 @@ class TestAPI(unittest.TestCase):
         num_perms = len([p for p in Permission])
         self.assertEqual(num_perms_tested, num_perms)
 
-        for (role, endpoint) in testcases:
+        for role, endpoint in testcases:
             p = getattr(self.perm, f"PLUGIN_CONTINUOUSPRINT_{role}")
             p.can.return_value = False
             if role.startswith("GET"):
