@@ -9,7 +9,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.11">
     
     
       
@@ -17,12 +17,11 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.1d29e8d0.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.8c5ef100.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.cbb835fc.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.9647289d.min.css">
         
-      
       
     
     
@@ -298,6 +297,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#advanced-skip-certain-commands-in-gcode-files" class="md-nav__link">
+    Advanced: Skip certain commands in GCODE files
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#optional-use-bedready-to-check-bed-state" class="md-nav__link">
     Optional: Use BedReady to check bed state
   </a>
@@ -316,6 +322,13 @@
   
     <nav class="md-nav" aria-label="Preprocessors">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-basics" class="md-nav__link">
+    The Basics
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#language" class="md-nav__link">
@@ -499,6 +512,21 @@
   
   
     <li class="md-nav__item">
+      <a href="../auto-slicer/" class="md-nav__link">
+        Automatic Slicing
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../action-commands/" class="md-nav__link">
         Action Commands
       </a>
@@ -592,6 +620,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#advanced-skip-certain-commands-in-gcode-files" class="md-nav__link">
+    Advanced: Skip certain commands in GCODE files
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#optional-use-bedready-to-check-bed-state" class="md-nav__link">
     Optional: Use BedReady to check bed state
   </a>
@@ -610,6 +645,13 @@
   
     <nav class="md-nav" aria-label="Preprocessors">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-basics" class="md-nav__link">
+    The Basics
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#language" class="md-nav__link">
@@ -727,13 +769,53 @@
 <p>You can use the same script for multiple events, e.g. run bed clearing after each print <em>and</em> when the last print is finished.</p>
 <p>You can also run multiple scripts in the same event - they are executed from top to bottom, and you can drag to reorder them.</p>
 </div>
+<h3 id="advanced-skip-certain-commands-in-gcode-files">Advanced: Skip certain commands in GCODE files</h3>
+<p>In <code>Settings &gt; Continuous Print &gt; Behaviors</code> there's an <code>Ignore GCODE lines while printing</code> text box where you can specify parts of <code>.gcode</code> files to ignore.</p>
+<p>This is useful if your gcode slicer includes cleanup code to turn off hotends, heated beds, stepper motors etc. which may be important when printing without Continuous Print, but which aren't useful when printing multiple files in a row.</p>
+<p>Here's an example of the end of a .gcode file sliced with Kiri:Moto:</p>
+<pre><code>; --- shutdown ---
+G28 ;(Stick out the part)
+M190 S0 ;(Turn off heat bed, don't wait.)
+G92 E10 ;(Set extruder to 10)
+G1 E7 F200 ;(retract 3mm)
+M104 S0 ;(Turn off nozzle, don't wait)
+M107 ;(Turn off part fan)
+M84 ;(Turn off stepper motors.)
+M82 ; absolute extrusion mode
+M104 T0 S0
+</code></pre>
+<p>In this case, you may want to have the following configuration for <code>Ignore GCODE lines while printing</code>:</p>
+<pre><code>M190 S0
+M104 S0
+M104 T0 S0
+M107 ; may also occur at the start, bed adhesion may be affected
+M84
+</code></pre>
+<p>Be advised that:</p>
+<ul>
+<li>This setting does not apply to Continuous Print event scripts, only to <code>.gcode</code> files being printed.</li>
+<li>Comments are stripped away when comparing lines in the .gcode file to lines in the settings textbox
+    (e.g. <code>M84 ; this is a comment</code> will match <code>M84 ; a different comment</code>)</li>
+<li>Commands are not case sensitive (e.g. <code>m84</code> will match <code>M84</code>)</li>
+<li>Apart from the above behaviors, the commands must match exactly (e.g. <code>M190</code> in gcode will not match <code>M190 S0</code>)</li>
+<li>Any removed cooling / stepper disabling commands should probably be added to a "Queue Finished" event script, so that the printer is put in a safe state
+when all jobs are completed.</li>
+<li>Any changes to the list of ignored commands will take effect after a restart of OctoPrint.</li>
+</ul>
 <h3 id="optional-use-bedready-to-check-bed-state">Optional: Use BedReady to check bed state</h3>
 <p><a href="https://plugins.octoprint.org/plugins/bedready/">OctoPrint-BedReady</a> is a plugin that checks the webcam image of the bed against a refrence image where the bed is clear.</p>
 <p>If you install BedReady, you can add an automated check that the bed is clear for the next print by adding <code>@BEDREADY</code> onto the end of your bed clearing script.</p>
 <h2 id="preprocessors">Preprocessors</h2>
 <p>You may discover that you want more complex behavior than just running the same script every time an event happens - maybe you want to revert to manual part removal if the print is too small to remove automatically, or you want to sweep prints off in a different direction depending on their material or file name.</p>
 <p>This can be done by adding a <strong>Preprocessor</strong>, which is a little bit of extra code that modifies how your GCODE script is executed.</p>
+<h3 id="the-basics">The Basics</h3>
 <p>Preprocessors are optionally added to assigned scripts in the <code>Events</code> settings tab. They evaluate based on instantaneous state details, print file metadata, and optional externally provided state.</p>
+<ul>
+<li>An Event can have multiple Scripts; each Script executes in-order when the Event fires.</li>
+<li>Each Script can have either zero or one Preprocessor assigned.</li>
+<li>If it does not have a Preprocessor, it is run as-is.</li>
+<li>If it does have a Preprocessor, the Preprocessor is run first and its output is applied to that Script before that script is executed.</li>
+</ul>
 <h3 id="language">Language</h3>
 <p>Preprocessors are evaluated using <a href="https://newville.github.io/asteval/">ASTEVAL</a> which is a <a href="https://www.python.org/">Python</a>-like interpreter. Most simple Python scripts will run just fine.</p>
 <p>If you're new to writing Python code and the examples in <code>Settings &gt; Continuous Print &gt; Scripts</code> don't have the answers you need, check out <a href="https://wiki.python.org/moin/BeginnersGuide">here</a> for language resources, or open a new <a href="https://github.com/smartin015/continuousprint/discussions">discussion on GitHub</a>.</p>
@@ -815,7 +897,6 @@ metadata: {
 
               
             </article>
-            
           </div>
         </div>
         
@@ -823,8 +904,7 @@ metadata: {
       
         <footer class="md-footer">
   
-    
-    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
         <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started" rel="prev">
@@ -879,10 +959,10 @@ metadata: {
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "search": "../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.6c7ad80a.min.js"></script>
+      <script src="../assets/javascripts/bundle.748e2769.min.js"></script>
       
     
   </body>

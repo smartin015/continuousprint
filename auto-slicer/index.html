@@ -13,7 +13,7 @@
     
     
       
-        <title>Action Commands - Continuous Print</title>
+        <title>Automatic Slicing - Continuous Print</title>
       
     
     
@@ -65,7 +65,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#action-commands" class="md-skip">
+        <a href="#automatic-slicing" class="md-skip">
           Skip to content
         </a>
       
@@ -97,7 +97,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Action Commands
+              Automatic Slicing
             
           </span>
         </div>
@@ -352,21 +352,6 @@
 
   
   
-  
-    <li class="md-nav__item">
-      <a href="../auto-slicer/" class="md-nav__link">
-        Automatic Slicing
-      </a>
-    </li>
-  
-
-    
-      
-      
-      
-
-  
-  
     
   
   
@@ -379,12 +364,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Action Commands
+          Automatic Slicing
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Action Commands
+        Automatic Slicing
       </a>
       
         
@@ -403,22 +388,42 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#standard-action-commands" class="md-nav__link">
-    Standard Action Commands
+  <a href="#use-case" class="md-nav__link">
+    Use Case
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#custom-actions-for-continuous-print" class="md-nav__link">
-    Custom actions for Continuous Print
+  <a href="#setup" class="md-nav__link">
+    Setup
   </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    Requirements
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-preprintservice" class="md-nav__link">
+    Install PrePrintService
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#firmware-support-for-action-commands" class="md-nav__link">
-    Firmware support for Action Commands
+  <a href="#usage" class="md-nav__link">
+    Usage
   </a>
   
 </li>
@@ -427,6 +432,21 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../action-commands/" class="md-nav__link">
+        Action Commands
+      </a>
     </li>
   
 
@@ -488,22 +508,42 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#standard-action-commands" class="md-nav__link">
-    Standard Action Commands
+  <a href="#use-case" class="md-nav__link">
+    Use Case
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#custom-actions-for-continuous-print" class="md-nav__link">
-    Custom actions for Continuous Print
+  <a href="#setup" class="md-nav__link">
+    Setup
   </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#requirements" class="md-nav__link">
+    Requirements
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-preprintservice" class="md-nav__link">
+    Install PrePrintService
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#firmware-support-for-action-commands" class="md-nav__link">
-    Firmware support for Action Commands
+  <a href="#usage" class="md-nav__link">
+    Usage
   </a>
   
 </li>
@@ -522,22 +562,76 @@
                 
 
 
-<h1 id="action-commands">Action Commands</h1>
-<p>If you interact with your 3D printer using its display (touchscreen, LCD, or similar), you may be interested in action commands.</p>
-<p><strong>Action Commands are messages sent by the printer to OctoPrint when a user performs an action on the printer's display.</strong></p>
-<h2 id="standard-action-commands">Standard Action Commands</h2>
-<p>OctoPrint supports several actions out of the box - see <a href="https://docs.octoprint.org/en/master/features/action_commands.html">here</a> for more details.</p>
-<p>Proper handling of these commands by Continuous Print is <a href="https://github.com/smartin015/continuousprint/issues/95">still under development</a>.</p>
-<p><strong>Your printer firmware must also support action commands</strong> for this to work (see <a href="#firmware-support-for-action-commands">Firmware Support for Action Commands</a> below).</p>
-<h2 id="custom-actions-for-continuous-print">Custom actions for Continuous Print</h2>
-<p>Currently, the Continuous Print plugin supports a single custom action command:</p>
-<pre><code>// action:queuego
+<h1 id="automatic-slicing">Automatic Slicing</h1>
+<h2 id="use-case">Use Case</h2>
+<p>Continuous Print normally prints <code>.gcode</code> files. These files are sliced for a specific printer and are not portable across makes/models.</p>
+<p>Typically, 3d models are sliced by external slicer programs, and <a href="/printer-profiles">profiles</a> are assigned in the queue so it only runs on compatible printers. This is especially important for heterogeneous <a href="/lan-queues">LAN queues</a>.</p>
+<p>With automatic slicing, <strong>you can add 3D models directly to the queue for printing</strong>. This eliminates some manual effort and sources of error.</p>
+<h2 id="setup">Setup</h2>
+<p>OctoPrint supports integration with slicers via the <a href="https://docs.octoprint.org/en/master/plugins/mixins.html#slicerplugin"><code>SlicerPlugin</code> mixin</a> - this mixin is inherited by various plugins to allow slicing models in the OctoPrint file manager by clicking a "slice" button next to the file.</p>
+<p>Any plugin that uses this mixin should enable automated slicing, but for the sake of awesomeness we will use <a href="https://github.com/christophschranz/OctoPrint-PrePrintService">PrePrintService</a> which can also automatically orient your model before slicing it to maximize the likelihood of a successful print.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Just because the file automatically slices, doesn't mean it'll slice <em>correctly</em>.</p>
+<p>PrePrintService improves the odds with automatic orientation, but this will only work as correctly as it's configured, and may not work at all if your printer is non-cartesian (e.g. a belt printer).</p>
+</div>
+<h3 id="requirements">Requirements</h3>
+<p>You will need:</p>
+<ul>
+<li>A machine with <a href="https://www.docker.com/">Docker</a> installed and running - this may be the same as the OctoPrint server, or a different one on the same network.</li>
+<li>Some form of <a href="https://git-scm.com/">git</a> tool to download the forked PrePrintService repository</li>
+</ul>
+<h3 id="install-preprintservice">Install PrePrintService</h3>
+<p>First, we'll set up the slicer server. On your OctoPrint machine or another machine accessible over the network, run the following commands (assuming Linux):</p>
+<pre><code>git clone https://github.com/ChristophSchranz/Octoprint-PrePrintService.git --branch test_and_fix --single-branch
+cd Octoprint-PrePrintService
+docker-compose up --build -d
+
+# To follow the logs:
+docker-compose logs -f
 </code></pre>
-<p>When received from the printer, this message instructs the Continuous Print plugin to start managing the queue - equivalent to clicking "Start Managing" on the UI.</p>
-<p><strong>This command is non-standard and requires additions to firmware</strong> - in particular, a custom menu entry must be added in <a href="https://github.com/MarlinFirmware/Marlin/blob/2.0.x/Marlin/Configuration_adv.h#L3900">CUSTOM_MENU_MAIN of Configuration_adv.h for Marlin firmware</a> which issues a <code>M118 //action:queuego</code> command.</p>
-<h2 id="firmware-support-for-action-commands">Firmware support for Action Commands</h2>
-<p>Not all printers support Action Commands - it depends on the firmware they're running. The easiest way to know if your printer supports action commands is to watch the Terminal tab in OctoPrint for occurrences of <code>// action:&lt;command&gt;</code>. If these appear e.g. when a print is cancelled from the printer's interface, then it's supported.</p>
-<p>Adding support for action commands for your printer involves updating the printer's firmware, which is a device-specific process. Check for user-contributed firmwares which include this support - for Marlin-based firmwares for instance, you want to ensure <code>HOST_ACTION_COMMANDS</code> is defined in the firmware (see <a href="https://github.com/MarlinFirmware/Marlin/blob/2.0.x/Marlin/Configuration_adv.h#L4004">here</a>).</p>
+<p>Now, we need to install the plugin so OctoPrint can communicate with the slicer.</p>
+<ol>
+<li>Navigate to <code>Settings &gt; Plugin Manager &gt; + Get More</code> in the OctoPrint interface.</li>
+<li>Add the following URL into the <code>... from URL</code> box.</li>
+<li>Click the adjacent <code>Install</code> button to install the forked PrePrintService plugin, then restart OctoPrint when prompted.</li>
+<li>Navigate to <code>Settings &gt; PrePrintService Plugin</code>.</li>
+<li>Set the <code>PrePrintService URL</code> text input to point to your slicer server, e.g. <code>http://pre-print-service:2304/tweak</code>.</li>
+<li>Uncheck the <code>Receive auto-rotated model file</code> setting to prevent the slicer server from pushing intermediate models into the queue.</li>
+<li>Import a slic3r profile - you can generate one in <a href="https://slic3r.org/">Slic3r</a> and export it <a href="https://manual.slic3r.org/configuration-organization/configuration-organization#:~:text=If%20you%20want%20to%20store,not%20just%20the%20selected%20profiles">like this</a>.</li>
+<li>Click <code>Save</code> to save your settings, then restart OctoPrint.</li>
+</ol>
+<p>You should be able to click the "magic wand" button next to an STL file in the file manager to slice the file to .gcode - this may take a minute or two if you installed the slicer server on a slow machine (e.g. raspberry pi).</p>
+<p>Finally, we need Continuous Print to know what slicer to use when running STL files:</p>
+<ol>
+<li>Navigate to <code>Settings &gt; Continuous Print</code> in the OctoPrint interface, then click the <code>Behavior</code> tab to show behavior settings.</li>
+<li>Select <code>PrePrintService</code> under <code>Slicer for auto-slicing</code>.</li>
+<li>Select the profile you uploaded earlier under <code>Slicer Profile</code>.</li>
+<li>Click Save.</li>
+</ol>
+<p>After following these instructions, you should have:</p>
+<ul>
+<li>The service container started and running</li>
+<li>PrePrintService plugin installed and pointing to the service</li>
+<li>The Continuous Print plugin installed (of course!)</li>
+</ul>
+<p>You'll know you have the correct settings when you see in the logs:</p>
+<pre><code>Connection to PrePrintService on &lt;...&gt; is ready
+</code></pre>
+<h2 id="usage">Usage</h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Auto-slicing may make weird decisions about how to orient your print, or even incorrect decisions if your printer is not correctly modeled (<a href="https://github.com/ChristophSchranz/Tweaker-3/issues/24">e.g. belt printers are not currently supported in Tweaker</a>).</p>
+<p>It's strongly recommended to watch your first few print attempts until you're confident in the setup.</p>
+<p>Also, consider setting up <a href="/failure-recovery">failure recovery</a> so failing prints are more likely to be caught automatically.</p>
+</div>
+<p>With the default slicer configured, it's time to try it out!</p>
+<ol>
+<li>Upload an <code>.stl</code> file you wish to test out.</li>
+<li>Click the <code>+</code> arrow in the file manager to add it to the queue.
+<code>. Click</code>Start Managing<code>, and watch as the STL is detected, sliced into</code>.gcode`, and printed.</li>
+</ol>
+<p>Note that you can mix <code>.gcode</code> and <code>.stl</code> files in your queue, and Continuous Print will handle them accordingly.</p>
 
               
             </article>
@@ -551,7 +645,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../auto-slicer/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Automatic Slicing" rel="prev">
+        <a href="../managed-bed-cooldown/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Managed Bed Cooldown" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -560,20 +654,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Automatic Slicing
+              Managed Bed Cooldown
             </div>
           </div>
         </a>
       
       
         
-        <a href="../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing" rel="next">
+        <a href="../action-commands/" class="md-footer__link md-footer__link--next" aria-label="Next: Action Commands" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Contributing
+              Action Commands
             </div>
           </div>
           <div class="md-footer__button md-icon">
