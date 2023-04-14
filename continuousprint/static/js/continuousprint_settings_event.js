@@ -20,6 +20,7 @@ function CPSettingsEvent(evt, actions, api, default_symtable) {
     self.desc = evt.desc;
 
     // Construct symtable used for simulating output
+    console.log("eventSymtable", default_symtable);
     let sym = default_symtable;
     if (sym.current) {
       sym.current.state = evt.sym_state;

@@ -48,9 +48,14 @@ function items(njobs = 1, nsets = 2) {
 }
 
 function init(njobs = 1) {
-  return new VM({name:"test", jobs:items(njobs), peers:[
-    {name: "localhost", profile: {name: "profile"}, status: "IDLE"}
-  ]}, mockapi(), mockfiles(), mockprofile(), mockmaterials());
+  return new VM({
+    name:"test",
+    jobs:items(njobs),
+    peers:[{
+      name: "server",
+      clients: [{name: "localhost", profile: JSON.stringify({name: "profile"}), status: "IDLE", location: {}}],
+    }],
+  }, mockapi(), mockfiles(), mockprofile(), mockmaterials());
 }
 
 test('newEmptyJob', () => {

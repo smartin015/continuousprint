@@ -7,7 +7,7 @@ function CPSettingsQueuesViewModel(api) {
   var self = this;
   self.api = api;
   self.queues = ko.observableArray([]);
-  self.queues_fingerprint = null;
+  self.queue_fingerprint = null;
   self.rmQueue = function(q) {
     self.queues.remove(q);
   }
@@ -31,8 +31,16 @@ function CPSettingsQueuesViewModel(api) {
   };
 
   self.loadQueues = function() {
-    self.api.get(self.api.QUEUES, (data) => {
-      self.queues(data);
+    self.api.get(self.api.QUEUES, (result) => {
+      let queues = []
+			for (let r of result) {
+				if (r.name === "archive") {
+					continue; // Archive is hidden
+				}
+				queues.push(r);
+			}
+			self.queues(queues);
+      self.queue_fingerprint = JSON.stringify(queues);
     });
   };
 }

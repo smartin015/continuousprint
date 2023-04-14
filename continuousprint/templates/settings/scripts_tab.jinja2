@@ -47,7 +47,7 @@
     </div> <!-- foreach scripts -->
 
     <div style="text-align: right">
-      <button class="btn" data-bind="click: automation.loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
+      <button class="btn" data-bind="click: automation.loadScriptsFromProfile($root.profiles($root.selected_make(), $root.selected_model()))" title="Load user-contributed scripts based on your printer profile">
         <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Import Defaults from Current Profile
       </button>
 

@@ -57,8 +57,7 @@ function CPSettingsAutomationViewModel(api, default_scripts=CP_GCODE_SCRIPTS, cu
     };
   }
 
-  self.loadScriptsFromProfile = function() {
-    let profile = (self.profiles[self.selected_make()] || {})[self.selected_model()];
+  self.loadScriptsFromProfile = function(profile) {
     if (profile === undefined) {
       return;
     }

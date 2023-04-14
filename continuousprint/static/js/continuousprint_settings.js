@@ -11,6 +11,8 @@ if (typeof log === "undefined" || log === null) {
   CPAPI = require('./continuousprint_api');
   CP_SIMULATOR_DEFAULT_SYMTABLE = function() {return {};};
   CPSettingsEvent = require('./continuousprint_settings_event');
+  CPSettingsAutomationViewModel = require('./continuousprint_settings_automation').CPSettingsAutomationViewModel;
+  CPSettingsQueuesViewModel = require('./continuousprint_settings_queues').CPSettingsQueuesViewModel;
   OctoPrint = undefined;
 }
 
@@ -115,8 +117,6 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
 
   // Called automatically by SettingsViewModel
   self.onSettingsShown = function() {
-    self.queues.onSettingsShown();
-
     for (let prof of profiles) {
       if (self.settings.settings.plugins.continuousprint.cp_printer_profile() === prof.name) {
         self.selected_make(prof.make);
@@ -126,21 +126,8 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       self.slicer(self.settings.settings.plugins.continuousprint.cp_slicer());
       self.slicer_profile(self.settings.settings.plugins.continuousprint.cp_slicer_profile());
     }
-    // Queues and scripts are stored in the DB; we must fetch them whenever
-    // the settings page is loaded
-    self.api.get(self.api.QUEUES, (result) => {
-      let queues = []
-      console.log("TODO handle local/global adverts");
-      for (let r of result.queues) {
-        if (r.name === "archive") {
-          continue; // Archive is hidden
-        }
-        queues.push(self.newLoadout(r));
-      }
-      self.loadout(queues);
-      self.queue_fingerprint = JSON.stringify(queues);
-    });
 
+    self.queues.onSettingsShown();
     self.automation.onSettingsShown();
   };
 
