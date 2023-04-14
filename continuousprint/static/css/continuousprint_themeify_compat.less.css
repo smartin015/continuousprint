@@ -1,0 +1,50 @@
+.themeify.discorded #tab_plugin_continuousprint .highlight,
+.themeify.cyborg #tab_plugin_continuousprint .highlight,
+.themeify.discoranged #tab_plugin_continuousprint .highlight,
+.themeify.nighttime #tab_plugin_continuousprint .highlight {
+  border: 3px #656b76 solid !important;
+}
+.themeify.discorded #tab_plugin_continuousprint .job-header,
+.themeify.cyborg #tab_plugin_continuousprint .job-header,
+.themeify.discoranged #tab_plugin_continuousprint .job-header,
+.themeify.nighttime #tab_plugin_continuousprint .job-header {
+  background-color: #222 !important;
+}
+.themeify.discorded #tab_plugin_continuousprint input,
+.themeify.cyborg #tab_plugin_continuousprint input,
+.themeify.discoranged #tab_plugin_continuousprint input,
+.themeify.nighttime #tab_plugin_continuousprint input {
+  background-color: #656b76 !important;
+  color: white !important;
+}
+/* ==== This section is for compatibility with the Themeify plugin - overrides progress bars so that success/failure colors can still be seen ==== */
+#tab_plugin_continuousprint .progress .bar.bar-success {
+  background-color: #62c462;
+}
+#tab_plugin_continuousprint .progress .bar.bar-danger {
+  background-color: #ee5f5b;
+}
+#tab_plugin_continuousprint .progress-striped .bar {
+  background-color: #149bdf;
+  background-image: -webkit-gradient(linear, 0 100%, 100% 0, color-stop(0.25, rgba(255, 255, 255, 0.15)), color-stop(0.25, transparent), color-stop(0.5, transparent), color-stop(0.5, rgba(255, 255, 255, 0.15)), color-stop(0.75, rgba(255, 255, 255, 0.15)), color-stop(0.75, transparent), to(transparent));
+  background-image: -webkit-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -moz-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: -o-linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+  -webkit-background-size: 40px 40px;
+  -moz-background-size: 40px 40px;
+  -o-background-size: 40px 40px;
+  background-size: 40px 40px;
+}
+#tab_plugin_continuousprint .progress.active .bar {
+  animation: none;
+  background-image: none;
+}
+#tab_plugin_continuousprint .progress.active .bar.active {
+  -webkit-animation: progress-bar-stripes 2s linear infinite;
+  -moz-animation: progress-bar-stripes 2s linear infinite;
+  -ms-animation: progress-bar-stripes 2s linear infinite;
+  -o-animation: progress-bar-stripes 2s linear infinite;
+  animation: progress-bar-stripes 2s linear infinite;
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+}

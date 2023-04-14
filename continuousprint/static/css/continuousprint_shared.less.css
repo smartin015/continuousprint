@@ -1,0 +1,91 @@
+:root {
+  /* Small padding roughly matches the spacing between Print/Pause/Cancel buttons in the State panel */
+  --cpq-pad: 6px;
+  --cpq-pad2: 20px;
+}
+@font-face {
+  font-family: Cabin Regular;
+  src: url(../ttf/Cabin/Cabin-Regular.ttf);
+}
+#tab_plugin_continuousprint .hint,
+#settings_plugin_continuousprint .hint {
+  font-weight: italic;
+  font-size: 85%;
+  opacity: 0.7;
+}
+#tab_plugin_continuousprint .bold,
+#settings_plugin_continuousprint .bold {
+  font-weight: bold;
+}
+#tab_plugin_continuousprint .label,
+#settings_plugin_continuousprint .label {
+  border: 1px gray solid;
+}
+#tab_plugin_continuousprint .fa-grip-vertical,
+#settings_plugin_continuousprint .fa-grip-vertical {
+  opacity: 0;
+  margin-left: 1px !important;
+}
+#tab_plugin_continuousprint *:hover > .fa-grip-vertical,
+#settings_plugin_continuousprint *:hover > .fa-grip-vertical {
+  opacity: 0.5;
+  cursor: grab;
+}
+#tab_plugin_continuousprint .accordion-heading-button,
+#settings_plugin_continuousprint .accordion-heading-button {
+  padding: var(--cpq-pad) var(--cpq-pad);
+}
+#tab_plugin_continuousprint .accordion-heading-button input,
+#settings_plugin_continuousprint .accordion-heading-button input {
+  margin-top: -2px;
+}
+#tab_plugin_continuousprint .accordion-body.collapse,
+#settings_plugin_continuousprint .accordion-body.collapse {
+  /* Transitions copied from div#files.accordion-body.collapse */
+  max-height: 0;
+  overflow-y: auto;
+  -webkit-transition: max-height 0.35s ease;
+  -moz-transition: max-height 0.35s ease;
+  -o-transition: max-height 0.35s ease;
+  transition: max-height 0.35s ease;
+}
+#tab_plugin_continuousprint .accordion-body.collapse.in,
+#settings_plugin_continuousprint .accordion-body.collapse.in {
+  max-height: 500px;
+}
+#tab_plugin_continuousprint .action-gutter,
+#settings_plugin_continuousprint .action-gutter {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  padding-right: var(--cpq-pad);
+  padding-top: var(--cpq-pad);
+}
+#tab_plugin_continuousprint .action-gutter .text-error,
+#settings_plugin_continuousprint .action-gutter .text-error {
+  width: 100%;
+  line-height: 1;
+  text-align: right;
+  padding-right: var(--cpq-pad2);
+}
+#tab_plugin_continuousprint .queue-header,
+#settings_plugin_continuousprint .queue-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  opacity: 0.5;
+  align-items: flex-end;
+}
+#tab_plugin_continuousprint .queue-header > div,
+#settings_plugin_continuousprint .queue-header > div {
+  text-align: center;
+  margin-left: var(--cpq-pad);
+}
+#tab_plugin_continuousprint .has_title,
+#settings_plugin_continuousprint .has_title {
+  cursor: help;
+}
+#tab_plugin_continuousprint .has_title > sup,
+#settings_plugin_continuousprint .has_title > sup {
+  opacity: 0.5;
+}

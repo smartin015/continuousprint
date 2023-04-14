@@ -259,12 +259,14 @@ function CPViewModel(parameters) {
       // infer the index of the job based on the rendered HTML given by evt.to
       if (vm.constructor.name === "CPJob") {
         let destq = self.queues()[self._getElemIdx(evt.to, "cp-queue")];
+        let destj = destq.jobs();
         let dest_idx = evt.newIndex;
         self.api.mv(self.api.JOB, {
             src_queue: src.name,
             dest_queue: destq.name,
             id: vm.id(),
-            after_id: (dest_idx > 0) ? destq.jobs()[dest_idx-1].id() : null
+            after_id: (dest_idx > 0) ? destj[dest_idx-1].id() : null,
+            before_id: (dest_idx < destj.length-1) ? destj[dest_idx+1].id() : null,
         }, (result) => {
           if (result.error) {
             self.onDataUpdaterPluginMessage("continuousprint", {type: "error", msg: result.error});

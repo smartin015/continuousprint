@@ -2,8 +2,8 @@ import unittest
 import logging
 from ..storage.database_test import QueuesDBTest
 from ..storage import queries
-from ..storage.lan import LANJobView
-from ..storage.database import JobView
+from ..storage.peer import PeerJobView, PeerQueueView
+from ..storage.database import JobView, Job, Queue
 from unittest.mock import MagicMock
 from .base import Strategy, QueueData
 from .base_test import (
@@ -29,7 +29,10 @@ class TestAbstractImpl(AbstractQueueTests, QueuesDBTest):
             MagicMock(),
             MagicMock(),
         )
-        self.jid = self.q.import_job_from_view(makeAbstractTestJob(0))
+        self.jid = self.q.import_job_from_view(
+            makeAbstractTestJob(0, cls=Job, qcls=Queue)
+        )
+        self.j = Job.get(id=self.jid)
         self.q._set_path_exists = lambda p: True
 
 
@@ -37,6 +40,8 @@ class TestEditableImpl(EditableQueueTests, QueuesDBTest):
     # See abstract_test.py for actual test cases
     def setUp(self):
         QueuesDBTest.setUp(self)
+        self.cls = Job
+        self.qcls = Queue
         self.q = LocalQueue(
             queries,
             "local",
@@ -46,13 +51,13 @@ class TestEditableImpl(EditableQueueTests, QueuesDBTest):
             MagicMock(),
         )
         self.jids = [
-            self.q.import_job_from_view(makeAbstractTestJob(i))
+            self.q.import_job_from_view(makeAbstractTestJob(i, cls=Job, qcls=Queue))
             for i in range(EditableQueueTests.NUM_TEST_JOBS)
         ]
         self.q._set_path_exists = lambda p: True
 
 
-class TestLocalQueueImportFromLAN(unittest.TestCase):
+class TestLocalQueueImportFromNetwork(unittest.TestCase):
     def setUp(self):
         queries = MagicMock()
         queries.getAcquiredJob.return_value = None
@@ -65,11 +70,10 @@ class TestLocalQueueImportFromLAN(unittest.TestCase):
             MagicMock(),
         )
 
-    def testImportJobFromLANView(self):
-        # Jobs imported from LAN into local queue must have their
+    def testImportJobFromPeerView(self):
+        # Jobs imported into local queue must have their
         # gcode files copied from the remote peer, in a way which
         # doesn't get auto-cleaned (as in the fileshare/ directory)
-        lq = MagicMock()
         j = JobView()
         j.id = "567"
         j.save = MagicMock()
@@ -77,13 +81,16 @@ class TestLocalQueueImportFromLAN(unittest.TestCase):
         manifest = dict(
             name="test_job",
             id="123",
-            sets=[dict(path="a.gcode", count=1, remaining=1)],
+            sets=[dict(path="a.gcode", count=1, remaining=1, metadata="")],
             hash="foo",
             peer_="addr",
         )
         cp = MagicMock()
-        lq.get_gjob_dirpath.return_value = "gjob_dirpath"
-        self.q.import_job_from_view(LANJobView(manifest, lq), cp)
+        j = PeerJobView()
+        netq = PeerQueueView(MagicMock())
+        netq.q.get_gjob_dirpath.return_value = "gjob_dirpath"
+        j.load_dict(manifest, netq)
+        self.q.import_job_from_view(j, cp)
 
         wantdir = "ContinuousPrint/imports/test_job_123"
         cp.assert_called_with("gjob_dirpath", wantdir)

@@ -30,6 +30,10 @@ class ContinuousprintPlugin(
 
     # -------------------- Begin BlueprintPlugin --------------------
 
+    def is_blueprint_csrf_protected(self):
+        # See https://docs.octoprint.org/en/maintenance/plugins/mixins.html#blueprintplugin
+        return True
+
     def get_blueprint(self):
         # called before on_startup, but we need the plugin to provide the blueprint
         self.on_startup()

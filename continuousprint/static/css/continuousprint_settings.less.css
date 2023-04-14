@@ -1,0 +1,96 @@
+#settings_plugin_continuousprint .cpq_title {
+  font-family: "Cabin Regular";
+  font-size: 2em;
+  display: flex;
+  align-items: center;
+}
+#settings_plugin_continuousprint .cpq_title > img {
+  width: 71px;
+}
+#settings_plugin_continuousprint .queue-header :first-child {
+  text-align: left;
+  width: 300px;
+}
+#settings_plugin_continuousprint .queue-row-container {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  justify-content: right;
+  align-items: center;
+}
+#settings_plugin_continuousprint .queue-row-container > * {
+  margin-left: var(--cpq-pad2);
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+#settings_plugin_continuousprint .queue-row-container > .row-name {
+  width: 300px;
+}
+#settings_plugin_continuousprint .queue-row-container select {
+  margin-bottom: 0px;
+}
+#settings_plugin_continuousprint .queue-row-container > div {
+  flex: 1;
+  text-align: center;
+}
+#settings_plugin_continuousprint .lobby {
+  max-height: 300px;
+  overflow-y: scroll;
+}
+#settings_plugin_continuousprint .lobby-network-details {
+  display: flex;
+  flex-direction: row;
+}
+#settings_plugin_continuousprint .lobby-network-details > div {
+  flex: 1;
+  margin: var(--cpq-pad);
+}
+#settings_plugin_continuousprint .lobby-network-details > div:first-child {
+  border-right: 1px #e5e5e5 solid;
+  /* copy from .accordion-group */
+}
+#settings_plugin_continuousprint .header-row {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  align-items: center;
+  min-height: 30px;
+}
+#settings_plugin_continuousprint .header-row > * {
+  margin-left: var(--cpq-pad);
+}
+#settings_plugin_continuousprint .subheader {
+  opacity: 0.7;
+  font-style: italic;
+}
+#settings_plugin_continuousprint .events > h4 {
+  margin-top: var(--cpq-pad2);
+  padding-top: var(--cpq-pad2);
+}
+#settings_plugin_continuousprint .simulation-output {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+#settings_plugin_continuousprint .simulation-output > div {
+  flex: 1;
+  padding: var(--cpq-pad);
+}
+#settings_plugin_continuousprint .simulation-output h5 {
+  margin: 0;
+  text-align: center;
+  opacity: 0.5;
+}
+#settings_plugin_continuousprint .output-block {
+  border: 1px #e5e5e5 solid;
+  /* copy from .accordion-group */
+  border-radius: var(--cpq-pad);
+  width: 100%;
+  min-height: 150px;
+  max-height: 400px;
+  overflow-y: scroll;
+  padding: 0;
+  margin: 0;
+}

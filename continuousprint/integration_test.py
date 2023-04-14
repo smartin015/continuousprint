@@ -1,4 +1,5 @@
 import unittest
+import json
 import datetime
 import time
 import tempfile
@@ -10,32 +11,27 @@ import traceback
 from .storage.database_test import DBTest
 from .storage.database import DEFAULT_QUEUE, MODELS, populate_queues
 from .storage import queries
-from .storage.lan import LANJobView
+from .storage.peer import PeerJobView
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
-from .queues.lan import LANQueue
-from .queues.abstract import Strategy
+from .queues.net import NetworkQueue
+from .queues.base import Strategy
 from .data import CustomEvents
 from .script_runner import ScriptRunner
 from peewee import SqliteDatabase
 from collections import defaultdict
-from peerprint.lan_queue import LANPrintQueueBase
-from peerprint.sync_objects_test import TestReplDict
+from peerprint.server_test import MockServer
 
 # logging.basicConfig(level=logging.DEBUG)
 
 
 class IntegrationTest(DBTest):
-    def newQueue(self):
-        raise NotImplementedError
-
     def setUp(self):
         super().setUp()
 
         def onupdate():
             pass
 
-        self.lq = self.newQueue()
         self.mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
         self.mq.add(self.lq.ns, self.lq)
         self.d = Driver(
@@ -111,6 +107,10 @@ class TestLocalQueue(IntegrationTest):
         # Override path existence
         lq._set_path_exists = lambda p: True
         return lq
+
+    def setUp(self):
+        self.lq = self.newQueue()
+        super().setUp()
 
     def test_retries_failure(self):
         queries.appendSet(
@@ -275,51 +275,64 @@ class LocalLockManager:
         self.locks.pop(k, None)
 
 
-class TestLANQueue(IntegrationTest):
+class TestNetworkQueue(IntegrationTest):
     """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
 
-    def newQueue(self):
+    def setUp(self):
+        # Manually construct and mock out the base implementation
         def onupdate():
             pass
 
-        lq = LANQueue(
+        fs = MagicMock()
+        fs.fetch.return_value = "foo.gcode"
+
+        self.srv = MockServer([])
+        pp = MagicMock()
+        type(pp.get_plugin()).client = self.srv
+        type(pp.get_plugin()).fileshare = fs
+        self.lq = NetworkQueue(
             "LAN",
-            "asdf:12345",
+            pp,
             logging.getLogger("lantest"),
             Strategy.IN_ORDER,
             onupdate,
-            MagicMock(),
             dict(name="profile"),
             lambda path: path,
         )
-        return lq
-
-    def setUp(self):
+        self.lq._server_id = self.srv.get_id(self.lq.ns)
         super().setUp()
-        # Manually construct and mock out the base implementation
-        self.lq.lan.q = LANPrintQueueBase(
-            self.lq.ns, self.lq.addr, MagicMock(), logging.getLogger("lantestbase")
-        )
-        self.lq.lan.q.locks = LocalLockManager(dict(), "lq")
-        self.lq.lan.q.jobs = TestReplDict(lambda a, b: None)
-        self.lq.lan.q.peers = {}
-        self.lq.lan.q.peers[self.lq.addr] = (time.time(), dict(fs_addr="mock"))
-        self.lq._fileshare.fetch.return_value = "from_fileshare.gcode"
 
     def test_completes_job_in_order(self):
-        self.lq.lan.q.setJob(
-            "uuid1",
-            dict(
-                id="uuid1",
-                name="j1",
-                created=0,
-                sets=[
-                    dict(path="a.gcode", count=1, remaining=1),
-                    dict(path="b.gcode", count=1, remaining=1),
-                ],
-                count=1,
-                remaining=1,
+        self.srv.set_record(
+            self.lq.ns,
+            uuid="uuid1",
+            manifest=json.dumps(
+                dict(
+                    id="uuid1",
+                    name="j1",
+                    created=0,
+                    sets=[
+                        dict(
+                            path="a.gcode",
+                            count=1,
+                            remaining=1,
+                            id="set0",
+                            metadata="1",
+                        ),
+                        dict(
+                            path="b.gcode",
+                            count=1,
+                            remaining=1,
+                            id="set1",
+                            metadata="2",
+                        ),
+                    ],
+                    count=1,
+                    remaining=1,
+                    peer_="foo",  # TODO - should probably rely on creator
+                )
             ),
+            rank=dict(),
         )
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.assert_from_printing_state("a.gcode")
@@ -327,23 +340,36 @@ class TestLANQueue(IntegrationTest):
 
     def test_multi_job(self):
         for name in ("j1", "j2"):
-            self.lq.lan.q.setJob(
-                f"{name}_id",
-                dict(
-                    id=f"{name}_id",
-                    name=name,
-                    created=0,
-                    sets=[dict(path=f"{name}.gcode", count=1, remaining=1)],
-                    count=1,
-                    remaining=1,
+            self.srv.set_record(
+                self.lq.ns,
+                uuid=f"{name}_id",
+                manifest=json.dumps(
+                    dict(
+                        id=f"{name}_id",
+                        name=name,
+                        created=0,
+                        sets=[
+                            dict(
+                                path=f"{name}.gcode",
+                                count=1,
+                                remaining=1,
+                                id=f"{name}_set0",
+                                metadata="1",
+                            )
+                        ],
+                        count=1,
+                        remaining=1,
+                        peer_="foo",  # TODO - should probably rely on creator
+                    )
                 ),
+                rank=dict(),
             )
         self.d.action(DA.ACTIVATE, DP.IDLE)  # -> start_print -> printing
         self.assert_from_printing_state("j1.gcode")
         self.assert_from_printing_state("j2.gcode", finishing=True)
 
 
-class TestMultiDriverLANQueue(unittest.TestCase):
+class TestMultiDriverNetworkQueue(unittest.TestCase):
     def setUp(self):
         NPEERS = 2
         self.dbs = [SqliteDatabase(":memory:") for i in range(NPEERS)]
@@ -351,24 +377,28 @@ class TestMultiDriverLANQueue(unittest.TestCase):
         def onupdate():
             pass
 
-        self.locks = {}
+        fs = MagicMock()
+        fs.fetch.return_value = "foo.gcode"
+        self.srv = MockServer([])
+        pp = MagicMock()
+        type(pp.get_plugin()).client = self.srv
+        type(pp.get_plugin()).fileshare = fs
+
         self.peers = []
         for i, db in enumerate(self.dbs):
             with db.bind_ctx(MODELS):
                 populate_queues()
-            fsm = MagicMock(host="fsaddr", port=0)
-            fsm.fetch.return_value = "from_fileshare.gcode"
-            profile = dict(name="profile")
-            lq = LANQueue(
+            lq = NetworkQueue(
                 "LAN",
-                f"peer{i}:{12345+i}",
+                pp,
                 logging.getLogger(f"peer{i}:LAN"),
                 Strategy.IN_ORDER,
                 onupdate,
-                fsm,
-                profile,
+                dict(name="profile"),
                 lambda path, sd: path,
             )
+            lq._server_id = self.srv.get_id(lq.ns)
+
             mq = MultiQueue(queries, Strategy.IN_ORDER, onupdate)
             mq.add(lq.ns, lq)
             d = Driver(
@@ -381,22 +411,15 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             d._runner.set_active.return_value = True
             d.set_retry_on_pause(True)
             d.action(DA.DEACTIVATE, DP.IDLE)
-            lq.lan.q = LANPrintQueueBase(
-                lq.ns, lq.addr, MagicMock(), logging.getLogger("lantestbase")
-            )
-            lq.lan.q.locks = LocalLockManager(self.locks, f"peer{i}")
-            if i == 0:
-                lq.lan.q.jobs = TestReplDict(lambda a, b: None)
-                lq.lan.q.peers = dict()
-            else:
-                lq.lan.q.peers = self.peers[0][2].lan.q.peers
-                lq.lan.q.jobs = self.peers[0][2].lan.q.jobs
             self.peers.append((d, mq, lq, db))
 
-        for p in self.peers:
-            self.peers[0][2].lan.q.peers[p[2].addr] = (
-                time.time(),
-                dict(fs_addr="fakeaddr", profile=dict(name="profile")),
+        for i, p in enumerate(self.peers):
+            self.srv.set_status(
+                "LAN",
+                name=f"peer{i}",
+                printers=[
+                    dict(name=f"printer{i}", profile=dict(name="profile")),
+                ],
             )
 
     def test_ordered_acquisition(self):
@@ -457,7 +480,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
         (d2, _, lq2, db2) = self.peers[1]
         with tempfile.TemporaryDirectory() as tdir:
             (Path(tdir) / "test.gcode").touch()
-            j = LANJobView(
+            j = PeerJobView(
                 dict(
                     id="jobhash",
                     name="job",

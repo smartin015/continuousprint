@@ -2,7 +2,9 @@ class DummyQueue:
     name = "foo"
 
 
-def testJob(inst, cls):
+def testJob(inst, cls, qcls=DummyQueue):
+    if qcls is None:
+        qcls = DummyQueue
     j = cls()
     j.load_dict(
         dict(
@@ -31,7 +33,7 @@ def testJob(inst, cls):
                 )
             ],
         ),
-        DummyQueue(),
+        qcls(),
     )
     return j
 
@@ -113,7 +115,7 @@ class EditableQueueTests(JobEqualityTests):
 
     def setUp(self):
         raise NotImplementedError(
-            "Must create queue as self.q with testJob() inserted (inst=0..3)"
+            "Must create queue as self.q with testJob() inserted (inst=0..3) and self.cls/qcls for classes in mkjob()"
         )
 
     def test_mv_job_exchange(self):
@@ -122,7 +124,7 @@ class EditableQueueTests(JobEqualityTests):
         self.assertEqual(jids, [self.jids[i] for i in (0, 2, 1, 3)])
 
     def test_mv_to_front(self):
-        self.q.mv_job(self.jids[2], None, self.jids[1])
+        self.q.mv_job(self.jids[2], None, self.jids[0])
         jids = [j["id"] for j in self.q.as_dict()["jobs"]]
         self.assertEqual(jids, [self.jids[i] for i in (2, 0, 1, 3)])
 
@@ -142,24 +144,27 @@ class EditableQueueTests(JobEqualityTests):
         self.assertEqual(len(self.q.as_dict()["jobs"][0]["sets"]), 1)
 
         # Edit the acquired job, adding a new set
-        newsets = [testJob(0).sets[0].as_dict()]  # Same as existing
-        newsets.append(testJob(100).sets[0].as_dict())  # New set
+        newsets = [self.q.as_dict()["jobs"][0]["sets"][0]]  # Same as existing
+        newsets.append(testJob(100, self.cls, self.qcls).sets[0].as_dict())  # New set
         self.q.edit_job(self.jids[0], dict(sets=newsets))
-
         # Value after decrement should be consistent, i.e. not regress to prior acquired-job value
         self.q.decrement()
         self.assertEqual(len(self.q.as_dict()["jobs"][0]["sets"]), 2)
 
     def test_get_job_view(self):
-        self.assertJobsEqual(self.q.get_job_view(self.jids[0]), testJob(0))
+        self.assertJobsEqual(
+            self.q.get_job_view(self.jids[0]),
+            testJob(0, self.cls, self.qcls),
+            ignore=("rd", "rn", "rank"),
+        )
 
     def test_import_job_from_view(self):
-        j = testJob(10)
+        j = testJob(10, self.cls, self.qcls)
         jid = self.q.import_job_from_view(j)
-        self.assertJobsEqual(self.q.get_job_view(jid), j)
+        self.assertJobsEqual(self.q.get_job_view(jid), j, ignore=("rd", "rn", "rank"))
 
     def test_import_job_from_view_persists_completion_and_remaining(self):
-        j = testJob(10)
+        j = testJob(10, self.cls, self.qcls)
         j.sets[0].completed = 3
         j.sets[0].remaining = 5
         jid = self.q.import_job_from_view(j)

@@ -1,0 +1,244 @@
+#files .cpq-gjob div[title="Load"] {
+  display: none !important;
+}
+#files .cpq-gjob div[title="Load and Print"] {
+  display: none !important;
+}
+#files .cpq-gjob .fa-archive {
+  margin-right: 4px;
+}
+#state span .ERROR {
+  background-color: rgba(255, 0, 0, 0.6);
+  border-radius: var(--cpq-pad);
+  padding: var(--cpq-pad);
+}
+#state span .NEEDS_ACTION {
+  animation: pulse 2.5s infinite;
+  border-radius: var(--cpq-pad);
+  padding: var(--cpq-pad);
+}
+#tab_plugin_continuousprint .cpq-leftpad {
+  margin-left: var(--cpq-pad);
+}
+#tab_plugin_continuousprint #continuousprint_tab_queues > div {
+  margin-bottom: 50px;
+}
+#tab_plugin_continuousprint .highlight {
+  border: 3px #77a4ff solid !important;
+  min-height: 100px;
+}
+#tab_plugin_continuousprint .multiselect {
+  flex-grow: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: right;
+  margin-bottom: -31px;
+  margin-left: 4px;
+}
+#tab_plugin_continuousprint .multiselect .btn-group {
+  /* Lay on top of table headers */
+  z-index: 1;
+}
+#tab_plugin_continuousprint .cp-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-weight: bold;
+}
+#tab_plugin_continuousprint .job-header {
+  background-color: #eee;
+}
+#tab_plugin_continuousprint .profile-select {
+  /* Match the style of Bootstrap labels */
+  height: 20px;
+  width: 60px;
+  margin-bottom: 0px;
+}
+#tab_plugin_continuousprint .fa-grip-vertical {
+  opacity: 0;
+  margin-left: 1px !important;
+}
+#tab_plugin_continuousprint *:hover > .fa-grip-vertical {
+  opacity: 0.5;
+  cursor: grab;
+}
+#tab_plugin_continuousprint .queue-list {
+  border-radius: var(--cpq-pad);
+  min-height: 70px;
+  border-top: 1px #e5e5e5 solid;
+  border-bottom: 1px #e5e5e5 solid;
+  padding: var(--cpq-pad) 0px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+#tab_plugin_continuousprint .accordion-heading {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: column;
+  justify-content: right;
+  align-items: center;
+}
+#tab_plugin_continuousprint .queue-row-container {
+  width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  justify-content: right;
+  align-items: center;
+}
+#tab_plugin_continuousprint .job {
+  position: relative;
+}
+#tab_plugin_continuousprint .job.acquired .job-name {
+  font-weight: bold;
+}
+#tab_plugin_continuousprint .job.acquired.local div.job-header {
+  background-color: #DDF;
+}
+#tab_plugin_continuousprint .job .shiftsel {
+  border-left: 3px solid #CCC !important;
+}
+#tab_plugin_continuousprint .job .floatedit {
+  position: absolute;
+  top: var(--cpq-pad2);
+  right: var(--cpq-pad2);
+  opacity: 0;
+  z-index: 1000;
+}
+#tab_plugin_continuousprint .job .accordion-group {
+  border-right: 0px;
+}
+#tab_plugin_continuousprint .job > div.accordion-body > div.accordion-inner {
+  padding-right: 0px;
+  border-right: 0px;
+}
+#tab_plugin_continuousprint .job:hover .floatedit {
+  opacity: 0.5;
+}
+#tab_plugin_continuousprint .job:hover .floatedit:hover .floatedit:hover {
+  opacity: 1;
+}
+#tab_plugin_continuousprint .queue-row-container > * {
+  margin-left: var(--cpq-pad);
+  margin-bottom: 0;
+  line-height: 1.6;
+}
+#tab_plugin_continuousprint .total,
+#tab_plugin_continuousprint .completed,
+#tab_plugin_continuousprint .remaining,
+#tab_plugin_continuousprint .count {
+  width: 67px;
+  text-align: center;
+  margin-left: var(--cpq-pad);
+  padding: 2px;
+  border: 1px transparent solid;
+}
+#tab_plugin_continuousprint .cp-queue .loading {
+  opacity: 0.3;
+  cursor: default !important;
+}
+#tab_plugin_continuousprint .edit-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+  opacity: 0.5;
+}
+#tab_plugin_continuousprint .sets.draft {
+  border-bottom: 2px #ccc solid;
+}
+#tab_plugin_continuousprint .sets .progress {
+  margin-left: 17px;
+}
+#tab_plugin_continuousprint .job-stats {
+  display: flex;
+  justify-content: space-between;
+}
+#tab_plugin_continuousprint .progresstext {
+  width: 100%;
+  position: absolute;
+  text-align: center;
+}
+#tab_plugin_continuousprint .set_warning {
+  flex: 1;
+  text-align: center;
+  margin-right: 17px;
+}
+#tab_plugin_continuousprint .draft .set_warning {
+  flex: 0;
+}
+#tab_plugin_continuousprint .progress {
+  position: relative;
+  flex: 1;
+  display: flex;
+  /* allow for stacking progresses in jobs */
+  margin-right: var(--cpq-pad2);
+}
+#tab_plugin_continuousprint .cpq_logo {
+  height: 40px;
+  float: left;
+}
+#tab_plugin_continuousprint .queue-header {
+  margin-left: 55px;
+  margin-right: var(--cpq-pad2);
+}
+#tab_plugin_continuousprint #queue_sets.empty {
+  border: 1px #e5e5e5 solid;
+  /* copy from .accordion-group */
+  padding: var(--cpq-pad);
+  border-radius: var(--cpq-pad);
+}
+#tab_plugin_continuousprint #queue_sets.empty.draft::before {
+  content: "Hint: Click the + button on a file, or drag in a set from another job in edit mode.";
+  font-weight: italic;
+  font-size: 85%;
+  opacity: 0.7;
+}
+#tab_plugin_continuousprint ::placeholder {
+  font-weight: italic;
+  opacity: 0.7;
+}
+#tab_plugin_continuousprint .queue-set-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+#tab_plugin_continuousprint .queue-set-list h4 {
+  border-bottom: 1px #e5e5e5 solid;
+}
+#tab_plugin_continuousprint .queue-set-list .full {
+  width: 100%;
+}
+#tab_plugin_continuousprint .queue-set-list .gutter {
+  border-top: 1px #e5e5e5 solid;
+  padding-top: var(--cpq-pad);
+  display: flex;
+  justify-content: space-between;
+}
+#tab_plugin_continuousprint .count-box {
+  min-width: 30px;
+  max-height: 15px;
+  -moz-appearance: textfield;
+  text-align: center;
+  border: 1px #ccc solid !important;
+}
+#tab_plugin_continuousprint .count-box::-webkit-outer-spin-button,
+#tab_plugin_continuousprint .count-box::-webkit-inner-spin-button {
+  /* chrome, safari, edge, opera: hide up/down buttons on count box input */
+  -webkit-appearance: none;
+  margin: 0;
+}
+#tab_plugin_continuousprint .file-name,
+#tab_plugin_continuousprint .job-name {
+  flex: 1;
+  flex-shrink: 10;
+  overflow-x: hidden;
+  white-space: nowrap;
+  max-width: 96%;
+  text-overflow: ellipsis;
+  border: 0;
+}

@@ -157,7 +157,7 @@ function CPSettingsEvent(evt, actions, api, default_symtable) {
       let ks = [];
       for (let a of self.actions()) {
         let pp = a.preprocessor();
-        if (pp !== null) {
+        if (pp !== null && pp !== undefined) {
           pp = pp.name();
         }
         ks.push({

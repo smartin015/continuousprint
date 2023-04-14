@@ -8,7 +8,7 @@
     For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">GCODE scripting guide</a>.
     </p>
 
-    <div class="alert alert-error" data-bind="hidden: allUniqueScriptNames">
+    <div class="alert alert-error" data-bind="hidden: automation.allUniqueScriptNames">
       <p>
       <i class="fas fa-exclamation-circle"></i> Two or more scripts have the same name.
       </p>
@@ -17,7 +17,7 @@
       </p>
     </div>
 
-    <div class="scripts accordion" data-bind="foreach: scripts">
+    <div class="scripts accordion" data-bind="foreach: automation.scripts">
       <div class="accordion-group">
         <div class="accordion-heading header-row">
           <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: () => expanded(true)"></i>
@@ -31,10 +31,10 @@
             </div>
           </div>
           <div style="width: 30px">
-            <div data-bind="click: $root.downloadScript" title="Download"><i class="fa fa-download"></i></div>
+            <div data-bind="click: $root.automation.downloadScript" title="Download"><i class="fa fa-download"></i></div>
           </div>
           <div style="width: 30px">
-            <div data-bind="click: $root.rmScript" title="Delete"><i class="far fa-trash-alt"></i></div>
+            <div data-bind="click: $root.automation.rmScript" title="Delete"><i class="far fa-trash-alt"></i></div>
           </div>
         </div>
         <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
@@ -47,16 +47,16 @@
     </div> <!-- foreach scripts -->
 
     <div style="text-align: right">
-      <button class="btn" data-bind="click: loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
+      <button class="btn" data-bind="click: automation.loadScriptsFromProfile" title="Load user-contributed scripts based on your printer profile">
         <i style="cursor:pointer" class="fa fa-file-import"></i>&nbsp;Import Defaults from Current Profile
       </button>
 
       <label class="btn">
-        <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadScriptFromFile($element.files[0]) }}"/>
+        <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { automation.loadScriptFromFile($element.files[0]) }}"/>
         <i class="fa fa-upload"></i>&nbsp;Upload File
       </label>
 
-      <button class="btn" data-bind="click: () => addScript()" title="Create a new script">
+      <button class="btn" data-bind="click: () => automation.addScript()" title="Create a new script">
         <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Script
       </button>
     </div>
@@ -69,7 +69,7 @@
     For examples and best practices, see the <a href="https://smartin015.github.io/continuousprint/gcode-scripting/" target="_blank">scripting guide</a>.
     </p>
 
-    <div class="alert alert-error" data-bind="hidden: allUniquePreprocessorNames">
+    <div class="alert alert-error" data-bind="hidden: automation.allUniquePreprocessorNames">
       <p>
       <i class="fas fa-exclamation-circle"></i> Two or more preprocessors have the same name.
       </p>
@@ -78,7 +78,7 @@
       </p>
     </div>
 
-    <div class="scripts accordion" data-bind="foreach: preprocessors">
+    <div class="scripts accordion" data-bind="foreach: automation.preprocessors">
       <div class="accordion-group">
         <div class="accordion-heading header-row">
           <i data-bind="css: !expanded() ? 'fas fa-edit' : '', click: () => expanded(true)"></i>
@@ -92,10 +92,10 @@
             </div>
           </div>
           <div style="width: 30px">
-            <div data-bind="click: $root.downloadPreprocessor" title="Download"><i class="fa fa-download"></i></div>
+            <div data-bind="click: $root.automation.downloadPreprocessor" title="Download"><i class="fa fa-download"></i></div>
           </div>
           <div style="width: 30px">
-            <div data-bind="click: $root.rmPreprocessor" title="Delete"><i class="far fa-trash-alt"></i></div>
+            <div data-bind="click: $root.automation.rmPreprocessor" title="Delete"><i class="far fa-trash-alt"></i></div>
           </div>
         </div>
         <div class="accordion-body collapse" data-bind="css: expanded() ? 'in' : 'out'">
@@ -109,11 +109,11 @@
 
     <div style="text-align: right">
       <label class="btn">
-        <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { loadPreprocessorFromFile($element.files[0]) }}"/>
+        <input style="display: none" name="files[]" type="file" data-bind="event: {change: () => { automation.loadPreprocessorFromFile($element.files[0]) }}"/>
         <i class="fa fa-upload"></i>&nbsp;Upload File
       </label>
 
-      <button class="btn" data-bind="click: () => addPreprocessor()" title="Create a new Preprocessor">
+      <button class="btn" data-bind="click: () => automation.addPreprocessor()" title="Create a new Preprocessor">
         <i style="cursor:pointer" class="fas fa-plus"></i>&nbsp;New Preprocessor
       </button>
     </div>

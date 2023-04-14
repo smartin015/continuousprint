@@ -28,7 +28,7 @@
     </div>
   </div>
   <div style="flex: 1; text-align: right">
-    <span data-bind="visible: $root.loadout().length > 1, text: name"></span>
+    <span data-bind="visible: $root.queues().length > 1, text: name"></span>
     <span data-bind="attr: {title: fullDetails}, visible: details() !== ''" style="cursor: pointer; display: inline-block">
       <span data-bind="text: details"></span>
       <i class="fas fa-info-circle"></i>

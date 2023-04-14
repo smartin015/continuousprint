@@ -34,13 +34,8 @@ function CPJob(obj, peers, api, profile, materials, stats_dimensions=CP_STATS_DI
   self.id = ko.observable(obj.id);
   self._name = ko.observable(obj.name || "");
 
-  if (obj.acquired_by_) {
-    let peer = peers[obj.acquired_by_];
-    if (peer !== undefined) {
-      self.acquiredBy = ko.observable(`${peer.name} (${peer.profile.name})`);
-    } else {
-      self.acquiredBy = ko.observable(obj.acquired_by_)
-    }
+  if (obj.acquired_by) {
+    self.acquiredBy = ko.observable(obj.acquired_by);
   } else if (obj.acquired) {
     self.acquiredBy = ko.observable('local');
   } else {

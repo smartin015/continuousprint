@@ -2,6 +2,7 @@ import unittest
 import json
 import logging
 from .driver import Action as DA
+from .storage.database import DEFAULT_QUEUE
 from unittest.mock import patch, MagicMock, call, PropertyMock
 import imp
 from flask import Flask
@@ -63,6 +64,7 @@ class TestAPI(unittest.TestCase):
         self.api._basefolder = "notexisty"
         self.api._identifier = "continuousprint"
         self.api._get_queue = MagicMock()
+        self.api._get_key = lambda k, d: d
         self.api._logger = logging.getLogger()
         self.app.register_blueprint(self.api.get_blueprint())
         self.app.config.update({"TESTING": True})
@@ -165,14 +167,29 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(rep.get_data(as_text=True), '"ret"')
         self.api._get_queue().add_job.assert_called_with("jobname")
 
-    def test_mv_job(self):
+    def test_mv_job_no_before_id(self):
         self.perm.PLUGIN_CONTINUOUSPRINT_EDITJOB.can.return_value = True
         data = dict(id="foo", after_id="bar", src_queue="q1", dest_queue="q2")
 
         rep = self.client.post("/job/mv", data=data)
 
         self.assertEqual(rep.status_code, 200)
-        self.api._get_queue().mv_job.assert_called_with(data["id"], data["after_id"])
+        self.api._get_queue().mv_job.assert_called_with(
+            data["id"], data["after_id"], None
+        )
+
+    def test_mv_job(self):
+        self.perm.PLUGIN_CONTINUOUSPRINT_EDITJOB.can.return_value = True
+        data = dict(
+            id="foo", after_id="bar", before_id="baz", src_queue="q1", dest_queue="q2"
+        )
+
+        rep = self.client.post("/job/mv", data=data)
+
+        self.assertEqual(rep.status_code, 200)
+        self.api._get_queue().mv_job.assert_called_with(
+            data["id"], data["after_id"], data["before_id"]
+        )
 
     def test_edit_job(self):
         self.perm.PLUGIN_CONTINUOUSPRINT_EDITJOB.can.return_value = True
@@ -251,19 +268,47 @@ class TestAPI(unittest.TestCase):
     @patch("continuousprint.api.queries")
     def test_get_queues(self, q):
         self.perm.PLUGIN_CONTINUOUSPRINT_GETQUEUES.can.return_value = True
-        mq = MagicMock()
-        mq.as_dict.return_value = dict(foo="bar")
-        q.getQueues.return_value = [mq]
+        self.api._get_key = lambda k, d: True
+
+        self.api._peerprint = MagicMock()
+        self.api._peerprint.get_plugin().client.get_connections.return_value = [
+            MagicMock(network="foo", addr="1234"),
+            MagicMock(network="bar", addr="1234"),
+        ]
+
+        mq = MagicMock(rank=0)
+        mq.name = "foo"
+        mq.as_dict.return_value = dict(name="foo")
+        lq = MagicMock(rank=1)
+        lq.name = DEFAULT_QUEUE
+        lq.as_dict.return_value = dict(name=DEFAULT_QUEUE)
+        q.getQueues.return_value = [mq, lq]
+
         rep = self.client.get("/queues/get")
         self.assertEqual(rep.status_code, 200)
-        self.assertEqual(json.loads(rep.get_data(as_text=True)), [dict(foo="bar")])
+        self.assertEqual(
+            json.loads(rep.get_data(as_text=True)),
+            [
+                dict(name=DEFAULT_QUEUE, enabled=True, rank=1),
+                dict(name="foo", enabled=True, addr="1234", strategy="LINEAR"),
+                dict(name="bar", enabled=False, addr="1234", strategy="LINEAR"),
+            ],
+        )
 
     @patch("continuousprint.api.queries")
     def test_edit_queues(self, q):
         self.perm.PLUGIN_CONTINUOUSPRINT_EDITQUEUES.can.return_value = True
         q.assignQueues.return_value = ("absent", "added")
         self.api._commit_queues = MagicMock()
-        rep = self.client.post("/queues/edit", data=dict(json='"foo"'))
+        rep = self.client.post(
+            "/queues/edit",
+            data=dict(
+                json=json.dumps(
+                    [dict(name="foo", enabled=True), dict(name="bar", enabled=False)]
+                )
+            ),
+        )
+        q.assignQueues.assert_called_with([dict(name="foo", enabled=True)])
         self.assertEqual(rep.status_code, 200)
         self.assertEqual(rep.data, b'"OK"')
         self.api._commit_queues.assert_called_with("added", "absent")

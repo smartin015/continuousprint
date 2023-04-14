@@ -8,7 +8,7 @@
       You can execute multiple scripts in sequence, dragging to change the execution order.
     </p>
 
-    <div class="events" data-bind="foreach: events">
+    <div class="events" data-bind="foreach: automation.events">
       <h4 data-bind="text: display"></h4>
       <p data-bind="text: desc"></p>
 
@@ -33,7 +33,7 @@
             ">
             </select>
           </label>
-          <div style="width: 30px" data-bind="click: (v) => $root.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
+          <div style="width: 30px" data-bind="click: (v) => $root.automation.rmAction($parent, v)"><i class="far fa-trash-alt"></i></div>
         </div>
       </div> <!-- foreach actions -->
 
@@ -87,9 +87,9 @@
         </a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu">
           <!-- ko foreach: $root.scripts -->
-            <li data-bind="visible: $parent.actions.indexOf(name()) === -1"><a tabindex="-1" data-bind="text: name, click: (v) => $root.addAction($parent, v)"></a></li>
+            <li data-bind="visible: $parent.actions.indexOf(name()) === -1"><a tabindex="-1" data-bind="text: name, click: (v) => $root.automation.addAction($parent, v)"></a></li>
           <!-- /ko -->
-          <li><a data-bind="click: () => $root.addAction($data, null)">New Script...</a></li>
+          <li><a data-bind="click: () => $root.automation.addAction($data, null)">New Script...</a></li>
         </ul>
       </div>
     </div> <!-- foreach events -->

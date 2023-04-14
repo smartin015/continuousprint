@@ -147,6 +147,7 @@ class Keys(Enum):
     BED_COOLDOWN_THRESHOLD = ("bed_cooldown_threshold", 30)
     BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
     MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
+    NETWORK_QUEUES = ("cp_network_queues_enabled", False)
     NETWORK_NAME = ("cp_network_name", "Generic")
     AUTOMATION_TIMELAPSE_ACTION = (
         "cp_automation_timelapse_action",
@@ -188,12 +189,17 @@ ASSETS = dict(
         "js/continuousprint_queue.js",
         "js/continuousprint_viewmodel.js",
         "js/continuousprint_settings_event.js",
+        "js/continuousprint_settings_automation.js",
+        "js/continuousprint_settings_queues.js",
         "js/continuousprint_settings.js",
         "js/continuousprint.js",
     ],
     css=[
-        "css/continuousprint.css",
-        # TODO render CSS
+        "css/continuousprint_history.less.css",
+        "css/continuousprint_settings.less.css",
+        "css/continuousprint_shared.less.css",
+        "css/continuousprint_tab.less.css",
+        "css/continuousprint_themeify_compat.less.css",
     ],
     less=[
         "less/continuousprint_history.less",

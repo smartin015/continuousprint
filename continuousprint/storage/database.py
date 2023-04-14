@@ -168,7 +168,7 @@ class JobView:
         self.created = getint(data, "created")
         self.count = getint(data, "count")
         self.remaining = getint(data, "remaining", default=self.count)
-        self.id = data["id"]
+        self.id = data.get("id", None)
         self.draft = data.get("draft", False)
         self.acquired = data.get("acquired", False)
         self.sets = [self._load_set(s, i) for i, s in enumerate(data["sets"])]

@@ -30,7 +30,10 @@ class PeerJobView(JobView):
         if self.rn is not None:
             d["rn"] = self.rn
             d["rd"] = self.rd
-            d["rank"] = self.rn / self.rd
+            try:
+                d["rank"] = self.rn / self.rd
+            except ZeroDivisionError:
+                d["rank"] = 0
         return d
 
     def save(self):
@@ -58,9 +61,7 @@ class PeerSetView(SetView):
     def resolve(self, override=None) -> str:
         if self._resolved is None:
             try:
-                self._resolved = self.job.queue.q.resolve(
-                    self.path, self.job.peer, self.job.hash
-                )
+                self._resolved = self.job.queue.q.resolve(self.path, self.job.hash)
             except HTTPError as e:
                 raise ResolveError(f"Failed to resolve {self.path}") from e
         return super().resolve(override)

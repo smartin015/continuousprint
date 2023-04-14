@@ -1,0 +1,82 @@
+:root {
+    /* Small padding roughly matches the spacing between Print/Pause/Cancel buttons in the State panel */
+    --cpq-pad: 6px;
+    --cpq-pad2: 20px;
+}
+
+@font-face {
+  font-family: Cabin Regular;
+  src: url(../ttf/Cabin/Cabin-Regular.ttf);
+}
+
+#tab_plugin_continuousprint, #settings_plugin_continuousprint {
+  .hint {
+    font-weight: italic;
+    font-size: 85%;
+    opacity: 0.7;
+  }
+  .bold{
+    font-weight: bold;
+  }
+  .label {
+    border: 1px gray solid;
+  }
+  .fa-grip-vertical {
+    opacity: 0.0;
+    margin-left: 1px !important;
+  }
+  *:hover > .fa-grip-vertical {
+    opacity: 0.5;
+    cursor: grab;
+  }
+
+  .accordion-heading-button {
+    padding: var(--cpq-pad) var(--cpq-pad);
+    input {
+      margin-top: -2px;
+    }
+  }
+  .accordion-body.collapse {
+    /* Transitions copied from div#files.accordion-body.collapse */
+    max-height: 0;
+    overflow-y: auto;
+    -webkit-transition: max-height .35s ease;
+    -moz-transition: max-height .35s ease;
+    -o-transition: max-height .35s ease;
+    transition: max-height .35s ease;
+    &.in {
+      max-height: 500px;
+    }
+  }
+
+  .action-gutter {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    padding-right: var(--cpq-pad);
+    padding-top: var(--cpq-pad);
+    .text-error {
+      width: 100%;
+      line-height: 1;
+      text-align: right;
+      padding-right: var(--cpq-pad2);
+    }
+  }
+  .queue-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    opacity: 0.5;
+    align-items: flex-end;
+    > div {
+      text-align: center;
+      margin-left: var(--cpq-pad);
+    }
+  }
+  .has_title {
+    cursor: help;
+    > sup {
+      opacity: 0.5;
+    }
+  }
+}

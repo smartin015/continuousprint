@@ -1,0 +1,249 @@
+#files .cpq-gjob {
+  div[title="Load"] {
+    display: none !important;
+  }
+  div[title="Load and Print"] {
+    display: none !important;
+  }
+  .fa-archive {
+    margin-right: 4px;
+  }
+}
+
+#state span {
+  .ERROR {
+    background-color: rgba(255, 0, 0, 0.6);
+    border-radius: var(--cpq-pad);
+    padding: var(--cpq-pad);
+  }
+  .NEEDS_ACTION {
+    animation: pulse 2.5s infinite;
+    border-radius: var(--cpq-pad);
+    padding: var(--cpq-pad);
+  }
+}
+
+#tab_plugin_continuousprint {
+  .cpq-leftpad {
+    margin-left: var(--cpq-pad);
+  }
+  #continuousprint_tab_queues > div {
+    margin-bottom: 50px;
+  }
+  .highlight {
+    border: 3px #77a4ff solid !important;
+    min-height: 100px;
+  }
+  .multiselect {
+    flex-grow: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: right;
+    margin-bottom: -31px;
+    margin-left: 4px;
+    .btn-group {
+      /* Lay on top of table headers */
+      z-index: 1;
+    }
+  }
+
+  .cp-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    font-weight: bold;
+  }
+  .job-header {
+    background-color: #eee;
+  }
+  .profile-select {
+    /* Match the style of Bootstrap labels */
+    height: 20px;
+    width: 60px;
+    margin-bottom: 0px;
+  }
+  .fa-grip-vertical {
+    opacity: 0.0;
+    margin-left: 1px !important;
+  }
+  *:hover > .fa-grip-vertical {
+    opacity: 0.5;
+    cursor: grab;
+  }
+  .queue-list {
+    border-radius: var(--cpq-pad);
+    min-height: 70px;
+    border-top: 1px #e5e5e5 solid;
+    border-bottom: 1px #e5e5e5 solid;
+    padding: var(--cpq-pad) 0px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .accordion-heading {
+    width:100%;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    justify-content: right;
+    align-items: center;
+  }
+  .queue-row-container{
+    width:100%;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: right;
+    align-items: center;
+  }
+  .job {
+    position: relative;
+
+    &.acquired .job-name {
+      font-weight: bold;
+    }
+    &.acquired.local div.job-header {
+      background-color: #DDF;
+    }
+    .shiftsel {
+      border-left: 3px solid #CCC !important;
+    }
+    .floatedit {
+      position: absolute;
+      top: var(--cpq-pad2);
+      right: var(--cpq-pad2);
+      opacity: 0.0;
+      z-index: 1000;
+    }
+    .accordion-group {
+      border-right: 0px;
+    }
+    > div.accordion-body > div.accordion-inner {
+      padding-right: 0px;
+      border-right: 0px;
+    }
+    &:hover .floatedit {
+      opacity: 0.5;
+      &:hover .floatedit:hover {
+        opacity: 1.0;
+      }
+    }
+  }
+  .queue-row-container > * {
+    margin-left: var(--cpq-pad);
+    margin-bottom: 0;
+    line-height: 1.6;
+  }
+  .total, .completed, .remaining, .count {
+    width: 67px;
+    text-align: center;
+    margin-left: var(--cpq-pad);
+    padding: 2px;
+    border: 1px transparent solid;
+  }
+  .cp-queue .loading {
+    opacity: 0.3;
+    cursor: default !important;
+  }
+  .edit-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    opacity: 0.5;
+  }
+  .sets {
+    &.draft {
+      border-bottom: 2px #ccc solid;
+    }
+    .progress {
+      margin-left: 17px;
+    }
+  }
+  .job-stats {
+    display: flex;
+    justify-content: space-between;
+  }
+  .progresstext {
+    width: 100%;
+    position: absolute;
+    text-align:center;
+  }
+  .set_warning {
+    flex: 1;
+    text-align: center;
+    margin-right: 17px;
+  }
+  .draft .set_warning {
+    flex: 0;
+  }
+  .progress {
+    position: relative;
+    flex: 1;
+    display: flex; /* allow for stacking progresses in jobs */
+    margin-right: var(--cpq-pad2);
+  }
+  .cpq_logo {
+    height: 40px;
+    float: left;
+  }
+  .queue-header {
+    margin-left: 55px;
+    margin-right: var(--cpq-pad2);
+  }
+  #queue_sets.empty {
+    border: 1px #e5e5e5 solid; /* copy from .accordion-group */
+    padding: var(--cpq-pad);
+    border-radius: var(--cpq-pad);
+    &.draft::before {
+      content: "Hint: Click the + button on a file, or drag in a set from another job in edit mode.";
+      font-weight: italic;
+      font-size: 85%;
+      opacity: 0.7;
+    }
+  }
+  ::placeholder {
+    font-weight: italic;
+    opacity: 0.7;
+  }
+  .queue-set-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    h4 {
+      border-bottom: 1px #e5e5e5 solid;
+    }
+    .full {
+      width: 100%;
+    }
+    .gutter {
+      border-top: 1px #e5e5e5 solid;
+      padding-top: var(--cpq-pad);
+      display: flex;
+      justify-content: space-between;
+    }
+  }
+  .count-box {
+    min-width:30px;
+    max-height:15px;
+    -moz-appearance: textfield;
+    text-align: center;
+    border: 1px #ccc solid !important;
+    &::-webkit-outer-spin-button, &::-webkit-inner-spin-button {
+      /* chrome, safari, edge, opera: hide up/down buttons on count box input */
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+  .file-name, .job-name {
+      flex: 1;
+      flex-shrink: 10;
+      overflow-x: hidden;
+      white-space: nowrap;
+      max-width: 96%;
+      text-overflow: ellipsis;
+      border: 0;
+  }
+}

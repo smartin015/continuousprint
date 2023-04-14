@@ -4,7 +4,7 @@ services:
     build: .
     ports:
       - "5000:5000" # UI port
-        # Note discovery port 37020 and lan queue ports handled through docker network (so non-docker processes cannot auto join the queue)
+      - "8334:8334" # PeerPrint UI port
     volumes:
       - ".:/home/oprint/continuousprint"
       - "./volume:/home/oprint/.octoprint"
@@ -19,12 +19,15 @@ services:
     build: .
     ports:
       - "5001:5000" # UI port
+      - "8335:8334" # PeerPrint UI port
     volumes:
       - ".:/home/oprint/continuousprint"
       - "./volume2:/home/oprint/.octoprint"
       - "/tmp:/tmp"
     environment:
       - "PYTHONUNBUFFERED=1"
+    networks:
+      - preprintservice
 
 networks:
   preprintservice:

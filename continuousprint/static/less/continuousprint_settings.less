@@ -1,0 +1,96 @@
+#settings_plugin_continuousprint {
+  .cpq_title {
+    font-family: "Cabin Regular";
+    font-size: 2em;
+    display: flex;
+    align-items: center;
+    > img {
+      width: 71px;
+    }
+  }
+  .queue-header :first-child {
+    text-align: left;
+    width: 300px;
+  }
+  .queue-row-container {
+    width:100%;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    justify-content: right;
+    align-items: center;
+    > * {
+      margin-left: var(--cpq-pad2);
+      margin-bottom: 0;
+      line-height: 1.6;
+    }
+    > .row-name {
+      width: 300px;
+    }
+    select {
+      margin-bottom: 0px;
+    }
+    > div {
+      flex: 1;
+      text-align: center;
+    }
+  }
+  .lobby {
+    max-height: 300px;
+    overflow-y: scroll;
+  }
+  .lobby-network-details {
+    display: flex;
+    flex-direction: row;
+    > div {
+      flex: 1;
+      margin: var(--cpq-pad);
+      &:first-child {
+        border-right: 1px #e5e5e5 solid; /* copy from .accordion-group */
+      }
+    }
+  }
+  .header-row {
+    width:100%;
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: row;
+    align-items: center;
+    min-height: 30px;
+    > * {
+      margin-left: var(--cpq-pad);
+    }
+  }
+  .subheader {
+    opacity: 0.7;
+    font-style: italic;
+  }
+  .events > h4 {
+    margin-top: var(--cpq-pad2);
+    padding-top: var(--cpq-pad2);
+  }
+   .simulation-output {
+    display:flex;
+    flex-direction: row;
+    justify-content: center;
+    > div {
+      flex: 1;
+      padding: var(--cpq-pad);
+    }
+    h5 {
+      margin: 0;
+      text-align: center;
+      opacity: 0.5;
+    }
+  }
+   .output-block {
+    border: 1px #e5e5e5 solid; /* copy from .accordion-group */
+    border-radius: var(--cpq-pad);
+    width: 100%;
+    min-height: 150px;
+    max-height: 400px;
+    overflow-y: scroll;
+    padding: 0;
+    margin: 0;
+  }
+}

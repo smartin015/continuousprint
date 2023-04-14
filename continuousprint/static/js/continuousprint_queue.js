@@ -39,29 +39,35 @@ function CPQueue(data, api, files, profile, materials, stats_dimensions=CP_STATS
     self.details = ko.observable("");
     self.fullDetails = ko.observable("");
     self.showStats = ko.observable(true);
-    self.ready = ko.observable(data.name === 'local' || Object.keys(data.peers).length > 0);
     if (self.addr !== null && data.peers !== undefined) {
-      let pkeys = Object.keys(data.peers);
-      if (pkeys.length === 0) {
-        self.details(`(connecting...)`);
-        self.fullDetails('Searching for other printers with this queue\non the local network - this could take up to a minute');
-      } else {
-        self.details(`(${pkeys.length} printer${(pkeys.length != 1) ? 's' : ''})`);
-        let fd = 'Connected printers:';
-        for (let p of pkeys) {
-          let pd = data.peers[p];
-          fd += `\n${pd.name} (${pd.profile.name}, ${p}): ${pd.status}`;
+      try {
+        let pstr = [];
+        let actives = [];
+        for (let peer of data.peers) {
+          for (let printer of peer.clients) {
+            let prof = JSON.parse(printer.profile);
+            let loc = "location unknown";
+            if (printer.location.Latitude && printer.location.Longitude) {
+              let loc = `${printer.location.Latitude.toFixed(2)}lat, ${printer.location.Longitude.toFixed(2)}lon`;
+            }
+            pstr.push(`${printer.name} (${prof.name}, ${loc}): ${printer.status}`);
+            if (printer.activeUnit) {
+              actives.push(printer.activeUnit);
+            }
+          }
         }
-        self.fullDetails(fd);
-      }
-
-      let actives = [];
-      for (let pd of Object.values(data.peers)) {
-        if (pd.active_set !== null) {
-          actives.push(pd.active_set);
+        if (pstr.length === 0) {
+          self.details(`(1 printer)`);
+          self.fullDetails('This printer is the only one on the network - go to Settings > PeerPrint for troubleshooting tips');
+        } else {
+          self.details(`(${pstr.length} printer${(pstr.length != 1) ? 's' : ''})`);
+          self.fullDetails(`Connected Printers:\n${pstr.join('\n')}\nGo to Settings > PeerPrint for more details`);
         }
+        self.active_sets = ko.observableArray(actives);
+      } catch (err) {
+        console.error(err);
+        self.active_sets = ko.observableArray([]);
       }
-      self.active_sets = ko.observableArray(actives);
     } else {
       self.active_sets = ko.observableArray([data.active_set]);
     }
@@ -75,7 +81,7 @@ function CPQueue(data, api, files, profile, materials, stats_dimensions=CP_STATS
           continue;
         }
         for (let s of j.sets()) {
-          if (actives.has(s.id)) {
+          if (actives.has(s.id.toString())) {
             result.push(j.id());
             break;
           }

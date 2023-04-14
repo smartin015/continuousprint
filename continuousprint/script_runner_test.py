@@ -11,7 +11,7 @@ from .data import CustomEvents
 from .storage.database_test import AutomationDBTest
 from .storage import queries
 from .storage.database import SetView
-from .storage.lan import LANResolveError
+from .storage.peer import ResolveError
 import logging
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -141,7 +141,7 @@ class TestScriptRunner(unittest.TestCase):
 
     def test_set_active_lan_resolve_error(self):
         li = MagicMock(LI())
-        li.resolve.side_effect = LANResolveError("testing error")
+        li.resolve.side_effect = ResolveError("testing error")
         self.assertEqual(self.s.set_active(li, MagicMock()), False)
         self.s._printer.select_file.assert_not_called()
 

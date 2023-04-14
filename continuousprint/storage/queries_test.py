@@ -46,7 +46,13 @@ class TestEmptyQueue(QueuesDBTest):
     def testImportJob(self):
         q.importJob(
             DEFAULT_QUEUE,
-            dict(name="j1", count=5, remaining=4, sets=[dict(count=1, path="a.gcode")]),
+            dict(
+                id=8,
+                name="j1",
+                count=5,
+                remaining=4,
+                sets=[dict(count=1, path="a.gcode")],
+            ),
             Path("dirname"),
         )
         j = Job.get(id=1)

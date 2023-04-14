@@ -47,14 +47,14 @@ def releaseJob(j) -> bool:
 
 
 def importJob(qname, manifest: dict, dirname: str, draft=False):
-    q = Queue.get(name=qname)
+    # q = Queue.get(name=qname)
 
     # Manifest may have "remaining" values set incorrectly for new job; ensure
     # these are set to the whole count for both job and sets.
-    j = Job.from_dict(manifest)
+    j = Job()
+    j.load_dict(manifest, 1)
     j.remaining = j.count
     j.id = None
-    j.queue = q
     j.rank = _rankEnd()
     j.draft = draft
     j.save()
@@ -118,16 +118,12 @@ def assignQueues(queues):
                 Queue.create(
                     name=qdata["name"],
                     strategy=qdata["strategy"],
-                    registry=qdata["registry"],
-                    addr=qdata["addr"],
                     rank=rank,
                 )
             else:
                 Queue.update(
                     strategy=qdata["strategy"],
-                    addr=qdata["addr"],
                     rank=rank,
-                    registry=qdata["registry"],
                 ).where(Queue.name == qdata["name"]).execute()
     return (absent_names, added)
 

@@ -275,7 +275,6 @@ class TestJobWithSet(QueuesDBTest):
         )
         j = Job.get(id=self.j.id)
         d = j.as_dict()
-        print(d)
 
         j2 = Job()
         j2.load_dict(d, None)

@@ -8,7 +8,6 @@ class CPAPI {
   QUEUES = "queues"
   HISTORY = "history"
   AUTOMATION = "automation"
-  PEERPRINT = "peerprint"
 
   init(loading_vm, err_cb) {
     this.loading = loading_vm;
@@ -104,10 +103,6 @@ class CPAPI {
 
   simulate(automation, symtable, cb, err_cb) {
     this._call(this.AUTOMATION, 'simulate', {symtable: JSON.stringify(symtable), automation: JSON.stringify(automation)}, cb, err_cb, false);
-  }
-
-  gen_psk(cb) {
-    this._call(this.PEERPRINT, 'generate_psk', undefined, cb);
   }
 }
 

@@ -28,7 +28,7 @@ nav:
   - 'advanced-queuing.md'
   - 'job-files.md'
   - 'failure-recovery.md'
-  - 'lan-queues.md'
+  - 'network-queues.md'
   - 'material-selection.md'
   - 'printer-profiles.md'
   - 'managed-bed-cooldown.md'

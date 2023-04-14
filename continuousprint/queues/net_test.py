@@ -1,4 +1,5 @@
 import unittest
+import json
 import logging
 import tempfile
 from datetime import datetime
@@ -8,11 +9,13 @@ from .base_test import (
     AbstractQueueTests,
     EditableQueueTests,
     testJob as makeAbstractTestJob,
+    DummyQueue,
 )
 from .net import NetworkQueue, ValidationError
-from ..storage.peer import PeerJobView, PeerSetView
+from ..storage.peer import PeerJobView, PeerSetView, PeerQueueView
+from peerprint.server_test import MockServer
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class NetworkQueueTest(unittest.TestCase):
@@ -20,22 +23,36 @@ class NetworkQueueTest(unittest.TestCase):
         self.ucb = MagicMock()
         self.fs = MagicMock()
         self.fs.fetch.return_value = "asdf.gcode"
-        self.srv = MagicMock()
+        self.fs.post.return_value = "CIDHASH"
+        self.cli = MockServer(
+            [
+                # To pass validation, need a peer that has a printer with the right profile
+                dict(
+                    name="testpeer",
+                    printers=[
+                        dict(
+                            name="testprinter", profile=json.dumps(dict(name="profile"))
+                        ),
+                    ],
+                )
+            ]
+        )
+        pp = MagicMock()
+        pp.get_plugin.return_value = MagicMock(
+            client=self.cli,
+            fileshare=self.fs,
+        )
         self.q = NetworkQueue(
             "ns",
-            self.srv,
+            pp,
             logging.getLogger(),
             Strategy.IN_ORDER,
             self.ucb,
-            self.fs,
             dict(name="profile"),
             lambda path, sd: path,
         )
+        self.q._server_id = "testid"
 
-        # To pass validation, need a peer with the right profile
-        self.srv.stream_peers.return_value = [
-            dict(name="testpeer", profile=dict(name="profile"))
-        ]
         self.q._path_exists = lambda p: True  # Override path check for validation
 
 
@@ -43,6 +60,7 @@ class TestAbstractImpl(AbstractQueueTests, NetworkQueueTest):
     def setUp(self):
         NetworkQueueTest.setUp(self)
         self.jid = self.q.import_job_from_view(makeAbstractTestJob(0, cls=PeerJobView))
+        self.j = self.q.get_job_view(self.jid)
 
 
 class TestEditableImpl(EditableQueueTests, NetworkQueueTest):
@@ -52,41 +70,24 @@ class TestEditableImpl(EditableQueueTests, NetworkQueueTest):
             self.q.import_job_from_view(makeAbstractTestJob(i, cls=PeerJobView))
             for i in range(EditableQueueTests.NUM_TEST_JOBS)
         ]
+        self.cls = PeerJobView
+        self.qcls = DummyQueue
+
+    def test_mv_job_no_before_id(self):
+        self.skipTest("TODO")
 
 
-class TestNetworkQueueNoConnection(NetworkQueueTest):
-    def test_update_peer_state(self):
-        self.q.update_peer_state("HI", {}, {}, {})  # No explosions? Good
-
-
-class DummyQueue:
-    name = "lantest"
-
-
-class TestNetworkQueueConnected(NetworkQueueTest):
-    def setUp(self):
-        super().setUp()
-        self.q.lan = MagicMock()
-        self.q.lan.q = MagicMock()
-        self.q.lan.q.hasJob.return_value = False  # For UUID generation
-        self.q.lan.q.getPeers.return_value = {
-            "a": dict(fs_addr="123", profile=dict(name="abc")),
-        }
-
-    def test_get_gjob_dirpath_failed_bad_peer(self):
-        with self.assertRaises(Exception):
-            self.q.get_gjob_dirpath("b", "hash")
-
+class TestNetworkQueue(NetworkQueueTest):
     def test_get_gjob_dirpath(self):
         self.fs.fetch.return_value = "/dir/"
-        self.assertEqual(self.q.get_gjob_dirpath("a", "hash"), "/dir/")
-        self.fs.fetch.assert_called_with("123", "hash", unpack=True)
+        self.assertEqual(self.q.get_gjob_dirpath("hash"), "/dir/")
+        self.fs.fetch.assert_called_with("hash", unpack=True)
 
     def _jbase(self, path="a.gcode"):
         j = PeerJobView()
         j.id = 1
         j.name = "j1"
-        j.queue = DummyQueue()
+        j.queue = PeerQueueView(MagicMock(ns="lantest"))
         s = PeerSetView()
         s.path = path
         s.id = 2
@@ -107,7 +108,7 @@ class TestNetworkQueueConnected(NetworkQueueTest):
 
     def test_validation_file_missing(self):
         j = self._jbase()
-        j.sets[0].profile_keys = "def,abc"
+        j.sets[0].profile_keys = "brofile,profile"
         self.q._path_exists = lambda p: False  # Override path check for validation
         with self.assertRaisesRegex(ValidationError, "file not found"):
             self.q.import_job_from_view(j)
@@ -120,33 +121,15 @@ class TestNetworkQueueConnected(NetworkQueueTest):
 
     def test_validation_no_match(self):
         j = self._jbase()
-        j.sets[0].profile_keys = "def"
+        j.sets[0].profile_keys = "brofile"
         with self.assertRaisesRegex(ValidationError, "no match for set"):
             self.q.import_job_from_view(j)
         self.fs.post.assert_not_called()
 
-
-class TestNetworkQueueWithJob(NetworkQueueTest):
-    def setUp(self):
-        self.skipTest("TODO")
-
-    def test_acquire_success(self):
-        self.skipTest("TODO")
-
-    def test_acquire_failed(self):
-        self.skipTest("TODO")
-
-    def test_acquire_failed_no_jobs(self):
-        self.skipTest("TODO")
-
-    def test_release(self):
-        self.skipTest("TODO")
-
-    def test_decrement_more_work(self):
-        self.skipTest("TODO")
-
-    def test_decrement_no_more_work(self):
-        self.skipTest("TODO")
-
-    def test_as_dict(self):
-        self.skipTest("TODO")
+    def test_resolved_paths_before_edit(self):
+        self.fs.fetch.return_value = "/resolvedir/"
+        jid = self.q.import_job_from_view(makeAbstractTestJob(0, cls=PeerJobView))
+        self.q.edit_job(jid, dict(draft=True))
+        j = self.q.get_job_view(jid)
+        # Paths include resolved gjob directory
+        self.assertEqual(j.sets[0].path, "/resolvedir/set0.gcode")

@@ -49,5 +49,32 @@
         </p>
       </div>
     </fieldset>
+
+    <fieldset>
+      <legend>Network Queues</legend>
+      <div class="alert alert-info" data-bind="hidden: settings.settings.plugins.continuousprint.cp_network_queues_enabled">
+        <p><strong>Plugin Needed:</strong> Network queues require <a href="http://github.com/smartin015/peerprint" target="_blank">PeerPrint</a>, but the plugin does not appear to be installed or enabled.<p>
+        <p>Read more about this feature in the <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">Network Queues guide</a>.</p>
+      </div>
+      <div data-bind="visible: settings.settings.plugins.continuousprint.cp_network_queues_enabled">
+        <p>
+          Network queues are enabled because <a href="https://github.com/smartin015/peerprint" target="_blank">PeerPrint</a> is installed and enabled.
+        </p>
+        <p>
+          Read more about network queues in the <a href="https://smartin015.github.io/continuousprint/lan-queues/" target="_blank">Network Queues guide</a>.</p>
+        </p>
+      </div>
+
+      <p>
+        PeerPrint can run as a server on its own, or you can have OctoPrint start a subprocess on the device that's hosting OctoPrint.
+      </p>
+      <div class="control-group" title="Address of peerprint server - e.g. localhost:6789. If you wish to auto-host a server, leave this empty">
+        <label class="control-label">PeerPrint server address:</label>
+        <div class="controls">
+          <input type="text" placeholder="Leave empty for built-in server" data-bind="value: settings.settings.plugins.continuousprint.cp_peerprint_server_addr"></input>
+        </div>
+      </div>
+
+    </fieldset>
   </form>
 </div> <!-- continuousprint_settings_integrations -->

@@ -7,8 +7,8 @@ from .automation import getInterpreter, genEventScript
 import flask
 import json
 from .storage import queries
-from .storage.database import DEFAULT_QUEUE
-from .data import CustomEvents
+from .storage.database import DEFAULT_QUEUE, ARCHIVE_QUEUE
+from .data import CustomEvents, Keys
 from .driver import Action as DA
 from abc import ABC, abstractmethod
 
@@ -141,7 +141,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
         return self._msg(dict(type=type, msg=msg))
 
     def _sync(self, attr, data):
-        self._logger.debug(f"Refreshing UI {attr}")
+        # self._logger.debug(f"Refreshing UI {attr}")
         msg = dict(type=f"set{attr}")
         msg[attr] = data
         self._msg(msg)
@@ -210,7 +210,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     def mv_job(self):
         src_id = flask.request.form["id"]
         after_id = flask.request.form["after_id"]
-        before_id = flask.request.form["before_id"]
+        before_id = flask.request.form.get("before_id")
         if after_id == "":  # Treat empty string as 'none' i.e. front of queue
             after_id = None
         if before_id == "":  # Treat empty as 'none' i.e. end of queue
@@ -314,25 +314,24 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @restricted_access
     @cpq_permission(Permission.GETQUEUES)
     def get_queues(self):
-        qs = [q.as_dict() for q in queries.getQueues()]
-        local_ads = [a for a in self._peerprint().get_advertisements(local=True)]
-        global_ads = [a for a in self._peerprint().get_advertisements(local=False)]
-        return json.dumps(dict(queues=qs, local_ads=local_ads, global_ads=global_ads))
+        qs = dict()
+        if self._get_key(Keys.NETWORK_QUEUES, False):
+            for n in self._peerprint.get_plugin().client.get_connections():
+                qs[n.network] = dict(
+                    name=n.network, addr=n.addr, strategy="LINEAR", enabled=False
+                )
 
-    # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/peerprint/search", methods=["GET"])
-    @restricted_access
-    @cpq_permission(Permission.GETQUEUES)
-    def search_networks(self):
-        return json.dumps(self._peerprint().get_networks())
+        for q in queries.getQueues():
+            if q.name == DEFAULT_QUEUE:
+                qs[q.name] = q.as_dict()
+                qs[q.name]["enabled"] = True
+                qs[q.name]["rank"] = q.rank
+            elif q.name in qs:
+                qs[q.name]["enabled"] = True
 
-    # PRIVATE API METHOD - may change without warning.
-    @octoprint.plugin.BlueprintPlugin.route("/peerprint/generate_psk", methods=["GET"])
-    @restricted_access
-    def gen_psk(self):
-        from peerprint.data.psk_gen import gen_phrase
-
-        return json.dumps(gen_phrase(k=5))
+        qs = list(qs.values())
+        qs.sort(key=lambda q: q.get("rank", 99999999))
+        return json.dumps(qs)
 
     # PRIVATE API METHOD - may change without warning.
     @octoprint.plugin.BlueprintPlugin.route("/queues/edit", methods=["POST"])
@@ -340,6 +339,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITQUEUES)
     def edit_queues(self):
         queues = json.loads(flask.request.form.get("json"))
+        queues = [q for q in queues if q["enabled"]]  # strip disabled queues
         (absent_names, added) = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)
         return json.dumps("OK")
