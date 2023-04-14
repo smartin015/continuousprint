@@ -148,7 +148,6 @@ class Keys(Enum):
     BED_COOLDOWN_TIMEOUT = ("bed_cooldown_timeout", 60)
     MATERIAL_SELECTION = ("cp_material_selection_enabled", False)
     NETWORK_QUEUES = ("cp_network_queues_enabled", False)
-    NETWORK_NAME = ("cp_network_name", "Generic")
     AUTOMATION_TIMELAPSE_ACTION = (
         "cp_automation_timelapse_action",
         "do_nothing",
@@ -159,10 +158,6 @@ class Keys(Enum):
     )  # One of "do_nothing", "add_draft", "add_printable"
     INFER_PROFILE = ("cp_infer_profile", True)
     AUTO_RECONNECT = ("cp_auto_reconnect", False)
-    PEERPRINT_ADDR = (
-        "cp_peerprint_addr",
-        "",
-    )
     SKIP_GCODE_COMMANDS = ("cp_skip_gcode_commands", "")
     SLICER = ("cp_slicer", "")
     SLICER_PROFILE = ("cp_slicer_profile", "")

@@ -11,6 +11,7 @@ This plugin automates your 3D printing!
 * **Group multiple files together into "jobs" and run them multiple times.** Don't make 10 boxes by printing 10 bases, then 10 lids - just define a "box" job and print box/lid combos in sequence.
 * **Reduce manual intervention with failure automation.** This plugin optionally integrates with [The Spaghetti Detective](https://www.thespaghettidetective.com/) and can retry prints that fail to adhere to the bed, with configurable limits on how hard to try before giving up.
 * **Print with multiple 3D printers over the local network**. LAN queues can parallelize your printing efforts, while still providing a single queue to print from.
+* **Automatically slice STL files before printing**. Integrates with [PrePrintService](https://plugins.octoprint.org/plugins/preprintservice/) and other OctoPrint slicer implementations so you can add STLs to the queue and slice them on-the-fly.
 
 # Documentation
 

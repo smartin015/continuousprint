@@ -30,13 +30,16 @@ class NetworkQueue(AbstractEditableQueue):
         self.strategy = strategy
         self.ns = ns
         self._peerprint = peerprint
-        self._printer_name = None
         self.job_id = None
         self.set_id = None
         self.server_id = None
         self.update_cb = update_cb
         self._fileshare = peerprint.get_plugin().fileshare
         self._path_on_disk = path_on_disk_fn
+
+    @property
+    def _printer_name(self):
+        return self._peerprint.get_plugin().printer_name
 
     @property
     def _client(self):
@@ -101,9 +104,8 @@ class NetworkQueue(AbstractEditableQueue):
             ).encode("utf8"),
         )
 
-    def update_peer_state(self, name, status, profile):
+    def update_peer_state(self, status, profile):
         # Store info in memory to decorate completions later on
-        self._printer_name = name
         self._profile = profile
 
         if self._client is not None:
@@ -113,6 +115,7 @@ class NetworkQueue(AbstractEditableQueue):
                 name=name,
                 status=str(status),
                 profile=json.dumps(profile),
+                # TODO lat/lon
             )
 
     def _last_rank(self):
@@ -243,6 +246,7 @@ class NetworkQueue(AbstractEditableQueue):
             return self.get_job_view(self.job_id)
 
     def get_set(self) -> Optional[SetView]:
+        print("get_set with job_id", self.job_id, "set_id", self.set_id)
         if self.job_id is not None and self.set_id is not None:
             # Linear search through sets isn't efficient, but it works.
             j = self.get_job_view(self.job_id)
@@ -280,8 +284,6 @@ class NetworkQueue(AbstractEditableQueue):
             return False
         (job, s) = self._peek()
         if job is None or s is None:
-            # Spammy debug log
-            # self._logger.debug("acquire() failed; no available job")
             return False
 
         self._set_completion(job.id, 0, CompletionType.ACQUIRE)
@@ -385,6 +387,7 @@ class NetworkQueue(AbstractEditableQueue):
         # Propagate peer if importing from a PeerJobView
         # But don't fail with AttributeError if it's just a JobView
         manifest["peer_"] = getattr(j, "peer", None)
+        print("Dict manifest", manifest)
         self.set_job(jid, manifest)
         return jid
 

@@ -22,18 +22,5 @@
     </fieldset>
 
     After setting a profile, try loading community-contributed scripts on the <a style="cursor:pointer" data-bind="click: ()=>$root.gotoTab('scripts')">Scripts &amp; Preprocessors</a> section.
-
-    <legend>Network Identity</legend>
-
-    <p>These settings identify the printer to LAN queues and other networked printers.</p>
-
-    <fieldset>
-      <div class="control-group" title="Name of this printer when viewed from other OctoPrint instances">
-        <label class="control-label">Hostname</label>
-        <div class="controls">
-        <textarea rows="1" data-bind="value: settings.settings.plugins.continuousprint.cp_network_name"></textarea>
-        </div>
-      </div>
-    </fieldset>
   </form>
 </div> <!-- settings_continuousprint_profile -->

@@ -16,12 +16,13 @@ When you click `Save`, this profile will be associated with your printer.
 
 ## Automatic profile assignment
 
-Starting with version `2.1.0`, Continuous Print will attempt to automatically infer the correct printer profile for gcode files added to the queue. This currently only works the following slicers:
+Starting with version `2.1.0`, Continuous Print will attempt to automatically infer the correct printer profile for gcode files added to the queue. Slicer support is as follows:
 
 * [Kiri:Moto slicer](https://grid.space/kiri/)
 * [PrusaSlicer](https://www.prusa3d.com/page/prusaslicer_424/)
-* TODO [Ultimaker Cura](https://ultimaker.com/software/ultimaker-cura)
-* TODO [Simplify3D](https://www.simplify3d.com/)
+* [Simplify3D](https://www.simplify3d.com/)
+* [Slic3r](https://slic3r.org/) (requires [manual addition to the Notes field](https://github.com/slic3r/Slic3r/issues/5148))
+* [Ultimaker Cura](https://ultimaker.com/software/ultimaker-cura) (still [under discussion](https://github.com/Ultimaker/Cura/issues/14283))
 
 If you want your slicer to be supported, [open a Feature Request](https://github.com/smartin015/continuousprint/issues/new?assignees=&labels=&template=feature_request.md) and include an example gcode script that you've sliced as an example.
 

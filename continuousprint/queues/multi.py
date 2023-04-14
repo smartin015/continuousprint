@@ -84,6 +84,7 @@ class MultiQueue(AbstractQueue):
         for k, q in self.queues.items():
             if q.acquire():
                 self.active_queue = q
+                print("Acquired thing", self.get_job(), self.get_set())
                 self.run = self.queries.getActiveRun(
                     self.active_queue.ns, self.get_job().name, self.get_set().path
                 )

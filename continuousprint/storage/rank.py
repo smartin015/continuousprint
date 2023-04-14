@@ -1,4 +1,4 @@
-# Implements a Stern-Brocot ordering
+# Implements a Stern-Brocot ordering via rational fractions
 # https://begriffs.com/posts/2018-03-20-user-defined-order.html#approach-3-true-fractions
 
 
@@ -57,49 +57,3 @@ def rational_intermediate(
         n += 1
         if n > 1000:
             raise RuntimeError("rational intermediate depth exceeded")
-
-
-# Allow for infinite ordering via variable-length bytestring.
-# bytes values always begin with a 1-bit to mark the total number of bits
-# Note that python automatically uses bigints when size exceeds a certain
-# amount.
-# def midpoint_tag(r1: Rational, r2: Rational) -> Rational:
-#     if before is None and after is None:
-#         return Rational(1,1)
-#
-#     if before is None: # Far left of decision tree; add 0
-#         if after.n == 1:
-#             return Rational(after.n, after.d+1)
-#         else:
-#             return Rational(
-#     if after is None: # Far right of decision tree
-#         if before & 0x01 == 1:
-#             return (before << 1) | 0x00
-#         else:
-#             return (before << 1) | 0x01
-#         return add_bit(before, 1)
-#
-#     # Take whichever number's shorter and
-#     # add a bit
-#     if before.bit_length() < after.bit_length():
-#         return add_bit(before, 1)
-#     else: # before >= after
-#         return add_bit(after, 0)
-#
-# # Return
-# #   <0 if a < b
-# #   >0 if a > b
-# #   0 if a == b
-# def compare(a: int, b: int) -> int:
-#     # -1 to account for initial digit
-#     la = a.bit_length() - 1
-#     lb = b.bit_length() - 1
-#     ia = 0
-#     ib = 0
-#     # Build ints in reverse order until we hit the same level
-#     while la >= 0 and lb >= 0:
-#         ia = (ia << 1) | ((a >> la) & 0x01)
-#         ib = (ib << 1) | ((b >> lb) & 0x01)
-#         la -= 1
-#         lb -= 1
-#     return ia - ib

@@ -704,8 +704,7 @@ class CPQPlugin(ContinuousPrintAPI):
         if self.d.action(a, p, path, materials, bed_temp, timelapse_start_ts):
             self._sync_state()
 
-        netname = self._get_key(Keys.NETWORK_NAME)
-        self.q.update_peer_state(netname, p.name, self._printer_profile)
+        self.q.update_peer_state(p.name, self._printer_profile)
 
     def _state_json(self):
         # IMPORTANT: Non-additive changes to this response string must be released in a MAJOR version bump

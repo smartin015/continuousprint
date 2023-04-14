@@ -41,6 +41,7 @@ class NetworkQueueTest(unittest.TestCase):
         pp.get_plugin.return_value = MagicMock(
             client=self.cli,
             fileshare=self.fs,
+            printer_name="test_printer",
         )
         self.q = NetworkQueue(
             "ns",

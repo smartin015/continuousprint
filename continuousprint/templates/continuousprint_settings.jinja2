@@ -10,7 +10,9 @@
   <li><a href="#settings_continuousprint_events" data-toggle="tab">Events</a></li>
   <li><a href="#settings_continuousprint_scripts" data-toggle="tab">Scripts & Preprocessors</a></li>
   <li><a href="#settings_continuousprint_integrations" data-toggle="tab">Integrations</a></li>
-  <li><a href="#settings_continuousprint_queues" data-toggle="tab">Queues</a></li>
+  <li data-bind="visible: settings.settings.plugins.continuousprint.cp_network_queues_enabled">
+    <a href="#settings_continuousprint_queues" data-toggle="tab">Queues</a>
+  </li>
   <li><a href="#settings_continuousprint_behavior" data-toggle="tab">Behavior</a></li>
   <li><a href="#settings_continuousprint_help" data-toggle="tab">Help</a></li>
 </ul>

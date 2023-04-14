@@ -11,7 +11,7 @@ import traceback
 from .storage.database_test import DBTest
 from .storage.database import DEFAULT_QUEUE, MODELS, populate_queues
 from .storage import queries
-from .storage.peer import PeerJobView
+from .storage.peer import PeerJobView, PeerQueueView
 from .queues.multi import MultiQueue
 from .queues.local import LocalQueue
 from .queues.net import NetworkQueue
@@ -167,12 +167,28 @@ class TestLocalQueue(IntegrationTest):
         queries.appendSet(
             DEFAULT_QUEUE,
             "",
-            dict(path="a.gcode", sd=False, material="", profile="", count=2),
+            dict(
+                path="a.gcode",
+                sd=False,
+                material="",
+                profile="",
+                count=2,
+                id="set_a",
+                manifest="foo",
+            ),
         )
         queries.appendSet(
             DEFAULT_QUEUE,
             "1",
-            dict(path="b.gcode", sd=False, material="", profile="", count=1),
+            dict(
+                path="b.gcode",
+                sd=False,
+                material="",
+                profile="",
+                count=1,
+                id="set_b",
+                manifest="foo",
+            ),
         )
         queries.updateJob(1, dict(draft=False))
 
@@ -254,27 +270,6 @@ class TestDriver(DBTest):
         self.assertEqual(self.d.state.__name__, self.d._state_activating.__name__)
 
 
-class LocalLockManager:
-    def __init__(self, locks, ns):
-        self.locks = locks
-        self.selfID = ns
-
-    def getPeerLocks(self):
-        result = defaultdict(list)
-        for lk, p in self.locks.items():
-            result[p].append(lk)
-        return result
-
-    def tryAcquire(self, k, sync=None, timeout=None):
-        if self.locks.get(k) is not None and self.locks[k] != self.selfID:
-            return False
-        self.locks[k] = self.selfID
-        return True
-
-    def release(self, k):
-        self.locks.pop(k, None)
-
-
 class TestNetworkQueue(IntegrationTest):
     """A simple in-memory integration test between DB storage layer, queuing layer, and driver."""
 
@@ -290,6 +285,7 @@ class TestNetworkQueue(IntegrationTest):
         pp = MagicMock()
         type(pp.get_plugin()).client = self.srv
         type(pp.get_plugin()).fileshare = fs
+        type(pp.get_plugin()).printer_name = "test_printer"
         self.lq = NetworkQueue(
             "LAN",
             pp,
@@ -380,12 +376,13 @@ class TestMultiDriverNetworkQueue(unittest.TestCase):
         fs = MagicMock()
         fs.fetch.return_value = "foo.gcode"
         self.srv = MockServer([])
-        pp = MagicMock()
-        type(pp.get_plugin()).client = self.srv
-        type(pp.get_plugin()).fileshare = fs
-
         self.peers = []
         for i, db in enumerate(self.dbs):
+            pp = MagicMock()
+            type(pp.get_plugin()).client = self.srv
+            type(pp.get_plugin()).fileshare = fs
+            type(pp.get_plugin()).printer_name = f"peer{i}"
+
             with db.bind_ctx(MODELS):
                 populate_queues()
             lq = NetworkQueue(
@@ -428,46 +425,61 @@ class TestMultiDriverNetworkQueue(unittest.TestCase):
         (d1, _, lq1, db1) = self.peers[0]
         (d2, _, lq2, db2) = self.peers[1]
         for name in ("j1", "j2", "j3"):
-            lq1.lan.q.setJob(
+            lq1.set_job(
                 f"{name}_hash",
                 dict(
                     id=f"{name}_hash",
                     name=name,
                     created=0,
                     sets=[
-                        dict(path=f"{name}.gcode", count=1, remaining=1),
+                        dict(
+                            path=f"{name}.gcode",
+                            count=1,
+                            remaining=1,
+                            id=f"{name}_s0",
+                            metadata="foo",
+                        ),
                     ],
                     count=1,
                     remaining=1,
+                    peer_="test",
                 ),
             )
 
-        # Activating peer0 causes it to acquire j1 and begin printing its file
+        logging.info(
+            "Activating peer0 causes it to acquire j1 and begin printing its file"
+        )
         with db1.bind_ctx(MODELS):
             d1.action(DA.ACTIVATE, DP.IDLE)  # -> start_printing -> printing
             d1._runner.start_print.assert_called()
             self.assertEqual(d1._runner.start_print.call_args[0][0].path, "j1.gcode")
-            self.assertEqual(self.locks.get("j1_hash"), "peer0")
+            self.assertEqual(lq2._get_job("j1_hash")["acquired_by"], "peer0")
             d1._runner.start_print.reset_mock()
 
-        # Activating peer1 causes it to skip j1, acquire j2 and begin printing its file
+        logging.info(
+            "Activating peer1 causes it to skip j1, acquire j2 and begin printing its file"
+        )
         with db2.bind_ctx(MODELS):
             d2.action(DA.ACTIVATE, DP.IDLE)  # -> start_printing -> printing
             d2._runner.start_print.assert_called()
             self.assertEqual(d2._runner.start_print.call_args[0][0].path, "j2.gcode")
             d2._runner.start_print.reset_mock()
 
-        # When peer0 finishes it decrements the job and releases it, then acquires j3 and begins work
+        logging.info(
+            "When peer0 finishes it decrements the job and releases it, then acquires j3 and begins work"
+        )
         with db1.bind_ctx(MODELS):
             d1.action(DA.SUCCESS, DP.IDLE, path="j1.gcode")  # -> success
             d1.action(DA.TICK, DP.IDLE)  # -> start_clearing
             d1.action(DA.TICK, DP.IDLE)  # -> clearing
             d1.action(DA.SUCCESS, DP.IDLE)  # -> start_print
             self.assertEqual(d1._runner.start_print.call_args[0][0].path, "j3.gcode")
-            self.assertEqual(self.locks["j3_hash"], "peer0")
+            self.assertEqual(lq2._get_job("j3_hash")["acquired_by"], "peer0")
             d1._runner.start_print.reset_mock()
 
-        # When peer1 finishes it decrements j2 and releases it, then goes idle as j3 is already acquired
+        logging.info(
+            "When peer1 finishes it decrements j2 and releases it, then goes idle as j3 is already acquired"
+        )
         with db2.bind_ctx(MODELS):
             d2.action(DA.SUCCESS, DP.IDLE, path="j2.gcode")  # -> success
             d2.action(DA.TICK, DP.IDLE)  # -> start_finishing
@@ -476,34 +488,41 @@ class TestMultiDriverNetworkQueue(unittest.TestCase):
             self.assertEqual(d2.state.__name__, d2._state_idle.__name__)
 
     def test_non_local_edit(self):
+        # Editing a file on a remote peer should fetch and unpack the manifest file,
+        # then apply the new changes and re-pack it before posting it again
         (d1, _, lq1, db1) = self.peers[0]
         (d2, _, lq2, db2) = self.peers[1]
         with tempfile.TemporaryDirectory() as tdir:
             (Path(tdir) / "test.gcode").touch()
-            j = PeerJobView(
+            j = PeerJobView()
+            j.load_dict(
                 dict(
                     id="jobhash",
                     name="job",
                     created=0,
                     sets=[
                         dict(
+                            id="sethash",
                             path="test.gcode",
                             count=1,
                             remaining=1,
                             profiles=["profile"],
+                            metadata="foo",
                         ),
                     ],
                     count=1,
                     remaining=1,
                     peer_=None,
                 ),
-                lq1,
+                PeerQueueView(lq1),
             )
+            lq1._fileshare.post.return_value = "post_cid"
             lq1._path_on_disk = lambda p, sd: str(Path(tdir) / p)
+            logging.info("Initial job insertion into lq2")
             lq1.import_job_from_view(j, j.id)
-            lq2._fileshare.post.assert_not_called()
+            lq1._fileshare.post.reset_mock()
 
-            # LQ2 edits the job
+            logging.info("lq2 edits the job with mocked fileshare unpacking")
             lq2._fileshare.fetch.return_value = str(Path(tdir) / "unpack/")
             (Path(tdir) / "unpack").mkdir()
             lq2dest = Path(tdir) / "unpack/test.gcode"
@@ -511,8 +530,7 @@ class TestMultiDriverNetworkQueue(unittest.TestCase):
             lq2.edit_job("jobhash", dict(draft=True))
 
             lq2._fileshare.post.assert_called_once()
-            # Job posts with lan 2 address, from pov of lq1
-            self.assertEqual(list(lq1.lan.q.jobs.values())[0][0], lq2.addr)
+
             # Uses resolved file path
             c = lq2._fileshare.post.call_args[0]
             self.assertEqual(c[1], {str(lq2dest): str(lq2dest)})
