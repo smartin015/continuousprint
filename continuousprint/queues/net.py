@@ -7,7 +7,6 @@ from bisect import bisect_left
 from ..storage.peer import PeerJobView, PeerQueueView, PeerSetView
 from ..storage.database import JobView, SetView
 from ..storage.rank import Rational, rational_intermediate
-from peerprint.client import CompletionType
 from pathlib import Path
 from .base import AbstractEditableQueue, QueueData, Strategy, ValidationError
 import dataclasses
@@ -166,11 +165,11 @@ class NetworkQueue(AbstractEditableQueue):
         tombstones = set()
         for c in self._client.get_completions(self.ns):
             if c.completion.timestamp > 0 and c.completion.type == int(
-                CompletionType.TOMBSTONE
+                self._client.CompletionType.TOMBSTONE
             ):
                 tombstones.add(c.completion.uuid)
             elif c.completion.timestamp == 0 and c.completion.type == int(
-                CompletionType.ACQUIRE
+                self._client.CompletionType.ACQUIRE
             ):
                 acquiredBy[c.completion.uuid] = c.completion.client
 
@@ -206,14 +205,14 @@ class NetworkQueue(AbstractEditableQueue):
         acquiredBy = None
         for c in self._client.get_completions(self.ns, uuid=jid):
             if c.completion.timestamp > 0 and c.completion.type == int(
-                CompletionType.TOMBSTONE
+                self._client.CompletionType.TOMBSTONE
             ):
                 # Even if a job record exists, a tombstone completion may
                 # hide it from view.
                 # We persist the original record so its deletion can propagate.
                 return None
             elif c.completion.timestamp == 0 and c.completion.type == int(
-                CompletionType.ACQUIRE
+                self._client.CompletionType.ACQUIRE
             ):
                 acquiredBy = c.completion.client
 
@@ -266,7 +265,7 @@ class NetworkQueue(AbstractEditableQueue):
                     for c in self._client.get_completions(self.ns, data["id"])
                     if c.completion.completer != self.server_id
                     and c.completion.client != self._printer_name
-                    and c.completion.type != int(CompletionType.RELEASE)
+                    and c.completion.type != int(self._client.CompletionType.RELEASE)
                 ]
             )
             if len(peer_completions) > 0:
@@ -286,14 +285,14 @@ class NetworkQueue(AbstractEditableQueue):
         if job is None or s is None:
             return False
 
-        self._set_completion(job.id, 0, CompletionType.ACQUIRE)
+        self._set_completion(job.id, 0, self._client.CompletionType.ACQUIRE)
         self.job_id = job.id
         self.set_id = s.id
         return True
 
     def release(self) -> None:
         if self.job_id is not None:
-            self._set_completion(self.job_id, 0, CompletionType.RELEASE)
+            self._set_completion(self.job_id, 0, self._client.CompletionType.RELEASE)
             self.job_id = None
             self.set_id = None
 
@@ -354,7 +353,9 @@ class NetworkQueue(AbstractEditableQueue):
         for jid in job_ids:
             # No need to check for job existence; peers will just ignore
             # it if they don't have a matching record.
-            self._set_completion(jid, int(time.time()), CompletionType.TOMBSTONE)
+            self._set_completion(
+                jid, int(time.time()), self._client.CompletionType.TOMBSTONE
+            )
             n += 1
         return dict(jobs_deleted=n)
 

@@ -8,6 +8,7 @@ jobs:
       python: 3.7
       install:
           - pip install setuptools==60.9.0 # https://github.com/pypa/setuptools/issues/3293
+          - pip install peerprint==0.3.0 # Needed for testing/mocking implementation
           - pip install OctoPrint # Need OctoPrint to satisfy req's of `__init__.py`
           - pip install coverage coveralls
           - pip install -r requirements.txt
