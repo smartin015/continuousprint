@@ -35,7 +35,7 @@ PrinterProfile:
       clearBed: Pause
       finished: Generic Off
     extra_tags: []
- - name: Creality CR30
+  - name: Creality CR30
     make: Creality
     model: CR30
     width: 200
