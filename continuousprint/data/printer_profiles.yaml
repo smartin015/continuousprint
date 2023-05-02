@@ -23,6 +23,18 @@ PrinterProfile:
       clearBed: Prusa Mini
       finished: Generic Off
     extra_tags: []
+  - name: Prusa MK4
+    make: Prusa
+    model: MK4
+    width: 250
+    depth: 210
+    height: 220
+    formFactor: rectangular
+    selfClearing: false
+    defaults:
+      clearBed: Pause
+      finished: Generic Off
+    extra_tags: []
   - name: Creality CR30
     make: Creality
     model: CR30
