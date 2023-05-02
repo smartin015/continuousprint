@@ -30,9 +30,9 @@ PrinterProfile:
     depth: 210
     height: 220
     formFactor: rectangular
-    selfClearing: true
+    selfClearing: false
     defaults:
-      clearBed: Prusa Mini
+      clearBed: Pause
       finished: Generic Off
     extra_tags: []
  - name: Creality CR30
