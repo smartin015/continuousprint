@@ -120,7 +120,7 @@ GScript:
       G0 Y0 ;wipe forward
       G0 Y220 ;wipe aft
       G28 ; home
-  - name: "Single Gantry Sweep 200mm"
+  - name: "Single Gantry Sweep 180mm"
     description: >
       This script is for a 180x180mm XY build plate (or smaller). It performs a single sweep using the 
       printer's extruder to push the part off the build plate."
@@ -212,7 +212,7 @@ GScript:
       G28 ; home
   - name: "Full Gantry Sweep 200mm"
     description: >
-      This script is for a 200x200mm XY build plate (or smaller). It performs four sweeps across the build
+      This script is for a 200x200mm XY build plate (or smaller). It performs five sweeps across the build
       plate using the printer's extruder to push all parts off."
     version: 0.0.1
     gcode: |
