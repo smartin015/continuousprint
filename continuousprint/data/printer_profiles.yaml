@@ -586,8 +586,8 @@ PrinterProfile:
     formFactor: rectangular
     selfClearing: false
     defaults:
-      clearBed: Pause
-      finished: Generic Off
+      clearBed: Single Gantry Sweep 180mm
+      finished: Full Gantry Sweep 180mm
     extra_tags: []
   - name: Kingroon KP3S Pro
     make: Kingroon
@@ -598,6 +598,6 @@ PrinterProfile:
     formFactor: rectangular
     selfClearing: false
     defaults:
-      clearBed: Pause
-      finished: Generic Off
+      clearBed: Single Gantry Sweep 200mm
+      finished: Full Gantry Sweep 200mm
     extra_tags: []

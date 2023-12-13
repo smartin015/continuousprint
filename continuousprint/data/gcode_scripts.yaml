@@ -120,3 +120,136 @@ GScript:
       G0 Y0 ;wipe forward
       G0 Y220 ;wipe aft
       G28 ; home
+  - name: "Single Gantry Sweep 200mm"
+    description: >
+      This script is for a 180x180mm XY build plate (or smaller). It performs a single sweep using the 
+      printer's extruder to push the part off the build plate."
+    version: 0.0.1
+    gcode: |
+      M17 ; enable steppers
+      M104 T0 S0 ; extruder heater off
+      M140 S0 ; bed heater off
+
+      G91 ; set relative positioning
+      G0 Z10 ; lift z by 10
+      G90 ; set absolute positioning
+      M140 R27 ; set the bed to 27
+      M190 R27 ; wait until the bed is at 27
+
+      G0 X0 Y180 ; move to corner
+      G0 Z1v ; come down to 1MM from bed
+      G0 X90 Y180 ; move to mid bed
+      M300 S880 P500 ; play tone
+      G0 Y0 ; wipe forward
+      G0 Y180 ; wipe backwards
+
+      G28 ; home
+  - name: "Single Gantry Sweep 200mm"
+    description: >
+      This script is for a 200x200mm build plate (or smaller). It performs a single sweep using the 
+      printer's extruder to push the part off the build plate."
+    version: 0.0.1
+    gcode: |
+      M17 ; enable steppers
+      M104 T0 S0 ; extruder heater off
+      M140 S0 ; bed heater off
+
+      G91 ; set relative positioning
+      G0 Z10 ; lift z by 10
+      G90 ; set absolute positioning
+      M140 R27 ; set the bed to 27
+      M190 R27 ; wait until the bed is at 27
+
+      G0 X0 Y200 ; move to corner
+      G0 Z1v ; come down to 1MM from bed
+      G0 X100 Y200 ; move to mid bed
+      M300 S880 P500 ; play tone
+      G0 Y0 ; wipe forward
+      G0 Y200 ; wipe backwards
+
+      G28 ; home
+  - name: "Full Gantry Sweep 180mm"
+    description: >
+      This script is for a 180x180mm XY build plate (or smaller). It performs five sweeps across the build
+      plate using the printer's extruder to push all parts off."
+    version: 0.0.1
+    gcode: |
+      M17 ;enable steppers
+      G91 ; Set relative for lift
+      G0 Z10 ; lift z by 10
+      M140 R27 ; set the bed to 27
+      M190 R27 ; set bed to 27 and wait for cooldown
+
+      ;clear the bed
+      G90 ;back to absolute positioning
+      G0 Z1 ;come down to 1MM from bed
+
+      ;first column
+      G0 X180 Y180 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;second column
+      G0 X135 Y180 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;third column
+      G0 X90 Y180 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;fourth column
+      G0 X45 Y180 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      ;fifth column
+      G0 X0 Y180 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y180 ;wipe aft
+
+      G28 ; home
+  - name: "Full Gantry Sweep 200mm"
+    description: >
+      This script is for a 200x200mm XY build plate (or smaller). It performs four sweeps across the build
+      plate using the printer's extruder to push all parts off."
+    version: 0.0.1
+    gcode: |
+      M17 ;enable steppers
+      G91 ; Set relative for lift
+      G0 Z10 ; lift z by 10
+      M140 R27 ; set the bed to 27
+      M190 R27 ; set bed to 27 and wait for cooldown
+
+      ;clear the bed
+      G90 ;back to absolute positioning
+      G0 Z1 ;come down to 1MM from bed
+
+      ;first column
+      G0 X200 Y200 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y200 ;wipe aft
+
+      ;second column
+      G0 X150 Y200 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y200 ;wipe aft
+
+      ;third column
+      G0 X100 Y200 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y200 ;wipe aft
+
+      ;fourth column
+      G0 X50 Y200 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y200 ;wipe aft
+
+      ;fifth column
+      G0 X0 Y200 ;move to starting position
+      G0 Y0 ;wipe forward
+      G0 Y200 ;wipe aft
+
+      G28 ; home
+
