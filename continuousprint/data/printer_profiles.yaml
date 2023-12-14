@@ -577,3 +577,27 @@ PrinterProfile:
       clearBed: Pause
       finished: Generic Off
     extra_tags: []
+  - name: Kingroon KP3S
+    make: Kingroon
+    model: KP3S V3
+    width: 180
+    depth: 180
+    height: 180
+    formFactor: rectangular
+    selfClearing: false
+    defaults:
+      clearBed: Single Gantry Sweep 180mm
+      finished: Full Gantry Sweep 180mm
+    extra_tags: []
+  - name: Kingroon KP3S Pro
+    make: Kingroon
+    model: KP3S Pro
+    width: 200
+    depth: 200
+    height: 200
+    formFactor: rectangular
+    selfClearing: false
+    defaults:
+      clearBed: Single Gantry Sweep 200mm
+      finished: Full Gantry Sweep 200mm
+    extra_tags: []
