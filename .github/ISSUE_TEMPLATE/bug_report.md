@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-<!-- 
+<!--
    ;;;;;
    ;;;;;
    ;;;;;
@@ -19,7 +19,7 @@ assignees: ''
 
 If you are reporting an issue, you **must** attach a System Info bundle to the issue so I can troubleshoot it.
 
-If you create an issue without one, then I'll ask you to submit one and will wait until you do. 
+If you create an issue without one, then I'll ask you to submit one and will wait until you do.
 
 Please save us both time, and do this first. You can find instructions here:
 
