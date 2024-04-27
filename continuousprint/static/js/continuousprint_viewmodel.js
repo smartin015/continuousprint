@@ -32,7 +32,14 @@ function CPViewModel(parameters) {
     self.printerProfiles = parameters[3];
     self.settings = parameters[4];
     self.cpPrinterProfiles = CP_PRINTER_PROFILES;
-    self.extruders = ko.computed(function() { return self.printerProfiles.currentProfileData().extruder.count(); });
+    self.extruders = ko.computed(function() {
+        let cpd = self.printerProfiles.currentProfileData();
+        if (cpd) {
+            return cpd.extruder.count();
+        } else {
+            return 1;
+        }
+    });
     self.status = ko.observable("Initializing...");
     self.statusType = ko.observable("INIT");
     self.active = ko.observable(false);
@@ -358,6 +365,9 @@ function CPViewModel(parameters) {
       self.badMaterialCount(nbad);
       self.hasSpoolManager(true);
     }, function(statusCode, errText) {
+      if (statusCode !== 404) {
+        console.error(statusCode, errText);
+      }
       self.hasSpoolManager(statusCode !== 404);
     });
 
