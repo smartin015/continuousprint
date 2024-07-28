@@ -1,4 +1,5 @@
 site_name: Continuous Print
+site_url: https://smartin015.github.io/continuousprint/
 theme:
   name: material
   logo: ./CPQ_white.svg
