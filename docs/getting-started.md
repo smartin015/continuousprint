@@ -19,7 +19,7 @@ That's it! Now let's configure it to work with your printer.
 
 Go to `Settings` -> `Continuous Print` and ensure the bed cleaning and queue finished scripts are correct for your 3D printer.
 
-**If you select your printer's make and model from the settings drop down, default scripts will be automatically configured.** If you want to add a missing printer to the list or improve on the default script, see the [GCODE Scripting contributing section](/gcode-scripting#contributing)
+**If you select your printer's make and model from the settings drop down, default scripts will be automatically configured.** If you want to add a missing printer to the list or improve on the default script, see the [GCODE Scripting contributing section](/continuousprint/gcode-scripting#contributing)
 
 ## Add prints to the queue
 
@@ -30,7 +30,7 @@ Go to `Settings` -> `Continuous Print` and ensure the bed cleaning and queue fin
 
 !!! Tip
 
-    See [Queueing Basics](/advanced-queuing) to learn more about how to group your prints into sets and jobs.
+    See [Queueing Basics](/continuousprint/advanced-queuing) to learn more about how to group your prints into sets and jobs.
 
 ## Start the queue
 
@@ -42,7 +42,7 @@ The print queue is initially inactive when Octoprint is started. To run the queu
 
 The plugin will wait until your printer is ready to start a print, then it'll begin with the top of the queue and proceed until the bottom.
 
-Note that the default scripts for most printers will pause after every print to wait for you to remove the printed part - to keep printing, just press the "Resume" button on the OctoPrint UI. You can learn more about how to configure the gcode scripts [here](/gcode-scripting) if you want to further automate your printing.
+Note that the default scripts for most printers will pause after every print to wait for you to remove the printed part - to keep printing, just press the "Resume" button on the OctoPrint UI. You can learn more about how to configure the gcode scripts [here](/continuousprint/gcode-scripting) if you want to further automate your printing.
 
 ## Inspect finished prints
 
