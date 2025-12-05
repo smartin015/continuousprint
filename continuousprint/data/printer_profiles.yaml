@@ -577,3 +577,15 @@ PrinterProfile:
       clearBed: Pause
       finished: Generic Off
     extra_tags: []
+  - name: Prusa MK4S
+    make: Prusa
+    model: MK4S
+    width: 250
+    depth: 210
+    height: 210
+    formFactor: rectangular
+    selfClearing: false
+    defaults:
+      clearBed: Pause
+      finished: Generic Off
+    extra_tags: ["MK4", "MK4S"]
