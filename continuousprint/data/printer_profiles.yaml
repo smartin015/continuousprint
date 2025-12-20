@@ -589,4 +589,16 @@ PrinterProfile:
       clearBed: Pause
       finished: Generic Off
     extra_tags: ["MK4", "MK4S"]
+  - name: Prusa Loop MK3S
+    make: Prusa
+    model: Loop MK3S
+    width: 250
+    depth: 185
+    height: 194
+    formFactor: rectangular
+    selfClearing: true
+    defaults:
+      clearBed: Pause
+      finished: Generic Off
+    extra_tags: ["Loop"]
     
