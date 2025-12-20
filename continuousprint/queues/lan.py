@@ -263,6 +263,22 @@ class LANQueue(AbstractEditableQueue):
             manifest["created"] = int(time.time())
         # Note: post mutates manifest by stripping fields
         manifest["hash"] = self._fileshare.post(manifest, filepaths)
+        # Trigger PrintTimeGenius analysis for copied files
+        import requests
+        api_key = self._settings.global_get(["api", "key"]) if hasattr(self, '_settings') else None
+        octoprint_url = 'http://localhost'
+        headers = {'X-Api-Key': api_key} if api_key else {}
+        for original_path, full_path in filepaths.items():
+            if full_path and Path(full_path).exists():
+                payload = {'path': original_path, 'origin': 'local'}
+                try:
+                    r = requests.post(f'{octoprint_url}/api/plugin/PrintTimeGenius/estimate', json=payload, headers=headers)
+                    if r.status_code == 200:
+                        self._logger.info(f'Triggered PrintTimeGenius analysis for {original_path}')
+                    else:
+                        self._logger.warning(f'Analysis trigger failed: {r.status_code} {r.text}')
+                except Exception as e:
+                    self._logger.error(f'Error triggering analysis: {e}')
         manifest["id"] = jid if jid is not None else self._gen_uuid()
 
         # Propagate peer if importing from a LANJobView
