@@ -546,7 +546,7 @@ class CPQPlugin(ContinuousPrintAPI):
         # https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/filemanager/__init__.py#L301
         self._logger.debug("Searching files for backlogged CPQ analysis")
         counter = 0
-        file_list = self._file_manager.list_files(destinations=FileDestinations.LOCAL)[
+        file_list = self._file_manager.list_files(FileDestinations.LOCAL)[
             FileDestinations.LOCAL
         ]
         for path in self._backlog_from_file_list(file_list):
