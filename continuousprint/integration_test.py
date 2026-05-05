@@ -1,12 +1,10 @@
 import unittest
-import datetime
 import time
 import tempfile
-from unittest.mock import MagicMock, ANY
+from unittest.mock import MagicMock
 from .driver import Driver, Action as DA, Printer as DP
 from pathlib import Path
 import logging
-import traceback
 from .storage.database_test import DBTest
 from .storage.database import DEFAULT_QUEUE, MODELS, populate_queues
 from .storage import queries

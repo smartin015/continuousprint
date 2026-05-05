@@ -8,7 +8,6 @@ import flask
 import json
 from .storage import queries
 from .storage.database import DEFAULT_QUEUE
-from .data import CustomEvents
 from .driver import Action as DA
 from abc import ABC, abstractmethod
 

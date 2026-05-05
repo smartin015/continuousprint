@@ -2,7 +2,6 @@ import unittest
 from dataclasses import dataclass
 from io import StringIO
 from octoprint.printer import InvalidFileLocation, InvalidFileType
-from octoprint.filemanager.destinations import FileDestinations
 from octoprint.slicing.exceptions import SlicingException
 from collections import namedtuple
 from unittest.mock import MagicMock, ANY, patch

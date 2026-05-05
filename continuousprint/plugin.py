@@ -31,7 +31,6 @@ from .storage.database import (
 )
 from .data import (
     PRINTER_PROFILES,
-    GCODE_SCRIPTS,
     Keys,
     TEMP_FILE_DIR,
     PRINT_FILE_DIR,
