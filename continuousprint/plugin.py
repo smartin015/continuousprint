@@ -656,7 +656,7 @@ class CPQPlugin(ContinuousPrintAPI):
                 f"Handling completed analysis for {path} - pending: {pend}"
             )
             if pend is not None:
-                (path, sd, draft, profiles) = pend
+                path, sd, draft, profiles = pend
                 prof = payload["result"][CPQProfileAnalysisQueue.PROFILE_KEY]
                 if (profiles is None or profiles == []) and prof != "":
                     profiles = [prof]

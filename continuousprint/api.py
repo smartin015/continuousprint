@@ -319,7 +319,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITQUEUES)
     def edit_queues(self):
         queues = json.loads(flask.request.form.get("json"))
-        (absent_names, added) = queries.assignQueues(queues)
+        absent_names, added = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)
         return json.dumps("OK")
 

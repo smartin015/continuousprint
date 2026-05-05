@@ -15,9 +15,11 @@ class SpoolManagerIntegration:
         try:
             materials = self._impl.api_getSelectedSpoolInformations()
             materials = [
-                f"{m['material']}_{m['colorName']}_{m['color']}"
-                if m is not None
-                else None
+                (
+                    f"{m['material']}_{m['colorName']}_{m['color']}"
+                    if m is not None
+                    else None
+                )
                 for m in materials
             ]
             return materials

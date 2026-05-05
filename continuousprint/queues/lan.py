@@ -103,7 +103,7 @@ class LANQueue(AbstractEditableQueue):
     # -------- Wrappers around LANQueue to add/remove metadata ------
 
     def _annotate_job(self, peer_and_manifest, acquired_by):
-        (peer, manifest) = peer_and_manifest
+        peer, manifest = peer_and_manifest
         m = dict(**manifest)
         m["peer_"] = peer
         m["acquired"] = True if acquired_by is not None else False
@@ -165,7 +165,7 @@ class LANQueue(AbstractEditableQueue):
     def acquire(self) -> bool:
         if self.lan is None or self.lan.q is None:
             return False
-        (job, s) = self._peek()
+        job, s = self._peek()
         if job is not None and s is not None:
             if self.lan.q.acquireJob(job.id):
                 self._logger.debug(f"acquire() candidate:\n{job}\n{s}")
