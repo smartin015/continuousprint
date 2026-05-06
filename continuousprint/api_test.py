@@ -94,8 +94,8 @@ class TestAPI(unittest.TestCase):
         num_handlers_tested = len(set([tc[1] for tc in testcases]))
         handlers = [
             f
-            for f in dir(self.api)
-            if hasattr(getattr(self.api, f), "_blueprint_rules")
+            for f in dir(type(self.api))
+            if hasattr(getattr(type(self.api), f), "_blueprint_rules")
         ]
         self.assertEqual(num_handlers_tested, len(handlers))
 
