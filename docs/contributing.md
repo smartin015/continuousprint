@@ -68,7 +68,7 @@ It is recommended to [fork](https://docs.github.com/en/get-started/quickstart/fo
 ```
 git clone https://github.com/smartin015/continuousprint.git
 cd continuousprint
-pip install -r dev-dependencies.txt
+pip install -e .[develop]
 pre-commit install
 ```
 
@@ -116,7 +116,7 @@ Enable debug-level messages from ContinuousPrint by going into `Settings > Loggi
 Continuous Print uses [mkdocs](https://www.mkdocs.org/) to generate web documentation. All documentation lives in `docs/`.
 
 ```shell
-pip install mkdocs mkdocs-material
+pip install -e .[develop]
 ```
 
 if you installed the dev tools (step 2) you can run `mkdocs serve` from the root of the repository to see doc edits live at [http://localhost:8000](http://localhost:8000).
