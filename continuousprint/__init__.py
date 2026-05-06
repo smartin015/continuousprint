@@ -123,6 +123,9 @@ class ContinuousprintPlugin(
     def get_template_configs(self):
         return TEMPLATES
 
+    def is_template_autoescaped(self):
+        return True
+
     # -------------------- End TemplatePlugin ----------------
 
     # -------------------- Begin AssetPlugin ----------------
