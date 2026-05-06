@@ -852,7 +852,7 @@ class CPQPlugin(ContinuousPrintAPI):
                 self.q.add(a["name"], lq)
             except ValueError:
                 self._logger.error(
-                    f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
+                    f"Unable to join network queue (name {a['name']}, addr {a['addr']}) due to ValueError"
                 )
 
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
