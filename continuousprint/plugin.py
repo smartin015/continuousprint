@@ -580,7 +580,7 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _cleanup_fileshare(self):
         if not os.path.exists(self.fileshare_dir):
-            return n
+            return 0
 
         # This cleans up all non-useful fileshare files across all network queues, so they aren't just taking up space.
         # First we collect all non-local queue items hosted by us - these are excluded from cleanup as someone may need to fetch them.
