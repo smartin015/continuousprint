@@ -1,11 +1,10 @@
 import unittest
 import datetime
 import time
-from unittest.mock import MagicMock, ANY
+from unittest.mock import MagicMock
 from .driver import Driver, Action as DA, Printer as DP
 from .data import CustomEvents
 import logging
-import traceback
 
 # logging.basicConfig(level=logging.DEBUG)
 

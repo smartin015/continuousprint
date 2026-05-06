@@ -5,7 +5,7 @@ class DummyQueue:
     name = "foo"
 
 
-def testJob(inst):
+def make_test_job(inst):
     s = SetView()
     s.id = inst
     s.path = f"set{inst}.gcode"
@@ -60,10 +60,12 @@ class JobEqualityTests:
 
 class AbstractQueueTests(JobEqualityTests):
     def setUp(self):
-        raise NotImplementedError("Must create queue as self.q with testJob() inserted")
+        raise NotImplementedError(
+            "Must create queue as self.q with make_test_job() inserted"
+        )
 
     def test_acquire_get_release(self):
-        j = testJob(0)
+        j = make_test_job(0)
         self.assertEqual(self.q.acquire(), True)
         self.assertEqual(self.q.get_job().acquired, True)
         self.assertJobsEqual(self.q.get_job(), j, ignore=["acquired"])
@@ -99,7 +101,7 @@ class EditableQueueTests(JobEqualityTests):
 
     def setUp(self):
         raise NotImplementedError(
-            "Must create queue as self.q with testJob() inserted (inst=0..3)"
+            "Must create queue as self.q with make_test_job() inserted (inst=0..3)"
         )
 
     def test_mv_job_exchange(self):
@@ -128,8 +130,8 @@ class EditableQueueTests(JobEqualityTests):
         self.assertEqual(len(self.q.as_dict()["jobs"][0]["sets"]), 1)
 
         # Edit the acquired job, adding a new set
-        newsets = [testJob(0).sets[0].as_dict()]  # Same as existing
-        newsets.append(testJob(100).sets[0].as_dict())  # New set
+        newsets = [make_test_job(0).sets[0].as_dict()]  # Same as existing
+        newsets.append(make_test_job(100).sets[0].as_dict())  # New set
         self.q.edit_job(self.jids[0], dict(sets=newsets))
 
         # Value after decrement should be consistent, i.e. not regress to prior acquired-job value
@@ -137,15 +139,15 @@ class EditableQueueTests(JobEqualityTests):
         self.assertEqual(len(self.q.as_dict()["jobs"][0]["sets"]), 2)
 
     def test_get_job_view(self):
-        self.assertJobsEqual(self.q.get_job_view(self.jids[0]), testJob(0))
+        self.assertJobsEqual(self.q.get_job_view(self.jids[0]), make_test_job(0))
 
     def test_import_job_from_view(self):
-        j = testJob(10)
+        j = make_test_job(10)
         jid = self.q.import_job_from_view(j)
         self.assertJobsEqual(self.q.get_job_view(jid), j)
 
     def test_import_job_from_view_persists_completion_and_remaining(self):
-        j = testJob(10)
+        j = make_test_job(10)
         j.sets[0].completed = 3
         j.sets[0].remaining = 5
         jid = self.q.import_job_from_view(j)

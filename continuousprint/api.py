@@ -8,7 +8,6 @@ import flask
 import json
 from .storage import queries
 from .storage.database import DEFAULT_QUEUE
-from .data import CustomEvents
 from .driver import Action as DA
 from abc import ABC, abstractmethod
 
@@ -97,6 +96,9 @@ def cpq_permission(perm: Permission):
 
 
 class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
+    def is_blueprint_csrf_protected(self):
+        return True
+
     @abstractmethod
     def _update(self, a: DA):
         pass
@@ -319,7 +321,7 @@ class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
     @cpq_permission(Permission.EDITQUEUES)
     def edit_queues(self):
         queues = json.loads(flask.request.form.get("json"))
-        (absent_names, added) = queries.assignQueues(queues)
+        absent_names, added = queries.assignQueues(queues)
         self._commit_queues(added, absent_names)
         return json.dumps("OK")
 

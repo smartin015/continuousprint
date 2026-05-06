@@ -1,13 +1,11 @@
 import unittest
 import logging
-import tempfile
-from datetime import datetime
 from unittest.mock import MagicMock
 from .abstract import Strategy
 from .abstract_test import (
     AbstractQueueTests,
     EditableQueueTests,
-    testJob as makeAbstractTestJob,
+    make_test_job as makeAbstractTestJob,
 )
 from .lan import LANQueue, ValidationError
 from ..storage.database import JobView, SetView

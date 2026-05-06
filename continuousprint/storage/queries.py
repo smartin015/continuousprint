@@ -20,7 +20,6 @@ from .database import (
 )
 from ..data import CustomEvents
 
-
 MAX_COUNT = 999999
 
 
@@ -113,7 +112,7 @@ def assignQueues(queues):
         qq_names = set([q.name for q in qq])
         absent = [(q.id, q.name) for q in qq if q.name not in names]
         if len(absent) > 0:
-            (absent_ids, absent_names) = zip(*absent)
+            absent_ids, absent_names = zip(*absent)
             Queue.delete().where(Queue.id.in_(absent_ids)).execute()
         else:
             absent_names = []
@@ -490,9 +489,9 @@ def getAutomation():
         events[e.name].append(
             dict(
                 script=e.script.name,
-                preprocessor=e.preprocessor.name
-                if e.preprocessor is not None
-                else None,
+                preprocessor=(
+                    e.preprocessor.name if e.preprocessor is not None else None
+                ),
             )
         )
 

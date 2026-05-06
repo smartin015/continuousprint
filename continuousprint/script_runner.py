@@ -1,4 +1,3 @@
-import time
 from io import BytesIO
 from pathlib import Path
 from octoprint.filemanager.util import StreamWrapper

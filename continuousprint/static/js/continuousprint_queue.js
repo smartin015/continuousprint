@@ -217,6 +217,7 @@ function CPQueue(data, api, files, profile, materials, stats_dimensions=CP_STATS
             new PNotify({
                 title: 'Continuous Print',
                 text: `Error(s) during export: \n - ${result.errors.join('\n - ')}`,
+                text_escape: true,
                 type: 'error',
                 hide: false,
                 buttons: {closer: true, sticker: false}
@@ -226,6 +227,7 @@ function CPQueue(data, api, files, profile, materials, stats_dimensions=CP_STATS
             new PNotify({
                 title: 'Continuous Print',
                 text: `Exported jobs to 'files' panel: \n - ${result.paths.join('\n - ')}`,
+                text_escape: true,
                 type: 'success',
                 hide: true,
                 buttons: {closer: true, sticker: false}

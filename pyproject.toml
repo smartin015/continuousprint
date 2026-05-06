@@ -1,0 +1,51 @@
+[build-system]
+requires = [
+    "setuptools>=68",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "continuousprint"
+version = "2.4.1"
+description = "Allows a print to be restarted after it has been completed. Use with a Gcode at the end to sweep the old print off the bed in preparation for the new."
+requires-python = ">=3.7,<4"
+dependencies = [
+    "peewee<4",
+    "peerprint==0.1.0",
+    "asteval==0.9.28",
+]
+dynamic = [
+    "license",
+]
+
+[[project.authors]]
+name = "Scott Martin, formerly Louis Sarwal & Paul Goddard"
+email = "smartin015+oprint@gmail.com"
+
+[project.entry-points."octoprint.plugin"]
+continuousprint = "continuousprint"
+
+[project.urls]
+Homepage = "https://github.com/smartin015/continuousprint"
+
+[project.optional-dependencies]
+develop = [
+    "go-task-bin",
+    "pre-commit",
+    "mkdocs",
+    "mkdocs-material",
+    "pymdown-extensions",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = [
+    "continuousprint",
+    "continuousprint.*",
+]

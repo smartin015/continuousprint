@@ -3,7 +3,7 @@ import json
 import logging
 from .driver import Action as DA
 from unittest.mock import patch, MagicMock, call, PropertyMock
-import imp
+import importlib
 from flask import Flask
 from .api import Permission, cpq_permission
 import continuousprint.api
@@ -44,7 +44,7 @@ class TestAPI(unittest.TestCase):
         # octoprint internal state.
         def kill_patches():
             patch.stopall()
-            imp.reload(continuousprint.api)
+            importlib.reload(continuousprint.api)
 
         self.addCleanup(kill_patches)
         patch(
@@ -52,7 +52,7 @@ class TestAPI(unittest.TestCase):
             lambda x: x,
         ).start()
 
-        imp.reload(continuousprint.api)
+        importlib.reload(continuousprint.api)
         self.perm = patch("continuousprint.api.Permissions").start()
         patch.object(
             continuousprint.api.ContinuousPrintAPI, "__abstractmethods__", set()
@@ -94,8 +94,8 @@ class TestAPI(unittest.TestCase):
         num_handlers_tested = len(set([tc[1] for tc in testcases]))
         handlers = [
             f
-            for f in dir(self.api)
-            if hasattr(getattr(self.api, f), "_blueprint_rules")
+            for f in dir(type(self.api))
+            if hasattr(getattr(type(self.api), f), "_blueprint_rules")
         ]
         self.assertEqual(num_handlers_tested, len(handlers))
 

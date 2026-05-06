@@ -1,12 +1,10 @@
 import unittest
-import datetime
 import time
 import tempfile
-from unittest.mock import MagicMock, ANY
+from unittest.mock import MagicMock
 from .driver import Driver, Action as DA, Printer as DP
 from pathlib import Path
 import logging
-import traceback
 from .storage.database_test import DBTest
 from .storage.database import DEFAULT_QUEUE, MODELS, populate_queues
 from .storage import queries
@@ -362,7 +360,7 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             profile = dict(name="profile")
             lq = LANQueue(
                 "LAN",
-                f"peer{i}:{12345+i}",
+                f"peer{i}:{12345 + i}",
                 logging.getLogger(f"peer{i}:LAN"),
                 Strategy.IN_ORDER,
                 onupdate,
@@ -403,8 +401,8 @@ class TestMultiDriverLANQueue(unittest.TestCase):
     def test_ordered_acquisition(self):
         logging.info("============ BEGIN TEST ===========")
         self.assertEqual(len(self.peers), 2)
-        (d1, _, lq1, db1) = self.peers[0]
-        (d2, _, lq2, db2) = self.peers[1]
+        d1, _, lq1, db1 = self.peers[0]
+        d2, _, lq2, db2 = self.peers[1]
         for name in ("j1", "j2", "j3"):
             lq1.lan.q.setJob(
                 f"{name}_hash",
@@ -454,8 +452,8 @@ class TestMultiDriverLANQueue(unittest.TestCase):
             self.assertEqual(d2.state.__name__, d2._state_idle.__name__)
 
     def test_non_local_edit(self):
-        (d1, _, lq1, db1) = self.peers[0]
-        (d2, _, lq2, db2) = self.peers[1]
+        d1, _, lq1, db1 = self.peers[0]
+        d2, _, lq2, db2 = self.peers[1]
         with tempfile.TemporaryDirectory() as tdir:
             (Path(tdir) / "test.gcode").touch()
             j = LANJobView(

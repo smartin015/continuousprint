@@ -1,5 +1,4 @@
 import unittest
-import logging
 from unittest.mock import MagicMock
 from .abstract import Strategy
 from .multi import MultiQueue

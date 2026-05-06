@@ -10,7 +10,7 @@ jobs:
           - pip install setuptools==60.9.0 # https://github.com/pypa/setuptools/issues/3293
           - pip install OctoPrint # Need OctoPrint to satisfy req's of `__init__.py`
           - pip install coverage coveralls
-          - pip install -r requirements.txt
+          - pip install -e .
       script:
         - coverage run -m unittest discover -p "*_test.py"
       after_success:

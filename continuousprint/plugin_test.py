@@ -4,7 +4,7 @@ from collections import namedtuple
 from .analysis import CPQProfileAnalysisQueue
 from .storage.queries import getJobsAndSets
 from .storage.database import DEFAULT_QUEUE, ARCHIVE_QUEUE
-from unittest.mock import MagicMock, patch, ANY, call, PropertyMock
+from unittest.mock import MagicMock, patch, ANY, call
 from octoprint.filemanager.analysis import QueueEntry
 from .driver import Driver, Action as DA
 from octoprint.events import Events
@@ -85,70 +85,103 @@ class TestStartup(unittest.TestCase):
         self.assertEqual(p._get_key(Keys.MATERIAL_SELECTION), True)  # Spoolmanager
         self.assertEqual(p._get_key(Keys.RESTART_ON_PAUSE), False)  # Obico
 
-    def testPatchCommJobReader(self):
+    def testGcodeSendingHandlerSkipsConfiguredFileCommands(self):
         p = setupPlugin()
-        gnfj = p._printer._comm._get_next_from_job
-        p.d = MagicMock(_state_printing="foo", state="foo")
+        p.d = MagicMock(state=Driver._state_printing)
+        p.d._state_printing = Driver._state_printing
         p._set_key(Keys.SKIP_GCODE_COMMANDS, "FOO 1\nBAR ; Settings comment")
-        p.patchCommJobReader()
-
-        mm = MagicMock()
-        gnfj.side_effect = [
-            (line, None, None)
-            for line in (
-                "",
-                mm,
-                "foo 1",  # Case insensitive
-                "BAR ; I have a comment that should be ignored ;;;",
-                "G0 X0",
-                None,
-            )
-        ]
-
-        # Passes whitespace lines
-        self.assertEqual(p._printer._comm._get_next_from_job(), ("", ANY, ANY))
-
-        # Passes foreign objects (e.g. for SendQueueMarker in OctoPrint)
-        self.assertEqual(p._printer._comm._get_next_from_job(), (mm, ANY, ANY))
+        p._on_settings_updated()
 
         # Skips cmds in skip-list
-        self.assertEqual(p._printer._comm._get_next_from_job(), ("G0 X0", ANY, ANY))
+        self.assertEqual(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "foo 1",
+                None,
+                "FOO",
+                tags={"source:file"},
+            ),
+            (None,),
+        )
+        self.assertEqual(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "BAR ; comment",
+                None,
+                "BAR",
+                tags={"source:file"},
+            ),
+            (None,),
+        )
 
-        # Stops on end of file
-        self.assertEqual(p._printer._comm._get_next_from_job(), (None, ANY, ANY))
+        # Unlisted cmds pass through unchanged
+        self.assertIsNone(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "G0 X0",
+                None,
+                "G0",
+                tags={"source:file"},
+            )
+        )
 
-        # Test exception inside loop returns a decent result
-        gnfj.side_effect = [("foo 1", None, None), Exception("Testing exception")]
-        self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
+        # Skip-list only applies to file cmds
+        self.assertIsNone(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "foo 1",
+                None,
+                "FOO",
+                tags={"source:script"},
+            )
+        )
 
         # Ignored when not printing
-        p.d = MagicMock(_state_printing="foo", state="bar")
-        gnfj.side_effect = [("foo 1", None, None)]
-        self.assertEqual(p._printer._comm._get_next_from_job(), ("foo 1", ANY, ANY))
+        p.d.state = Driver._state_activating
+        self.assertIsNone(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "foo 1",
+                None,
+                "FOO",
+                tags={"source:file"},
+            )
+        )
 
-    def testPatchComms(self):
+    def testGcodeSendingHandlerSuppressesGcodeScriptCommands(self):
         p = setupPlugin()
-        sgs = p._printer._comm.sendGcodeScript
-        p.patchComms()
 
         # Suppress states in which we're running user configured event scripts
-        sgs.reset_mock()
         p.d = MagicMock(state=Driver._state_activating)
-        p._printer._comm.sendGcodeScript("FOO")
-        sgs.assert_not_called()
+        self.assertEqual(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "M117 hello",
+                None,
+                "M117",
+                tags={"source:script"},
+            ),
+            (None,),
+        )
 
         # Pass through states where default OctoPrint behavior should be obeyed
-        sgs.reset_mock()
         p.d = MagicMock(state=Driver._state_printing)
-        p._printer._comm.sendGcodeScript("FOO")
-        sgs.assert_called()
-
-        # Passthru still happens despite exceptions
-        sgs.reset_mock()
-        p.d = MagicMock()
-        type(p.d).state = PropertyMock(side_effect=Exception("testing error"))
-        p._printer._comm.sendGcodeScript("FOO")
-        sgs.assert_called()
+        self.assertIsNone(
+            p.gcode_sending_handler(
+                None,
+                "sending",
+                "M117 hello",
+                None,
+                "M117",
+                tags={"source:script"},
+            )
+        )
 
     def testDBNew(self):
         p = setupPlugin()

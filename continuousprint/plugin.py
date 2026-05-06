@@ -31,7 +31,6 @@ from .storage.database import (
 )
 from .data import (
     PRINTER_PROFILES,
-    GCODE_SCRIPTS,
     Keys,
     TEMP_FILE_DIR,
     PRINT_FILE_DIR,
@@ -84,6 +83,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._fire_event = fire_event
         self._exceptions = []
         self._timelapse_start_ts = None
+        self._skip_cmd_list = set()
 
     def start(self):
         self._setup_thirdparty_plugin_integration()
@@ -97,6 +97,7 @@ class CPQPlugin(ContinuousPrintAPI):
         self._sync_state()
 
     def _on_settings_updated(self):
+        self._refresh_skip_gcode_commands()
         self.d.set_retry_on_pause(
             self._get_key(Keys.RESTART_ON_PAUSE, False),
             int(self._get_key(Keys.RESTART_MAX_RETRIES, 0)),
@@ -298,56 +299,53 @@ class CPQPlugin(ContinuousPrintAPI):
             octoprint.events.Events, "PLUGIN__SPOOLMANAGER_SPOOL_DESELECTED", None
         )
 
-    def patchCommJobReader(self):
-        # Patch the comms interface to allow for suppressing GCODE script events when the
-        # queue is running script events
-        try:
-            if self._get_key(Keys.SKIP_GCODE_COMMANDS).strip() == "":
-                self._logger.info(
-                    "Skipping patch of comm._get_next_from_job; no commands configured to skip"
-                )
-                return
-            self._ignore_cmd_list = set(
-                [
-                    c.split(";", 1)[0].strip().upper()
-                    for c in self._get_key(Keys.SKIP_GCODE_COMMANDS).split("\n")
-                ]
+    def _refresh_skip_gcode_commands(self):
+        configured_skip_commands = self._get_key(Keys.SKIP_GCODE_COMMANDS, "")
+        if configured_skip_commands is None:
+            configured_skip_commands = ""
+        if configured_skip_commands.strip() == "":
+            self._skip_cmd_list = set()
+            self._logger.info("No commands configured to skip")
+            return
+
+        self._skip_cmd_list = {
+            c.split(";", 1)[0].strip().upper()
+            for c in configured_skip_commands.split("\n")
+        }
+
+    def gcode_sending_handler(
+        self,
+        comm_instance,
+        phase,
+        cmd,
+        cmd_type,
+        gcode,
+        subcode=None,
+        tags=None,
+        *args,
+        **kwargs,
+    ):
+        tags = tags or set()
+
+        # During CPQ automation states, suppress OctoPrint GCODE script lines
+        if "source:script" in tags and shouldBlockCoreEvents(self.d.state):
+            self._logger.warning(
+                f"Suppressing GCODE script command ({cmd}) as driver is in state {self.d.state}"
             )
+            return (None,)
 
-            self._jobCommReaderOrig = self._printer._comm._get_next_from_job
-            self._printer._comm._get_next_from_job = self.gatedCommJobReader
-            self._logger.info(
-                f"Patched comm._get_next_from_job; will ignore commands: {self._ignore_cmd_list}"
-            )
-        except Exception:
-            self._logger.error(traceback.format_exc())
+        # Skip configured commands from the print-file stream, only while printing
+        if (
+            self.d.state == self.d._state_printing
+            and "source:file" in tags
+            and isinstance(cmd, str)
+        ):
+            normalized_cmd = cmd.split(";", 1)[0].strip().upper()
+            if normalized_cmd in self._skip_cmd_list:
+                self._logger.warning(f"Skip GCODE from file: {cmd}")
+                return (None,)
 
-    def gatedCommJobReader(self, *args, **kwargs):
-        # As this patches core OctoPrint functionality, we wrap *everything*
-        # in try/catch to ensure it continues to execute if CPQ raises an exception.
-        result = self._jobCommReaderOrig(*args, **kwargs)
-        try:
-            # Only mess with gcode commands of printed files, not events
-            if self.d.state != self.d._state_printing:
-                return result
-
-            while result[0] is not None:
-                if type(result[0]) != str:
-                    return result
-                line = result[0].strip()
-                if line == "":
-                    return result
-
-                # Normalize command, without uppercase
-                cmd = result[0].split(";", 1)[0].strip().upper()
-                if cmd not in self._ignore_cmd_list:
-                    break
-                self._logger.warning(f"Skip GCODE: {result}")
-                result = self._jobCommReaderOrig(*args, **kwargs)
-        except Exception:
-            self._logger.error(traceback.format_exc())
-        finally:
-            return result
+        return None
 
     def _init_fileshare(self, fs_cls=Fileshare):
         # Note: fileshare_dir referenced when cleaning up old files
@@ -547,7 +545,7 @@ class CPQPlugin(ContinuousPrintAPI):
         # https://github.com/OctoPrint/OctoPrint/blob/f430257d7072a83692fc2392c683ed8c97ae47b6/src/octoprint/filemanager/__init__.py#L301
         self._logger.debug("Searching files for backlogged CPQ analysis")
         counter = 0
-        file_list = self._file_manager.list_files(destinations=FileDestinations.LOCAL)[
+        file_list = self._file_manager.list_files(FileDestinations.LOCAL)[
             FileDestinations.LOCAL
         ]
         for path in self._backlog_from_file_list(file_list):
@@ -582,7 +580,7 @@ class CPQPlugin(ContinuousPrintAPI):
 
     def _cleanup_fileshare(self):
         if not os.path.exists(self.fileshare_dir):
-            return n
+            return 0
 
         # This cleans up all non-useful fileshare files across all network queues, so they aren't just taking up space.
         # First we collect all non-local queue items hosted by us - these are excluded from cleanup as someone may need to fetch them.
@@ -656,7 +654,7 @@ class CPQPlugin(ContinuousPrintAPI):
                 f"Handling completed analysis for {path} - pending: {pend}"
             )
             if pend is not None:
-                (path, sd, draft, profiles) = pend
+                path, sd, draft, profiles = pend
                 prof = payload["result"][CPQProfileAnalysisQueue.PROFILE_KEY]
                 if (profiles is None or profiles == []) and prof != "":
                     profiles = [prof]
@@ -854,35 +852,9 @@ class CPQPlugin(ContinuousPrintAPI):
                 self.q.add(a["name"], lq)
             except ValueError:
                 self._logger.error(
-                    f"Unable to join network queue (name {qdata['name']}, addr {qdata['addr']}) due to ValueError"
+                    f"Unable to join network queue (name {a['name']}, addr {a['addr']}) due to ValueError"
                 )
 
         # We trigger state update rather than returning it here, because this is called by the settings viewmodel
         # (not the main viewmodel that displays the queues)
         self._sync_state()
-
-    def patchComms(self):
-        # Patch the comms interface to allow for suppressing GCODE script events when the
-        # qeue is running script events
-        try:
-            self._sendGcodeScriptOrig = self._printer._comm.sendGcodeScript
-            self._printer._comm.sendGcodeScript = self.gatedSendGcodeScript
-            self._logger.info("Patched sendGCodeScript")
-        except Exception:
-            self._logger.error(traceback.format_exc())
-
-    def gatedSendGcodeScript(self, *args, **kwargs):
-        # As this patches core OctoPrint functionality, we wrap *everything*
-        # in try/catch to ensure it continues to execute if CPQ raises an exception.
-        shouldCall = True
-        try:
-            if shouldBlockCoreEvents(self.d.state):
-                shouldCall = False
-                self._logger.warning(
-                    f"Suppressing sendGcodeScript({args[0]}) as driver is in state {self.d.state}"
-                )
-        except Exception:
-            self._logger.error(traceback.format_exc())
-        finally:
-            if shouldCall:
-                return self._sendGcodeScriptOrig(*args, **kwargs)

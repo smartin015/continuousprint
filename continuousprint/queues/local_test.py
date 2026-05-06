@@ -1,5 +1,4 @@
 import unittest
-import logging
 from ..storage.database_test import QueuesDBTest
 from ..storage import queries
 from ..storage.lan import LANJobView
@@ -9,10 +8,10 @@ from .abstract import Strategy, QueueData
 from .abstract_test import (
     AbstractQueueTests,
     EditableQueueTests,
-    testJob as makeAbstractTestJob,
+    make_test_job as makeAbstractTestJob,
 )
 from .local import LocalQueue
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 
 # logging.basicConfig(level=logging.DEBUG)
 
