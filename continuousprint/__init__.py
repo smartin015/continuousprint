@@ -70,8 +70,6 @@ class ContinuousprintPlugin(
                 self._settings.get_all_data()
             )
         )
-        self._plugin.patchCommJobReader()
-        self._plugin.patchComms()
         self._plugin.start()
 
         # It's possible to miss events or for some weirdness to occur in conditionals. Adding a watchdog
@@ -144,6 +142,30 @@ class ContinuousprintPlugin(
             return
         self._plugin.resume_action()
 
+    def gcode_sending_handler(
+        self,
+        comm_instance,
+        phase,
+        cmd,
+        cmd_type,
+        gcode,
+        subcode=None,
+        tags=None,
+        *args,
+        **kwargs,
+    ):
+        return self._plugin.gcode_sending_handler(
+            comm_instance,
+            phase,
+            cmd,
+            cmd_type,
+            gcode,
+            subcode=subcode,
+            tags=tags,
+            *args,
+            **kwargs,
+        )
+
     def support_gjob_format(*args, **kwargs):
         return dict(machinecode=dict(gjob=["gjob"]))
 
@@ -161,5 +183,6 @@ def __plugin_load__():
         "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information,
         "octoprint.access.permissions": __plugin_implementation__.add_permissions,
         "octoprint.comm.protocol.action": __plugin_implementation__.resume_action_handler,
+        "octoprint.comm.protocol.gcode.sending": __plugin_implementation__.gcode_sending_handler,
         "octoprint.filemanager.extension_tree": __plugin_implementation__.support_gjob_format,
     }
