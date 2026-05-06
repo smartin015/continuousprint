@@ -96,6 +96,9 @@ def cpq_permission(perm: Permission):
 
 
 class ContinuousPrintAPI(ABC, octoprint.plugin.BlueprintPlugin):
+    def is_blueprint_csrf_protected(self):
+        return True
+
     @abstractmethod
     def _update(self, a: DA):
         pass

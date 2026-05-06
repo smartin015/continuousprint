@@ -40,6 +40,9 @@ class ContinuousprintPlugin(
     def is_blueprint_protected(self):
         return self._plugin.is_blueprint_protected()
 
+    def is_blueprint_csrf_protected(self):
+        return True
+
     def get_blueprint_api_prefixes(self):
         return self._plugin.get_blueprint_api_prefixes()
 
