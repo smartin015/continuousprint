@@ -1,6 +1,6 @@
 import unittest
 import tempfile
-from .extract_profile import get_profile, get_header, get_footer
+from continuousprint.scripts.extract_profile import get_profile, get_header, get_footer
 
 
 class TestProfileInference(unittest.TestCase):

@@ -46,7 +46,7 @@ class TestPrinterProfiles(unittest.TestCase):
                     self.assertNotEqual(GCODE_SCRIPTS.get(v["defaults"][s]), None)
 
 
-def test_preprocessor(name):
+def _preprocessor_case(name):
     def preprocessor_decorator(func):
         def testcase(self):
             def runInterp(symtable):
@@ -81,17 +81,17 @@ class TestPreprocessors(unittest.TestCase):
                     sorted(["body", "name"]),
                 )
 
-    @test_preprocessor("If the bed temperature is >40C")
+    @_preprocessor_case("If the bed temperature is >40C")
     def test_bed_temp(self, pp):
         self.assertEqual(pp(dict(current=dict(bed_temp=40)))[0], False)
         self.assertEqual(pp(dict(current=dict(bed_temp=41)))[0], True)
 
-    @test_preprocessor('If print filename ends in "_special.gcode"')
+    @_preprocessor_case('If print filename ends in "_special.gcode"')
     def test_filename_special(self, pp):
         self.assertEqual(pp(dict(current=dict(path="foo.gcode")))[0], False)
         self.assertEqual(pp(dict(current=dict(path="foo_special.gcode")))[0], True)
 
-    @test_preprocessor("If print will be at least 10mm high")
+    @_preprocessor_case("If print will be at least 10mm high")
     def test_print_height(self, pp):
         self.assertEqual(
             pp(dict(metadata=dict(analysis=dict(dimensions=dict(height=9)))))[0], False
@@ -100,7 +100,7 @@ class TestPreprocessors(unittest.TestCase):
             pp(dict(metadata=dict(analysis=dict(dimensions=dict(height=10)))))[0], True
         )
 
-    @test_preprocessor("If print takes on average over an hour to complete")
+    @_preprocessor_case("If print takes on average over an hour to complete")
     def test_avg_print_time(self, pp):
         self.assertEqual(
             pp(
@@ -121,7 +121,7 @@ class TestPreprocessors(unittest.TestCase):
             True,
         )
 
-    @test_preprocessor("If print has failed more than 10% of the time")
+    @_preprocessor_case("If print has failed more than 10% of the time")
     def test_failure_rate(self, pp):
         history = [dict(success=False)]
         for i in range(10):
@@ -130,19 +130,19 @@ class TestPreprocessors(unittest.TestCase):
         history.append(dict(success=False))
         self.assertEqual(pp(dict(metadata=dict(history=history)))[0], True)
 
-    @test_preprocessor("Also notify of bed temperature")
+    @_preprocessor_case("Also notify of bed temperature")
     def test_notify(self, pp):
         result, stdout = pp(dict(current=dict(bed_temp=1)))
         stdout.seek(0)
         self.assertEqual(stdout.read(), "Preprocessor says the bed temperature is 1\n")
 
-    @test_preprocessor("Error and pause if bed is >60C")
+    @_preprocessor_case("Error and pause if bed is >60C")
     def test_error(self, pp):
         self.assertEqual(pp(dict(current=dict(bed_temp=1)))[0], True)
         with self.assertRaisesRegex(Exception, "600C"):
             pp(dict(current=dict(bed_temp=600)))
 
-    @test_preprocessor("If starting from idle (first run, or ran finished script)")
+    @_preprocessor_case("If starting from idle (first run, or ran finished script)")
     def test_from_idle(self, pp):
         self.assertEqual(
             pp(
@@ -169,7 +169,7 @@ class TestPreprocessors(unittest.TestCase):
             True,
         )
 
-    @test_preprocessor("If externally set variable is True")
+    @_preprocessor_case("If externally set variable is True")
     def test_extern(self, pp):
         self.assertEqual(pp(dict(external=dict(testval=True)))[0], True)
         self.assertEqual(pp(dict(external=dict(testval=False)))[0], False)

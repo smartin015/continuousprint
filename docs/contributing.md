@@ -128,7 +128,7 @@ When you've made your changes, it's important to test for regressions.
 Run python tests with this command:
 
 ```
-python3 -m unittest *_test.py
+python -m pytest
 ```
 
 Frontend unit tests require some additional setup (make sure [yarn](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable) and its dependencies are installed):

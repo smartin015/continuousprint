@@ -1,8 +1,7 @@
 import uuid
 from typing import Optional
-from bisect import bisect_left
 from peerprint.lan_queue import LANPrintQueue, ChangeType
-from ..storage.lan import LANJobView, LANSetView
+from ..storage.lan import LANJobView
 from ..storage.database import JobView, SetView
 from pathlib import Path
 from .abstract import AbstractEditableQueue, QueueData, Strategy
