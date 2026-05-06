@@ -27,6 +27,7 @@ function CPSettingsViewModel(parameters, profiles=CP_PRINTER_PROFILES, default_s
       new PNotify({
         title: `Continuous Print Settings (Error ${code})`,
         text: reason,
+        text_escape: true,
         type: 'error',
         hide: true,
         buttons: {closer: true, sticker: false},

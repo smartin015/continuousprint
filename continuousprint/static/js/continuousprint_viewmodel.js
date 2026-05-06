@@ -60,6 +60,7 @@ function CPViewModel(parameters) {
         new PNotify({
             title: `Continuous Print API (Error ${code})`,
             text: reason,
+            text_escape: true,
             type: 'error',
             hide: true,
             buttons: {closer: true, sticker: false},
@@ -341,6 +342,7 @@ function CPViewModel(parameters) {
             new PNotify({
                 title: 'Continuous Print',
                 text: data.msg,
+                text_escape: true,
                 type: theme,
                 hide: (theme !== 'danger'),
                 buttons: {closer: true, sticker: false}
